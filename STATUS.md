@@ -169,6 +169,35 @@ A second session re-verified the pipeline and site before publishing.
   are offsets/transfers, not errors) and render with a proper minus
   sign; they are flagged here rather than silently altered.
 
+## Follow-up pass (2026-07-08, merged to main)
+
+- **Reproducibility run still pending.** This environment also cannot
+  reach ebudget.ca.gov, so the independent `--refresh` re-run of the
+  pipeline (regenerate `data.js` from the live API and diff against
+  the committed file) remains deferred until someone runs it from an
+  unrestricted network. The pipeline script is unchanged.
+- **Hero dek accuracy: already fixed.** The dek reads "Every dollar of
+  California's enacted state budget, drawn to scale" (changed from the
+  original "spends" phrasing in the real-data commit); no occurrence
+  of the expenditure wording remains in the repo. No copy change was
+  needed this pass.
+- **Negative-appropriation rendering verified headlessly** (Chromium,
+  FY 2022-23, committed `data.js`): opened the three affected
+  drilldowns — General Government (Pro Rata −$47M net, Public School
+  System Stabilization Acct), Legislative/Judicial/Executive (OES
+  special funds −$3.9B), Government Operations (special funds −$563M
+  at agency level). Every department bar's rendered width is ≥ 0
+  (negative net amounts get a zero-width bar and a minus-signed
+  figure, e.g. "−$47M"); no bar overflows its track; no console
+  errors. The drilldown fund strip omits a fund class whose total is
+  ≤ 0 (so Government Operations 2022-23 shows only General Fund and
+  Bond Funds in the strip while the header total reflects the −$563M
+  special funds); the remaining segments' declared widths can exceed
+  100% but the strip is `display:flex` with `overflow:hidden`, so they
+  compress to fit the container — measured 972px of segments in a
+  974px track, no visual overflow. Nothing was broken, so no rendering
+  code was changed.
+
 ## Update cadence
 
 One new fiscal year per annual Budget Act (late June). Run
