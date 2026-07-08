@@ -46,6 +46,45 @@ retrospective figures, not budgets. One new fiscal year per annual
 filing cycle (reports for a fiscal year are published the following
 year). This differs from the state view, which shows enacted
 appropriations.
+
+COMPARABILITY REQUIREMENTS (blockers for the comparison view)
+--------------------------------------------------------------
+Naive per-capita comparison of city expenditures is misleading unless
+the load handles these structural factors. The site's comparison view
+must not ship on real data until each is addressed (researched
+2026-07-08; see STATUS.md for sources):
+
+1. CONTRACT CITIES. Dozens of California cities contract police to
+   the county sheriff (the "Lakewood model"; ~40 in Los Angeles
+   County alone) and/or fire to county or district agencies.
+   Contract cities show systematically lower per-capita police
+   spending, and the studies that measured it attribute part of the
+   gap to demographics and workload, not efficiency. The dataset
+   itself does not label contract cities. The load must either derive
+   a per-city service-provision flag from a maintained list or flag
+   cities whose police/fire line is implausibly low or zero, and the
+   UI must footnote them neutrally in any comparison.
+2. ENTERPRISE FUNDS. City utilities (water, power, sewer, airports,
+   harbors) are business-type activities funded by ratepayers, not
+   general taxes. Cities differ in what they operate (LA runs a
+   utility; most cities do not), which distorts totals. The SCO data
+   distinguishes governmental from enterprise activity — PRESERVE
+   that distinction in the schema (separate governmental vs
+   enterprise blocks per city) and compare on governmental activities
+   by default.
+3. CONSOLIDATED CITY-COUNTY. San Francisco reports city and county
+   functions in one entity; its figures are not comparable to any
+   other city. Footnote or exclude from comparison.
+4. CAPITAL AND DEBT SPIKES. A single bond issue or capital project
+   can multiply a small city's one-year total. Any comparison should
+   surface which year is shown and footnote large single-year swings
+   rather than smoothing them.
+5. POPULATION DENOMINATORS. Use the population reported in the same
+   SCO filing (or DOF E-1 for the same year), never a mixed vintage.
+
+If these cannot be resolved from the data plus a maintained flag
+list, ship city detail views only and keep the comparison feature on
+sample/disabled — a wrong comparison is worse than none.
 """
 
 import argparse

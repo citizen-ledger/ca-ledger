@@ -312,6 +312,49 @@ comes back clean.
   spot checks, banned-term scan, file:// load) — all passing. V1
   regression suites re-run: 55 + 18 assertions, all passing.
 
+## Network-dependent tasks attempted again (2026-07-08, later session)
+
+All three planned network tasks were attempted from a fresh session;
+the environment's egress policy still blocks the data hosts, so the
+data tasks remain pending. Exact findings:
+
+- **V1 reproducibility run: still blocked.** `fetch_state_data.py
+  --refresh` cannot reach ebudget.ca.gov (proxy answers 403 to
+  CONNECT; the sandboxed web-fetch channel also gets 403). The
+  regenerate-and-diff check remains pending on an unrestricted
+  network. No change to data.js.
+- **V2 real data: still blocked, and deliberately not faked.**
+  bythenumbers.sco.ca.gov and api.us.socrata.com are both denied on
+  every available channel, so the Socrata endpoints stay unverified
+  and no aggregation was implemented — the script's policy is to
+  refuse to write from guesses, and that held. What did move forward:
+  the comparability investigation was completed from published
+  research and encoded as blocking requirements in the script's
+  docstring — contract cities (county-provided police/fire; measured
+  as systematically lower per-capita police spending with demographic
+  confounds), enterprise funds (ratepayer-funded utilities that only
+  some cities operate; the schema must keep governmental and
+  enterprise activity separate and compare governmental by default),
+  the San Francisco city-county consolidation, single-year
+  capital/debt spikes, and same-vintage population denominators. The
+  stated rule: if these cannot be resolved from the data plus a
+  maintained flag list, ship city detail only and keep the comparison
+  feature off real data. The V2 page remains on labeled sample data.
+- **GitHub Pages: workflow verified, deployment awaiting a settings
+  change.** Both runs of "Deploy to GitHub Pages" failed in
+  `actions/configure-pages` with "Get Pages site failed … Not Found",
+  which means Pages is not yet enabled for the repository. The
+  workflow itself checked out and ran correctly up to that step. Two
+  settings facts matter: (1) Settings → Pages → Build and deployment
+  → Source must be set to "GitHub Actions"; (2) the repository is
+  currently **private** — GitHub Pages on a private repository
+  requires a paid plan (and the published site is public regardless),
+  so the repo may need to be made public first. Once enabled, re-run
+  the workflow from the Actions tab; permalinks and citations already
+  derive their URLs from `window.location`, verified earlier under a
+  simulated `/ca-ledger/` subpath, so they will emit the public URL
+  as soon as the page is served from it.
+
 ## Update cadence
 
 One new fiscal year per annual Budget Act (late June). Run
