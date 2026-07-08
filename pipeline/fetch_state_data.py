@@ -3,84 +3,67 @@
 The California Ledger — data pipeline (V1, state level)
 =======================================================
 
-Rewrites ../data.js with official California expenditure data, in the
-exact schema the site expects.
+Rewrites ../data.js with official California ENACTED BUDGET data, in
+the exact schema the site expects.
 
 SOURCE (verified 2026-07-08)
 ----------------------------
-Open FI$Cal — the State of California's fiscal transparency portal
-(https://open.fiscal.ca.gov). The state's expenditure data is NOT on
-data.ca.gov (the old CKAN dataset was removed); Open FI$Cal publishes
-"Monthly Spending Transaction Files" — every spending transaction
-recorded in FI$Cal, the state's accounting system — as CSVs on Azure
-blob storage, listed in a machine-readable pointer file:
+The Department of Finance's eBudget site (https://ebudget.ca.gov) —
+the JSON API that powers its "Enacted Budget" publication:
 
-    {POINTER_URL}
+    https://ebudget.ca.gov/api/publication/e/{fiscal_year}/...
 
-Files are named Spending_FY<yy>P<pp>.csv where FY<yy> is the fiscal
-year BEGINNING in 20<yy> (FY24 = fiscal year 2024-25) and P<pp> is the
-accounting period (P01 = July ... P12 = June). Each file is 1-2 GB;
-this script streams them without writing them to disk and caches the
-aggregated result per fiscal year under pipeline/cache/, so re-runs
-and backfills only download what is missing (use --refresh to force).
+Endpoints used, per fiscal year:
+    /appInfo                    sanity check: publication == "Enacted"
+    /statistics                 agencies with GF / Special / Bond totals
+    /statistics/{agencyCd}      departments of one agency, same fields
+    /rwaCntl/support/{orgCd}    department expenditures by fund
+    /rwaCntl/capOutlay/{orgCd}  capital-outlay expenditures by fund
+
+Dollar fields are in THOUSANDS. Fund class codes in rwaCntl rows:
+G = General Fund, S = Special Funds, B = Bond Funds, F = Federal Funds,
+N = Nongovernmental-cost funds, R = Reimbursements. The site's gf/sp/bd
+figures come from /statistics (they include capital outlay and match
+the enacted Summary Charts exactly — verified: 2024-25 sums to
+$297,862M, the published total). Federal figures are the F-class rows
+of rwaCntl support + capOutlay. N and R are excluded, matching how
+budget documents present state spending.
 
 ACCOUNTING BASIS — important for the site's footer
 --------------------------------------------------
-These are ACTUAL EXPENDITURE TRANSACTIONS (cash-basis accounting
-entries, including reversals and adjustments, which net out), NOT
-enacted-budget appropriations. Totals will therefore differ from the
-enacted budget published at ebudget.ca.gov. Rows in fund group
-"Other NonGovt Cost Funds" (trust, agency and revolving funds) are
-excluded, matching how state budget documents present total state
-spending; the script reports how much was excluded.
+These are ENACTED-BUDGET EXPENDITURE ESTIMATES (appropriations under
+California's Budgetary-Legal basis), as published at enactment of each
+year's Budget Act — not actual cash spending, which the state does not
+publish in full machine-readable form (Open FI$Cal covers only the
+~79% of departments that use the FI$Cal accounting system; see
+STATUS.md). Enacted figures for a given year are fixed at enactment
+and never revised, so cached years never need refetching.
 
 Usage:
     python3 fetch_state_data.py --inspect            # look at the source first
-    python3 fetch_state_data.py                      # 2 most recent complete FYs
-    python3 fetch_state_data.py --years 2023-24 2024-25
+    python3 fetch_state_data.py                      # default: 6 most recent enacted years
+    python3 fetch_state_data.py --years 2024-25 2025-26
     python3 fetch_state_data.py --refresh            # ignore cache, refetch
 
-data.js is rebuilt from ALL complete cached years on every run, so you
-can backfill history one year at a time. Data updates monthly (with a
-lag of about two months); run on a schedule for freshness.
+data.js is rebuilt from ALL cached years on every run. A new enacted
+budget is published once a year (late June); rerun then.
 """
 
 import argparse
-import csv
-import io
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
-from collections import Counter, defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
-POINTER_URL = ("https://adwoutputfilesadlsstore.blob.core.windows.net/"
-               "transparency/MonthlySpendingTransactionPointer/"
-               "MonthlySpendingTransactionPointer.csv")
+API_BASE = "https://ebudget.ca.gov/api/publication/e"
 
-# Column names in the Monthly Spending Transaction Files (verified
-# against the live files with --inspect on 2026-07-08).
-COLUMNS = {
-    "year": "fiscal_year_begin",      # "2024" = fiscal year 2024-25
-    "agency": "agency_name",
-    "department": "department_name",
-    "fund_group": "fund_group_1",
-    "amount": "monetary_amount",      # dollars; negatives are reversals
-}
-
-# Fund-group labels in the data -> our four keys. "Other NonGovt Cost
-# Funds" is deliberately absent: trust/agency/revolving funds are not
-# counted as state spending in budget documents. Unmapped groups are
-# skipped and totaled in the run report.
-FUND_MAP = {
-    "general fund": "gf",
-    "special funds": "sp",
-    "bond funds": "bd",
-    "federal funds": "fed",
-}
+# How many recent enacted fiscal years to load by default. The API
+# serves publications back to at least 2018-19.
+DEFAULT_YEARS = 6
 
 # DOF population estimates (millions), used only for the per-resident
 # figure: the January 1 estimate that falls inside each fiscal year,
@@ -92,156 +75,160 @@ POPULATION = {
 }
 
 MAX_RETRIES = 3
-FETCH_WORKERS = 4
+FETCH_WORKERS = 8
 CACHE_DIR = Path(__file__).resolve().parent / "cache"
 OUT_PATH = Path(__file__).resolve().parent.parent / "data.js"
 
 FUND_KEYS = ("gf", "sp", "bd", "fed")
+THOUSANDS_PER_BILLION = 1e6
 
 
 # ----------------------------------------------------------------------
-# Source discovery
+# Fetching
 # ----------------------------------------------------------------------
-def http_get(url: str, timeout: int = 120):
-    req = urllib.request.Request(url, headers={"User-Agent": "ca-ledger-pipeline/1.0"})
-    return urllib.request.urlopen(req, timeout=timeout)
-
-
-def load_manifest():
-    """Returns {fiscal_year ('2024-25'): {period (int): download_url}}."""
-    with http_get(POINTER_URL) as r:
-        text = r.read().decode("utf-8-sig")
-    manifest = defaultdict(dict)
-    for row in csv.DictReader(io.StringIO(text)):
-        name = row.get("FileName", "")
-        url = row.get("Download", "")
-        if not (name.startswith("Spending_FY") and url):
-            continue
-        try:
-            fy = int(name[11:13])        # Spending_FY24P01.csv -> 24
-            period = int(name[14:16])    #                      -> 01
-        except ValueError:
-            continue
-        year = f"20{fy:02d}-{(fy + 1) % 100:02d}"
-        manifest[year][period] = url
-    return dict(manifest)
-
-
-def complete_years(manifest):
-    return sorted(y for y, periods in manifest.items() if len(periods) == 12)
-
-
-# ----------------------------------------------------------------------
-# Fetching + aggregation
-# ----------------------------------------------------------------------
-def new_node():
-    return {k: 0.0 for k in FUND_KEYS} | {
-        "departments": defaultdict(lambda: {k: 0.0 for k in FUND_KEYS})
-    }
-
-
-def aggregate_file(url: str, label: str):
-    """Stream one monthly CSV and return (agg, skipped_counter).
-    agg = {agency: node} — the file is a single fiscal year, so no year level.
-    """
+def get_json(path: str, ok_404=False):
+    url = f"{API_BASE}/{path}"
+    last_err = None
     for attempt in range(1, MAX_RETRIES + 1):
-        agg = defaultdict(new_node)
-        skipped = Counter()   # fund_group label -> dollars skipped
-        rows = bad = 0
         try:
-            with http_get(url, timeout=300) as resp:
-                text = io.TextIOWrapper(resp, encoding="utf-8", errors="replace", newline="")
-                reader = csv.DictReader(text)
-                for rec in reader:
-                    rows += 1
-                    try:
-                        amount = float(rec[COLUMNS["amount"]])
-                    except (KeyError, TypeError, ValueError):
-                        bad += 1
-                        continue
-                    fund_raw = (rec.get(COLUMNS["fund_group"]) or "").strip()
-                    fund = FUND_MAP.get(fund_raw.lower())
-                    if fund is None:
-                        skipped[fund_raw or "(blank)"] += amount
-                        continue
-                    agency = (rec.get(COLUMNS["agency"]) or "").strip() or "(unspecified)"
-                    dept = (rec.get(COLUMNS["department"]) or "").strip() or "(unspecified)"
-                    node = agg[agency]
-                    node[fund] += amount
-                    node["departments"][dept][fund] += amount
-            print(f"  {label}: {rows:,} rows"
-                  + (f", {bad:,} malformed" if bad else ""), file=sys.stderr)
-            return agg, skipped
-        except Exception as e:  # noqa: BLE001 — retry transient network failures
-            wait = 15 * attempt
-            print(f"  {label}: attempt {attempt}/{MAX_RETRIES} failed ({e}); "
-                  f"retrying in {wait}s", file=sys.stderr)
-            time.sleep(wait)
-    raise RuntimeError(f"{label}: giving up after {MAX_RETRIES} attempts")
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "ca-ledger-pipeline/2.0",
+                              "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 404 and ok_404:
+                return None
+            last_err = e
+        except Exception as e:  # noqa: BLE001 — retry transient failures
+            last_err = e
+        time.sleep(2 * attempt)
+    raise RuntimeError(f"GET {url} failed after {MAX_RETRIES} attempts: {last_err}")
 
 
-def merge(target, source):
-    for agency, node in source.items():
-        tnode = target[agency]
-        for k in FUND_KEYS:
-            tnode[k] += node[k]
-        for dept, dv in node["departments"].items():
-            tdept = tnode["departments"][dept]
-            for k in FUND_KEYS:
-                tdept[k] += dv[k]
+def latest_enacted_years(n: int):
+    """Most recent n fiscal years with a populated Enacted publication.
+    (A stub publication for the upcoming year can exist with an empty
+    /statistics — e.g. 2026-27 showed 'Enacted on January 01, 9999' —
+    so a year only counts if it actually has agency data.)"""
+    years = []
+    y = date.today().year
+    # An enacted budget for FY y-(y+1) appears in late June of year y.
+    for start in range(y, y - n - 3, -1):
+        fy = f"{start}-{str(start + 1)[-2:]}"
+        try:
+            info = get_json(f"{fy}/appInfo")
+            if not (info and info.get("publication") == "Enacted"):
+                continue
+            if not get_json(f"{fy}/statistics"):
+                continue
+        except RuntimeError:
+            continue
+        years.append(fy)
+        if len(years) == n:
+            break
+    return sorted(years)
 
 
-def fetch_year(year: str, period_urls: dict):
-    """Download and aggregate all 12 monthly files of one fiscal year."""
-    print(f"FY {year}: fetching {len(period_urls)} monthly files "
-          f"({FETCH_WORKERS} at a time)…", file=sys.stderr)
-    agg = defaultdict(new_node)
-    skipped = Counter()
-    t0 = time.time()
-    with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
-        futures = {
-            pool.submit(aggregate_file, url, f"FY {year} P{p:02d}"): p
-            for p, url in sorted(period_urls.items())
+def dept_federal(year: str, org_cd: str) -> float:
+    """Federal-fund dollars (thousands) for one department:
+    F-class rows of the support + capital-outlay fund tables."""
+    fed = 0.0
+    for ep in ("rwaCntl/support", "rwaCntl/capOutlay"):
+        rows = get_json(f"{year}/{ep}/{org_cd}", ok_404=True) or []
+        fed += sum((r.get("byTotDols") or 0)
+                   for r in rows if r.get("fundClassCd") == "F")
+    return fed
+
+
+def fetch_year(year: str):
+    """Returns {agency_name: {gf,sp,bd,fed, departments:{name:{...}}}},
+    all values in THOUSANDS of dollars (budget-year enacted)."""
+    info = get_json(f"{year}/appInfo")
+    if info.get("publication") != "Enacted":
+        raise RuntimeError(f"{year}: publication is {info.get('publication')!r},"
+                           " not Enacted")
+    agencies_raw = [a for a in get_json(f"{year}/statistics")
+                    if a.get("displayOnWebFlg") == "Y"]
+    print(f"FY {year}: {len(agencies_raw)} agencies "
+          f"({info.get('publicationDate')})", file=sys.stderr)
+
+    out = {}
+    grand_check = agencies_raw[0].get("stateGrandTotal") if agencies_raw else None
+
+    for a in agencies_raw:
+        agency_cd = a["webAgencyCd"]
+        dept_rows = [d for d in get_json(f"{year}/statistics/{agency_cd}")
+                     if d.get("displayOnWebFlg") == "Y"]
+        # dedupe by orgCd, keep first occurrence
+        seen = set()
+        depts = []
+        for d in dept_rows:
+            if d["orgCd"] in seen:
+                continue
+            seen.add(d["orgCd"])
+            depts.append(d)
+
+        with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
+            feds = list(pool.map(lambda d: dept_federal(year, d["orgCd"]), depts))
+
+        dept_nodes = {}
+        for d, fed in zip(depts, feds):
+            dept_nodes[d["legalTitl"].strip()] = {
+                "gf": d["generalFundTotal"] or 0, "sp": d["specialFundTotal"] or 0,
+                "bd": d["bondFundTotal"] or 0, "fed": fed or 0,
+            }
+        node = {
+            "gf": a["generalFundTotal"] or 0, "sp": a["specialFundTotal"] or 0,
+            "bd": a["bondFundTotal"] or 0,
+            "fed": sum(v["fed"] for v in dept_nodes.values()),
+            "departments": dept_nodes,
         }
-        for fut in as_completed(futures):
-            file_agg, file_skipped = fut.result()
-            merge(agg, file_agg)
-            skipped.update(file_skipped)
-    print(f"FY {year}: done in {time.time() - t0:,.0f}s", file=sys.stderr)
-    return agg, skipped
+        out[a["legalTitl"].strip()] = node
+        st = (node["gf"] + node["sp"] + node["bd"]) / THOUSANDS_PER_BILLION
+        print(f"  {a['legalTitl'][:44]:44} state ${st:8.3f}B  "
+              f"fed ${node['fed'] / THOUSANDS_PER_BILLION:8.3f}B  "
+              f"({len(dept_nodes)} depts)", file=sys.stderr)
+
+    total = sum(n["gf"] + n["sp"] + n["bd"] for n in out.values())
+    if grand_check:
+        drift = abs(total - grand_check)
+        print(f"FY {year}: state funds ${total / THOUSANDS_PER_BILLION:,.3f}B "
+              f"(API stateGrandTotal ${grand_check / THOUSANDS_PER_BILLION:,.3f}B, "
+              f"drift ${drift / 1e3:,.0f}k)", file=sys.stderr)
+    return out
 
 
 # ----------------------------------------------------------------------
-# Per-year cache
+# Per-year cache (enacted figures never change once published)
 # ----------------------------------------------------------------------
 def cache_path(year: str) -> Path:
-    return CACHE_DIR / f"FY{year}.json"
+    return CACHE_DIR / f"enacted_{year}.json"
 
 
-def save_cache(year, agg, skipped, n_periods):
+def save_cache(year, agencies):
     CACHE_DIR.mkdir(exist_ok=True)
-    payload = {
+    cache_path(year).write_text(json.dumps({
         "year": year,
+        "source": "ebudget-enacted",
         "fetched": date.today().isoformat(),
-        "periods": n_periods,
-        "skipped_dollars": dict(skipped),
-        "agencies": {
-            name: {**{k: node[k] for k in FUND_KEYS},
-                   "departments": {d: dict(v) for d, v in node["departments"].items()}}
-            for name, node in agg.items()
-        },
-    }
-    cache_path(year).write_text(json.dumps(payload), encoding="utf-8")
+        "agencies": agencies,
+    }), encoding="utf-8")
 
 
 def load_cached_years():
-    """Returns {year: cache_payload} for every complete cached year."""
     out = {}
     if CACHE_DIR.is_dir():
-        for p in sorted(CACHE_DIR.glob("FY*.json")):
+        for p in sorted(CACHE_DIR.glob("enacted_*.json")):
             data = json.loads(p.read_text(encoding="utf-8"))
-            if data.get("periods") == 12:
-                out[data["year"]] = data
+            # older caches may hold nulls where the API returned null
+            for node in data["agencies"].values():
+                for k in FUND_KEYS:
+                    node[k] = node[k] or 0
+                for dv in node["departments"].values():
+                    for k in FUND_KEYS:
+                        dv[k] = dv[k] or 0
+            out[data["year"]] = data["agencies"]
     return out
 
 
@@ -261,17 +248,19 @@ def build_payload(cached):
     for year in years_sorted:
         agencies = []
         for name, node in sorted(
-            cached[year]["agencies"].items(),
-            key=lambda kv: -sum(kv[1][k] for k in FUND_KEYS),
+            cached[year].items(),
+            key=lambda kv: -(kv[1]["gf"] + kv[1]["sp"] + kv[1]["bd"] + kv[1]["fed"]),
         ):
             depts = [
-                {"name": dn, **{k: round(dv[k] / 1e9, 3) for k in FUND_KEYS}}
-                for dn, dv in sorted(node["departments"].items(),
-                                     key=lambda kv: -sum(kv[1].values()))
+                {"name": dn,
+                 **{k: round(dv[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS}}
+                for dn, dv in sorted(
+                    node["departments"].items(),
+                    key=lambda kv: -sum(kv[1][k] for k in FUND_KEYS))
             ]
             agencies.append({
                 "id": slugify(name), "name": name,
-                **{k: round(node[k] / 1e9, 3) for k in FUND_KEYS},
+                **{k: round(node[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS},
                 "departments": depts,
             })
         budgets[year] = {"agencies": agencies}
@@ -281,9 +270,9 @@ def build_payload(cached):
         }
     return {
         "meta": {
-            "source": "open.fiscal.ca.gov",
-            "sourceLabel": "Open FI$Cal Monthly Spending Transaction Files "
-                           "(actual expenditures, open.fiscal.ca.gov)",
+            "source": "ebudget.ca.gov",
+            "sourceLabel": "Enacted state budgets, Budgetary-Legal basis "
+                           "(California Department of Finance, ebudget.ca.gov)",
             "generated": date.today().isoformat(),
             "population": POPULATION,
         },
@@ -335,56 +324,36 @@ def plausibility_report(payload):
 # Main
 # ----------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Rebuild data.js from Open FI$Cal")
+    ap = argparse.ArgumentParser(description="Rebuild data.js from ebudget.ca.gov "
+                                             "enacted budgets")
     ap.add_argument("--inspect", action="store_true",
-                    help="show available files and a sample record, then exit")
+                    help="show available years and a sample agency row, then exit")
     ap.add_argument("--years", nargs="*", default=None,
-                    help="fiscal years to fetch, e.g. --years 2023-24 2024-25 "
-                         "(default: the 2 most recent complete years)")
+                    help="fiscal years to fetch, e.g. --years 2024-25 2025-26 "
+                         f"(default: the {DEFAULT_YEARS} most recent enacted years)")
     ap.add_argument("--refresh", action="store_true",
                     help="refetch requested years even if cached")
     args = ap.parse_args()
 
-    print("Loading Open FI$Cal file manifest…", file=sys.stderr)
-    manifest = load_manifest()
-    complete = complete_years(manifest)
-    print(f"  {sum(len(v) for v in manifest.values())} files, "
-          f"complete fiscal years: {', '.join(complete)}", file=sys.stderr)
-
     if args.inspect:
-        latest = sorted(manifest)[-1]
-        p, url = sorted(manifest[latest].items())[-1]
-        print(f"\nSample from FY {latest} P{p:02d}:")
-        with http_get(url) as r:
-            head = r.read(8192).decode("utf-8", errors="replace")
-        lines = head.splitlines()
-        print("Fields:", lines[0])
-        print("First record:", lines[1] if len(lines) > 1 else "(empty)")
+        years = latest_enacted_years(DEFAULT_YEARS)
+        print("Enacted publications found:", ", ".join(years))
+        sample = get_json(f"{years[-1]}/statistics")[0]
+        print("Sample agency row:", json.dumps(sample, indent=2))
         return
 
-    wanted = args.years if args.years else complete[-2:]
+    wanted = args.years if args.years else latest_enacted_years(DEFAULT_YEARS)
+    print("Fiscal years:", ", ".join(wanted), file=sys.stderr)
     for year in wanted:
-        if year not in manifest:
-            sys.exit(f"FY {year} not in the manifest (available: "
-                     f"{', '.join(sorted(manifest))})")
-        if year not in complete:
-            print(f"  warning: FY {year} has only "
-                  f"{len(manifest[year])}/12 periods published — skipping "
-                  f"(partial years would understate totals)", file=sys.stderr)
-            continue
         if not args.refresh and cache_path(year).exists():
             print(f"FY {year}: cached — skipping fetch (use --refresh to force)",
                   file=sys.stderr)
             continue
-        agg, skipped = fetch_year(year, manifest[year])
-        save_cache(year, agg, skipped, len(manifest[year]))
-        for label, dollars in sorted(skipped.items(), key=lambda kv: -abs(kv[1])):
-            print(f"  excluded fund group {label!r}: ${dollars / 1e9:,.2f}B",
-                  file=sys.stderr)
+        save_cache(year, fetch_year(year))
 
     cached = load_cached_years()
     if not cached:
-        sys.exit("No complete fiscal years cached — nothing to write.")
+        sys.exit("No fiscal years cached — nothing to write.")
     payload = build_payload(cached)
 
     for w in plausibility_report(payload):

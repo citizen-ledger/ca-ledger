@@ -9,8 +9,9 @@ and it works — including offline.
 | File | What it is |
 |---|---|
 | `index.html` | The entire site: layout, styles, all interactivity, hand-rolled SVG charts. Zero runtime dependencies. |
-| `data.js` | The dataset the site renders. **Currently sample data, clearly labeled in the UI.** |
-| `pipeline/fetch_state_data.py` | Rewrites `data.js` from official data (Open FiscalCal via data.ca.gov). Python 3, stdlib only. |
+| `data.js` | The dataset the site renders: six years of enacted state budgets (2020-21 through 2025-26), generated from official data. |
+| `pipeline/fetch_state_data.py` | Regenerates `data.js` from the Department of Finance's eBudget API. Python 3, stdlib only. |
+| `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
 
@@ -31,23 +32,37 @@ python3 -m http.server 8000     # then open http://localhost:8000
 - **Sortable, filterable full table** with a totals row.
 - Responsive to mobile, keyboard-navigable, respects reduced-motion.
 
-## Loading real data (do this once)
+## The data
 
-The pipeline was written without network access to ca.gov, so two
-constants need one-time verification — this is stated plainly at the
-top of the script:
+- **Source:** the JSON API behind the Department of Finance's official
+  eBudget site — `https://ebudget.ca.gov/api/publication/e/{year}/…` —
+  the same data that renders ebudget.ca.gov's Enacted Budget pages.
+- **Accounting basis:** enacted-budget expenditures, i.e. appropriations
+  under California's Budgetary-Legal basis of accounting, fixed when each
+  year's Budget Act is signed. These are spending plans, not audited
+  actuals. (The state's actual-expenditure dataset, Open FI$Cal, covers
+  only ~79% of budgetary spending and omits entire departments — see
+  `STATUS.md` for why it was rejected as the primary source.)
+- **What counts:** General, special, and bond funds make up the state
+  total, matching the enacted Summary Charts exactly (2024-25 validates
+  to the published $297,862M to the million). Federal funds are a
+  user-controlled toggle. Reimbursements and nongovernmental-cost funds
+  are excluded, as in the budget documents.
+- **Update cadence:** one new fiscal year per annual Budget Act, signed
+  each June. Enacted figures never change after publication, so the
+  per-year cache in `pipeline/cache/` is permanent.
 
-1. Find the Open FiscalCal expenditure dataset on https://data.ca.gov
-   and copy its datastore **resource id** into `RESOURCE_ID`.
-2. Run `python3 pipeline/fetch_state_data.py --inspect` to see the real
-   column names; adjust `COLUMNS` and `FUND_MAP` if they differ.
-3. Run `python3 pipeline/fetch_state_data.py`. It rewrites `data.js`,
-   the yellow "sample data" banner disappears automatically, and the
-   footer cites the live source and generation date.
+### Refreshing
 
-For freshness, run the script on a schedule (cron, or a GitHub Action
-committing the regenerated `data.js`). State expenditure data updates
-roughly monthly; enacted budgets annually.
+```
+python3 pipeline/fetch_state_data.py --inspect   # see available years
+python3 pipeline/fetch_state_data.py             # fetch, rebuild data.js
+python3 pipeline/fetch_state_data.py --years 2026-27   # when next year's act is signed
+```
+
+Population figures for the per-resident numbers come from DOF report
+E-4 (statewide January 1 estimates) and are a constant in the script —
+update once a year.
 
 ## Neutrality choices, on purpose
 
@@ -56,7 +71,7 @@ roughly monthly; enacted budgets annually.
   without editorializing.
 - Federal pass-through is a user-controlled toggle, not an editorial
   decision baked into the total.
-- Sources and method are on the page itself.
+- Sources, method, and accounting basis are stated on the page itself.
 
 ## V2 (cities) — the plan
 

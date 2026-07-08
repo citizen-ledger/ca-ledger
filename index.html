@@ -217,7 +217,7 @@
   <div class="wrap">
     <div class="eyebrow">A Nonpartisan Public Record</div>
     <h1>The California Ledger</h1>
-    <p class="dek">Every dollar the State of California spends, drawn to scale. No commentary, no conclusions — the record, organized so anyone can read it.</p>
+    <p class="dek">Every dollar of California's enacted state budget, drawn to scale. No commentary, no conclusions — the record, organized so anyone can read it.</p>
 
     <div class="controls">
       <label class="control" for="yearSel">Fiscal year
@@ -308,7 +308,7 @@
   <div class="wrap">
     <h2>Sources & method</h2>
     <p id="srcNote"></p>
-    <p>Agency figures are enacted-budget expenditures grouped by agency and fund. "Per resident" divides the displayed total by the Department of Finance population estimate for that fiscal year. To refresh the data, run <code>pipeline/fetch_state_data.py</code>, which rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is planned for V2.</p>
+    <p>Figures are enacted-budget expenditures: appropriations under California's Budgetary-Legal basis of accounting, as published by the Department of Finance at ebudget.ca.gov when each year's Budget Act was signed. They are the spending plan fixed at enactment, not audited actual spending; mid-year revisions and actuals differ. General, special, and bond funds make up the state total; federal pass-through funds are shown via the toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. "Per resident" divides the displayed total by the Department of Finance population estimate (report E-4) for that fiscal year. A new enacted budget is published each June — run <code>pipeline/fetch_state_data.py</code> then; it rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is planned for V2.</p>
   </div>
 </footer>
 
@@ -343,10 +343,11 @@
   /* ---------- helpers ---------- */
   const $ = id => document.getElementById(id);
   const fmtB = v => {           // v in billions
-    if (v >= 100) return "$" + v.toFixed(0) + "B";
-    if (v >= 10)  return "$" + v.toFixed(1) + "B";
-    if (v >= 1)   return "$" + v.toFixed(1) + "B";
-    return "$" + Math.round(v*1000) + "M";
+    const sign = v < 0 ? "−" : "";
+    const a = Math.abs(v);
+    if (a >= 100) return sign + "$" + a.toFixed(0) + "B";
+    if (a >= 1)   return sign + "$" + a.toFixed(1) + "B";
+    return sign + "$" + Math.round(a*1000) + "M";
   };
   const fmtCap = v => "$" + Math.round(v).toLocaleString("en-US");
   const agencyTotal = (a, fed) => a.gf + a.sp + a.bd + (fed ? a.fed : 0);
@@ -466,7 +467,7 @@
       const row = document.createElement("div");
       row.className = "dept-row";
       row.innerHTML = '<span class="nm">'+d.name+'</span>'
-        + '<span class="bar"><i style="width:'+(v/max*100)+'%"></i></span>'
+        + '<span class="bar"><i style="width:'+Math.max(0, v/max*100)+'%"></i></span>'
         + '<span class="amt">'+fmtB(v)+'</span>';
       wrap.appendChild(row);
     });
