@@ -42,16 +42,35 @@ financial statements. Enacted figures never change after publication.
 
 ## Cross-check against ebudget.ca.gov
 
-Most recent fully published Summary Charts year (2024-25 Budget Act):
+Most recent fiscal year (2025-26 Budget Act, signed June 27, 2025),
+`data.js` vs. the published enacted figures¹:
 
-| | data.js | Published Summary Charts¹ | Difference |
+| | data.js | Published | Difference |
+|---|---|---|---|
+| General Fund | $228.366B | $228.4B | −0.01% |
+| Special Funds | $88.799B | ~$89B | −0.2% |
+| Bond Funds | $3.886B | ~$4B | −2.9% (rounding: published to nearest $1B) |
+| **Total state funds** | **$321.051B** | **$321.1B** | **−0.02%** |
+
+Prior year (2024-25 Budget Act), against the printed Summary Charts²:
+
+| | data.js | Published Summary Charts | Difference |
 |---|---|---|---|
 | General Fund | $211.504B | $211,504M | 0.000% |
 | Special Funds | $83.985B | $83,985M | 0.000% |
 | Bond Funds | $2.373B | $2,373M | 0.000% |
 | **Total state funds** | **$297.862B** | **$297,862M** | **0.000%** |
 
-¹ "2024-25 Total State Expenditures by Agency", California State Budget
+¹ 2025-26 enacted totals as published in the California State Budget
+2025-26 (ebudget.ca.gov Full Budget Summary) and reported identically by
+the Legislative Analyst's Office ("The 2025-26 Budget: Overview of the
+Spending Plan", lao.ca.gov/Publications/Report/5079) and the Senate
+budget committee's Summary of the Budget Act of 2025: $321.1B total
+state spending, $228.4B General Fund, ~$89B special funds, ~$4B bond
+funds. (Published secondary sources round special/bond funds to the
+nearest billion; the sub-0.1% total difference is that rounding.)
+
+² "2024-25 Total State Expenditures by Agency", California State Budget
 2024-25 Summary Charts (ebudget.ca.gov, enacted edition), p. 9.
 
 Every loaded year also reconciles against the API's own
@@ -102,6 +121,53 @@ enactment; the statewide total is identical.
   copy updates: the dek says "enacted state budget", and the footer
   states the accounting basis. No visual-design or interactivity
   changes.
+
+## Verification pass (2026-07-08, follow-up session)
+
+A second session re-verified the pipeline and site before publishing.
+
+- **Live API re-run blocked by the session environment, not the script.**
+  `fetch_state_data.py --inspect` and a full `--refresh` run could not
+  execute from this container: its egress policy denies
+  `ebudget.ca.gov` (proxy answers 403 to CONNECT; lao.ca.gov and other
+  ca.gov hosts are likewise blocked). No code change fixes this — the
+  pipeline is unchanged, and should be re-run with `--refresh` once from
+  a network that can reach ebudget.ca.gov to independently reproduce
+  `data.js`. `RESOURCE_ID` no longer exists in the script; the CKAN
+  fetcher it belonged to was replaced entirely (see "Pipeline changes").
+- **data.js internal consistency verified** (script-independent, run
+  locally): six fiscal years present; `meta.source` is
+  `ebudget.ca.gov`, not `SAMPLE`; per-year agency sums match the
+  `trend` block for all years; no agency exceeds 60% of its year's
+  state-funds total (max: Health and Human Services, 41.4% in
+  2025-26, 54.6% with the federal toggle on); adjacent year totals are
+  all within 1.3x of each other.
+- **Cross-check against published totals** (table above): 2025-26 total
+  state funds differ from the published $321.1B by 0.02%; General Fund
+  by 0.01%. Published figures were taken from LAO and Senate budget
+  committee summaries because ebudget.ca.gov itself was unreachable
+  from this environment.
+- **Rendering verified in headless Chromium** (localhost, real
+  `data.js`): the yellow sample-data banner is gone (replaced by the
+  neutral source line "Data: Enacted state budgets, Budgetary-Legal
+  basis…"); the appropriation bar renders all 12 agency segments;
+  clicking a segment opens the department drilldown (HHS → 25
+  departments, Health Care Services $74.3B at top); the trend chart
+  shows the six real years ($202B → $263B → $308B → $311B → $298B →
+  $321B); the federal-funds toggle recomputes every figure (adds the
+  $176B federal row); the fund-source panel and footer render. The only
+  console errors are the Google Fonts stylesheet (blocked by this
+  sandbox's network) and a missing favicon — neither is a data issue.
+- **Known negative amounts, kept on purpose:** the enacted data
+  legitimately contains negative appropriations, all small and all
+  official — e.g. Statewide General Admin Expenditures (Pro Rata)
+  around −$0.7B to −$1.0B GF each year, Public School System
+  Stabilization Account −$2.6B to −$0.9B special funds in 2021-22
+  through 2024-25, Office of Emergency Services −$3.9B special funds
+  in 2022-23, and at agency level Government Operations −$563M special
+  funds in 2022-23. These match the published budget documents (they
+  are offsets/transfers, not errors) and render with a proper minus
+  sign; they are flagged here rather than silently altered.
 
 ## Update cadence
 
