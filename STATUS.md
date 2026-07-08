@@ -250,6 +250,32 @@ hash restore, hash sync, and CSV download working. A banned-term scan
 (surge/slash/ballooning/soar/plunge/skyrocket) over the whole page
 comes back clean.
 
+## Public-hosting preparation (2026-07-08)
+
+- `.github/workflows/deploy-pages.yml` deploys the repo root to GitHub
+  Pages on every push to main (official actions: configure-pages,
+  upload-pages-artifact, deploy-pages; no build step). Requires the
+  repository's Pages source to be set to "GitHub Actions" by hand.
+- Permalinks and the Cite feature already derive their base URL from
+  `window.location` — verified under a simulated project-pages subpath
+  (`/ca-ledger/`) that hash restore, hash sync, and the citation
+  permalink all carry the deployed URL, and that `file://` use still
+  works.
+- SEO/social metadata added to `index.html`: description, canonical,
+  Open Graph, and Twitter-card tags, all using the same neutral
+  sentence ("A nonpartisan public record of California's enacted state
+  budget, by agency, department, and fund source"); the canonical and
+  og:url point at the default project-pages URL and should be updated
+  if a custom domain is attached.
+- `robots.txt` (plain allow-all) and `favicon.svg` (ledger ruling on
+  the site's green with the gold accent, palette colors only) added.
+  Note: on a project-pages subpath, crawlers consult the domain root's
+  robots.txt (github.io's), not this file; it becomes authoritative
+  under a custom domain.
+- Headless tests: 18 assertions (metadata completeness, robots/favicon
+  served, subpath permalink/cite behavior, file:// intact), all
+  passing.
+
 ## Update cadence
 
 One new fiscal year per annual Budget Act (late June). Run
