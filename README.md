@@ -8,9 +8,12 @@ and it works — including offline.
 
 | File | What it is |
 |---|---|
-| `index.html` | The entire site: layout, styles, all interactivity, hand-rolled SVG charts. Zero runtime dependencies. |
-| `data.js` | The dataset the site renders: six years of enacted state budgets (2020-21 through 2025-26), generated from official data. |
+| `index.html` | The state-budget site: layout, styles, all interactivity, hand-rolled SVG charts. Zero runtime dependencies. |
+| `data.js` | The dataset the state view renders: six years of enacted state budgets (2020-21 through 2025-26), generated from official data. |
 | `pipeline/fetch_state_data.py` | Regenerates `data.js` from the Department of Finance's eBudget API. Python 3, stdlib only. |
+| `cities.html` | The V2 city view (preview): city picker with search, per-function expenditure bar, per-resident figures, and a 2-4 city side-by-side comparison. Runs on clearly labeled sample data. |
+| `city-data.js` | SAMPLE dataset for the city view — illustrative figures in a schema modeled on the State Controller's city annual financial reports. Do not cite. |
+| `pipeline/fetch_city_data.py` | Will regenerate `city-data.js` from the SCO "By the Numbers" Socrata API. Endpoints unverified until first run from an unrestricted network; fails loudly and leaves the sample untouched otherwise. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
@@ -78,11 +81,21 @@ update once a year.
   decision baked into the total.
 - Sources, method, and accounting basis are stated on the page itself.
 
-## V2 (cities) — the plan
+## V2 (cities) — preview shipped, sample data
 
-The State Controller's Office requires all 480+ California cities to
-file standardized annual financial reports, published with a public
-API at bythenumbers.sco.ca.gov (Socrata). That is the one uniform
-source for city-level revenues and expenditures. V2 adds a second
-pipeline script against that API, a city picker, and per-capita
-comparisons between cities — same schema pattern as `data.js`.
+`cities.html` is live as a preview on clearly labeled sample data
+(yellow banner, same pattern V1 used before real data loaded): a
+searchable city picker, a per-function expenditure bar with
+per-resident figures, and the centerpiece — a symmetric 2-4 city
+comparison of per-resident spending by function, where every city gets
+the same treatment. Permalinks, CSV export, and Cite work on the city
+views; sample status is stamped into CSV headers and citations.
+
+The production source is the State Controller's Office: all 480+
+California cities file standardized annual financial reports,
+published with a public API at bythenumbers.sco.ca.gov (Socrata) —
+reported actual revenues and expenditures, one fiscal year per annual
+filing cycle. `pipeline/fetch_city_data.py` targets that API; its
+endpoints are unverified until first run from a network that can reach
+sco.ca.gov (this environment cannot), and it will not overwrite the
+sample until a fetch fully validates.

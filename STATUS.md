@@ -276,6 +276,42 @@ comes back clean.
   served, subpath permalink/cite behavior, file:// intact), all
   passing.
 
+## V2 city view — preview on sample data (2026-07-08)
+
+- `cities.html` added, sharing the V1 design system, self-contained
+  like V1 (no frameworks, no dependencies, works from a double-click).
+  Features: searchable city picker; city detail with a proportional
+  expenditure bar by function, per-resident figures, and a function
+  table; and a comparison view where 2-4 cities show per-resident
+  spending by function side by side — bars in each row share one
+  scale, column order is the user's selection order, and no
+  highest/lowest labeling of any kind. Permalinks (`y`, `c`, `cmp`,
+  `q`), CSV export (city and comparison), and Cite all work on the
+  city views.
+- `city-data.js` is **SAMPLE data**: 18 California cities × 3 fiscal
+  years × 10 expenditure functions, deterministic illustrative figures
+  sized from real 2023 populations, in a schema modeled on the SCO
+  city annual financial reports. `meta.source` is `SAMPLE`, which
+  drives the same yellow banner V1 used; CSV exports and citations
+  from this page carry an explicit "SAMPLE DATA … do not cite" line.
+- `pipeline/fetch_city_data.py` targets the SCO "By the Numbers"
+  Socrata API (bythenumbers.sco.ca.gov). **Endpoints unverified** — it
+  was written in this network-restricted environment (sco.ca.gov and
+  socrata.com are egress-blocked, verified at write time). The script
+  documents exactly what to verify on first unrestricted run (catalog
+  search, dataset id, column map, function-category map), refuses to
+  guess, and never overwrites city-data.js unless a fetch validates.
+  Note the basis difference from V1: city reports are **actual
+  revenues and expenditures**, not enacted budgets; the page footer
+  says so.
+- Headless tests: 54 assertions on the city page (sample banner and
+  color, picker search, detail figures and shares recomputed from
+  city-data.js, comparison per-capita values and per-row shared
+  scaling, duplicate-selection dedupe, permalink restore, both CSVs
+  byte-checked including SAMPLE lines, citation content, keyboard/ARIA
+  spot checks, banned-term scan, file:// load) — all passing. V1
+  regression suites re-run: 55 + 18 assertions, all passing.
+
 ## Update cadence
 
 One new fiscal year per annual Budget Act (late June). Run
