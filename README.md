@@ -29,7 +29,12 @@ python3 -m http.server 8000     # then open http://localhost:8000
 - **Fiscal year selector** with year-over-year change and per-resident figures.
 - **Fund-source breakdown** — General / Special / Bond / Federal.
 - **Six-year trend chart.**
+- **Change from the prior year** — per-agency year-over-year change in dollars and percent, sortable, increases and decreases always shown together in one table.
 - **Sortable, filterable full table** with a totals row.
+- **Permalinks** — the full view state (fiscal year, federal toggle, selected agency, table sort, filter) lives in the URL hash, so any view can be shared and cited; the page restores it on load.
+- **Download this data** — a client-side CSV of the current table view, with a comment header naming the source dataset, accounting basis, and generation date; the raw `data.js` is linked next to it.
+- **Cite** — in the agency detail panel, copies a plain-text citation (figure, agency, fiscal year, source, accounting basis, permalink, access date) to the clipboard.
+- **Methodology section** — what the figures are, what they are not, exact source, update cadence, and known caveats, linked from the top banner and the footer.
 - Responsive to mobile, keyboard-navigable, respects reduced-motion.
 
 ## The data

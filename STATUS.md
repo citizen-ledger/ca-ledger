@@ -198,6 +198,58 @@ A second session re-verified the pipeline and site before publishing.
   974px track, no visual overflow. Nothing was broken, so no rendering
   code was changed.
 
+## Citizen-tools release (2026-07-08)
+
+Five features added to `index.html` (no frameworks, no dependencies, no
+build step; the site still works from a double-click on `index.html`):
+
+1. **Permalinks** — full view state (fiscal year, federal toggle,
+   selected agency, both table sorts, filter query) is encoded in the
+   URL hash and restored on load; plain `#anchor` links are ignored by
+   the state parser.
+2. **CSV export** — "Download this data" generates a CSV of the current
+   table view client-side, with `#`-comment header lines naming the
+   source dataset, accounting basis, generation and export dates, the
+   displayed fund scope, and any active filter; the raw `data.js` is
+   linked beside it.
+3. **Change from the prior year** — a per-agency table of year-over-year
+   change in dollars and percent, sortable, increases and decreases
+   always rendered together in one view; the earliest loaded year
+   states that no prior year exists.
+4. **Cite** — the agency detail panel copies a plain-text citation to
+   the clipboard: figure, agency, fiscal year, source dataset,
+   accounting basis (enacted appropriations, Budgetary-Legal basis),
+   permalink, and access date, with a `document.execCommand` fallback
+   where the async clipboard API is unavailable.
+5. **Methodology section** — what the figures are and are not, the
+   exact source and annual late-June cadence, and the known caveats:
+   the negative-appropriation inventory above, the fund-mix strip's
+   omission of net-negative fund classes (its segments show shares of
+   the positive-fund subtotal), department rows not always summing to
+   agency totals, and the source's current-organizational-structure
+   agency mapping. Linked from the top banner and the footer.
+
+Both data tables' sort headers are now real buttons with `aria-sort`,
+so sorting is keyboard- and screen-reader-accessible. Direction color
+uses only the palette already in the stylesheet (the same two classes
+the header's vs.-prior-year figure has used since V1), applied
+symmetrically to increases and decreases.
+
+**Tests (headless Chromium, 55 assertions, all passing):** hash-state
+restore on load (year, toggle, agency, sort, query, and the filtered
+table it implies); every interaction writing the hash plus a
+round-trip reload of a produced URL; CSV contents byte-for-byte
+(comment header lines, column header, first data row against data.js
+values to three decimals, quoted comma-containing agency names, totals
+row present unfiltered and absent when filtered); change-view
+arithmetic against data.js, presence of both directions in one view,
+sort behavior, and the earliest-year notice; citation text (figure,
+basis, source, permalink, access date) via the real clipboard; the
+methodology section's presence and links; and a `file://` load with
+hash restore, hash sync, and CSV download working. A banned-term scan
+(surge/slash/ballooning/soar/plunge/skyrocket) over the whole page
+comes back clean.
+
 ## Update cadence
 
 One new fiscal year per annual Budget Act (late June). Run

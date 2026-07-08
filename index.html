@@ -137,11 +137,12 @@
   .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
   .detail h3{font-family:var(--serif);font-size:21px;font-weight:600}
   .detail .detail-total{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-top:3px}
-  .close-btn{
+  .close-btn,.action-btn{
     background:none;border:1px solid var(--rule-strong);border-radius:4px;
     font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);padding:6px 12px;cursor:pointer;
   }
-  .close-btn:hover{border-color:var(--ink-soft);color:var(--ink)}
+  .close-btn:hover,.action-btn:hover{border-color:var(--ink-soft);color:var(--ink)}
+  .detail-actions{display:flex;gap:10px;align-items:flex-start}
   .fund-strip{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:16px 0 8px;border:1px solid var(--rule)}
   .fund-strip div{height:100%}
   .fund-key{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
@@ -193,6 +194,21 @@
   tbody tr.total-row{font-weight:600;background:var(--paper)}
   tbody tr.total-row td{border-top:2px solid var(--rule-strong)}
   .share-cell{color:var(--muted)}
+  thead th .sort-btn{
+    background:none;border:none;cursor:pointer;padding:0;
+    font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  thead th .sort-btn:hover{color:var(--ink)}
+
+  /* ---- export controls ---- */
+  .tool-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .raw-link{font-family:var(--mono);font-size:12.5px}
+
+  /* ---- methodology ---- */
+  .method h3{font-family:var(--serif);font-size:17px;font-weight:600;margin-top:24px}
+  .method p,.method li{font-size:14px;color:var(--ink-soft);max-width:74ch}
+  .method p{margin-top:8px}
+  .method ul{margin-top:8px;padding-left:22px;display:grid;gap:6px}
 
   /* ---- footer ---- */
   footer{margin-top:56px;border-top:3px double var(--rule-strong);padding:30px 0 60px}
@@ -262,7 +278,10 @@
             <h3 id="dName"></h3>
             <div class="detail-total" id="dTotal"></div>
           </div>
-          <button class="close-btn" id="dClose">Close ✕</button>
+          <div class="detail-actions">
+            <button class="action-btn" id="dCite" aria-live="polite" aria-label="Copy a plain-text citation for this figure">Cite</button>
+            <button class="close-btn" id="dClose">Close ✕</button>
+          </div>
         </div>
         <div class="fund-strip" id="dFunds" aria-hidden="true"></div>
         <div class="fund-key" id="dFundKey"></div>
@@ -287,12 +306,29 @@
     </div>
   </section>
 
+  <section aria-labelledby="h-change">
+    <div class="wrap">
+      <h2 id="h-change">Change from the prior year</h2>
+      <p class="sec-note" id="changeNote"></p>
+      <div class="table-scroll" id="changeScroll">
+        <table id="chgTbl">
+          <thead><tr id="chgHead"></tr></thead>
+          <tbody id="chgBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section aria-labelledby="h-table">
     <div class="wrap">
       <h2 id="h-table">The full table</h2>
       <p class="sec-note">Every agency, every fund. Click a column to sort, a row to open the agency detail above.</p>
       <div class="table-tools">
         <input type="search" id="search" placeholder="Filter agencies…" aria-label="Filter agencies">
+        <div class="tool-actions">
+          <button class="action-btn" id="csvBtn" aria-label="Download the current table view as a CSV file">Download this data (CSV)</button>
+          <a class="raw-link" href="data.js" download>raw dataset (data.js)</a>
+        </div>
       </div>
       <div class="table-scroll">
         <table id="tbl">
@@ -302,13 +338,34 @@
       </div>
     </div>
   </section>
+
+  <section aria-labelledby="h-method" id="methodology">
+    <div class="wrap">
+      <h2 id="h-method">Methodology</h2>
+      <div class="method">
+        <h3>What these figures are</h3>
+        <p>Enacted appropriations under California's Budgetary-Legal basis of accounting: the spending plan fixed when each fiscal year's Budget Act is signed. Enacted figures do not change after publication. Dollar values are stated in billions and rounded to the nearest million, which is why some small items display as $0M.</p>
+        <h3>What they are not</h3>
+        <p>They are not actual expenditures — money as it is later spent — and they are not vendor-level payments. Mid-year revisions and audited year-end results differ from enacted figures. Year-to-year comparisons on this page are in nominal dollars, not adjusted for inflation or population; a per-resident figure is shown alongside each total.</p>
+        <h3>Exact source and update cadence</h3>
+        <p>The JSON API behind the Department of Finance's official eBudget site — <code>https://ebudget.ca.gov/api/publication/e/{fiscal-year}/…</code> — the same data that renders ebudget.ca.gov's Enacted Budget pages. General, special, and bond funds make up the state total, matching the enacted Summary Charts; federal pass-through funds are a user-controlled toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. One new fiscal year is added per annual Budget Act, typically signed in late June. Population figures for per-resident amounts come from Department of Finance report E-4.</p>
+        <h3>Known caveats</h3>
+        <ul>
+          <li><strong>Negative appropriations exist in the source data</strong> and are kept as published. Examples in the loaded years: Statewide General Administrative Expenditures (Pro Rata), between −$0.7B and −$1.0B General Fund each year; the Public School System Stabilization Account, −$2.6B to −$0.9B special funds in 2021-22 through 2024-25; the Office of Emergency Services, −$3.9B special funds in 2022-23; and, at agency level, Government Operations, −$563M special funds in 2022-23. These are offsets and transfers in the budget documents, not errors. They display as signed numbers; a department whose net amount is negative shows a zero-length bar.</li>
+          <li><strong>The agency fund-mix strip omits fund classes with net-negative totals.</strong> When an agency's total for a fund class is zero or below, that class does not appear in the strip or its key, so the strip's segments show shares of the positive-fund subtotal rather than of the agency total printed above it.</li>
+          <li><strong>Department rows may not sum to the agency total.</strong> Agency totals come from the source's agency-level table; the department list is the set of rows the source publishes for web display, which for some agencies covers less than the agency total.</li>
+          <li><strong>Agency groupings reflect the source's current mapping.</strong> The API assigns departments to agencies using the Department of Finance's current organizational structure, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap">
     <h2>Sources & method</h2>
     <p id="srcNote"></p>
-    <p>Figures are enacted-budget expenditures: appropriations under California's Budgetary-Legal basis of accounting, as published by the Department of Finance at ebudget.ca.gov when each year's Budget Act was signed. They are the spending plan fixed at enactment, not audited actual spending; mid-year revisions and actuals differ. General, special, and bond funds make up the state total; federal pass-through funds are shown via the toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. "Per resident" divides the displayed total by the Department of Finance population estimate (report E-4) for that fiscal year. A new enacted budget is published each June — run <code>pipeline/fetch_state_data.py</code> then; it rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is planned for V2.</p>
+    <p>Figures are enacted-budget expenditures: appropriations under California's Budgetary-Legal basis of accounting, as published by the Department of Finance at ebudget.ca.gov when each year's Budget Act was signed. They are the spending plan fixed at enactment, not audited actual spending; mid-year revisions and actuals differ. General, special, and bond funds make up the state total; federal pass-through funds are shown via the toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. "Per resident" divides the displayed total by the Department of Finance population estimate (report E-4) for that fiscal year. A new enacted budget is published each June — run <code>pipeline/fetch_state_data.py</code> then; it rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is planned for V2. The <a href="#methodology">Methodology</a> section above states what these figures are, what they are not, and the known caveats.</p>
   </div>
 </footer>
 
@@ -331,14 +388,65 @@
 
   /* ---------- state ---------- */
   const budgetYears = Object.keys(D.budgets).sort();
-  const S = {
+  const DEFAULTS = {
     year: budgetYears[budgetYears.length-1],
     fed: false,
     selected: null,
     sortKey: "total",
     sortDir: -1,
-    query: ""
+    query: "",
+    cSortKey: "name",
+    cSortDir: 1
   };
+  const S = Object.assign({}, DEFAULTS);
+
+  /* ---------- permalinks: view state <-> URL hash ---------- */
+  function stateToHash(){
+    const p = new URLSearchParams();
+    if (S.year !== DEFAULTS.year) p.set("y", S.year);
+    if (S.fed) p.set("fed", "1");
+    if (S.selected) p.set("a", S.selected);
+    if (S.sortKey !== DEFAULTS.sortKey || S.sortDir !== DEFAULTS.sortDir)
+      p.set("sort", S.sortKey + "." + (S.sortDir < 0 ? "desc" : "asc"));
+    if (S.query) p.set("q", S.query);
+    if (S.cSortKey !== DEFAULTS.cSortKey || S.cSortDir !== DEFAULTS.cSortDir)
+      p.set("csort", S.cSortKey + "." + (S.cSortDir < 0 ? "desc" : "asc"));
+    return p.toString();
+  }
+  function syncHash(){
+    const h = stateToHash();
+    try { history.replaceState(null, "", h ? "#" + h : location.pathname + location.search); }
+    catch(e){ location.hash = h; }
+  }
+  function parseSort(v, allowed){
+    if (!v) return null;
+    const i = v.lastIndexOf(".");
+    const key = i < 0 ? v : v.slice(0, i);
+    const dir = v.slice(i + 1) === "asc" ? 1 : -1;
+    return allowed.includes(key) ? [key, dir] : null;
+  }
+  function applyHash(){
+    const raw = location.hash.replace(/^#/, "");
+    if (!raw || raw.indexOf("=") < 0) return;   // empty or a plain #anchor
+    const p = new URLSearchParams(raw);
+    const y = p.get("y");
+    S.year = (y && budgetYears.includes(y)) ? y : DEFAULTS.year;
+    S.fed = p.get("fed") === "1";
+    const a = p.get("a");
+    S.selected = (a && D.budgets[S.year].agencies.some(x => x.id === a)) ? a : null;
+    const sort = parseSort(p.get("sort"), COLS.map(c => c.key));
+    S.sortKey = sort ? sort[0] : DEFAULTS.sortKey;
+    S.sortDir = sort ? sort[1] : DEFAULTS.sortDir;
+    S.query = p.get("q") || "";
+    const cs = parseSort(p.get("csort"), CHG_KEYS);
+    S.cSortKey = cs ? cs[0] : DEFAULTS.cSortKey;
+    S.cSortDir = cs ? cs[1] : DEFAULTS.cSortDir;
+  }
+  function syncControls(){
+    $("yearSel").value = S.year;
+    $("fedToggle").checked = S.fed;
+    $("search").value = S.query;
+  }
 
   /* ---------- helpers ---------- */
   const $ = id => document.getElementById(id);
@@ -350,6 +458,9 @@
     return sign + "$" + Math.round(a*1000) + "M";
   };
   const fmtCap = v => "$" + Math.round(v).toLocaleString("en-US");
+  const fmtDelta = v => v == null ? "—" : (v > 0 ? "+" : "") + fmtB(v);
+  const fmtPct = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%";
+  const deltaClass = v => v > 0 ? "delta-up" : v < 0 ? "delta-down" : "";
   const agencyTotal = (a, fed) => a.gf + a.sp + a.bd + (fed ? a.fed : 0);
   const deptTotal   = (d, fed) => d.gf + d.sp + d.bd + (fed ? d.fed : 0);
   const agencies = () => D.budgets[S.year].agencies;
@@ -362,7 +473,7 @@
       b.innerHTML = "<strong>Sample data.</strong> These figures are illustrative — run pipeline/fetch_state_data.py to load official data.";
       b.style.display = "";
     } else {
-      b.innerHTML = "Data: " + D.meta.sourceLabel + " · generated " + D.meta.generated;
+      b.innerHTML = "Data: " + D.meta.sourceLabel + " · generated " + D.meta.generated + ' · <a href="#methodology">methodology</a>';
       b.style.background = "var(--green-wash)"; b.style.borderColor = "var(--rule-strong)"; b.style.color = "var(--ink-soft)";
     }
     $("srcNote").textContent = (D.meta.source === "SAMPLE")
@@ -430,6 +541,7 @@
   /* ---------- agency detail ---------- */
   function selectAgency(id){
     S.selected = (S.selected === id) ? null : id;
+    syncHash();
     renderBar(); renderDetail(); renderTable();
     if (S.selected && $("detail").scrollIntoView) $("detail").scrollIntoView({block:"nearest"});
   }
@@ -472,7 +584,41 @@
       wrap.appendChild(row);
     });
   }
-  $("dClose").addEventListener("click", ()=>{ S.selected=null; renderBar(); renderDetail(); renderTable(); });
+  $("dClose").addEventListener("click", ()=>{ S.selected=null; syncHash(); renderBar(); renderDetail(); renderTable(); });
+
+  /* ---------- cite this figure ---------- */
+  function citationText(){
+    const a = agencies().find(x=>x.id===S.selected);
+    if (!a) return "";
+    const t = agencyTotal(a,S.fed);
+    const scope = S.fed ? "state and federal funds" : "state funds (General + special + bond)";
+    return a.name + ", FY " + S.year + ": $" + t.toFixed(3) + " billion in " + scope + ". "
+      + "Enacted appropriations under California's Budgetary-Legal basis of accounting, not actual expenditures. "
+      + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
+      + "Permalink: " + location.href + ". "
+      + "Accessed " + new Date().toISOString().slice(0,10) + ".";
+  }
+  function fallbackCopy(text){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly","");
+    ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch(e){}
+    ta.remove();
+    return ok;
+  }
+  $("dCite").addEventListener("click", ()=>{
+    const text = citationText();
+    if (!text) return;
+    const done = ok => {
+      $("dCite").textContent = ok ? "Copied ✓" : "Copy failed";
+      setTimeout(()=>{ $("dCite").textContent = "Cite"; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(()=>done(true), ()=>done(fallbackCopy(text)));
+    else done(fallbackCopy(text));
+  });
 
   /* ---------- fund sources ---------- */
   function renderFunds(){
@@ -539,23 +685,26 @@
     visibleCols().forEach(c=>{
       const th = document.createElement("th");
       th.scope = "col";
-      const arrow = S.sortKey===c.key ? (S.sortDir<0 ? " ▾" : " ▴") : "";
-      th.innerHTML = c.lbl + '<span class="arrow">'+arrow+'</span>';
-      th.addEventListener("click", ()=>{
+      const active = S.sortKey===c.key;
+      th.setAttribute("aria-sort", active ? (S.sortDir<0 ? "descending" : "ascending") : "none");
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "sort-btn";
+      btn.setAttribute("aria-label", "Sort by " + c.lbl);
+      btn.innerHTML = c.lbl + '<span class="arrow">' + (active ? (S.sortDir<0 ? " ▾" : " ▴") : "") + '</span>';
+      btn.addEventListener("click", ()=>{
         if (S.sortKey===c.key) S.sortDir *= -1;
         else { S.sortKey = c.key; S.sortDir = c.key==="name" ? 1 : -1; }
+        syncHash();
         renderTable();
       });
+      th.appendChild(btn);
       tr.appendChild(th);
     });
   }
 
-  function renderTable(){
-    renderTableHead();
-    const body = $("tblBody"); body.innerHTML = "";
+  function tableRows(){
     const total = grandTotal();
     const pop = (D.meta.population && D.meta.population[S.year]) || null;
-
     let rows = agencies().map(a=>{
       const t = agencyTotal(a,S.fed);
       return { id:a.id, name:a.name, gf:a.gf, sp:a.sp, bd:a.bd, fed:a.fed,
@@ -570,6 +719,13 @@
       if (k==="name") return S.sortDir * a.name.localeCompare(b.name);
       return S.sortDir * ((a[k]||0)-(b[k]||0));
     });
+    return { rows, total, pop };
+  }
+
+  function renderTable(){
+    renderTableHead();
+    const body = $("tblBody"); body.innerHTML = "";
+    const { rows, total, pop } = tableRows();
 
     rows.forEach(r=>{
       const tr = document.createElement("tr");
@@ -605,6 +761,153 @@
     }
   }
 
+  /* ---------- CSV export of the current table view ---------- */
+  function csvEscape(v){
+    v = String(v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+  }
+  function buildCSV(){
+    const { rows, total, pop } = tableRows();
+    const cols = visibleCols();
+    const labels = { name:"Agency", gf:"General Fund ($B)", sp:"Special Funds ($B)",
+                     bd:"Bond Funds ($B)", fed:"Federal Funds ($B)", total:"Total ($B)",
+                     share:"Share of total (%)", cap:"Per resident ($)" };
+    const lines = [
+      "# The California Ledger — agency table, FY " + S.year,
+      "# Source dataset: " + D.meta.sourceLabel,
+      "# Accounting basis: enacted appropriations, Budgetary-Legal basis (not actual expenditures)",
+      "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),
+      "# View: " + (S.fed ? "state + federal funds" : "state funds (General + special + bond)")
+        + (S.query ? ' · filter: "' + S.query + '"' : ""),
+      "# Units: billions of dollars, except Share (percent) and Per resident (dollars)"
+    ];
+    const cell = (r,c) => {
+      if (c.key==="name")  return csvEscape(r.name);
+      if (c.key==="share") return r.share.toFixed(1);
+      if (c.key==="cap")   return r.cap != null ? Math.round(r.cap) : "";
+      return r[c.key].toFixed(3);
+    };
+    lines.push(cols.map(c=>csvEscape(labels[c.key])).join(","));
+    rows.forEach(r=> lines.push(cols.map(c=>cell(r,c)).join(",")));
+    if (!S.query){
+      const sum = k => agencies().reduce((s,a)=>s+a[k],0);
+      lines.push(cols.map(c=>{
+        if (c.key==="name")  return "All agencies";
+        if (c.key==="share") return "100.0";
+        if (c.key==="cap")   return pop ? Math.round(total*1000/pop) : "";
+        if (c.key==="total") return total.toFixed(3);
+        return sum(c.key).toFixed(3);
+      }).join(","));
+    }
+    return lines.join("\r\n") + "\r\n";
+  }
+  $("csvBtn").addEventListener("click", ()=>{
+    const blob = new Blob([buildCSV()], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "california-ledger_FY" + S.year + (S.fed ? "_incl-federal" : "_state-funds") + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  });
+
+  /* ---------- change from the prior year ---------- */
+  const CHG_COLS = [
+    {key:"name",  lbl:()=> "Agency"},
+    {key:"prev",  lbl:()=> "FY " + (prevYearOf(S.year)||"—") + " total"},
+    {key:"cur",   lbl:()=> "FY " + S.year + " total"},
+    {key:"delta", lbl:()=> "Change"},
+    {key:"pct",   lbl:()=> "Change %"}
+  ];
+  const CHG_KEYS = CHG_COLS.map(c=>c.key);
+  function prevYearOf(y){
+    const i = budgetYears.indexOf(y);
+    return i > 0 ? budgetYears[i-1] : null;
+  }
+  function changeRows(){
+    const prevY = prevYearOf(S.year);
+    if (!prevY) return null;
+    const prevMap = {};
+    D.budgets[prevY].agencies.forEach(a=>{ prevMap[a.id] = agencyTotal(a,S.fed); });
+    const rows = agencies().map(a=>{
+      const cur = agencyTotal(a,S.fed);
+      const prev = (a.id in prevMap) ? prevMap[a.id] : null;
+      return { name:a.name, prev, cur,
+               delta: prev==null ? null : cur-prev,
+               pct: (prev==null || prev<=0) ? null : (cur-prev)/prev*100 };
+    });
+    const curIds = new Set(agencies().map(a=>a.id));
+    D.budgets[prevY].agencies.forEach(a=>{
+      if (!curIds.has(a.id))
+        rows.push({ name:a.name, prev:prevMap[a.id], cur:null, delta:null, pct:null });
+    });
+    rows.sort((a,b)=>{
+      const k = S.cSortKey;
+      if (k==="name") return S.cSortDir * a.name.localeCompare(b.name);
+      const av = a[k], bv = b[k];
+      if (av==null && bv==null) return 0;
+      if (av==null) return 1;             // rows without a value sort last
+      if (bv==null) return -1;
+      return S.cSortDir * (av-bv);
+    });
+    return { rows, prevY };
+  }
+  function renderChange(){
+    const data = changeRows();
+    const note = $("changeNote"), scroll = $("changeScroll");
+    if (!data){
+      note.textContent = "FY " + S.year + " is the earliest fiscal year in this dataset; there is no prior year to compare.";
+      scroll.style.display = "none";
+      return;
+    }
+    scroll.style.display = "";
+    note.textContent = "Each agency's total for FY " + data.prevY + " and FY " + S.year
+      + " in the funds currently displayed, with the change in dollars and in percent. "
+      + "Increases and decreases appear together in one table; click a column to sort.";
+
+    const head = $("chgHead"); head.innerHTML = "";
+    CHG_COLS.forEach(c=>{
+      const th = document.createElement("th");
+      th.scope = "col";
+      const active = S.cSortKey===c.key;
+      th.setAttribute("aria-sort", active ? (S.cSortDir<0 ? "descending" : "ascending") : "none");
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "sort-btn";
+      btn.setAttribute("aria-label", "Sort by " + c.lbl());
+      btn.innerHTML = c.lbl() + '<span class="arrow">' + (active ? (S.cSortDir<0 ? " ▾" : " ▴") : "") + '</span>';
+      btn.addEventListener("click", ()=>{
+        if (S.cSortKey===c.key) S.cSortDir *= -1;
+        else { S.cSortKey = c.key; S.cSortDir = c.key==="name" ? 1 : -1; }
+        syncHash();
+        renderChange();
+      });
+      th.appendChild(btn);
+      head.appendChild(th);
+    });
+
+    const body = $("chgBody"); body.innerHTML = "";
+    data.rows.forEach(r=>{
+      const tr = document.createElement("tr");
+      tr.style.cursor = "default";
+      tr.innerHTML = "<td>" + r.name + "</td>"
+        + "<td>" + (r.prev==null ? "—" : fmtB(r.prev)) + "</td>"
+        + "<td>" + (r.cur==null ? "—" : fmtB(r.cur)) + "</td>"
+        + '<td class="' + deltaClass(r.delta) + '">' + fmtDelta(r.delta) + "</td>"
+        + '<td class="' + deltaClass(r.pct) + '">' + fmtPct(r.pct) + "</td>";
+      body.appendChild(tr);
+    });
+    const prevTotal = D.budgets[data.prevY].agencies.reduce((s,a)=>s+agencyTotal(a,S.fed),0);
+    const curTotal = grandTotal();
+    const tr = document.createElement("tr");
+    tr.className = "total-row";
+    tr.style.cursor = "default";
+    tr.innerHTML = "<td>All agencies</td>"
+      + "<td>" + fmtB(prevTotal) + "</td>"
+      + "<td>" + fmtB(curTotal) + "</td>"
+      + '<td class="' + deltaClass(curTotal-prevTotal) + '">' + fmtDelta(curTotal-prevTotal) + "</td>"
+      + '<td class="' + deltaClass(curTotal-prevTotal) + '">' + fmtPct((curTotal-prevTotal)/prevTotal*100) + "</td>";
+    body.appendChild(tr);
+  }
+
   /* ---------- controls ---------- */
   const yearSel = $("yearSel");
   budgetYears.forEach(y=>{
@@ -613,16 +916,25 @@
     yearSel.appendChild(o);
   });
   yearSel.value = S.year;
-  yearSel.addEventListener("change", ()=>{ S.year = yearSel.value; renderAll(); });
-  $("fedToggle").addEventListener("change", e=>{ S.fed = e.target.checked; renderAll(); });
-  $("search").addEventListener("input", e=>{ S.query = e.target.value.trim(); renderTable(); });
+  yearSel.addEventListener("change", ()=>{ S.year = yearSel.value; syncHash(); renderAll(); });
+  $("fedToggle").addEventListener("change", e=>{ S.fed = e.target.checked; syncHash(); renderAll(); });
+  $("search").addEventListener("input", e=>{ S.query = e.target.value.trim(); syncHash(); renderTable(); });
 
   /* ---------- boot ---------- */
   function renderAll(){
     renderBanner(); renderTotals(); renderBar(); renderDetail();
-    renderFunds(); renderTrend(); renderTable();
+    renderFunds(); renderTrend(); renderChange(); renderTable();
   }
+  applyHash();
+  syncControls();
   renderAll();
+
+  window.addEventListener("hashchange", ()=>{
+    const raw = location.hash.replace(/^#/, "");
+    if (raw === stateToHash()) return;          // our own write, already rendered
+    if (raw && raw.indexOf("=") < 0) return;    // a plain #anchor link, e.g. #methodology
+    applyHash(); syncControls(); renderAll();
+  });
 })();
 </script>
 </body>
