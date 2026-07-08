@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The California Ledger — where the money goes</title>
+<meta name="description" content="A nonpartisan public record of California state spending, by agency, department, and fund source.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F8F4;
+    --paper-raised:#FFFFFF;
+    --ink:#15231D;
+    --ink-soft:#43554B;
+    --muted:#6E7D73;
+    --rule:#D8E1D7;
+    --rule-strong:#B9C7BB;
+    --green:#1B6B52;
+    --green-deep:#0E4634;
+    --green-wash:#E8F0EA;
+    --gold:#A8842B;
+    --gold-wash:#F4EDDC;
+    --blue:#31607F;
+    --brick:#A3492D;
+    --focus:#1B6B52;
+    --serif:"IBM Plex Serif",Georgia,serif;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.55;
+    /* the ledger ruling: faint horizontal rules across the whole page */
+    background-image:repeating-linear-gradient(to bottom, transparent 0 31px, rgba(27,107,82,.055) 31px 32px);
+  }
+  a{color:var(--green);text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* ---- sample banner ---- */
+  .banner{
+    background:var(--gold-wash);
+    border-bottom:1px solid var(--gold);
+    font-family:var(--mono);font-size:12.5px;color:#6b571f;
+    padding:8px 0;text-align:center;letter-spacing:.02em;
+  }
+  .banner strong{color:#5a470f}
+
+  /* ---- masthead ---- */
+  header.masthead{border-bottom:3px double var(--rule-strong);padding:44px 0 26px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:10px}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,5.4vw,52px);line-height:1.06;letter-spacing:-.01em}
+  .masthead p.dek{max-width:56ch;color:var(--ink-soft);margin-top:14px;font-size:17px}
+
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:26px}
+  .control{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft)}
+  select{
+    font-family:var(--mono);font-size:14px;color:var(--ink);
+    background:var(--paper-raised);border:1px solid var(--rule-strong);
+    border-radius:4px;padding:7px 10px;cursor:pointer;
+  }
+  .switch{
+    display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;
+    font-size:14px;color:var(--ink-soft);
+  }
+  .switch input{position:absolute;opacity:0;width:1px;height:1px}
+  .track{
+    width:38px;height:21px;border-radius:11px;background:#c9d4ca;position:relative;flex:none;
+    transition:background .18s ease;
+  }
+  .track::after{
+    content:"";position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .18s ease;
+  }
+  .switch input:checked + .track{background:var(--green)}
+  .switch input:checked + .track::after{transform:translateX(16px)}
+  .switch input:focus-visible + .track{outline:2px solid var(--focus);outline-offset:2px}
+
+  .totals{margin-top:26px;display:flex;flex-wrap:wrap;gap:34px;align-items:baseline}
+  .total-main .num{font-family:var(--mono);font-size:clamp(32px,4.4vw,44px);font-weight:500;letter-spacing:-.02em}
+  .total-main .lbl,.total-sub .lbl{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .total-sub .num{font-family:var(--mono);font-size:20px;color:var(--ink-soft)}
+  .delta-up{color:var(--brick)} .delta-down{color:var(--green)}
+
+  /* ---- sections ---- */
+  section{padding:44px 0 8px}
+  h2{font-family:var(--serif);font-weight:600;font-size:25px;margin-bottom:4px}
+  .sec-note{color:var(--muted);font-size:14px;margin-bottom:20px;max-width:66ch}
+
+  /* ---- appropriation bar (signature) ---- */
+  .approp{display:flex;height:88px;border:1px solid var(--rule-strong);border-radius:5px;overflow:hidden;background:var(--paper-raised)}
+  .seg{
+    position:relative;min-width:3px;border-right:1px solid rgba(255,255,255,.55);
+    cursor:pointer;border-top:none;border-bottom:none;border-left:none;padding:0;
+    transition:filter .15s ease;
+  }
+  .seg:last-child{border-right:none}
+  .seg:hover,.seg[aria-pressed="true"]{filter:brightness(1.14)}
+  .seg[aria-pressed="true"]::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--ink);
+  }
+  .seg .in-label{
+    position:absolute;left:8px;top:8px;text-align:left;color:#fff;
+    font-family:var(--mono);font-size:11.5px;line-height:1.3;pointer-events:none;
+    text-shadow:0 1px 1px rgba(0,0,0,.35);max-width:calc(100% - 12px);overflow:hidden;
+  }
+  .in-label b{display:block;font-weight:500;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+  .legend{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:14px}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);
+    background:none;border:none;cursor:pointer;padding:3px 4px;font-family:var(--sans);
+  }
+  .chip:hover .chip-name,.chip.active .chip-name{text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+  .chip .sw{width:11px;height:11px;border-radius:2.5px;flex:none}
+  .chip .amt{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .bar-hint{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+
+  /* ---- detail panel ---- */
+  .detail{
+    display:none;margin-top:22px;background:var(--paper-raised);
+    border:1px solid var(--rule-strong);border-left:5px solid var(--green);
+    border-radius:5px;padding:24px 26px;
+  }
+  .detail.open{display:block;animation:rise .25s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .detail h3{font-family:var(--serif);font-size:21px;font-weight:600}
+  .detail .detail-total{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-top:3px}
+  .close-btn{
+    background:none;border:1px solid var(--rule-strong);border-radius:4px;
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);padding:6px 12px;cursor:pointer;
+  }
+  .close-btn:hover{border-color:var(--ink-soft);color:var(--ink)}
+  .fund-strip{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:16px 0 8px;border:1px solid var(--rule)}
+  .fund-strip div{height:100%}
+  .fund-key{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+  .fund-key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+  .dept-rows{margin-top:20px;border-top:1px solid var(--rule)}
+  .dept-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(120px,2fr) 110px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
+  .dept-row .nm{font-size:14.5px}
+  .dept-row .bar{height:15px;background:var(--green-wash);border-radius:3px;overflow:hidden}
+  .dept-row .bar i{display:block;height:100%;background:var(--green)}
+  .dept-row .amt{font-family:var(--mono);font-size:14px;text-align:right}
+
+  /* ---- fund sources ---- */
+  .funds{display:grid;gap:14px;max-width:760px}
+  .fund{display:grid;grid-template-columns:190px 1fr 105px;gap:14px;align-items:center}
+  .fund .nm{font-size:14.5px;color:var(--ink-soft)}
+  .fund .bar{height:22px;background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+  .fund .bar i{display:block;height:100%}
+  .fund .amt{font-family:var(--mono);font-size:14px;text-align:right}
+  .fund small{display:block;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+
+  /* ---- trend ---- */
+  .trend-box{background:var(--paper-raised);border:1px solid var(--rule);border-radius:5px;padding:22px 22px 12px;max-width:860px}
+  .trend-box svg{width:100%;height:auto;display:block}
+  .tick-lbl{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+  .pt-lbl{font-family:var(--mono);font-size:11.5px;fill:var(--ink)}
+
+  /* ---- table ---- */
+  .table-tools{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  input[type="search"]{
+    font-family:var(--sans);font-size:14px;padding:8px 12px;min-width:250px;
+    border:1px solid var(--rule-strong);border-radius:4px;background:var(--paper-raised);color:var(--ink);
+  }
+  .table-scroll{overflow-x:auto;background:var(--paper-raised);border:1px solid var(--rule-strong);border-radius:5px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td:first-child{font-weight:500}
+  thead th{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);cursor:pointer;user-select:none;background:var(--green-wash);
+    border-bottom:1px solid var(--rule-strong);position:sticky;top:0;
+  }
+  thead th:hover{color:var(--ink)}
+  thead th .arrow{font-size:10px}
+  tbody td{font-family:var(--mono);font-size:13.5px}
+  tbody td:first-child{font-family:var(--sans);font-size:14px}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--green-wash)}
+  tbody tr.total-row{font-weight:600;background:var(--paper)}
+  tbody tr.total-row td{border-top:2px solid var(--rule-strong)}
+  .share-cell{color:var(--muted)}
+
+  /* ---- footer ---- */
+  footer{margin-top:56px;border-top:3px double var(--rule-strong);padding:30px 0 60px}
+  footer h2{font-size:19px}
+  footer p{font-size:14px;color:var(--ink-soft);max-width:74ch;margin-top:10px}
+  footer code{font-family:var(--mono);font-size:12.5px;background:var(--green-wash);padding:1px 6px;border-radius:3px}
+
+  @media(max-width:680px){
+    .approp{height:64px}
+    .dept-row{grid-template-columns:1fr 90px;grid-template-areas:"nm amt" "bar bar"}
+    .dept-row .nm{grid-area:nm}.dept-row .amt{grid-area:amt}.dept-row .bar{grid-area:bar}
+    .fund{grid-template-columns:1fr 90px;grid-template-areas:"nm amt" "bar bar"}
+    .fund .nm{grid-area:nm}.fund .amt{grid-area:amt}.fund .bar{grid-area:bar}
+  }
+</style>
+</head>
+<body>
+
+<div class="banner" id="dataBanner"></div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">A Nonpartisan Public Record</div>
+    <h1>The California Ledger</h1>
+    <p class="dek">Every dollar the State of California spends, drawn to scale. No commentary, no conclusions — the record, organized so anyone can read it.</p>
+
+    <div class="controls">
+      <label class="control" for="yearSel">Fiscal year
+        <select id="yearSel" aria-label="Select fiscal year"></select>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="fedToggle">
+        <span class="track" aria-hidden="true"></span>
+        Include federal funds passed through the state
+      </label>
+    </div>
+
+    <div class="totals">
+      <div class="total-main">
+        <span class="num" id="totalNum">—</span>
+        <span class="lbl" id="totalLbl">Total spending</span>
+      </div>
+      <div class="total-sub">
+        <span class="num" id="perCapNum">—</span>
+        <span class="lbl">Per resident</span>
+      </div>
+      <div class="total-sub">
+        <span class="num" id="yoyNum">—</span>
+        <span class="lbl">vs. prior year</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section aria-labelledby="h-bar">
+    <div class="wrap">
+      <h2 id="h-bar">Where it goes</h2>
+      <p class="sec-note">One bar, drawn to scale: every pixel is proportional to dollars. Select any segment to open that agency's departments.</p>
+      <div class="approp" id="appropBar" role="group" aria-label="Spending by agency, proportional bar"></div>
+      <div class="legend" id="legend"></div>
+      <p class="bar-hint" id="barHint"></p>
+
+      <div class="detail" id="detail" aria-live="polite">
+        <div class="detail-head">
+          <div>
+            <h3 id="dName"></h3>
+            <div class="detail-total" id="dTotal"></div>
+          </div>
+          <button class="close-btn" id="dClose">Close ✕</button>
+        </div>
+        <div class="fund-strip" id="dFunds" aria-hidden="true"></div>
+        <div class="fund-key" id="dFundKey"></div>
+        <div class="dept-rows" id="dDepts"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-funds">
+    <div class="wrap">
+      <h2 id="h-funds">Where it comes from</h2>
+      <p class="sec-note">The same total, split by fund source. General Fund is mostly income, sales, and corporation taxes; special funds are fee- and tax-restricted; bond funds are borrowed; federal funds pass through the state to programs and people.</p>
+      <div class="funds" id="funds"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-trend">
+    <div class="wrap">
+      <h2 id="h-trend">Six years of totals</h2>
+      <p class="sec-note">State funds (General + special + bond) by fiscal year. Not adjusted for inflation or population.</p>
+      <div class="trend-box"><svg id="trendSvg" viewBox="0 0 860 300" role="img" aria-label="Line chart of total state spending by fiscal year"></svg></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-table">
+    <div class="wrap">
+      <h2 id="h-table">The full table</h2>
+      <p class="sec-note">Every agency, every fund. Click a column to sort, a row to open the agency detail above.</p>
+      <div class="table-tools">
+        <input type="search" id="search" placeholder="Filter agencies…" aria-label="Filter agencies">
+      </div>
+      <div class="table-scroll">
+        <table id="tbl">
+          <thead><tr id="tblHead"></tr></thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <h2>Sources & method</h2>
+    <p id="srcNote"></p>
+    <p>Agency figures are enacted-budget expenditures grouped by agency and fund. "Per resident" divides the displayed total by the Department of Finance population estimate for that fiscal year. To refresh the data, run <code>pipeline/fetch_state_data.py</code>, which rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is planned for V2.</p>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  "use strict";
+  const D = window.CA_LEDGER_DATA;
+  if(!D){ document.getElementById("dataBanner").textContent = "data.js failed to load — the site cannot render."; return; }
+
+  /* ---------- palette for agency segments ---------- */
+  const COLORS = ["#1B6B52","#31607F","#A8842B","#A3492D","#4E7A46","#6A5A8E",
+                  "#2F8C77","#8A6F3B","#54708A","#7A8450","#9C5F55","#3F655B"];
+  const FUND_META = [
+    {key:"gf",  name:"General Fund",  color:"#1B6B52"},
+    {key:"sp",  name:"Special Funds", color:"#31607F"},
+    {key:"bd",  name:"Bond Funds",    color:"#A8842B"},
+    {key:"fed", name:"Federal Funds", color:"#8C8C86"}
+  ];
+
+  /* ---------- state ---------- */
+  const budgetYears = Object.keys(D.budgets).sort();
+  const S = {
+    year: budgetYears[budgetYears.length-1],
+    fed: false,
+    selected: null,
+    sortKey: "total",
+    sortDir: -1,
+    query: ""
+  };
+
+  /* ---------- helpers ---------- */
+  const $ = id => document.getElementById(id);
+  const fmtB = v => {           // v in billions
+    if (v >= 100) return "$" + v.toFixed(0) + "B";
+    if (v >= 10)  return "$" + v.toFixed(1) + "B";
+    if (v >= 1)   return "$" + v.toFixed(1) + "B";
+    return "$" + Math.round(v*1000) + "M";
+  };
+  const fmtCap = v => "$" + Math.round(v).toLocaleString("en-US");
+  const agencyTotal = (a, fed) => a.gf + a.sp + a.bd + (fed ? a.fed : 0);
+  const deptTotal   = (d, fed) => d.gf + d.sp + d.bd + (fed ? d.fed : 0);
+  const agencies = () => D.budgets[S.year].agencies;
+  const grandTotal = () => agencies().reduce((s,a)=>s+agencyTotal(a,S.fed),0);
+
+  /* ---------- banner ---------- */
+  function renderBanner(){
+    const b = $("dataBanner");
+    if (D.meta.source === "SAMPLE"){
+      b.innerHTML = "<strong>Sample data.</strong> These figures are illustrative — run pipeline/fetch_state_data.py to load official data.";
+      b.style.display = "";
+    } else {
+      b.innerHTML = "Data: " + D.meta.sourceLabel + " · generated " + D.meta.generated;
+      b.style.background = "var(--green-wash)"; b.style.borderColor = "var(--rule-strong)"; b.style.color = "var(--ink-soft)";
+    }
+    $("srcNote").textContent = (D.meta.source === "SAMPLE")
+      ? "This build is running on clearly labeled sample data so the interface can be evaluated end-to-end. Official sources for the production pipeline: the enacted state budget (Department of Finance / ebudget.ca.gov) and Open FiscalCal expenditure data (fiscal.ca.gov, data.ca.gov)."
+      : "Data source: " + D.meta.sourceLabel + ", generated " + D.meta.generated + ".";
+  }
+
+  /* ---------- header totals ---------- */
+  function renderTotals(){
+    const total = grandTotal();
+    $("totalNum").textContent = "$" + total.toFixed(1) + "B";
+    $("totalLbl").textContent = (S.fed ? "Total incl. federal funds" : "Total state funds") + " · FY " + S.year;
+
+    const pop = (D.meta.population && D.meta.population[S.year]) || null;
+    $("perCapNum").textContent = pop ? fmtCap(total*1000/pop) : "—";
+
+    const idx = budgetYears.indexOf(S.year);
+    const prevYear = idx > 0 ? budgetYears[idx-1] : null;
+    const yoyEl = $("yoyNum");
+    if (prevYear){
+      const prev = D.budgets[prevYear].agencies.reduce((s,a)=>s+agencyTotal(a,S.fed),0);
+      const pct = (total-prev)/prev*100;
+      yoyEl.textContent = (pct>=0?"+":"") + pct.toFixed(1) + "%";
+      yoyEl.className = "num " + (pct>=0 ? "delta-up" : "delta-down");
+    } else { yoyEl.textContent = "—"; yoyEl.className = "num"; }
+  }
+
+  /* ---------- appropriation bar ---------- */
+  function renderBar(){
+    const bar = $("appropBar"), legend = $("legend");
+    bar.innerHTML = ""; legend.innerHTML = "";
+    const total = grandTotal();
+    const sorted = agencies().slice().sort((a,b)=>agencyTotal(b,S.fed)-agencyTotal(a,S.fed));
+
+    sorted.forEach((a,i)=>{
+      const t = agencyTotal(a,S.fed), share = t/total*100, color = COLORS[i%COLORS.length];
+
+      const seg = document.createElement("button");
+      seg.className = "seg";
+      seg.style.width = share + "%";
+      seg.style.background = color;
+      seg.setAttribute("aria-pressed", S.selected===a.id ? "true":"false");
+      seg.setAttribute("aria-label", a.name + ", " + fmtB(t) + ", " + share.toFixed(1) + " percent of total");
+      seg.title = a.name + " — " + fmtB(t) + " (" + share.toFixed(1) + "%)";
+      if (share > 9){
+        seg.innerHTML = '<span class="in-label"><b>' + a.name + '</b>' + fmtB(t) + ' · ' + share.toFixed(0) + '%</span>';
+      }
+      seg.addEventListener("click", ()=> selectAgency(a.id));
+      bar.appendChild(seg);
+
+      const chip = document.createElement("button");
+      chip.className = "chip" + (S.selected===a.id ? " active":"");
+      chip.innerHTML = '<span class="sw" style="background:'+color+'"></span>'
+                     + '<span class="chip-name">'+a.name+'</span>'
+                     + '<span class="amt">'+fmtB(t)+' · '+share.toFixed(1)+'%</span>';
+      chip.addEventListener("click", ()=> selectAgency(a.id));
+      legend.appendChild(chip);
+    });
+
+    $("barHint").textContent = "FY " + S.year + " · " + (S.fed
+      ? "state + federal funds — federal dollars pass through state programs like Medi-Cal and unemployment insurance"
+      : "state funds only (General + special + bond) — toggle above to add federal pass-through");
+  }
+
+  /* ---------- agency detail ---------- */
+  function selectAgency(id){
+    S.selected = (S.selected === id) ? null : id;
+    renderBar(); renderDetail(); renderTable();
+    if (S.selected && $("detail").scrollIntoView) $("detail").scrollIntoView({block:"nearest"});
+  }
+
+  function renderDetail(){
+    const box = $("detail");
+    const a = agencies().find(x=>x.id===S.selected);
+    if(!a){ box.classList.remove("open"); return; }
+    box.classList.add("open");
+
+    const t = agencyTotal(a,S.fed), grand = grandTotal();
+    $("dName").textContent = a.name;
+    $("dTotal").textContent = fmtB(t) + " · " + (t/grand*100).toFixed(1) + "% of the FY " + S.year + " total";
+
+    // fund strip
+    const strip = $("dFunds"), key = $("dFundKey");
+    strip.innerHTML = ""; key.innerHTML = "";
+    FUND_META.forEach(f=>{
+      if (f.key==="fed" && !S.fed) return;
+      const v = a[f.key]; if (v<=0) return;
+      const d = document.createElement("div");
+      d.style.width = (v/t*100)+"%"; d.style.background = f.color;
+      strip.appendChild(d);
+      const k = document.createElement("span");
+      k.innerHTML = '<i style="background:'+f.color+'"></i>'+f.name+' '+fmtB(v);
+      key.appendChild(k);
+    });
+
+    // departments
+    const wrap = $("dDepts"); wrap.innerHTML = "";
+    const depts = (a.departments||[]).slice().sort((x,y)=>deptTotal(y,S.fed)-deptTotal(x,S.fed));
+    const max = depts.length ? deptTotal(depts[0],S.fed) : 1;
+    depts.forEach(d=>{
+      const v = deptTotal(d,S.fed);
+      const row = document.createElement("div");
+      row.className = "dept-row";
+      row.innerHTML = '<span class="nm">'+d.name+'</span>'
+        + '<span class="bar"><i style="width:'+(v/max*100)+'%"></i></span>'
+        + '<span class="amt">'+fmtB(v)+'</span>';
+      wrap.appendChild(row);
+    });
+  }
+  $("dClose").addEventListener("click", ()=>{ S.selected=null; renderBar(); renderDetail(); renderTable(); });
+
+  /* ---------- fund sources ---------- */
+  function renderFunds(){
+    const box = $("funds"); box.innerHTML = "";
+    const rows = FUND_META.filter(f=> f.key!=="fed" || S.fed);
+    const sums = rows.map(f => agencies().reduce((s,a)=>s+a[f.key],0));
+    const total = sums.reduce((a,b)=>a+b,0);
+    const max = Math.max(...sums);
+    const notes = {gf:"income, sales & corporation taxes", sp:"restricted fees & dedicated taxes", bd:"voter-approved borrowing", fed:"federal pass-through"};
+    rows.forEach((f,i)=>{
+      const row = document.createElement("div");
+      row.className = "fund";
+      row.innerHTML = '<span class="nm">'+f.name+'<small>'+notes[f.key]+'</small></span>'
+        + '<span class="bar"><i style="width:'+(sums[i]/max*100)+'%;background:'+f.color+'"></i></span>'
+        + '<span class="amt">'+fmtB(sums[i])+'<small>'+(sums[i]/total*100).toFixed(1)+'%</small></span>';
+      box.appendChild(row);
+    });
+  }
+
+  /* ---------- trend chart ---------- */
+  function renderTrend(){
+    const svg = $("trendSvg");
+    const W=860,H=300,L=70,R=20,T=26,B=44;
+    const years = D.years, vals = years.map(y=>D.trend[y].state);
+    const maxV = Math.ceil(Math.max(...vals)/50)*50;
+    const x = i => L + i*(W-L-R)/(years.length-1);
+    const y = v => T + (1 - v/maxV)*(H-T-B);
+
+    let s = "";
+    // gridlines + y labels
+    for(let g=0; g<=maxV; g+=100){
+      s += '<line x1="'+L+'" y1="'+y(g)+'" x2="'+(W-R)+'" y2="'+y(g)+'" stroke="#D8E1D7" stroke-width="1"/>';
+      s += '<text class="tick-lbl" x="'+(L-10)+'" y="'+(y(g)+4)+'" text-anchor="end">$'+g+'B</text>';
+    }
+    // area + line
+    const pts = vals.map((v,i)=>x(i)+","+y(v)).join(" ");
+    s += '<polygon points="'+L+','+y(0)+' '+pts+' '+(W-R)+','+y(0)+'" fill="rgba(27,107,82,.10)"/>';
+    s += '<polyline points="'+pts+'" fill="none" stroke="#1B6B52" stroke-width="2.5" stroke-linejoin="round"/>';
+    // points + labels
+    vals.forEach((v,i)=>{
+      const cur = years[i]===S.year && D.budgets[years[i]];
+      s += '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="'+(cur?6:4)+'" fill="'+(cur?"#0E4634":"#1B6B52")+'" stroke="#F7F8F4" stroke-width="2"><title>FY '+years[i]+': $'+v.toFixed(1)+'B state funds</title></circle>';
+      s += '<text class="pt-lbl" x="'+x(i)+'" y="'+(y(v)-12)+'" text-anchor="middle">$'+Math.round(v)+'B</text>';
+      s += '<text class="tick-lbl" x="'+x(i)+'" y="'+(H-16)+'" text-anchor="middle">'+years[i]+'</text>';
+    });
+    svg.innerHTML = s;
+  }
+
+  /* ---------- table ---------- */
+  const COLS = [
+    {key:"name",  lbl:"Agency"},
+    {key:"gf",    lbl:"General Fund"},
+    {key:"sp",    lbl:"Special"},
+    {key:"bd",    lbl:"Bond"},
+    {key:"fed",   lbl:"Federal"},
+    {key:"total", lbl:"Total"},
+    {key:"share", lbl:"Share"},
+    {key:"cap",   lbl:"Per resident"}
+  ];
+  function visibleCols(){ return COLS.filter(c => c.key!=="fed" || S.fed); }
+
+  function renderTableHead(){
+    const tr = $("tblHead"); tr.innerHTML = "";
+    visibleCols().forEach(c=>{
+      const th = document.createElement("th");
+      th.scope = "col";
+      const arrow = S.sortKey===c.key ? (S.sortDir<0 ? " ▾" : " ▴") : "";
+      th.innerHTML = c.lbl + '<span class="arrow">'+arrow+'</span>';
+      th.addEventListener("click", ()=>{
+        if (S.sortKey===c.key) S.sortDir *= -1;
+        else { S.sortKey = c.key; S.sortDir = c.key==="name" ? 1 : -1; }
+        renderTable();
+      });
+      tr.appendChild(th);
+    });
+  }
+
+  function renderTable(){
+    renderTableHead();
+    const body = $("tblBody"); body.innerHTML = "";
+    const total = grandTotal();
+    const pop = (D.meta.population && D.meta.population[S.year]) || null;
+
+    let rows = agencies().map(a=>{
+      const t = agencyTotal(a,S.fed);
+      return { id:a.id, name:a.name, gf:a.gf, sp:a.sp, bd:a.bd, fed:a.fed,
+               total:t, share:t/total*100, cap: pop ? t*1000/pop : null };
+    });
+    if (S.query){
+      const q = S.query.toLowerCase();
+      rows = rows.filter(r=>r.name.toLowerCase().includes(q));
+    }
+    rows.sort((a,b)=>{
+      const k=S.sortKey;
+      if (k==="name") return S.sortDir * a.name.localeCompare(b.name);
+      return S.sortDir * ((a[k]||0)-(b[k]||0));
+    });
+
+    rows.forEach(r=>{
+      const tr = document.createElement("tr");
+      tr.tabIndex = 0;
+      tr.setAttribute("role","button");
+      tr.setAttribute("aria-label","Open detail for "+r.name);
+      const cells = visibleCols().map(c=>{
+        if (c.key==="name")  return "<td>"+r.name+"</td>";
+        if (c.key==="share") return '<td class="share-cell">'+r.share.toFixed(1)+"%</td>";
+        if (c.key==="cap")   return "<td>"+(r.cap!=null?fmtCap(r.cap):"—")+"</td>";
+        return "<td>"+fmtB(r[c.key])+"</td>";
+      }).join("");
+      tr.innerHTML = cells;
+      const open = ()=> selectAgency(r.id);
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();open();} });
+      body.appendChild(tr);
+    });
+
+    // totals row
+    if (!S.query){
+      const sum = k => agencies().reduce((s,a)=>s+a[k],0);
+      const tr = document.createElement("tr");
+      tr.className = "total-row";
+      tr.innerHTML = visibleCols().map(c=>{
+        if (c.key==="name")  return "<td>All agencies</td>";
+        if (c.key==="share") return '<td class="share-cell">100%</td>';
+        if (c.key==="cap")   return "<td>"+(pop?fmtCap(total*1000/pop):"—")+"</td>";
+        if (c.key==="total") return "<td>"+fmtB(total)+"</td>";
+        return "<td>"+fmtB(sum(c.key))+"</td>";
+      }).join("");
+      body.appendChild(tr);
+    }
+  }
+
+  /* ---------- controls ---------- */
+  const yearSel = $("yearSel");
+  budgetYears.forEach(y=>{
+    const o = document.createElement("option");
+    o.value = y; o.textContent = "FY " + y;
+    yearSel.appendChild(o);
+  });
+  yearSel.value = S.year;
+  yearSel.addEventListener("change", ()=>{ S.year = yearSel.value; renderAll(); });
+  $("fedToggle").addEventListener("change", e=>{ S.fed = e.target.checked; renderAll(); });
+  $("search").addEventListener("input", e=>{ S.query = e.target.value.trim(); renderTable(); });
+
+  /* ---------- boot ---------- */
+  function renderAll(){
+    renderBanner(); renderTotals(); renderBar(); renderDetail();
+    renderFunds(); renderTrend(); renderTable();
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
