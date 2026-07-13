@@ -430,6 +430,38 @@ fallback — detail-only — was not needed). The services-checklist
 vintage (FY 2015-16, the most recent the SCO publishes) is stated
 wherever its codes appear.
 
+## Pre-deploy pass (2026-07-13): committed tests, checklist caveats, deploy check
+
+- **Headless test suite rebuilt and committed** at `tests/run_tests.py`
+  (the earlier sessions' suites were run but never committed). One
+  command — `python3 tests/run_tests.py` — runs 104 assertions with
+  Playwright + Chrome against the real data files, recomputing every
+  expected figure independently in Python: V1/V2 rendering, permalink
+  hash round-trips (both directions), CSV export contents (headers,
+  scope lines, data rows, totals), citation output via the clipboard,
+  change-view arithmetic (per-agency and totals-row dollar/percent
+  deltas), a banned-adjective scan on both pages' rendered text, the
+  city comparability footnotes (checklist vintage, contract-city and
+  fire-district notes, San Francisco consolidation), and the
+  enterprise-fund block. All 104 pass.
+- **Methodology caveats stated on both pages:** the service-provision
+  flags derive from the SCO services checklist whose most recent
+  published vintage is FY 2015-16; arrangements may have changed since;
+  and the under-$5/resident flag is a heuristic backstop, not a
+  current-year survey. (index.html Methodology → "The city view";
+  cities.html Sources & method.) The stale "planned for V2" line in
+  the V1 footer now links to the live city view.
+- **Deploy check:** `.github/workflows/deploy-pages.yml` uploads the
+  repository root as the Pages artifact, so both `index.html` and
+  `cities.html` (plus `data.js`, `city-data.js`, favicon, robots.txt)
+  deploy together. Permalinks and citations derive from
+  `window.location`; the test suite serves the site under a
+  `/ca-ledger/` subpath — the GitHub Pages layout — and asserts that
+  citations emit that served URL, so they will emit the public URL in
+  production. Deployment itself still awaits the repository settings
+  change documented earlier (repo is private; Pages must be enabled
+  with Source = GitHub Actions).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

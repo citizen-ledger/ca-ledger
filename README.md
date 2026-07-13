@@ -72,6 +72,21 @@ Population figures for the per-resident numbers come from DOF report
 E-4 (statewide January 1 estimates) and are a constant in the script —
 update once a year.
 
+## Tests
+
+```
+python3 tests/run_tests.py
+```
+
+One command, 104 assertions against the real data files: V1 and V2
+rendering, permalink hash round-trips, CSV export contents, citation
+output, change-view arithmetic, a banned-adjective scan, the city
+comparability footnotes, and the enterprise-fund block. The suite
+serves the repo under a `/ca-ledger/` subpath (the GitHub Pages
+layout), so it also proves permalinks and citations emit the served
+public URL. Requires Python 3.9+, `pip install playwright`, and system
+Chrome (or `playwright install chromium`).
+
 ## Neutrality choices, on purpose
 
 - No adjectives attached to numbers. No "only," no "ballooning."
