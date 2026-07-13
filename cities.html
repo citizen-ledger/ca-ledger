@@ -232,6 +232,8 @@
             <tbody id="funcBody"></tbody>
           </table>
         </div>
+        <div id="dEnterprise"></div>
+        <div id="dFoot"></div>
       </div>
     </div>
   </section>
@@ -254,6 +256,7 @@
           <tbody id="cmpBody"></tbody>
         </table>
       </div>
+      <div id="cmpFoot" hidden></div>
     </div>
   </section>
 </main>
@@ -262,7 +265,7 @@
   <div class="wrap">
     <h2>Sources & method</h2>
     <p id="srcNote"></p>
-    <p>This page is the V2 preview of The California Ledger, running on clearly labeled sample data so the interface can be evaluated end to end. The production source is the State Controller's Office: all California cities file standardized annual financial reports, published with a public API at bythenumbers.sco.ca.gov — run <code>pipeline/fetch_city_data.py</code> to load it (endpoints documented in the script; unverified until run from an unrestricted network). City figures on that basis are reported actual revenues and expenditures from each city's annual report, not budgets. "Per resident" divides each figure by the city's reported population for that fiscal year. Functions follow the standardized report categories. The <a href="index.html">state budget view</a> covers the enacted state budget from official data.</p>
+    <p>Figures are reported actual revenues and expenditures from the standardized annual financial reports every California city files with the State Controller's Office, published at bythenumbers.sco.ca.gov — retrospective figures, not budgets. Function figures cover <em>governmental activities</em>; ratepayer-funded enterprise operations (water, power, airports, harbors, hospitals, transit) are shown separately per city and excluded from comparisons, because cities differ in which they operate. Internal service funds and conduit financing are excluded from both blocks; every city-year total is reconciled against the Controller's published per-capita dataset before this page's data file is written. "Per resident" divides each figure by the population reported in the same filing. Police and fire service-provision notes come from the Controller's services checklist (most recent vintage: FY 2015-16) plus a flag when a city reports under $5 per resident for the service; San Francisco is footnoted as the state's only consolidated city and county. Reports for a fiscal year are published the following year — run <code>pipeline/fetch_city_data.py --write</code> to refresh. The <a href="index.html">state budget view</a> covers the enacted state budget from official data.</p>
   </div>
 </footer>
 
@@ -382,10 +385,10 @@
     const total = yr.expenditures, pop = yr.population;
 
     $("dName").textContent = c.name;
-    $("dTotal").textContent = fmtM(total) + " total expenditures · FY " + S.year;
+    $("dTotal").textContent = fmtM(total) + " governmental expenditures · FY " + S.year;
     $("dFigures").innerHTML = [
-      ["Per resident", fmtCap(perCap(total,pop))],
-      ["Total revenues", fmtM(yr.revenues)],
+      ["Per resident (governmental)", fmtCap(perCap(total,pop))],
+      ["Governmental revenues", fmtM(yr.revenues)],
       ["Population", fmtPop(pop)],
       ["County", esc(c.county)]
     ].map(kv=>'<div class="total-sub"><span class="num">'+kv[1]+'</span><span class="lbl">'+kv[0]+'</span></div>').join("");
@@ -421,9 +424,50 @@
     });
     const tr = document.createElement("tr");
     tr.className = "total-row";
-    tr.innerHTML = "<td>All functions</td><td>"+fmtM(total)+"</td><td>"+fmtCap(perCap(total,pop))+"</td>"
+    tr.innerHTML = "<td>All governmental functions</td><td>"+fmtM(total)+"</td><td>"+fmtCap(perCap(total,pop))+"</td>"
       + '<td class="share-cell">100%</td>';
     body.appendChild(tr);
+
+    renderEnterprise(yr, pop);
+    $("dFoot").innerHTML = cityNotes(S.city, S.year)
+      .map(n=>'<p class="sec-note" style="margin:10px 0 0">'+esc(n)+'</p>').join("");
+  }
+  function renderEnterprise(yr, pop){
+    const box = $("dEnterprise");
+    const ent = yr.enterprise;
+    if (!ent || !ent.total){ box.innerHTML = ""; return; }
+    const funds = (D.enterpriseFunds||[]).map(f=>({name:f.name, v:(ent.byFund||{})[f.key]||0}))
+                                         .filter(r=>r.v).sort((a,b)=>b.v-a.v);
+    let html = '<h4 style="font-family:var(--serif);font-size:17px;margin:24px 0 4px">Enterprise activities (ratepayer-funded)</h4>'
+      + '<p class="sec-note" style="margin-bottom:12px">Business-type operations funded mainly by charges to users — not by general city taxes. Cities differ in which they operate, so these are shown apart from the governmental figures above and excluded from comparisons.</p>'
+      + '<div class="table-scroll"><table><thead><tr><th scope="col">Enterprise fund</th><th scope="col">Expenses</th><th scope="col">Per resident</th></tr></thead><tbody>';
+    funds.forEach(r=>{
+      html += "<tr><td>"+esc(r.name)+"</td><td>"+fmtM(r.v)+"</td><td>"+fmtCap(perCap(r.v,pop))+"</td></tr>";
+    });
+    html += '<tr class="total-row"><td>All enterprise funds</td><td>'+fmtM(ent.total)+'</td><td>'+fmtCap(perCap(ent.total,pop))+'</td></tr>'
+      + "</tbody></table></div>"
+      + '<p class="sec-note" style="margin-top:8px">Enterprise revenues: '+fmtM(ent.revenues||0)
+      + (yr.internalService ? ' · Internal service funds (excluded from totals): '+fmtM(yr.internalService) : '')
+      + (yr.conduitFinancing ? ' · Conduit financing (excluded from totals): '+fmtM(yr.conduitFinancing) : '')
+      + '</p>';
+    box.innerHTML = html;
+  }
+  function cityNotes(id, year){
+    const c = D.cities[id], yr = cityYear(id, year), notes = [];
+    if (c.flags && c.flags.consolidated)
+      notes.push(c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities.");
+    const vin = D.meta.servicesChecklistVintage;
+    [["police","Police","lowPolice"],["fire","Fire","lowFire"]].forEach(([k,label,lowKey])=>{
+      const svc = c.services && c.services[k];
+      const low = yr && yr.notes && yr.notes.includes(lowKey);
+      if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
+        notes.push(label + " service " + svc.label + " (as reported to the State Controller for FY " + vin + ", the most recent services checklist published).");
+      else if (low)
+        notes.push("Reports under $5 per resident of municipal " + k + " expenditure in FY " + year + "; the service may be provided or financed outside the city budget.");
+    });
+    if (yr && yr.notes && yr.notes.includes("bigSwing"))
+      notes.push("Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing.");
+    return notes;
   }
   $("dClose").addEventListener("click", ()=>{ S.city=null; syncHash(); renderPicker(); renderDetail(); });
 
@@ -434,10 +478,13 @@
     const sample = D.meta.source === "SAMPLE"
       ? "SAMPLE DATA for interface development — not official figures; do not cite. Production source: State Controller's Office city annual financial reports (bythenumbers.sco.ca.gov). "
       : "";
-    return c.name + ", FY " + S.year + ": $" + yr.expenditures.toFixed(1) + " million total expenditures ("
-      + fmtCap(perCap(yr.expenditures, yr.population)) + " per resident, population " + fmtPop(yr.population) + "). "
+    const noteStr = cityNotes(S.city, S.year).join(" ");
+    return c.name + ", FY " + S.year + ": $" + yr.expenditures.toFixed(1) + " million governmental expenditures ("
+      + fmtCap(perCap(yr.expenditures, yr.population)) + " per resident, population " + fmtPop(yr.population) + "); "
+      + "ratepayer-funded enterprise activities excluded ($" + ((yr.enterprise&&yr.enterprise.total)||0).toFixed(1) + " million, shown separately). "
       + "Reported actual expenditures from standardized city annual financial reports. "
       + sample
+      + (noteStr ? noteStr + " " : "")
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
@@ -477,6 +524,7 @@
     if (D.meta.source === "SAMPLE")
       lines.push("# SAMPLE DATA — illustrative figures for interface development; do not cite.");
     lines.push("# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports");
+    lines.push("# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures");
     lines.push("# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10));
     return lines.concat(extra);
   }
@@ -499,8 +547,12 @@
     ]);
     rows.forEach(r=> lines.push([csvEscape(r.name), r.v.toFixed(1),
       Math.round(perCap(r.v,yr.population)), (yr.expenditures?(r.v/yr.expenditures*100):0).toFixed(1)].join(",")));
-    lines.push(["All functions", yr.expenditures.toFixed(1),
+    lines.push(["All governmental functions", yr.expenditures.toFixed(1),
       Math.round(perCap(yr.expenditures,yr.population)), "100.0"].join(","));
+    if (yr.enterprise && yr.enterprise.total)
+      lines.push(["Enterprise activities (excluded from above)", yr.enterprise.total.toFixed(1),
+        Math.round(perCap(yr.enterprise.total,yr.population)), ""].join(","));
+    cityNotes(S.city, S.year).forEach(n=> lines.push("# Note: " + csvEscape(n)));
     download("california-ledger-city_" + S.city + "_FY" + S.year + ".csv", lines.join("\r\n") + "\r\n");
   });
   $("cmpCsvBtn").addEventListener("click", ()=>{
@@ -509,8 +561,8 @@
     const lines = csvComments([
       "# Comparison: " + names.join(" · ") + " · FY " + S.year,
       "# " + S.cmp.map(id=>{ const yr=cityYear(id,S.year);
-          return D.cities[id].name + " population " + yr.population + ", total expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "),
-      "# Units: dollars per resident",
+          return D.cities[id].name + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "),
+      "# Units: dollars per resident · governmental activities only",
       ["Function"].concat(names.map(n=>csvEscape(n + " ($/resident)"))).join(",")
     ]);
     FUNCS.forEach(f=>{
@@ -519,10 +571,12 @@
         return Math.round(perCap(yr.byFunction[f.key]||0, yr.population));
       })).join(","));
     });
-    lines.push(["All functions"].concat(S.cmp.map(id=>{
+    lines.push(["All governmental functions"].concat(S.cmp.map(id=>{
       const yr = cityYear(id,S.year);
       return Math.round(perCap(yr.expenditures, yr.population));
     })).join(","));
+    S.cmp.forEach(id=> cityNotes(id, S.year).forEach(n=>
+      lines.push("# Note (" + csvEscape(D.cities[id].name) + "): " + csvEscape(n))));
     download("california-ledger-compare_FY" + S.year + ".csv", lines.join("\r\n") + "\r\n");
   });
 
@@ -563,7 +617,7 @@
     $("cmpTools").hidden = !active;
     if (!active) return;
 
-    $("cmpNote").textContent = "FY " + S.year + " · dollars per resident · bars in each row share one scale";
+    $("cmpNote").textContent = "FY " + S.year + " · dollars per resident · governmental activities only (ratepayer-funded enterprise funds excluded) · bars in each row share one scale";
     const head = $("cmpHead"); head.innerHTML = "";
     const th0 = document.createElement("th"); th0.scope="col"; th0.textContent = "Function";
     head.appendChild(th0);
@@ -595,11 +649,21 @@
     const maxT = Math.max(...totals, 1);
     const tr = document.createElement("tr");
     tr.className = "total-row";
-    tr.innerHTML = "<td>All functions</td>" + totals.map((v,i)=>
+    tr.innerHTML = "<td>All governmental functions</td>" + totals.map((v,i)=>
       '<td><span class="num">'+fmtCap(v)+'</span>'
       + '<span class="cell-bar" aria-hidden="true"><i style="width:'+Math.max(0, v/maxT*100)+'%;background:'+COLORS[i%COLORS.length]+'"></i></span></td>'
     ).join("");
     body.appendChild(tr);
+
+    const foot = $("cmpFoot");
+    if (foot){
+      const items = [];
+      S.cmp.forEach(id=>{
+        cityNotes(id, S.year).forEach(n=>items.push("<strong>"+esc(D.cities[id].name)+":</strong> "+esc(n)));
+      });
+      foot.innerHTML = items.map(n=>'<p class="sec-note" style="margin:8px 0 0">'+n+'</p>').join("");
+      foot.hidden = !items.length;
+    }
   }
 
   /* ---------- controls ---------- */

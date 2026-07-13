@@ -3,218 +3,540 @@
 The California Ledger — city data pipeline (V2)
 ===============================================
 
-Rewrites ../city-data.js with official city financial data, in the
-schema cities.html expects.
+Rewrites ../city-data.js with official city financial data from the
+State Controller's Office "By the Numbers" portal
+(https://bythenumbers.sco.ca.gov), in the schema cities.html expects.
 
-SOURCE (UNVERIFIED — read this first)
--------------------------------------
-The State Controller's Office requires all California cities to file
-standardized annual financial reports and publishes them at
-"By the Numbers" (https://bythenumbers.sco.ca.gov), a Socrata site
-with a public SODA API. That is the one uniform source for city-level
-revenues and expenditures.
+SOURCE (VERIFIED 2026-07-13 against the live Socrata API)
+---------------------------------------------------------
+Datasets (Socrata ids), all on bythenumbers.sco.ca.gov:
 
-IMPORTANT: unlike the state pipeline (fetch_state_data.py), whose
-endpoints were verified against the live eBudget API before data was
-published, THIS SCRIPT'S ENDPOINTS ARE UNVERIFIED. It was written in
-an environment whose egress policy blocks *.sco.ca.gov and
-*.socrata.com, so the dataset identifiers below are best-effort and
-must be confirmed the first time this runs from an unrestricted
-network. The script is written to fail loudly and leave the existing
-city-data.js untouched unless a fetch fully succeeds and validates.
+    ju3w-4gxp   City - Expenditures       (line items, FY 2003-2024)
+    rrtv-rsj9   City - Revenues           (line items)
+    ykhf-vfsr   City Expenditures Per Capita   (official per-city totals —
+                used as the reconciliation target, see SANITY CHECKS)
+    tsz3-29gc   Check List of Services Provided (FY 2002-03 to 2015-16 —
+                the maintained service-provision list; codes verified from
+                the dataset's "City Service Codes.docx" attachment)
 
-What must be verified on first run:
-  1. The Socrata catalog search below returns the city revenues and
-     expenditures datasets (run with --inspect).
-  2. The dataset's four-character Socrata id ("fourfour") — set it in
-     DATASET_ID once known, or pass --dataset.
-  3. Column names: the SCO datasets historically use fields like
-     entity_name, fiscal_year, category / type, and value/amount —
-     the exact names must be read from --inspect output and mapped in
-     COLUMN_MAP below.
-  4. The functional categories and how they map to the site's
-     function keys (FUNCTION_MAP below is a starting guess).
+Row shape (expenditures): entity_name, fiscal_year (ending year: "2024"
+= FY 2023-24), county, category, subcategory_1, subcategory_2,
+line_description, value (dollars), estimated_population (from the same
+filing — the population denominator comparability rule).
+
+Fund structure, verified from the data:
+  - category "... Enterprise Fund"  -> business-type activity (water,
+    sewer, solid waste, electric, gas, airport, harbor/port, hospital,
+    transit, other) with Operating/Nonoperating subcategories.
+  - category "Internal Service Fund" and "Conduit Financing" -> neither
+    governmental nor enterprise; tracked separately, excluded from both
+    totals (internal service double-counts, conduit is pass-through).
+  - everything else -> governmental activity; subcategory_1 is the
+    function group (General Government, Public Safety, Transportation,
+    Community Development, Health, Culture and Leisure, Public
+    Utilities, Other Expenditures, Debt Service, Capital Outlay) and
+    subcategory_2 the line ("Police_Current Expenditures", ...).
+
+Reconciliation (verified before this was written): for Los Angeles FY
+2024, governmental + enterprise + internal service + conduit sums to
+$21,517,484,103 — exactly the official total_expenditures in
+ykhf-vfsr. The same identity is enforced for every city-year loaded.
+
+FISCAL YEARS: 2017-2024 in source labels (= 2016-17 .. 2023-24), the
+era with the current form layout. Pre-2017 filings use a different
+category layout and are not loaded.
+
+COMPARABILITY (see docstring history in git and STATUS.md)
+----------------------------------------------------------
+1. CONTRACT CITIES — per-city service-provision codes for police and
+   fire come from the SCO services checklist (most recent vintage:
+   FY 2015-16), plus a data-derived flag when a city's police or fire
+   line is under $5/resident in the displayed year. cities.html
+   footnotes both, neutrally.
+2. ENTERPRISE FUNDS — the schema keeps governmental and enterprise
+   blocks separate; `expenditures`/`byFunction` are GOVERNMENTAL
+   activities and are what the comparison view compares. Enterprise
+   activity is shown per city in its own block.
+3. CONSOLIDATED CITY-COUNTY — San Francisco (the state's only one) is
+   flagged; its filings include county functions (verified: it is the
+   only city reporting Assessor / District Attorney / Probation lines).
+4. CAPITAL/DEBT SPIKES — capital outlay and debt service are visible
+   functions (not folded away), and the load computes a year-over-year
+   swing marker cities.html can footnote.
+5. POPULATION — estimated_population from the same SCO filing, never a
+   mixed vintage.
 
 Usage:
-    python3 fetch_city_data.py --inspect              # discover datasets + columns
-    python3 fetch_city_data.py --dataset XXXX-XXXX    # fetch with a known dataset id
-    python3 fetch_city_data.py --cities "Los Angeles" "Fresno"
-
-Accounting basis (for the page footer, once real data loads): cities
-report ACTUAL revenues and expenditures in their annual reports —
-retrospective figures, not budgets. One new fiscal year per annual
-filing cycle (reports for a fiscal year are published the following
-year). This differs from the state view, which shows enacted
-appropriations.
-
-COMPARABILITY REQUIREMENTS (blockers for the comparison view)
---------------------------------------------------------------
-Naive per-capita comparison of city expenditures is misleading unless
-the load handles these structural factors. The site's comparison view
-must not ship on real data until each is addressed (researched
-2026-07-08; see STATUS.md for sources):
-
-1. CONTRACT CITIES. Dozens of California cities contract police to
-   the county sheriff (the "Lakewood model"; ~40 in Los Angeles
-   County alone) and/or fire to county or district agencies.
-   Contract cities show systematically lower per-capita police
-   spending, and the studies that measured it attribute part of the
-   gap to demographics and workload, not efficiency. The dataset
-   itself does not label contract cities. The load must either derive
-   a per-city service-provision flag from a maintained list or flag
-   cities whose police/fire line is implausibly low or zero, and the
-   UI must footnote them neutrally in any comparison.
-2. ENTERPRISE FUNDS. City utilities (water, power, sewer, airports,
-   harbors) are business-type activities funded by ratepayers, not
-   general taxes. Cities differ in what they operate (LA runs a
-   utility; most cities do not), which distorts totals. The SCO data
-   distinguishes governmental from enterprise activity — PRESERVE
-   that distinction in the schema (separate governmental vs
-   enterprise blocks per city) and compare on governmental activities
-   by default.
-3. CONSOLIDATED CITY-COUNTY. San Francisco reports city and county
-   functions in one entity; its figures are not comparable to any
-   other city. Footnote or exclude from comparison.
-4. CAPITAL AND DEBT SPIKES. A single bond issue or capital project
-   can multiply a small city's one-year total. Any comparison should
-   surface which year is shown and footnote large single-year swings
-   rather than smoothing them.
-5. POPULATION DENOMINATORS. Use the population reported in the same
-   SCO filing (or DOF E-1 for the same year), never a mixed vintage.
-
-If these cannot be resolved from the data plus a maintained flag
-list, ship city detail views only and keep the comparison feature on
-sample/disabled — a wrong comparison is worse than none.
+    python3 fetch_city_data.py --inspect     # re-verify datasets/columns
+    python3 fetch_city_data.py               # dry run: fetch + validate, no write
+    python3 fetch_city_data.py --write       # rebuild ../city-data.js
 """
 
 import argparse
 import json
+import re
 import sys
-import urllib.error
+import time
 import urllib.parse
 import urllib.request
+from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
-SCO_DOMAIN = "bythenumbers.sco.ca.gov"
-CATALOG_URL = ("https://api.us.socrata.com/api/catalog/v1"
-               "?domains=" + SCO_DOMAIN + "&search_context=" + SCO_DOMAIN
-               + "&q=city%20expenditures&limit=30")
-# Four-character Socrata dataset id for city expenditures — UNVERIFIED.
-# Find it with --inspect and set it here (or pass --dataset).
-DATASET_ID = None
+DOMAIN = "bythenumbers.sco.ca.gov"
+DS_EXPEND = "ju3w-4gxp"
+DS_REVEN = "rrtv-rsj9"
+DS_PERCAP = "ykhf-vfsr"
+DS_SERVICES = "tsz3-29gc"
 
-# Map from the site's function keys to SCO functional category names.
-# UNVERIFIED best-effort guesses; correct them from --inspect output.
-FUNCTION_MAP = {
-    "police":     ["Police"],
-    "fire":       ["Fire"],
-    "streets":    ["Streets", "Transportation"],
-    "parks":      ["Parks and Recreation", "Recreation"],
-    "library":    ["Library", "Culture"],
-    "housing":    ["Community Development", "Housing"],
-    "sanitation": ["Sewer", "Sanitation", "Waste"],
-    "health":     ["Health"],
-    "admin":      ["General Government", "Administration"],
-    "debt":       ["Debt Service"],
+SOURCE_YEARS = [str(y) for y in range(2017, 2025)]   # "2017".."2024"
+SERVICES_VINTAGE_SOURCE_YEAR = "2016"                 # FY 2015-16
+LOW_SERVICE_PER_CAPITA = 5.0                          # dollars/resident
+
+FUNCTIONS = [
+    ("police",       "Police"),
+    ("fire",         "Fire"),
+    ("safetyOther",  "Other public safety"),
+    ("streets",      "Streets & transportation"),
+    ("housing",      "Community development & housing"),
+    ("sanitation",   "Sewer & solid waste"),
+    ("health",       "Health & welfare"),
+    ("parks",        "Parks & recreation"),
+    ("library",      "Libraries"),
+    ("cultureOther", "Other culture & leisure"),
+    ("utilities",    "Public utilities (governmental)"),
+    ("admin",        "General government"),
+    ("other",        "Other expenditures"),
+    ("debt",         "Debt service"),
+    ("capital",      "Capital outlay"),
+]
+
+ENTERPRISE_FUNDS = [
+    ("water",           "Water"),
+    ("sewer",           "Sewer"),
+    ("solidWaste",      "Solid waste"),
+    ("electric",        "Electric"),
+    ("gas",             "Gas"),
+    ("airport",         "Airports"),
+    ("harborPort",      "Harbor & port"),
+    ("hospital",        "Hospital"),
+    ("transit",         "Transit"),
+    ("otherEnterprise", "Other enterprise"),
+]
+ENTERPRISE_BY_CATEGORY = {   # category name (whitespace-normalized) -> key
+    "Water Enterprise Fund": "water",
+    "Sewer Enterprise Fund": "sewer",
+    "Solid Waste Enterprise Fund": "solidWaste",
+    "Electric Enterprise Fund": "electric",
+    "Gas Enterprise Fund": "gas",
+    "Airport Enterprise Fund": "airport",
+    "Harbor and Port Enterprise Fund": "harborPort",
+    "Hospital Enterprise Fund": "hospital",
+    "Transit Enterprise Fund": "transit",
+    "Other Enterprise Fund": "otherEnterprise",
 }
-# Column names in the SODA dataset — UNVERIFIED; read from --inspect.
-COLUMN_MAP = {
-    "entity": "entity_name",
-    "year": "fiscal_year",
-    "category": "category",
-    "value": "value",
+
+# Service-provision codes, from the checklist dataset's attachment
+# "City Service Codes.docx" (verified 2026-07-13).
+SERVICE_CODES = {
+    "A": "provided by paid city employees",
+    "B": "provided by city volunteers",
+    "C": "provided wholly or in part through contract with another city",
+    "D": "provided wholly or in part through contract with the county",
+    "E": "provided wholly or in part through contract with the private sector",
+    "F": "provided wholly or in part through contract with a special district "
+         "or other public agency",
+    "G": "provided, without city contract, by another city",
+    "H": "provided, without city contract, by a special district or other "
+         "public agency",
+    "I": "provided, without city contract, by the county",
+    "J": "provided, without city contract, by the private sector",
+    "K": "not provided within the city",
 }
 
 OUT_PATH = Path(__file__).resolve().parent.parent / "city-data.js"
+MAX_RETRIES = 3
+PAGE = 50000
 
 
-def get_json(url):
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "ca-ledger-pipeline/1.0", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)
+# ----------------------------------------------------------------------
+# Fetching
+# ----------------------------------------------------------------------
+def soda(dataset: str, **params):
+    """One SODA query, paged if needed. Returns all rows."""
+    rows, offset = [], 0
+    while True:
+        q = dict(params)
+        q["$limit"] = PAGE
+        q["$offset"] = offset
+        url = f"https://{DOMAIN}/resource/{dataset}.json?" + urllib.parse.urlencode(q)
+        last_err = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "ca-ledger-pipeline/2.0",
+                    "Accept": "application/json"})
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    page = json.load(r)
+                break
+            except Exception as e:  # noqa: BLE001 — retry transient failures
+                last_err = e
+                time.sleep(3 * attempt)
+        else:
+            raise RuntimeError(f"GET {url} failed after {MAX_RETRIES} tries: {last_err}")
+        rows.extend(page)
+        if len(page) < PAGE:
+            return rows
+        offset += PAGE
 
 
-def inspect():
-    print("Searching the Socrata catalog for SCO city datasets…", file=sys.stderr)
-    print("GET " + CATALOG_URL, file=sys.stderr)
-    try:
-        cat = get_json(CATALOG_URL)
-    except Exception as e:  # noqa: BLE001 — report and stop, do not guess
-        sys.exit("Catalog query failed: %s\n"
-                 "This is expected on a network that blocks sco.ca.gov / "
-                 "socrata.com. Run from an unrestricted network." % e)
-    for r in cat.get("results", []):
-        res = r.get("resource", {})
-        print("%-10s %s" % (res.get("id"), res.get("name")))
-    print("\nPick the city expenditures dataset, then:", file=sys.stderr)
-    print("  python3 fetch_city_data.py --dataset <id>  # prints sample rows first",
+def norm(s):
+    return re.sub(r"\s+", " ", (s or "")).strip()
+
+
+def fy_label(source_year: str) -> str:
+    """SCO fiscal_year is the ENDING year: '2024' -> '2023-24'."""
+    y = int(source_year)
+    return f"{y - 1}-{str(y)[-2:]}"
+
+
+# ----------------------------------------------------------------------
+# Classification
+# ----------------------------------------------------------------------
+def classify_expenditure(category, sub1, sub2):
+    """Returns ('gov', function_key) | ('ent', fund_key) |
+    ('isf', None) | ('conduit', None)."""
+    cat = norm(category)
+    if cat in ENTERPRISE_BY_CATEGORY:
+        return "ent", ENTERPRISE_BY_CATEGORY[cat]
+    if cat == "Internal Service Fund":
+        return "isf", None
+    if cat == "Conduit Financing":
+        return "conduit", None
+    g, line = norm(sub1), norm(sub2)
+    if g == "Public Safety":
+        if line.startswith("Police"):
+            return "gov", "police"
+        if line.startswith("Fire"):
+            return "gov", "fire"
+        return "gov", "safetyOther"
+    if g == "Health":
+        if line.startswith("Sewers") or line.startswith("Solid Waste"):
+            return "gov", "sanitation"
+        return "gov", "health"
+    if g == "Culture and Leisure":
+        if line.startswith("Parks and Recreation"):
+            return "gov", "parks"
+        if line.startswith("Libraries"):
+            return "gov", "library"
+        return "gov", "cultureOther"
+    return "gov", {
+        "General Government": "admin",
+        "Transportation": "streets",
+        "Community Development": "housing",
+        "Public Utilities": "utilities",
+        "Other Expenditures": "other",
+        "Debt Service": "debt",
+        "Capital Outlay": "capital",
+    }.get(g, "other")
+
+
+def classify_revenue(category):
+    cat = norm(category)
+    if cat in ENTERPRISE_BY_CATEGORY:
+        return "ent"
+    if cat in ("Internal Service Fund", "Conduit Financing"):
+        return "excluded"
+    return "gov"
+
+
+# ----------------------------------------------------------------------
+# Aggregation
+# ----------------------------------------------------------------------
+def fetch_year(source_year: str):
+    """Aggregates one source fiscal year. Returns
+    {city: {pop, county, byFunction, enterprise, isf, conduit,
+            revenues, revenuesEnterprise}}"""
+    exp = soda(DS_EXPEND,
+               **{"$select": "entity_name,county,category,subcategory_1,"
+                             "subcategory_2,sum(value) as v,"
+                             "max(estimated_population) as pop",
+                  "$where": f"fiscal_year='{source_year}'",
+                  "$group": "entity_name,county,category,subcategory_1,"
+                            "subcategory_2"})
+    rev = soda(DS_REVEN,
+               **{"$select": "entity_name,category,sum(value) as v",
+                  "$where": f"fiscal_year='{source_year}'",
+                  "$group": "entity_name,category"})
+
+    cities = defaultdict(lambda: {
+        "pop": 0, "county": "",
+        "byFunction": defaultdict(float),
+        "enterprise": defaultdict(float),
+        "isf": 0.0, "conduit": 0.0,
+        "revenues": 0.0, "revenuesEnterprise": 0.0,
+    })
+    for r in exp:
+        name = norm(r["entity_name"])
+        c = cities[name]
+        c["county"] = norm(r.get("county")) or c["county"]
+        c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
+        v = float(r.get("v") or 0)
+        kind, key = classify_expenditure(
+            r.get("category"), r.get("subcategory_1"), r.get("subcategory_2"))
+        if kind == "gov":
+            c["byFunction"][key] += v
+        elif kind == "ent":
+            c["enterprise"][key] += v
+        elif kind == "isf":
+            c["isf"] += v
+        else:
+            c["conduit"] += v
+    for r in rev:
+        name = norm(r["entity_name"])
+        if name not in cities:
+            continue
+        v = float(r.get("v") or 0)
+        kind = classify_revenue(r.get("category"))
+        if kind == "gov":
+            cities[name]["revenues"] += v
+        elif kind == "ent":
+            cities[name]["revenuesEnterprise"] += v
+    print(f"  FY {fy_label(source_year)}: {len(cities)} cities, "
+          f"{len(exp):,} expenditure lines, {len(rev):,} revenue lines",
           file=sys.stderr)
+    return dict(cities)
 
 
-def sample_rows(dataset_id):
-    url = "https://%s/resource/%s.json?$limit=5" % (SCO_DOMAIN, dataset_id)
-    print("GET " + url, file=sys.stderr)
-    rows = get_json(url)
-    print(json.dumps(rows, indent=2))
-    print("\nConfirm COLUMN_MAP and FUNCTION_MAP against these rows, then "
-          "re-run with --write.", file=sys.stderr)
+def fetch_services():
+    """Police/fire provision codes from the FY 2015-16 checklist."""
+    rows = soda(DS_SERVICES,
+                **{"$where": f"fiscal_year='{SERVICES_VINTAGE_SOURCE_YEAR}'"})
+    out = {}
+    for r in rows:
+        name = norm(r["entity_name"])
+        out[name] = {
+            "police": norm(r.get("police_service")).upper()[:1],
+            "fire": norm(r.get("fire_service")).upper()[:1],
+        }
+    print(f"  services checklist: {len(out)} cities (FY 2015-16 vintage)",
+          file=sys.stderr)
+    return out
 
 
-def fetch(dataset_id, cities, write):
-    col = COLUMN_MAP
-    where = ""
-    if cities:
-        quoted = ",".join("'%s'" % c.replace("'", "''") for c in cities)
-        where = "&$where=" + urllib.parse.quote(
-            "%s in(%s)" % (col["entity"], quoted))
-    url = ("https://%s/resource/%s.json?$limit=500000%s"
-           % (SCO_DOMAIN, dataset_id, where))
-    print("GET " + url, file=sys.stderr)
-    rows = get_json(url)
-    if not rows:
-        sys.exit("Dataset returned no rows — nothing written.")
-    missing = [k for k in col.values() if k not in rows[0]]
-    if missing:
-        sys.exit("Columns %s not present in dataset (have: %s). Fix "
-                 "COLUMN_MAP; city-data.js left untouched."
-                 % (missing, sorted(rows[0].keys())))
-    if not write:
-        print(json.dumps(rows[:5], indent=2))
-        sys.exit("Dry run (columns validated, %d rows). Re-run with --write "
-                 "to rebuild city-data.js." % len(rows))
-    # Aggregation to the site schema goes here once the real dataset's
-    # shape is known. Deliberately unimplemented until then: writing
-    # city-data.js from unverified guesses would put wrong numbers on a
-    # page that promises official data.
-    sys.exit("Aggregation not implemented yet — map the verified dataset "
-             "shape first (see docstring). city-data.js left untouched.")
+def fetch_official_totals():
+    """{(city, source_year): official total_expenditures} for reconciliation."""
+    rows = soda(DS_PERCAP,
+                **{"$select": "entity_name,fiscal_year,total_expenditures",
+                   "$where": "fiscal_year in("
+                             + ",".join(f"'{y}'" for y in SOURCE_YEARS) + ")"})
+    return {(norm(r["entity_name"]), r["fiscal_year"]):
+            float(r.get("total_expenditures") or 0) for r in rows}
 
 
+# ----------------------------------------------------------------------
+# Sanity checks — the file is not written unless every one passes
+# ----------------------------------------------------------------------
+def sanity_check(years_data, official):
+    errors, warnings = [], []
+    for sy, cities in years_data.items():
+        if len(cities) < 450:
+            errors.append(f"FY {fy_label(sy)}: only {len(cities)} cities (expected ~482)")
+        for name, c in cities.items():
+            if c["pop"] <= 0:
+                warnings.append(f"{name} FY {fy_label(sy)}: population 0")
+            ours = (sum(c["byFunction"].values()) + sum(c["enterprise"].values())
+                    + c["isf"] + c["conduit"])
+            key = (name, sy)
+            if key in official and official[key] > 0:
+                drift = abs(ours - official[key])
+                if drift > max(1000.0, official[key] * 0.001):
+                    errors.append(
+                        f"{name} FY {fy_label(sy)}: our total ${ours:,.0f} vs "
+                        f"official ${official[key]:,.0f} (drift ${drift:,.0f})")
+            elif key not in official:
+                warnings.append(f"{name} FY {fy_label(sy)}: no official total to "
+                                "reconcile against")
+    latest = SOURCE_YEARS[-1]
+    la = years_data[latest].get("Los Angeles")
+    if not la:
+        errors.append("Los Angeles missing from latest year")
+    else:
+        gov = sum(la["byFunction"].values())
+        if not 8e9 < gov < 20e9:
+            errors.append(f"Los Angeles governmental total ${gov:,.0f} out of "
+                          "plausible range")
+    if "San Francisco" not in years_data[latest]:
+        errors.append("San Francisco missing from latest year")
+    return errors, warnings
+
+
+# ----------------------------------------------------------------------
+# Writer
+# ----------------------------------------------------------------------
+def slugify(name: str) -> str:
+    slug = "".join(ch if ch.isalnum() else "-" for ch in name.lower())
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-")
+
+
+def m(v):  # dollars -> millions, 3 decimals
+    return round(v / 1e6, 3)
+
+
+def build_payload(years_data, services):
+    year_labels = [fy_label(y) for y in SOURCE_YEARS]
+    all_names = sorted({n for cities in years_data.values() for n in cities})
+    slugs = {}
+    for name in all_names:
+        s = slugify(name)
+        if s in slugs.values():
+            raise RuntimeError(f"slug collision for {name!r}")
+        slugs[name] = s
+
+    cities_out = {}
+    for name in all_names:
+        slug = slugs[name]
+        entry = {"name": name, "county": "", "years": {}}
+        svc = services.get(name)
+        if svc and (svc["police"] or svc["fire"]):
+            entry["services"] = {
+                k: {"code": v, "label": SERVICE_CODES.get(v, "")}
+                for k, v in svc.items() if v
+            }
+        if name == "San Francisco":
+            entry["flags"] = {"consolidated": True}
+        prev_gov = None
+        for sy in SOURCE_YEARS:
+            c = years_data[sy].get(name)
+            if not c:
+                prev_gov = None
+                continue
+            entry["county"] = c["county"] or entry["county"]
+            gov = sum(c["byFunction"].values())
+            ent = sum(c["enterprise"].values())
+            yr = {
+                "population": c["pop"],
+                "revenues": m(c["revenues"]),
+                "expenditures": m(gov),
+                "byFunction": {k: m(v) for k, v in c["byFunction"].items()
+                               if round(v / 1e6, 3) != 0},
+                "enterprise": {
+                    "total": m(ent),
+                    "revenues": m(c["revenuesEnterprise"]),
+                    "byFund": {k: m(v) for k, v in c["enterprise"].items()
+                               if round(v / 1e6, 3) != 0},
+                },
+            }
+            if round(c["isf"] / 1e6, 3):
+                yr["internalService"] = m(c["isf"])
+            if round(c["conduit"] / 1e6, 3):
+                yr["conduitFinancing"] = m(c["conduit"])
+            notes = []
+            if c["pop"] > 0:
+                if c["byFunction"].get("police", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
+                    notes.append("lowPolice")
+                if c["byFunction"].get("fire", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
+                    notes.append("lowFire")
+            if prev_gov and prev_gov > 0 and (gov / prev_gov > 1.4 or gov / prev_gov < 0.6):
+                notes.append("bigSwing")
+            if notes:
+                yr["notes"] = notes
+            entry["years"][fy_label(sy)] = yr
+            prev_gov = gov
+        if entry["years"]:
+            cities_out[slug] = entry
+
+    return {
+        "meta": {
+            "source": DOMAIN,
+            "sourceLabel": "City annual financial reports, State Controller's "
+                           "Office “By the Numbers” "
+                           "(bythenumbers.sco.ca.gov) — reported actual "
+                           "expenditures and revenues",
+            "generated": date.today().isoformat(),
+            "units": "millions of dollars",
+            "basis": "Reported actual revenues and expenditures from each "
+                     "city's annual financial report to the State Controller. "
+                     "Governmental activities are shown by function; "
+                     "ratepayer-funded enterprise activities (water, power, "
+                     "airports, harbors…) are shown separately. Internal "
+                     "service funds and conduit financing are excluded from "
+                     "both blocks.",
+            "servicesChecklistVintage": "2015-16",
+            "datasets": {"expenditures": DS_EXPEND, "revenues": DS_REVEN,
+                         "perCapita": DS_PERCAP, "services": DS_SERVICES},
+        },
+        "years": year_labels,
+        "functions": [{"key": k, "name": n} for k, n in FUNCTIONS],
+        "enterpriseFunds": [{"key": k, "name": n} for k, n in ENTERPRISE_FUNDS],
+        "cities": cities_out,
+    }
+
+
+def write_city_js(payload):
+    header = ("/* GENERATED by pipeline/fetch_city_data.py on "
+              f"{date.today().isoformat()} from State Controller's Office "
+              "data (bythenumbers.sco.ca.gov) — do not edit by hand. */\n")
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+    OUT_PATH.write_text(header + "window.CA_CITY_DATA = " + body + ";\n",
+                        encoding="utf-8")
+    print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB, "
+          f"{len(payload['cities'])} cities, {len(payload['years'])} years)")
+
+
+# ----------------------------------------------------------------------
+# Main
+# ----------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(
-        description="Rebuild city-data.js from SCO 'By the Numbers' (Socrata)")
+        description="Rebuild city-data.js from SCO 'By the Numbers'")
     ap.add_argument("--inspect", action="store_true",
-                    help="search the Socrata catalog for candidate datasets")
-    ap.add_argument("--dataset", default=DATASET_ID,
-                    help="Socrata dataset id (xxxx-xxxx)")
-    ap.add_argument("--cities", nargs="*", default=None,
-                    help="limit to these city names")
+                    help="print dataset ids and a sample row, then exit")
     ap.add_argument("--write", action="store_true",
-                    help="actually rewrite city-data.js (default: dry run)")
+                    help="rewrite city-data.js (default: dry run)")
     args = ap.parse_args()
 
     if args.inspect:
-        inspect()
+        rows = soda(DS_EXPEND, **{"$limit": 1})
+        print("Datasets:", DS_EXPEND, DS_REVEN, DS_PERCAP, DS_SERVICES)
+        print("Sample expenditure row:", json.dumps(rows[0], indent=2))
         return
-    if not args.dataset:
-        sys.exit("No dataset id known yet. Run --inspect first (from a "
-                 "network that can reach %s)." % SCO_DOMAIN)
-    if args.cities or args.write:
-        fetch(args.dataset, args.cities, args.write)
-    else:
-        sample_rows(args.dataset)
+
+    print("Fetching official per-city totals (reconciliation target)…",
+          file=sys.stderr)
+    official = fetch_official_totals()
+    print(f"  {len(official):,} city-year totals", file=sys.stderr)
+    print("Fetching services checklist…", file=sys.stderr)
+    services = fetch_services()
+
+    years_data = {}
+    for sy in SOURCE_YEARS:
+        years_data[sy] = fetch_year(sy)
+
+    errors, warnings = sanity_check(years_data, official)
+    for w in warnings[:20]:
+        print(f"  note: {w}", file=sys.stderr)
+    if len(warnings) > 20:
+        print(f"  … and {len(warnings) - 20} more notes", file=sys.stderr)
+    if errors:
+        for e in errors[:40]:
+            print(f"  FAIL: {e}", file=sys.stderr)
+        sys.exit(f"{len(errors)} sanity check failure(s) — city-data.js "
+                 "left untouched.")
+    print("All sanity checks passed (every city-year reconciles against the "
+          "official SCO per-capita dataset totals).", file=sys.stderr)
+
+    payload = build_payload(years_data, services)
+    if not args.write:
+        latest = payload["years"][-1]
+        la = payload["cities"]["los-angeles"]["years"][latest]
+        print(json.dumps({"meta": payload["meta"],
+                          "losAngeles " + latest: la}, indent=2)[:1500])
+        sys.exit("Dry run complete — re-run with --write to rebuild "
+                 "city-data.js.")
+    write_city_js(payload)
 
 
 if __name__ == "__main__":

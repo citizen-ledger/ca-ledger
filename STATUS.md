@@ -355,8 +355,88 @@ data tasks remain pending. Exact findings:
   simulated `/ca-ledger/` subpath, so they will emit the public URL
   as soon as the page is served from it.
 
+## Reproducibility verified from an unrestricted network (2026-07-13)
+
+The pending V1 reproducibility check ran from a machine with normal
+egress (ebudget.ca.gov reachable, HTTP 200):
+
+- `python3 pipeline/fetch_state_data.py --refresh` refetched all six
+  enacted years live (~3,000 API requests). Every year reconciled
+  against the API's `stateGrandTotal` as before; the same two known
+  plausibility notices printed (the official negative special-fund
+  totals in 2022-23).
+- The regenerated `data.js` differed from the committed one in exactly
+  two lines: the generated-on date in the header comment and
+  `meta.generated` (2026-07-08 → 2026-07-13). **Every data byte was
+  identical.** The committed file was left in place; there is nothing
+  substantive to update.
+- The 2026-27 "Enacted" publication was re-checked and is still the
+  empty stub (publication date "January 01, 9999"); the pipeline
+  correctly excludes it.
+
+## V2 city data loaded from the live SCO API (2026-07-13)
+
+Both hosts the earlier sessions could not reach were reachable from
+this machine (HTTP 200), so the pending network tasks ran.
+
+**Datasets verified on bythenumbers.sco.ca.gov (Socrata):**
+`ju3w-4gxp` City - Expenditures, `rrtv-rsj9` City - Revenues,
+`ykhf-vfsr` City Expenditures Per Capita (official totals, used as the
+reconciliation target), `tsz3-29gc` Check List of Services Provided
+(FY 2015-16 vintage; provision codes A-K decoded from the dataset's
+"City Service Codes.docx" attachment). `fiscal_year` is the ending
+year ("2024" = FY 2023-24); values are dollars; population is
+`estimated_population` from the same filing.
+
+**Structure found and encoded:** `category` distinguishes governmental
+activity (function groups in `subcategory_1`, lines like
+"Police_Current Expenditures" in `subcategory_2`) from ten
+"… Enterprise Fund" categories, Internal Service Fund, and Conduit
+Financing. The load keeps governmental and enterprise blocks separate,
+excludes internal service and conduit from both, and maps whole SCO
+lines to 15 display functions (police, fire, other public safety,
+streets & transportation, community development & housing, sewer &
+solid waste, health & welfare, parks, libraries, other culture &
+leisure, governmental public utilities, general government, other,
+debt service, capital outlay) — nothing dropped, nothing counted
+twice: the identity gov + enterprise + internal service + conduit =
+official SCO total was verified for Los Angeles by hand
+($21,517,484,103 exactly) and is enforced by the pipeline for every
+city-year; a load that fails it will not write city-data.js.
+
+**Loaded:** 482 cities × 8 fiscal years (2016-17 … 2023-24), all
+3,856 city-years reconciled, zero sanity-check failures.
+city-data.js is 1.4 MB (compact JSON).
+
+**Comparability requirements, as implemented:**
+- Contract cities: checklist codes (e.g. Lakewood police = "contract
+  with the county", fire = "special district without city contract" —
+  calibration: Lakewood $103/resident police vs Los Angeles $855)
+  plus a current-year flag when a line is under $5/resident. Footnoted
+  in city detail, comparison, CSVs, and citations.
+- Enterprise funds: comparison view and function figures are
+  governmental-only (stated in the UI); each city's enterprise
+  activities render as their own block.
+- San Francisco: flagged consolidated (confirmed from the data — it is
+  the only city reporting county lines such as Assessor and District
+  Attorney).
+- Capital/debt spikes: capital outlay and debt service are visible
+  functions, and a >±40% year-over-year swing in governmental
+  expenditures footnotes the year.
+- Population: same-filing figure, never a mixed vintage.
+
+The comparison view therefore ships with real data (the documented
+fallback — detail-only — was not needed). The services-checklist
+vintage (FY 2015-16, the most recent the SCO publishes) is stated
+wherever its codes appear.
+
 ## Update cadence
 
-One new fiscal year per annual Budget Act (late June). Run
+State: one new fiscal year per annual Budget Act (late June). Run
 `python3 pipeline/fetch_state_data.py` after enactment; update the
 population constant annually from DOF E-4.
+
+Cities: one new fiscal year per SCO filing cycle (reports for a fiscal
+year appear on By the Numbers roughly a year later). Run
+`python3 pipeline/fetch_city_data.py --write`; extend `SOURCE_YEARS`
+when a new year appears.
