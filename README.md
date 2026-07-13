@@ -15,6 +15,7 @@ and it works — including offline.
 | `city-data.js` | The city dataset: all 482 reporting cities × 8 fiscal years (2016-17 through 2023-24) of reported actual revenues and expenditures, generated from official SCO data. |
 | `pipeline/fetch_city_data.py` | Regenerates `city-data.js` from the SCO "By the Numbers" Socrata API. Refuses to write unless every city-year total reconciles against the SCO's own published totals. |
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
+| `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the projection constants the map's dots use. |
 | `tests/run_tests.py` | Headless test suite — one command, 135 assertions on the real data. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
@@ -38,7 +39,8 @@ python3 -m http.server 8000     # then open http://localhost:8000
 - **Cite + Download CSV** — a plain-text citation to the clipboard, and a CSV whose header names the source, basis, generation date, and permalink.
 - **Saved views** — stored in localStorage on the reader's device only.
 - **Record integrity** — each data file carries a SHA-256 digest, displayed on the page with instructions to verify it independently.
-- **Neutrality by construction** — direction is ▲▼ in ink, never red/green; the single blue is reserved for interactive controls; cities are always alphabetical.
+- **Map view (city page)** — a Search/Map toggle beside the search picker: California outline as plain inline SVG (no tile services, no libraries), one dot per city with area scaled to population, neutral regional zooms for the dense metros, keyboard-accessible dots, and selection identical to the search picker. Dots are uniform ink — the map shows where, never how much.
+- **Neutrality by construction** — direction is ▲▼ in ink, never red/green; the single blue is reserved for interactive controls; cities are always alphabetical; map dots never encode spending.
 - Keyboard-navigable, print-ready (a citation header prints with the page).
 
 ## The data

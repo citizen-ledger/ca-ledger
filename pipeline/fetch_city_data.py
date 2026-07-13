@@ -77,6 +77,7 @@ import json
 import re
 import sys
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 from collections import defaultdict
@@ -160,6 +161,18 @@ SERVICE_CODES = {
 OUT_PATH = Path(__file__).resolve().parent.parent / "city-data.js"
 MAX_RETRIES = 3
 PAGE = 50000
+
+# U.S. Census Bureau place gazetteer (public domain): lat/lng for every
+# incorporated place in California. LSAD 25 = city, 43 = town; the 482
+# incorporated places match the SCO's 482 reporting cities one-to-one.
+GAZETTEER_URL = ("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
+                 "2024_Gazetteer/2024_gaz_place_06.txt")
+# SCO entity names that differ from the gazetteer beyond normalization
+# (verified 2026-07-13). Report-and-fail on anything new — never guess.
+GAZETTEER_ALIASES = {
+    "amador": "amador city",       # SCO "Amador" = Census "Amador City city"
+    "mt shasta": "mount shasta",   # SCO "Mt. Shasta" = Census "Mount Shasta city"
+}
 
 
 # ----------------------------------------------------------------------
@@ -327,6 +340,44 @@ def fetch_services():
     return out
 
 
+def _norm_place(s):
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    s = s.lower().replace(".", "").replace(",", "").replace("'", "")
+    return re.sub(r"[\s-]+", " ", s).strip()
+
+
+def fetch_coordinates():
+    """{normalized place name: (lat, lng)} from the Census gazetteer."""
+    req = urllib.request.Request(GAZETTEER_URL, headers={
+        "User-Agent": "ca-ledger-pipeline/2.0"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        lines = r.read().decode("utf-8").splitlines()
+    header = [c.strip() for c in lines[0].split("\t")]
+    idx = {c: header.index(c) for c in ("NAME", "LSAD", "INTPTLAT", "INTPTLONG")}
+    out = {}
+    for line in lines[1:]:
+        cols = line.split("\t")
+        if cols[idx["LSAD"]].strip() not in ("25", "43"):   # city, town
+            continue
+        base = re.sub(r"\s+(city|town)$", "", cols[idx["NAME"]].strip())
+        latlng = (round(float(cols[idx["INTPTLAT"]]), 5),
+                  round(float(cols[idx["INTPTLONG"]]), 5))
+        keys = {_norm_place(base)}
+        m = re.match(r"^(.*)\((.*)\)\s*$", base)
+        if m:
+            keys.add(_norm_place(m.group(1)))
+            keys.add(_norm_place(m.group(2)))
+        for k in keys:
+            out[k] = latlng
+    print(f"  gazetteer: {len(out)} place-name keys", file=sys.stderr)
+    return out
+
+
+def coord_for(name, gaz):
+    k = _norm_place(name)
+    return gaz.get(GAZETTEER_ALIASES.get(k, k))
+
+
 def fetch_official_totals():
     """{(city, source_year): official total_expenditures} for reconciliation."""
     rows = soda(DS_PERCAP,
@@ -388,7 +439,7 @@ def m(v):  # dollars -> millions, 3 decimals
     return round(v / 1e6, 3)
 
 
-def build_payload(years_data, services):
+def build_payload(years_data, services, gaz):
     year_labels = [fy_label(y) for y in SOURCE_YEARS]
     all_names = sorted({n for cities in years_data.values() for n in cities})
     slugs = {}
@@ -402,6 +453,9 @@ def build_payload(years_data, services):
     for name in all_names:
         slug = slugs[name]
         entry = {"name": name, "county": "", "years": {}}
+        coord = coord_for(name, gaz)
+        if coord:
+            entry["lat"], entry["lng"] = coord
         svc = services.get(name)
         if svc and (svc["police"] or svc["fire"]):
             entry["services"] = {
@@ -514,12 +568,21 @@ def main():
     print(f"  {len(official):,} city-year totals", file=sys.stderr)
     print("Fetching services checklist…", file=sys.stderr)
     services = fetch_services()
+    print("Fetching Census place gazetteer (coordinates)…", file=sys.stderr)
+    gaz = fetch_coordinates()
 
     years_data = {}
     for sy in SOURCE_YEARS:
         years_data[sy] = fetch_year(sy)
 
     errors, warnings = sanity_check(years_data, official)
+    # coordinate coverage: report failures rather than guessing or
+    # silently dropping — an unmatched city fails the write.
+    unmatched = sorted({n for cities in years_data.values() for n in cities
+                        if not coord_for(n, gaz)})
+    for n in unmatched:
+        errors.append(f"no gazetteer coordinate match for {n!r} — add an "
+                      "explicit entry to GAZETTEER_ALIASES")
     for w in warnings[:20]:
         print(f"  note: {w}", file=sys.stderr)
     if len(warnings) > 20:
@@ -532,7 +595,7 @@ def main():
     print("All sanity checks passed (every city-year reconciles against the "
           "official SCO per-capita dataset totals).", file=sys.stderr)
 
-    payload = build_payload(years_data, services)
+    payload = build_payload(years_data, services, gaz)
     if not args.write:
         latest = payload["years"][-1]
         la = payload["cities"]["los-angeles"]["years"][latest]

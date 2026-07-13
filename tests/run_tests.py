@@ -492,6 +492,103 @@ def test_v2(page, base):
     check("V2 methodology: reconciliation stated", "reconciled against" in body)
     banned_scan(page, "V2")
 
+def test_map(page, base):
+    # data-level: coordinate coverage for every city, within California
+    missing = [k for k, c in CITY["cities"].items()
+               if "lat" not in c or "lng" not in c]
+    check("map: every city has coordinates", not missing, str(missing[:5]))
+    bad = [k for k, c in CITY["cities"].items()
+           if not (32.4 <= c.get("lat", 0) <= 42.1 and -124.5 <= c.get("lng", 0) <= -114.0)]
+    check("map: all coordinates within California bounds", not bad, str(bad[:5]))
+
+    # map view renders behind the toggle; search picker unchanged
+    page.goto(f"{base}/cities.html")
+    page.wait_for_selector("#pickerModeGroup button")
+    check("map: hidden by default", page.is_hidden("#mapPanel"))
+    check("map: search picker visible by default", page.is_visible("#citySearch"))
+    page.click('#pickerModeGroup [data-mode="map"]')
+    page.wait_for_selector("#mapDots circle")
+    check("map: panel shown, search hidden",
+          page.is_visible("#mapPanel") and page.is_hidden("#citySearch"))
+    check("map: one dot per city",
+          page.locator("#mapDots circle").count() == len(CITY["cities"]))
+    check("map: outline present", page.locator("#mapSvg path.outline").count() == 1)
+    check("map: hash encodes view", "p=map" in page.evaluate("location.hash"))
+
+    # HARD NEUTRALITY: dots are never colored by spending — with nothing
+    # selected, every dot must share one identical computed fill (ink)
+    fills = page.evaluate(
+        "[...new Set([...document.querySelectorAll('#mapDots circle')]"
+        ".map(d=>getComputedStyle(d).fill))]")
+    check("map neutrality: single uniform dot fill", len(fills) == 1, str(fills))
+    check("map neutrality: fill is ink", fills[0] == "rgb(36, 36, 36)", fills[0])
+    ops = page.evaluate(
+        "[...new Set([...document.querySelectorAll('#mapDots circle')]"
+        ".map(d=>getComputedStyle(d).opacity))]")
+    check("map neutrality: single uniform dot opacity", len(ops) == 1, str(ops))
+
+    # dot semantics: area from population, keyboard-accessible buttons
+    lk_pop = CITY["cities"]["lakewood"]["years"][CITY["years"][-1]]["population"]
+    lk_dot = page.locator('#mapDots circle[aria-label^="Lakewood,"]')
+    aria = lk_dot.get_attribute("aria-label")
+    check("map a11y: aria-label carries population", f"{lk_pop:,}" in aria, aria)
+    check("map a11y: dot is a tabbable button",
+          lk_dot.get_attribute("role") == "button" and lk_dot.get_attribute("tabindex") == "0")
+
+    # keyboard selection produces identical state to the search picker
+    page.click('#regionGroup [data-region="la"]')
+    lk_dot.focus()
+    check("map readout: name + population on focus",
+          "LAKEWOOD" in page.inner_text("#mapReadout")
+          and f"{lk_pop:,}" in page.inner_text("#mapReadout"),
+          page.inner_text("#mapReadout"))
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#recordBody .det-row")
+    map_hash = page.evaluate("location.hash")
+    map_sched = page.inner_text("#scheduleLabel")
+    check("map selection: city selected via keyboard", "c=lakewood" in map_hash, map_hash)
+    check("map selection: region encoded", "r=la" in map_hash)
+    # same selection through the search picker, for parity
+    page.goto(f"{base}/cities.html")
+    page.fill("#citySearch", "Lakewood")
+    page.wait_for_selector("#cityList button")
+    page.click("#cityList button >> nth=0")
+    page.wait_for_selector("#recordBody .det-row")
+    search_hash = page.evaluate("location.hash")
+    check("map selection: identical record state as search selection",
+          page.inner_text("#scheduleLabel") == map_sched,
+          page.inner_text("#scheduleLabel"))
+    check("map selection: identical c= param as search selection",
+          "c=lakewood" in search_hash and "p=map" not in search_hash, search_hash)
+
+    # selected dots reuse the comparison swatches in alphabetical order
+    page.goto(f"{base}/cities.html#p=map&c=santa-monica,lakewood,san-francisco")
+    page.wait_for_selector("#mapDots circle.sel")
+    sel = page.evaluate(
+        "[...document.querySelectorAll('#mapDots circle.sel')]"
+        ".map(d=>({n:d.getAttribute('aria-label').split(',')[0], f:d.getAttribute('fill')}))")
+    by_name = {s["n"]: s["f"] for s in sel}
+    check("map selected swatches: alphabetical ramp order",
+          by_name.get("Lakewood") == "#242424"
+          and by_name.get("San Francisco") == "#6f6c69"
+          and by_name.get("Santa Monica") == "#a39f9c", str(by_name))
+
+    # permalink round-trip with view + region params
+    page.goto(f"{base}/cities.html#p=map&r=bay&c=lakewood")
+    page.wait_for_selector("#mapDots circle")
+    check("map hash restore: map view active",
+          "on" in (page.get_attribute('#pickerModeGroup [data-mode="map"]', "class") or ""))
+    check("map hash restore: region pill",
+          "on" in (page.get_attribute('#regionGroup [data-region="bay"]', "class") or ""))
+    check("map hash restore: zoomed viewBox",
+          page.get_attribute("#mapSvg", "viewBox") != "0.0 0.0 600.0 695.6",
+          page.get_attribute("#mapSvg", "viewBox"))
+    page.click('#pickerModeGroup [data-mode="search"]')
+    check("map -> search removes view param",
+          "p=map" not in page.evaluate("location.hash"))
+    check("map -> search keeps selection", "c=lakewood" in page.evaluate("location.hash"))
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -512,6 +609,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_v2(page, base)
+            test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()
