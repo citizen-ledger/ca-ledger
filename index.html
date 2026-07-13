@@ -3,384 +3,409 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The California Ledger — where the money goes</title>
+<title>The California Ledger — State budget</title>
 <meta name="description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
 <link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="The California Ledger">
-<meta property="og:title" content="The California Ledger — where the money goes">
+<meta property="og:title" content="The California Ledger — State budget">
 <meta property="og:description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
 <meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="The California Ledger — where the money goes">
+<meta name="twitter:title" content="The California Ledger — State budget">
 <meta name="twitter:description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* ============ THE LEDGER DESIGN SYSTEM ============
+     Square = citable record · Pill = operable control
+     Blue #2b59d1 is reserved for interactive affordances only.
+     Data uses a warm grayscale ramp; direction is ▲▼ in ink, never color. */
   :root{
-    --paper:#F7F8F4;
-    --paper-raised:#FFFFFF;
-    --ink:#15231D;
-    --ink-soft:#43554B;
-    --muted:#6E7D73;
-    --rule:#D8E1D7;
-    --rule-strong:#B9C7BB;
-    --green:#1B6B52;
-    --green-deep:#0E4634;
-    --green-wash:#E8F0EA;
-    --gold:#A8842B;
-    --gold-wash:#F4EDDC;
-    --blue:#31607F;
-    --brick:#A3492D;
-    --focus:#1B6B52;
-    --serif:"IBM Plex Serif",Georgia,serif;
-    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
-    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion: reduce){
-    html{scroll-behavior:auto}
-    *,*::before,*::after{animation:none!important;transition:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{
+    .np{display:none!important} .po{display:block!important}
+    body{background:#fff}
+    .record{box-shadow:none!important}
   }
-  body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:var(--sans);
-    font-size:16px;
-    line-height:1.55;
-    /* the ledger ruling: faint horizontal rules across the whole page */
-    background-image:repeating-linear-gradient(to bottom, transparent 0 31px, rgba(27,107,82,.055) 31px 32px);
-  }
-  a{color:var(--green);text-underline-offset:3px}
-  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 
-  /* ---- sample banner ---- */
-  .banner{
-    background:var(--gold-wash);
-    border-bottom:1px solid var(--gold);
-    font-family:var(--mono);font-size:12.5px;color:#6b571f;
-    padding:8px 0;text-align:center;letter-spacing:.02em;
-  }
-  .banner strong{color:#5a470f}
+  /* header */
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  nav.pn{display:flex;gap:6px}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .hd-actions{display:flex;gap:8px}
+  .btn{font-size:12.5px;border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
 
-  /* ---- masthead ---- */
-  header.masthead{border-bottom:3px double var(--rule-strong);padding:44px 0 26px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:10px}
-  h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,5.4vw,52px);line-height:1.06;letter-spacing:-.01em}
-  .masthead p.dek{max-width:56ch;color:var(--ink-soft);margin-top:14px;font-size:17px}
-  .page-nav{font-family:var(--mono);font-size:12.5px;margin-top:12px}
+  /* provenance strip */
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
 
-  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:26px}
-  .control{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft)}
-  select{
-    font-family:var(--mono);font-size:14px;color:var(--ink);
-    background:var(--paper-raised);border:1px solid var(--rule-strong);
-    border-radius:4px;padding:7px 10px;cursor:pointer;
-  }
-  .switch{
-    display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;
-    font-size:14px;color:var(--ink-soft);
-  }
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
+
+  /* hero */
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  .dek{font-size:15px;color:var(--graphite);margin-top:12px;max-width:480px;line-height:1.5}
+  .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  .hero-sub{font-family:var(--mono);font-size:12px;color:var(--graphite);margin-top:10px}
+  .hero-lbl{font-family:var(--mono);font-size:10.5px;color:var(--smoke);margin-top:4px}
+  .hero-right{text-align:right}
+
+  /* controls */
+  .controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:34px;flex-wrap:wrap}
+  .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:12.5px;color:var(--ink);border-left:1px solid var(--ash)}
+  .pillgroup>button:first-child{border-left:none}
+  .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
+  .stepper button{color:var(--smoke);padding:9px 14px}
+  .stepper button:hover{background:var(--wash);color:var(--ink)}
+  .stepper select{border:none;background:transparent;font-family:var(--mono);font-size:12.5px;color:var(--ink);cursor:pointer;-webkit-appearance:none;appearance:none;text-align:center;padding:9px 2px}
+  .switch{display:inline-flex;border:1px solid var(--ash);border-radius:9999px;overflow:hidden;cursor:pointer;user-select:none}
   .switch input{position:absolute;opacity:0;width:1px;height:1px}
-  .track{
-    width:38px;height:21px;border-radius:11px;background:#c9d4ca;position:relative;flex:none;
-    transition:background .18s ease;
-  }
-  .track::after{
-    content:"";position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;
-    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .18s ease;
-  }
-  .switch input:checked + .track{background:var(--green)}
-  .switch input:checked + .track::after{transform:translateX(16px)}
-  .switch input:focus-visible + .track{outline:2px solid var(--focus);outline-offset:2px}
+  .switch .pill-off,.switch .pill-on{padding:9px 16px;font-size:12.5px}
+  .switch .pill-on{display:none}
+  .switch input:checked ~ .pill-on{display:inline-block;background:var(--ink);color:var(--parchment)}
+  .switch input:checked ~ .pill-off{display:none}
+  .switch input:focus-visible ~ .pill-off,.switch input:focus-visible ~ .pill-on{outline:2px solid var(--blue);outline-offset:-2px}
+  input[type="search"]{font-family:var(--mono);font-size:12.5px;padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:190px}
+  input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
 
-  .totals{margin-top:26px;display:flex;flex-wrap:wrap;gap:34px;align-items:baseline}
-  .total-main .num{font-family:var(--mono);font-size:clamp(32px,4.4vw,44px);font-weight:500;letter-spacing:-.02em}
-  .total-main .lbl,.total-sub .lbl{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
-  .total-sub .num{font-family:var(--mono);font-size:20px;color:var(--ink-soft)}
-  .delta-up{color:var(--brick)} .delta-down{color:var(--green)}
+  /* cite + saved panels (square = record) */
+  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:20px}
+  .cite-inner{border-top:3px solid var(--ink);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
+  .saved-panel{border:1px solid var(--ash);background:var(--surface);margin-top:20px;padding:16px 22px}
+  .saved-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-top:1px solid var(--hairline);margin-top:8px;flex-wrap:wrap}
+  .btn.sm{padding:6px 14px;font-size:11.5px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:12px}
+  .xbtn:hover{color:var(--ink)}
 
-  /* ---- sections ---- */
-  section{padding:44px 0 8px}
-  h2{font-family:var(--serif);font-weight:600;font-size:25px;margin-bottom:4px}
-  .sec-note{color:var(--muted);font-size:14px;margin-bottom:20px;max-width:66ch}
+  /* record surface */
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  .sched-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .schedlbl{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  .crumbs{display:flex;gap:8px;align-items:baseline;font-family:var(--mono);font-size:12px}
+  .crumbs button{border:none;background:transparent;padding:0;cursor:pointer;font-family:inherit;font-size:12px;color:var(--ink)}
+  .crumbs button.link{color:var(--blue);text-decoration:underline}
+  .crumbs button.link:hover{color:var(--blue-hover)}
 
-  /* ---- appropriation bar (signature) ---- */
-  .approp{display:flex;height:88px;border:1px solid var(--rule-strong);border-radius:5px;overflow:hidden;background:var(--paper-raised)}
-  .seg{
-    position:relative;min-width:3px;border-right:1px solid rgba(255,255,255,.55);
-    cursor:pointer;border-top:none;border-bottom:none;border-left:none;padding:0;
-    transition:filter .15s ease;
-  }
-  .seg:last-child{border-right:none}
-  .seg:hover,.seg[aria-pressed="true"]{filter:brightness(1.14)}
-  .seg[aria-pressed="true"]::after{
-    content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--ink);
-  }
-  .seg .in-label{
-    position:absolute;left:8px;top:8px;text-align:left;color:#fff;
-    font-family:var(--mono);font-size:11.5px;line-height:1.3;pointer-events:none;
-    text-shadow:0 1px 1px rgba(0,0,0,.35);max-width:calc(100% - 12px);overflow:hidden;
-  }
-  .in-label b{display:block;font-weight:500;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-  .legend{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:14px}
-  .chip{
-    display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);
-    background:none;border:none;cursor:pointer;padding:3px 4px;font-family:var(--sans);
-  }
-  .chip:hover .chip-name,.chip.active .chip-name{text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
-  .chip .sw{width:11px;height:11px;border-radius:2.5px;flex:none}
-  .chip .amt{font-family:var(--mono);font-size:12px;color:var(--muted)}
-  .bar-hint{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+  .ruler{position:relative;height:22px;border-bottom:1px solid var(--ink);margin-top:20px}
+  .ruler i{position:absolute;bottom:0;height:6px;border-left:1px solid var(--ink)}
+  .ruler b{position:absolute;bottom:9px;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--smoke);white-space:nowrap}
 
-  /* ---- detail panel ---- */
-  .detail{
-    display:none;margin-top:22px;background:var(--paper-raised);
-    border:1px solid var(--rule-strong);border-left:5px solid var(--green);
-    border-radius:5px;padding:24px 26px;
-  }
-  .detail.open{display:block;animation:rise .25s ease}
-  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-  .detail h3{font-family:var(--serif);font-size:21px;font-weight:600}
-  .detail .detail-total{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-top:3px}
-  .close-btn,.action-btn{
-    background:none;border:1px solid var(--rule-strong);border-radius:4px;
-    font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);padding:6px 12px;cursor:pointer;
-  }
-  .close-btn:hover,.action-btn:hover{border-color:var(--ink-soft);color:var(--ink)}
-  .detail-actions{display:flex;gap:10px;align-items:flex-start}
-  .fund-strip{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:16px 0 8px;border:1px solid var(--rule)}
-  .fund-strip div{height:100%}
-  .fund-key{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
-  .fund-key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
-  .dept-rows{margin-top:20px;border-top:1px solid var(--rule)}
-  .dept-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(120px,2fr) 110px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
-  .dept-row .nm{font-size:14.5px}
-  .dept-row .bar{height:15px;background:var(--green-wash);border-radius:3px;overflow:hidden}
-  .dept-row .bar i{display:block;height:100%;background:var(--green)}
-  .dept-row .amt{font-family:var(--mono);font-size:14px;text-align:right}
+  .bar{display:flex;height:64px;gap:2px;margin-top:10px}
+  .bar button{border:none;padding:0;min-width:3px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;overflow:hidden;border-radius:1px}
+  .bar button:hover{box-shadow:inset 0 0 0 2px var(--blue)}
+  .bar .seg-name{padding:0 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .bar .seg-val{padding:0 12px;font-family:var(--mono);font-size:11px;opacity:.8}
+  .ghost{display:flex;gap:2px;height:7px;margin-top:4px}
+  .ghost i{border:1px solid var(--faint);border-radius:1px;min-width:2px}
+  .ghost-cap{text-align:right;font-family:var(--mono);font-size:9.5px;color:var(--ghost);margin-top:3px}
+  .readout{display:flex;gap:20px;align-items:baseline;margin-top:14px;min-height:20px;font-family:var(--mono);font-size:12.5px;flex-wrap:wrap}
+  .readout .ro-name{font-weight:600}
+  .readout .dim{color:var(--smoke)}
+  .plain{font-size:14.5px;color:var(--graphite);margin-top:10px;max-width:640px;line-height:1.55}
+  .viewrule{border-top:1px solid var(--hairline);margin-top:22px}
 
-  /* ---- fund sources ---- */
-  .funds{display:grid;gap:14px;max-width:760px}
-  .fund{display:grid;grid-template-columns:190px 1fr 105px;gap:14px;align-items:center}
-  .fund .nm{font-size:14.5px;color:var(--ink-soft)}
-  .fund .bar{height:22px;background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
-  .fund .bar i{display:block;height:100%}
-  .fund .amt{font-family:var(--mono);font-size:14px;text-align:right}
-  .fund small{display:block;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  /* allocation table */
+  .tblwrap{overflow-x:auto}
+  .alloc{min-width:760px;margin-top:6px}
+  .arow{display:grid;grid-template-columns:14px 1fr 124px 80px 104px;gap:0 14px;align-items:center}
+  .ahead{padding:10px 0 8px;border-bottom:1px solid var(--ink)}
+  .ahead button,.ahead span{border:none;background:transparent;padding:0;text-align:right;font-family:var(--mono);font-size:11px;color:var(--smoke)}
+  .ahead button{cursor:pointer}
+  .ahead button:hover{color:var(--ink)}
+  .ahead .l{text-align:left}
+  .abody .arow{padding:11px 0;border-bottom:1px solid var(--hairline)}
+  .abody .arow.click{cursor:pointer}
+  .abody .arow.click:hover{background:var(--wash-in)}
+  .sw{width:11px;height:11px;border-radius:2px}
+  .aname{display:flex;align-items:baseline;gap:6px;font-size:14.5px}
+  .dagger{border:none;background:transparent;color:var(--smoke);cursor:pointer;font-size:13px;padding:0 2px;font-family:var(--serif)}
+  .dagger:hover{color:var(--blue)}
+  .num{text-align:right;font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+  .num.dim{font-size:12.5px;color:var(--smoke)}
+  .num.delta{font-size:12.5px}
+  .note-row{padding:10px 14px 12px 28px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:12.5px;color:var(--graphite);line-height:1.5}
+  .afoot{padding:12px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  .afoot .num{font-weight:600}
+  .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
 
-  /* ---- trend ---- */
-  .trend-box{background:var(--paper-raised);border:1px solid var(--rule);border-radius:5px;padding:22px 22px 12px;max-width:860px}
-  .trend-box svg{width:100%;height:auto;display:block}
-  .tick-lbl{font-family:var(--mono);font-size:11px;fill:var(--muted)}
-  .pt-lbl{font-family:var(--mono);font-size:11.5px;fill:var(--ink)}
+  /* change view */
+  .chg{min-width:760px;margin-top:14px}
+  .chg-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .chg-axishead{display:grid;grid-template-columns:1fr 1fr;margin:16px 118px 0 204px;padding:6px 0;border-bottom:1px solid var(--ink);font-family:var(--mono);font-size:11px;color:var(--smoke)}
+  .chg-row{display:grid;grid-template-columns:190px 1fr 104px;gap:0 14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--hairline)}
+  .chg-mid{display:flex;align-items:center;height:26px}
+  .chg-mid .l{flex:1;display:flex;justify-content:flex-end}
+  .chg-mid .axis{width:1px;height:26px;background:var(--smoke);flex:none}
+  .chg-mid .r{flex:1}
+  .chg-mid .l i,.chg-mid .r i{display:block;height:16px;background:var(--ink)}
+  .chg-mid .l i{border-radius:2px 0 0 2px}
+  .chg-mid .r i{border-radius:0 2px 2px 0}
+  .chg-sum{display:flex;gap:28px;margin-top:16px;font-family:var(--mono);font-size:12.5px;flex-wrap:wrap}
+  .empty{margin-top:20px;border:1px solid var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
 
-  /* ---- table ---- */
-  .table-tools{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  input[type="search"]{
-    font-family:var(--sans);font-size:14px;padding:8px 12px;min-width:250px;
-    border:1px solid var(--rule-strong);border-radius:4px;background:var(--paper-raised);color:var(--ink);
-  }
-  .table-scroll{overflow-x:auto;background:var(--paper-raised);border:1px solid var(--rule-strong);border-radius:5px}
-  table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
-  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
-  th:first-child,td:first-child{text-align:left}
-  td:first-child{font-weight:500}
-  thead th{
-    font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
-    color:var(--muted);cursor:pointer;user-select:none;background:var(--green-wash);
-    border-bottom:1px solid var(--rule-strong);position:sticky;top:0;
-  }
-  thead th:hover{color:var(--ink)}
-  thead th .arrow{font-size:10px}
-  tbody td{font-family:var(--mono);font-size:13.5px}
-  tbody td:first-child{font-family:var(--sans);font-size:14px}
-  tbody tr{cursor:pointer}
-  tbody tr:hover{background:var(--green-wash)}
-  tbody tr.total-row{font-weight:600;background:var(--paper)}
-  tbody tr.total-row td{border-top:2px solid var(--rule-strong)}
-  .share-cell{color:var(--muted)}
-  thead th .sort-btn{
-    background:none;border:none;cursor:pointer;padding:0;
-    font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;
-  }
-  thead th .sort-btn:hover{color:var(--ink)}
+  /* trend view */
+  .trend-note{font-size:14px;color:var(--graphite)}
+  .trend-cols{display:flex;gap:10px;margin-top:16px}
+  .tcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .tcol .tv{font-family:var(--mono);font-size:12px}
+  .tcol .tbox{height:140px;display:flex;align-items:flex-end;width:100%}
+  .tcol .tbox i{width:100%;border-radius:2px 2px 0 0}
+  .tcol .ty{font-family:var(--mono);font-size:11px;color:var(--smoke)}
+  .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:30px}
+  .tcard{border:1px solid var(--hairline);padding:16px;background:var(--parchment)}
+  .tcard .tn{font-size:13px;line-height:1.3;min-height:34px}
+  .tcard .tb{display:flex;align-items:flex-end;gap:4px;height:56px;margin-top:8px}
+  .tcard .tb i{flex:1;border-radius:2px 2px 0 0}
+  .tcard .tf{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--smoke)}
 
-  /* ---- export controls ---- */
-  .tool-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .raw-link{font-family:var(--mono);font-size:12.5px}
+  /* fund source schedule */
+  .fund{display:grid;grid-template-columns:190px 1fr 110px 70px;gap:0 14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--hairline)}
+  .fund .fn{font-size:14.5px}
+  .fund .fn small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--smoke);margin-top:2px}
+  .fund .trackbar{height:6px;background:var(--track);border-radius:1px;overflow:hidden}
+  .fund .trackbar i{display:block;height:6px;background:var(--ink)}
 
-  /* ---- methodology ---- */
-  .method h3{font-family:var(--serif);font-size:17px;font-weight:600;margin-top:24px}
-  .method p,.method li{font-size:14px;color:var(--ink-soft);max-width:74ch}
-  .method p{margin-top:8px}
-  .method ul{margin-top:8px;padding-left:22px;display:grid;gap:6px}
+  /* methodology */
+  .method{margin-top:72px;border-top:1px solid var(--ink);padding-top:28px}
+  .method h2{font-family:var(--serif);font-size:30px;font-weight:400;letter-spacing:-0.6px}
+  .method .lead{font-size:15px;line-height:1.6;color:var(--graphite);max-width:660px;margin-top:14px}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;margin-top:28px}
+  .mcol{display:flex;flex-direction:column;gap:14px}
+  .mnote{display:flex;gap:12px;font-size:13.5px;line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  .integrity{border:1px solid var(--ash);background:var(--surface);padding:14px 16px;margin-top:4px}
+  .digest{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-top:8px;word-break:break-all}
+  .revlog{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--smoke)}
 
-  /* ---- footer ---- */
-  footer{margin-top:56px;border-top:3px double var(--rule-strong);padding:30px 0 60px}
-  footer h2{font-size:19px}
-  footer p{font-size:14px;color:var(--ink-soft);max-width:74ch;margin-top:10px}
-  footer code{font-family:var(--mono);font-size:12.5px;background:var(--green-wash);padding:1px 6px;border-radius:3px}
-
-  @media(max-width:680px){
-    .approp{height:64px}
-    .dept-row{grid-template-columns:1fr 90px;grid-template-areas:"nm amt" "bar bar"}
-    .dept-row .nm{grid-area:nm}.dept-row .amt{grid-area:amt}.dept-row .bar{grid-area:bar}
-    .fund{grid-template-columns:1fr 90px;grid-template-areas:"nm amt" "bar bar"}
-    .fund .nm{grid-area:nm}.fund .amt{grid-area:amt}.fund .bar{grid-area:bar}
-  }
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
 </style>
 </head>
 <body>
 
-<div class="banner" id="dataBanner"></div>
-
-<header class="masthead">
-  <div class="wrap">
-    <div class="eyebrow">A Nonpartisan Public Record</div>
-    <h1>The California Ledger</h1>
-    <p class="dek">Every dollar of California's enacted state budget, drawn to scale. No commentary, no conclusions — the record, organized so anyone can read it.</p>
-    <p class="page-nav"><a href="cities.html">City view (V2 preview, sample data) →</a></p>
-
-    <div class="controls">
-      <label class="control" for="yearSel">Fiscal year
-        <select id="yearSel" aria-label="Select fiscal year"></select>
-      </label>
-      <label class="switch">
-        <input type="checkbox" id="fedToggle">
-        <span class="track" aria-hidden="true"></span>
-        Include federal funds passed through the state
-      </label>
-    </div>
-
-    <div class="totals">
-      <div class="total-main">
-        <span class="num" id="totalNum">—</span>
-        <span class="lbl" id="totalLbl">Total spending</span>
-      </div>
-      <div class="total-sub">
-        <span class="num" id="perCapNum">—</span>
-        <span class="lbl">Per resident</span>
-      </div>
-      <div class="total-sub">
-        <span class="num" id="yoyNum">—</span>
-        <span class="lbl">vs. prior year</span>
-      </div>
-    </div>
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <span class="wordmark">The California Ledger</span>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <span class="active">State budget</span>
+    <a href="cities.html">City spending</a>
+    <a href="#methodology">Methodology</a>
+  </nav>
+  <div class="hd-actions np">
+    <button class="btn" id="savedToggle">Saved views</button>
+    <button class="btn ink" id="citeToggle">Cite</button>
+    <button class="btn blue" id="csvBtn">Download CSV</button>
   </div>
 </header>
 
+<div class="prov" id="dataBanner"></div>
+
 <main>
-  <section aria-labelledby="h-bar">
-    <div class="wrap">
-      <h2 id="h-bar">Where it goes</h2>
-      <p class="sec-note">One bar, drawn to scale: every pixel is proportional to dollars. Select any segment to open that agency's departments.</p>
-      <div class="approp" id="appropBar" role="group" aria-label="Spending by agency, proportional bar"></div>
-      <div class="legend" id="legend"></div>
-      <p class="bar-hint" id="barHint"></p>
+  <div class="po cite-text" id="printCite"></div>
 
-      <div class="detail" id="detail" aria-live="polite">
-        <div class="detail-head">
-          <div>
-            <h3 id="dName"></h3>
-            <div class="detail-total" id="dTotal"></div>
-          </div>
-          <div class="detail-actions">
-            <button class="action-btn" id="dCite" aria-live="polite" aria-label="Copy a plain-text citation for this figure">Cite</button>
-            <button class="close-btn" id="dClose">Close ✕</button>
-          </div>
+  <div class="hero">
+    <div>
+      <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
+      <h1>State budget</h1>
+      <p class="dek">Where the State of California appropriates its money — by agency and department, across all state funds. Enacted figures; no commentary.</p>
+    </div>
+    <div class="hero-right">
+      <div class="hero-num" id="totalNum">—</div>
+      <div class="hero-sub">≈ <span id="perCapNum">—</span> PER RESIDENT · <span id="yoyNum">—</span> VS PRIOR YEAR</div>
+      <div class="hero-lbl" id="totalLbl">TOTAL APPROPRIATIONS · STATE FUNDS</div>
+    </div>
+  </div>
+
+  <div class="controls np">
+    <div class="pillgroup stepper">
+      <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
+      <select id="yearSel" aria-label="Select fiscal year"></select>
+      <button id="yearNext" aria-label="Next fiscal year">▸</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="View" id="viewGroup">
+      <button data-view="allocation">Allocation</button>
+      <button data-view="change">Change</button>
+      <button data-view="trend">Trend</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
+      <button data-unit="dollars">Dollars</button>
+      <button data-unit="perResident">Per resident</button>
+      <button data-unit="percent">% of total</button>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="fedToggle">
+      <span class="pill-off">Federal funds: excluded</span>
+      <span class="pill-on">Federal funds: included</span>
+    </label>
+    <input type="search" id="search" placeholder="Filter rows…" aria-label="Filter table rows">
+  </div>
+
+  <div class="cite-panel" id="citePanel" hidden>
+    <div class="cite-inner">
+      <div style="flex:1;min-width:280px">
+        <div class="microlbl">CITATION · REPRODUCES THIS EXACT VIEW</div>
+        <div class="cite-text" id="citeText"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ink" id="citeCopy">Copy</button>
+        <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="saved-panel np" id="savedPanel" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="microlbl">SAVED VIEWS · STORED ON THIS DEVICE ONLY</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ink" id="saveViewBtn">Save current view</button>
+        <button class="xbtn" id="savedClose" aria-label="Close saved views">✕</button>
+      </div>
+    </div>
+    <div id="savedList"></div>
+  </div>
+
+  <div class="record">
+    <div class="sched-row">
+      <span class="schedlbl" id="scheduleLabel"></span>
+      <div class="crumbs">
+        <button id="crumbRoot">All agencies</button>
+        <span id="crumbSep" style="color:var(--smoke)" hidden>/</span>
+        <span id="crumbName" hidden></span>
+      </div>
+    </div>
+
+    <div class="ruler" id="ruler" aria-hidden="true"></div>
+    <div class="bar" id="appropBar" role="group" aria-label="Proportional appropriation bar. Each segment is sized to its share of total spending."></div>
+    <div id="ghostWrap">
+      <div class="ghost" id="ghostStrip" role="img" aria-label="Prior-year shares, outlined"></div>
+      <div class="ghost-cap" id="ghostCap"></div>
+    </div>
+
+    <div class="readout" aria-live="polite" id="readout">
+      <span class="ro-name" id="roName"></span><span id="roValue"></span>
+      <span class="dim" id="roPct"></span>
+      <span><span id="roPR"></span> <span class="dim">/RESIDENT</span></span>
+      <span><span id="roDelta"></span> <span class="dim">VS PRIOR</span></span>
+    </div>
+    <div class="plain" id="plainLine"></div>
+    <div class="viewrule"></div>
+
+    <div class="tblwrap" id="allocView">
+      <div class="alloc">
+        <div class="arow ahead">
+          <span></span>
+          <button class="l" id="hName"></button>
+          <button id="hValue"></button>
+          <span>% TOTAL</span>
+          <button id="hDelta"></button>
         </div>
-        <div class="fund-strip" id="dFunds" aria-hidden="true"></div>
-        <div class="fund-key" id="dFundKey"></div>
-        <div class="dept-rows" id="dDepts"></div>
-      </div>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-funds">
-    <div class="wrap">
-      <h2 id="h-funds">Where it comes from</h2>
-      <p class="sec-note">The same total, split by fund source. General Fund is mostly income, sales, and corporation taxes; special funds are fee- and tax-restricted; bond funds are borrowed; federal funds pass through the state to programs and people.</p>
-      <div class="funds" id="funds"></div>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-trend">
-    <div class="wrap">
-      <h2 id="h-trend">Six years of totals</h2>
-      <p class="sec-note">State funds (General + special + bond) by fiscal year. Not adjusted for inflation or population.</p>
-      <div class="trend-box"><svg id="trendSvg" viewBox="0 0 860 300" role="img" aria-label="Line chart of total state spending by fiscal year"></svg></div>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-change">
-    <div class="wrap">
-      <h2 id="h-change">Change from the prior year</h2>
-      <p class="sec-note" id="changeNote"></p>
-      <div class="table-scroll" id="changeScroll">
-        <table id="chgTbl">
-          <thead><tr id="chgHead"></tr></thead>
-          <tbody id="chgBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-table">
-    <div class="wrap">
-      <h2 id="h-table">The full table</h2>
-      <p class="sec-note">Every agency, every fund. Click a column to sort, a row to open the agency detail above.</p>
-      <div class="table-tools">
-        <input type="search" id="search" placeholder="Filter agencies…" aria-label="Filter agencies">
-        <div class="tool-actions">
-          <button class="action-btn" id="csvBtn" aria-label="Download the current table view as a CSV file">Download this data (CSV)</button>
-          <a class="raw-link" href="data.js" download>raw dataset (data.js)</a>
+        <div class="abody" id="tblBody"></div>
+        <div class="arow afoot">
+          <span></span><span style="font-size:14.5px">Total</span>
+          <span class="num" id="fTotal"></span>
+          <span class="num dim">100.0%</span>
+          <span class="num delta" id="fDelta"></span>
+        </div>
+        <div class="caps">
+          <span id="capLeft">† METHOD NOTE — CLICK TO EXPAND</span>
+          <span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span>
         </div>
       </div>
-      <div class="table-scroll">
-        <table id="tbl">
-          <thead><tr id="tblHead"></tr></thead>
-          <tbody id="tblBody"></tbody>
-        </table>
+    </div>
+
+    <div class="tblwrap" id="changeView" hidden>
+      <div class="chg">
+        <div class="chg-head">
+          <span class="trend-note" id="chgTitle"></span>
+          <span class="schedlbl" id="chgScale"></span>
+        </div>
+        <div class="chg-axishead"><span>◂ DECREASES</span><span style="text-align:right">INCREASES ▸</span></div>
+        <div id="changeRows"></div>
+        <div class="chg-sum" id="chgSum"></div>
+        <div class="caps" id="chgCaps"><span></span><span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span></div>
+      </div>
+      <div class="empty" id="chgEmpty" hidden>No prior fiscal year in the record window. Step forward a year to view change.</div>
+    </div>
+
+    <div id="trendView" hidden>
+      <div style="margin-top:14px">
+        <span class="trend-note" id="trendTitle"></span>
+        <div class="trend-cols" id="trendCols"></div>
+        <div class="tgrid" id="trendGrid"></div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <section aria-labelledby="h-method" id="methodology">
-    <div class="wrap">
-      <h2 id="h-method">Methodology</h2>
-      <div class="method">
-        <h3>What these figures are</h3>
-        <p>Enacted appropriations under California's Budgetary-Legal basis of accounting: the spending plan fixed when each fiscal year's Budget Act is signed. Enacted figures do not change after publication. Dollar values are stated in billions and rounded to the nearest million, which is why some small items display as $0M.</p>
-        <h3>What they are not</h3>
-        <p>They are not actual expenditures — money as it is later spent — and they are not vendor-level payments. Mid-year revisions and audited year-end results differ from enacted figures. Year-to-year comparisons on this page are in nominal dollars, not adjusted for inflation or population; a per-resident figure is shown alongside each total.</p>
-        <h3>Exact source and update cadence</h3>
-        <p>The JSON API behind the Department of Finance's official eBudget site — <code>https://ebudget.ca.gov/api/publication/e/{fiscal-year}/…</code> — the same data that renders ebudget.ca.gov's Enacted Budget pages. General, special, and bond funds make up the state total, matching the enacted Summary Charts; federal pass-through funds are a user-controlled toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. One new fiscal year is added per annual Budget Act, typically signed in late June. Population figures for per-resident amounts come from Department of Finance report E-4.</p>
-        <h3>The city view</h3>
-        <p>The <a href="cities.html">city view</a> shows reported actual revenues and expenditures from the standardized annual reports all California cities file with the State Controller (bythenumbers.sco.ca.gov) — a different accounting basis from this page's enacted appropriations, and its own page states it. One caveat is repeated here because it affects comparisons: the police and fire service-provision notes on that page derive from the State Controller's services checklist, whose most recent published vintage is FY 2015-16, and service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</p>
-        <h3>Known caveats</h3>
-        <ul>
-          <li><strong>Negative appropriations exist in the source data</strong> and are kept as published. Examples in the loaded years: Statewide General Administrative Expenditures (Pro Rata), between −$0.7B and −$1.0B General Fund each year; the Public School System Stabilization Account, −$2.6B to −$0.9B special funds in 2021-22 through 2024-25; the Office of Emergency Services, −$3.9B special funds in 2022-23; and, at agency level, Government Operations, −$563M special funds in 2022-23. These are offsets and transfers in the budget documents, not errors. They display as signed numbers; a department whose net amount is negative shows a zero-length bar.</li>
-          <li><strong>The agency fund-mix strip omits fund classes with net-negative totals.</strong> When an agency's total for a fund class is zero or below, that class does not appear in the strip or its key, so the strip's segments show shares of the positive-fund subtotal rather than of the agency total printed above it.</li>
-          <li><strong>Department rows may not sum to the agency total.</strong> Agency totals come from the source's agency-level table; the department list is the set of rows the source publishes for web display, which for some agencies covers less than the agency total.</li>
-          <li><strong>Agency groupings reflect the source's current mapping.</strong> The API assigns departments to agencies using the Department of Finance's current organizational structure, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</li>
-        </ul>
+  <div class="record" id="fundsPanel">
+    <div class="sched-row">
+      <span class="schedlbl" id="fundsLabel">SCHEDULE 2 — BY FUND SOURCE</span>
+      <span class="schedlbl" style="color:var(--ghost)">SHARES OF THE DISPLAYED TOTAL</span>
+    </div>
+    <div id="funds" style="margin-top:14px"></div>
+  </div>
+
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <p class="lead">The Ledger records appropriations as enacted. It does not rank, characterize, or evaluate them. Every figure on this page comes from the official dataset described below and can be independently verified.</p>
+    <div class="mgrid">
+      <div class="mcol">
+        <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote"><b>M-1</b><span>Scope is all state funds: General Fund, special funds, and bond funds, matching the enacted budget's Summary Charts. Federal pass-through dollars are excluded by default and shown via the "Federal funds" control. Per-resident figures use Department of Finance report E-4 population estimates for each fiscal year.</span></div>
+        <div class="mnote"><b>M-2</b><span>Negative appropriations exist in the source data and are kept as published — they are offsets and transfers (for example, Statewide General Administrative Expenditures Pro Rata, and the Public School System Stabilization Account in 2021-22 through 2024-25), not errors. Rows carrying them are marked with a † method note.</span></div>
+        <div class="mnote"><b>M-3</b><span>Department rows may not sum to the agency total: agency totals come from the source's agency-level table, while the department list is the set of rows the source publishes for web display. Where the gap exceeds rounding, the schedule says so.</span></div>
+        <div class="mnote"><b>M-4</b><span>Agency groupings reflect the Department of Finance's current organizational mapping, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</span></div>
+        <div class="mnote"><b>M-5</b><span>The <a href="cities.html">city view</a> shows reported actual revenues and expenditures from cities' standardized State Controller filings — a different accounting basis from this page's enacted appropriations. Its police and fire service-provision notes derive from the State Controller's services checklist, whose most recent published vintage is FY 2015-16, and service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
+      </div>
+      <div class="mcol">
+        <div class="microlbl">SOURCES &amp; RECORD</div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Primary source: the JSON API behind the California Department of Finance's official eBudget site — <span class="mono" style="font-size:12px">ebudget.ca.gov/api/publication/e/{year}/…</span> — the same data that renders ebudget.ca.gov's Enacted Budget pages. Enacted figures are appropriations under California's Budgetary-Legal basis of accounting, fixed when each year's Budget Act is signed; they are not actual expenditures, and audited year-end results differ. One new fiscal year is added per annual Budget Act, typically signed in late June. The 2024-25 figures reproduce the published Summary Charts exactly ($297,862M).</div>
+        <div class="revlog" id="revLog"></div>
+        <div class="integrity">
+          <div class="microlbl">RECORD INTEGRITY</div>
+          <div class="digest" id="integrityDigest"></div>
+          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="data.js" download>data.js</a> and run <span class="mono" style="font-size:11.5px">python3 pipeline/verify_digest.py data.js</span> from the repository — it recomputes the SHA-256 of the canonical JSON payload, which must match the digest above. A record you can check is a record you can trust.</div>
+        </div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Citation links reproduce the exact view — fiscal year, view, unit, and drill level — of the person citing. Dollar values are stated in billions and rounded to the nearest million, which is why some small items display as $0M.</div>
       </div>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <h2>Sources & method</h2>
-    <p id="srcNote"></p>
-    <p>Figures are enacted-budget expenditures: appropriations under California's Budgetary-Legal basis of accounting, as published by the Department of Finance at ebudget.ca.gov when each year's Budget Act was signed. They are the spending plan fixed at enactment, not audited actual spending; mid-year revisions and actuals differ. General, special, and bond funds make up the state total; federal pass-through funds are shown via the toggle; reimbursements and nongovernmental-cost funds are excluded, matching how budget documents present state spending. "Per resident" divides the displayed total by the Department of Finance population estimate (report E-4) for that fiscal year. A new enacted budget is published each June — run <code>pipeline/fetch_state_data.py</code> then; it rewrites <code>data.js</code> in place. City-level data (State Controller's Office annual reports) is live in the <a href="cities.html">city view</a>. The <a href="#methodology">Methodology</a> section above states what these figures are, what they are not, and the known caveats.</p>
-  </div>
+<footer class="ft">
+  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
 <script src="data.js"></script>
@@ -390,564 +415,550 @@
   const D = window.CA_LEDGER_DATA;
   if(!D){ document.getElementById("dataBanner").textContent = "data.js failed to load — the site cannot render."; return; }
 
-  /* ---------- palette for agency segments ---------- */
-  const COLORS = ["#1B6B52","#31607F","#A8842B","#A3492D","#4E7A46","#6A5A8E",
-                  "#2F8C77","#8A6F3B","#54708A","#7A8450","#9C5F55","#3F655B"];
-  const FUND_META = [
-    {key:"gf",  name:"General Fund",  color:"#1B6B52"},
-    {key:"sp",  name:"Special Funds", color:"#31607F"},
-    {key:"bd",  name:"Bond Funds",    color:"#A8842B"},
-    {key:"fed", name:"Federal Funds", color:"#8C8C86"}
-  ];
-
-  /* ---------- state ---------- */
-  const budgetYears = Object.keys(D.budgets).sort();
-  const DEFAULTS = {
-    year: budgetYears[budgetYears.length-1],
-    fed: false,
-    selected: null,
-    sortKey: "total",
-    sortDir: -1,
-    query: "",
-    cSortKey: "name",
-    cSortDir: 1
-  };
-  const S = Object.assign({}, DEFAULTS);
-
-  /* ---------- permalinks: view state <-> URL hash ---------- */
-  function stateToHash(){
-    const p = new URLSearchParams();
-    if (S.year !== DEFAULTS.year) p.set("y", S.year);
-    if (S.fed) p.set("fed", "1");
-    if (S.selected) p.set("a", S.selected);
-    if (S.sortKey !== DEFAULTS.sortKey || S.sortDir !== DEFAULTS.sortDir)
-      p.set("sort", S.sortKey + "." + (S.sortDir < 0 ? "desc" : "asc"));
-    if (S.query) p.set("q", S.query);
-    if (S.cSortKey !== DEFAULTS.cSortKey || S.cSortDir !== DEFAULTS.cSortDir)
-      p.set("csort", S.cSortKey + "." + (S.cSortDir < 0 ? "desc" : "asc"));
-    return p.toString();
-  }
-  function syncHash(){
-    const h = stateToHash();
-    try { history.replaceState(null, "", h ? "#" + h : location.pathname + location.search); }
-    catch(e){ location.hash = h; }
-  }
-  function parseSort(v, allowed){
-    if (!v) return null;
-    const i = v.lastIndexOf(".");
-    const key = i < 0 ? v : v.slice(0, i);
-    const dir = v.slice(i + 1) === "asc" ? 1 : -1;
-    return allowed.includes(key) ? [key, dir] : null;
-  }
-  function applyHash(){
-    const raw = location.hash.replace(/^#/, "");
-    if (!raw || raw.indexOf("=") < 0) return;   // empty or a plain #anchor
-    const p = new URLSearchParams(raw);
-    const y = p.get("y");
-    S.year = (y && budgetYears.includes(y)) ? y : DEFAULTS.year;
-    S.fed = p.get("fed") === "1";
-    const a = p.get("a");
-    S.selected = (a && D.budgets[S.year].agencies.some(x => x.id === a)) ? a : null;
-    const sort = parseSort(p.get("sort"), COLS.map(c => c.key));
-    S.sortKey = sort ? sort[0] : DEFAULTS.sortKey;
-    S.sortDir = sort ? sort[1] : DEFAULTS.sortDir;
-    S.query = p.get("q") || "";
-    const cs = parseSort(p.get("csort"), CHG_KEYS);
-    S.cSortKey = cs ? cs[0] : DEFAULTS.cSortKey;
-    S.cSortDir = cs ? cs[1] : DEFAULTS.cSortDir;
-  }
-  function syncControls(){
-    $("yearSel").value = S.year;
-    $("fedToggle").checked = S.fed;
-    $("search").value = S.query;
-  }
-
-  /* ---------- helpers ---------- */
+  /* Warm grayscale ramp by size rank — color encodes identity only. */
+  const RAMP = ["#242424","#4e4d4d","#797776","#a39f9c","#beb9b5","#d5d0cc","#e9e4df"];
+  const MINUS = "−";
   const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+  const YEARS = Object.keys(D.budgets).sort();
+  const VIEWS = ["allocation","change","trend"];
+  const UNITS = ["dollars","perResident","percent"];
+  const DEFAULTS = { year: YEARS[YEARS.length-1], view:"allocation", unit:"dollars",
+                     fed:false, drill:null, sortKey:"value", sortDir:-1, q:"" };
+  const S = Object.assign({}, DEFAULTS, { openNote:null, hoverKey:null });
+
+  /* ---------- data helpers ---------- */
+  const pop = y => (D.meta.population||{})[y] || null;
+  const agencies = y => D.budgets[y].agencies;
+  const itemTotal = (it, fed) => it.gf + it.sp + it.bd + (fed ? it.fed : 0);
+  function levelItems(year){
+    if (!S.drill) return agencies(year);
+    const a = agencies(year).find(x=>x.id===S.drill);
+    return a ? a.departments : null;   // departments have no id; keyed by name
+  }
+  function drillAgency(){ return S.drill ? agencies(S.year).find(x=>x.id===S.drill) : null; }
+  function seriesFor(name){
+    // per-year totals for an item (agency by id, department by name within drill)
+    return YEARS.map(y=>{
+      const items = S.drill
+        ? (agencies(y).find(x=>x.id===S.drill)||{departments:[]}).departments
+        : agencies(y);
+      const it = S.drill ? items.find(d=>d.name===name)
+                         : items.find(a=>a.name===name);
+      return it ? itemTotal(it, S.fed) : null;
+    });
+  }
+
+  /* ---------- formats ---------- */
   const fmtB = v => {           // v in billions
-    const sign = v < 0 ? "−" : "";
+    const sign = v < 0 ? MINUS : "";
     const a = Math.abs(v);
     if (a >= 100) return sign + "$" + a.toFixed(0) + "B";
     if (a >= 1)   return sign + "$" + a.toFixed(1) + "B";
     return sign + "$" + Math.round(a*1000) + "M";
   };
-  const fmtCap = v => "$" + Math.round(v).toLocaleString("en-US");
-  const fmtDelta = v => v == null ? "—" : (v > 0 ? "+" : "") + fmtB(v);
-  const fmtPct = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%";
-  const deltaClass = v => v > 0 ? "delta-up" : v < 0 ? "delta-down" : "";
-  const agencyTotal = (a, fed) => a.gf + a.sp + a.bd + (fed ? a.fed : 0);
-  const deptTotal   = (d, fed) => d.gf + d.sp + d.bd + (fed ? d.fed : 0);
-  const agencies = () => D.budgets[S.year].agencies;
-  const grandTotal = () => agencies().reduce((s,a)=>s+agencyTotal(a,S.fed),0);
+  const fmtCap = v => (v<0?MINUS:"") + "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
+  const prOf = (vB, y) => { const p = pop(y); return p ? vB*1000/p : null; };
+  function fmtUnit(vB, totalB){
+    if (S.unit==="perResident"){ const c = prOf(vB, S.year); return c==null ? "—" : fmtCap(c); }
+    if (S.unit==="percent") return totalB ? ((vB/totalB*100).toFixed(1)+"%") : "—";
+    return fmtB(vB);
+  }
+  const fmtDeltaPct = p => p==null ? "—" : (p>=0?"▲ ":"▼ ") + Math.abs(p).toFixed(1) + "%";
 
-  /* ---------- banner ---------- */
-  function renderBanner(){
-    const b = $("dataBanner");
-    if (D.meta.source === "SAMPLE"){
-      b.innerHTML = "<strong>Sample data.</strong> These figures are illustrative — run pipeline/fetch_state_data.py to load official data.";
-      b.style.display = "";
-    } else {
-      b.innerHTML = "Data: " + D.meta.sourceLabel + " · generated " + D.meta.generated + ' · <a href="#methodology">methodology</a>';
-      b.style.background = "var(--green-wash)"; b.style.borderColor = "var(--rule-strong)"; b.style.color = "var(--ink-soft)";
-    }
-    $("srcNote").textContent = (D.meta.source === "SAMPLE")
-      ? "This build is running on clearly labeled sample data so the interface can be evaluated end-to-end. Official sources for the production pipeline: the enacted state budget (Department of Finance / ebudget.ca.gov) and Open FiscalCal expenditure data (fiscal.ca.gov, data.ca.gov)."
-      : "Data source: " + D.meta.sourceLabel + ", generated " + D.meta.generated + ".";
+  /* ---------- permalink ---------- */
+  function hashOf(){
+    const p = new URLSearchParams();
+    if (S.year !== DEFAULTS.year) p.set("y", S.year);
+    if (S.view !== DEFAULTS.view) p.set("v", S.view);
+    if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
+    if (S.fed) p.set("fed","1");
+    if (S.drill) p.set("a", S.drill);
+    if (S.sortKey!==DEFAULTS.sortKey || S.sortDir!==DEFAULTS.sortDir)
+      p.set("sort", S.sortKey + "." + (S.sortDir<0?"desc":"asc"));
+    if (S.q) p.set("q", S.q);
+    return p.toString();
+  }
+  function syncHash(){
+    const h = hashOf();
+    try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
+    catch(e){ location.hash = h; }
+  }
+  function applyHash(){
+    const raw = location.hash.replace(/^#/,"");
+    if (!raw || raw.indexOf("=")<0) return;
+    const p = new URLSearchParams(raw);
+    const y = p.get("y"); S.year = (y && YEARS.includes(y)) ? y : DEFAULTS.year;
+    S.view = VIEWS.includes(p.get("v")) ? p.get("v") : DEFAULTS.view;
+    S.unit = UNITS.includes(p.get("u")) ? p.get("u") : DEFAULTS.unit;
+    S.fed = p.get("fed")==="1";
+    const a = p.get("a");
+    S.drill = (a && agencies(S.year).some(x=>x.id===a)) ? a : null;
+    const sort = (p.get("sort")||"").split(".");
+    if (["name","value","delta"].includes(sort[0])){
+      S.sortKey = sort[0]; S.sortDir = sort[1]==="asc" ? 1 : -1;
+    } else { S.sortKey = DEFAULTS.sortKey; S.sortDir = DEFAULTS.sortDir; }
+    S.q = p.get("q") || "";
   }
 
-  /* ---------- header totals ---------- */
-  function renderTotals(){
-    const total = grandTotal();
-    $("totalNum").textContent = "$" + total.toFixed(1) + "B";
-    $("totalLbl").textContent = (S.fed ? "Total incl. federal funds" : "Total state funds") + " · FY " + S.year;
-
-    const pop = (D.meta.population && D.meta.population[S.year]) || null;
-    $("perCapNum").textContent = pop ? fmtCap(total*1000/pop) : "—";
-
-    const idx = budgetYears.indexOf(S.year);
-    const prevYear = idx > 0 ? budgetYears[idx-1] : null;
-    const yoyEl = $("yoyNum");
-    if (prevYear){
-      const prev = D.budgets[prevYear].agencies.reduce((s,a)=>s+agencyTotal(a,S.fed),0);
-      const pct = (total-prev)/prev*100;
-      yoyEl.textContent = (pct>=0?"+":"") + pct.toFixed(1) + "%";
-      yoyEl.className = "num " + (pct>=0 ? "delta-up" : "delta-down");
-    } else { yoyEl.textContent = "—"; yoyEl.className = "num"; }
-  }
-
-  /* ---------- appropriation bar ---------- */
-  function renderBar(){
-    const bar = $("appropBar"), legend = $("legend");
-    bar.innerHTML = ""; legend.innerHTML = "";
-    const total = grandTotal();
-    const sorted = agencies().slice().sort((a,b)=>agencyTotal(b,S.fed)-agencyTotal(a,S.fed));
-
-    sorted.forEach((a,i)=>{
-      const t = agencyTotal(a,S.fed), share = t/total*100, color = COLORS[i%COLORS.length];
-
-      const seg = document.createElement("button");
-      seg.className = "seg";
-      seg.style.width = share + "%";
-      seg.style.background = color;
-      seg.setAttribute("aria-pressed", S.selected===a.id ? "true":"false");
-      seg.setAttribute("aria-label", a.name + ", " + fmtB(t) + ", " + share.toFixed(1) + " percent of total");
-      seg.title = a.name + " — " + fmtB(t) + " (" + share.toFixed(1) + "%)";
-      if (share > 9){
-        seg.innerHTML = '<span class="in-label"><b>' + a.name + '</b>' + fmtB(t) + ' · ' + share.toFixed(0) + '%</span>';
+  /* ---------- computed rows for the current level/year ---------- */
+  function computeRows(){
+    const items = levelItems(S.year) || [];
+    const total = items.reduce((s,it)=>s+itemTotal(it,S.fed),0);
+    const prevY = YEARS[YEARS.indexOf(S.year)-1] || null;
+    let prevTotal = null;
+    const rows = items.map(it=>{
+      const val = itemTotal(it,S.fed);
+      let prev = null;
+      if (prevY){
+        const prevItems = S.drill
+          ? (agencies(prevY).find(x=>x.id===S.drill)||{departments:[]}).departments
+          : agencies(prevY);
+        const match = S.drill ? prevItems.find(d=>d.name===it.name)
+                              : prevItems.find(a=>a.id===it.id);
+        prev = match ? itemTotal(match,S.fed) : null;
       }
-      seg.addEventListener("click", ()=> selectAgency(a.id));
-      bar.appendChild(seg);
-
-      const chip = document.createElement("button");
-      chip.className = "chip" + (S.selected===a.id ? " active":"");
-      chip.innerHTML = '<span class="sw" style="background:'+color+'"></span>'
-                     + '<span class="chip-name">'+a.name+'</span>'
-                     + '<span class="amt">'+fmtB(t)+' · '+share.toFixed(1)+'%</span>';
-      chip.addEventListener("click", ()=> selectAgency(a.id));
-      legend.appendChild(chip);
+      const hasNeg = ["gf","sp","bd"].concat(S.fed?["fed"]:[]).some(k=>it[k]<0);
+      return { id: it.id||null, name: it.name, val, prev,
+               delta: (prev!=null && prev!==0) ? (val-prev)/Math.abs(prev)*100 : null,
+               pct: 0, hasNeg };
     });
-
-    $("barHint").textContent = "FY " + S.year + " · " + (S.fed
-      ? "state + federal funds — federal dollars pass through state programs like Medi-Cal and unemployment insurance"
-      : "state funds only (General + special + bond) — toggle above to add federal pass-through");
+    rows.forEach(r=>{ r.pct = total ? r.val/total*100 : 0; });
+    if (prevY){
+      const prevItems = S.drill
+        ? (agencies(prevY).find(x=>x.id===S.drill)||{departments:[]}).departments
+        : agencies(prevY);
+      prevTotal = prevItems.reduce((s,it)=>s+itemTotal(it,S.fed),0);
+    }
+    const bySize = rows.slice().sort((a,b)=>b.val-a.val);
+    bySize.forEach((r,i)=>{ r.color = RAMP[Math.min(i,RAMP.length-1)]; r.rank = i; });
+    return { rows, bySize, total, prevY, prevTotal };
   }
 
-  /* ---------- agency detail ---------- */
-  function selectAgency(id){
-    S.selected = (S.selected === id) ? null : id;
-    syncHash();
-    renderBar(); renderDetail(); renderTable();
-    if (S.selected && $("detail").scrollIntoView) $("detail").scrollIntoView({block:"nearest"});
+  /* ---------- provenance / hero ---------- */
+  function renderChrome(C){
+    $("dataBanner").innerHTML =
+      "<span>SOURCE: CA DEPT. OF FINANCE · EBUDGET.CA.GOV</span>"
+      + "<span>BASIS: ENACTED · BUDGETARY-LEGAL</span>"
+      + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + "<span>PUBLIC RECORD</span>";
+    $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
+    $("totalNum").textContent = S.unit==="perResident"
+      ? fmtCap(prOf(C.total,S.year)) : fmtB(C.total);
+    $("perCapNum").textContent = pop(S.year) ? fmtCap(prOf(C.total,S.year)) : "—";
+    const netPct = C.prevTotal ? (C.total-C.prevTotal)/C.prevTotal*100 : null;
+    $("yoyNum").textContent = fmtDeltaPct(netPct);
+    $("totalLbl").textContent = "TOTAL APPROPRIATIONS · "
+      + (S.fed ? "STATE + FEDERAL FUNDS" : "STATE FUNDS")
+      + (S.drill ? " · " + drillAgency().name.toUpperCase() : "");
+    $("revLog").innerHTML = YEARS.slice().reverse().map(y=>
+      "FY " + y + " · ENACTED" ).join("<br>") + "<br>GENERATED " + esc(D.meta.generated);
+    const integ = (D.meta.integrity||{});
+    $("integrityDigest").textContent = integ.digest
+      ? "SHA-256 · " + integ.digest + " (data.js)"
+      : "No digest recorded — regenerate data.js with the pipeline.";
   }
 
-  function renderDetail(){
-    const box = $("detail");
-    const a = agencies().find(x=>x.id===S.selected);
-    if(!a){ box.classList.remove("open"); return; }
-    box.classList.add("open");
-
-    const t = agencyTotal(a,S.fed), grand = grandTotal();
-    $("dName").textContent = a.name;
-    $("dTotal").textContent = fmtB(t) + " · " + (t/grand*100).toFixed(1) + "% of the FY " + S.year + " total";
-
-    // fund strip
-    const strip = $("dFunds"), key = $("dFundKey");
-    strip.innerHTML = ""; key.innerHTML = "";
-    FUND_META.forEach(f=>{
-      if (f.key==="fed" && !S.fed) return;
-      const v = a[f.key]; if (v<=0) return;
-      const d = document.createElement("div");
-      d.style.width = (v/t*100)+"%"; d.style.background = f.color;
-      strip.appendChild(d);
-      const k = document.createElement("span");
-      k.innerHTML = '<i style="background:'+f.color+'"></i>'+f.name+' '+fmtB(v);
-      key.appendChild(k);
+  /* ---------- ruler / bar / ghost / readout / plain ---------- */
+  function unitMax(C){
+    if (S.unit==="perResident") return prOf(C.total,S.year) || 1;
+    if (S.unit==="percent") return 100;
+    return C.total;
+  }
+  function renderRuler(C){
+    const el = $("ruler"); el.innerHTML = "";
+    const max = unitMax(C);
+    const steps = [1,2,5,10,20,25,50,100,200,500,1000,2000,5000];
+    let step = steps.find(s=>max/s <= 8) || 5000;
+    const lbl = v => S.unit==="percent" ? v+"%" :
+      S.unit==="perResident" ? "$"+v.toLocaleString("en-US") : "$"+v+"B";
+    for (let v=0; v < max*0.97; v+=step){
+      const posn = v/max*100;
+      el.insertAdjacentHTML("beforeend",
+        '<i style="left:'+posn+'%"></i><b style="left:'+posn+'%;transform:translateX('+(posn<2?"0":"-50%")+')">'+lbl(v)+"</b>");
+    }
+    el.insertAdjacentHTML("beforeend",'<i style="left:100%"></i>');
+  }
+  function abbreviate(name, pctWidth){
+    const maxChars = Math.max(4, Math.floor((pctWidth*10.4 - 26)/6.6));
+    if (name.length <= maxChars) return name;
+    const short = name
+      .replace("Legislative, Judicial, and Executive","Leg., Judicial & Exec.")
+      .replace("Business, Consumer Services, and Housing","Bus., Consumer Svcs & Housing")
+      .replace("Health and Human Services","Health & Human Svcs")
+      .replace("Corrections and Rehabilitation","Corrections & Rehab.")
+      .replace("Labor and Workforce Development","Labor & Workforce Dev.")
+      .replace("Government Operations","Gov. Operations")
+      .replace("Environmental Protection","Environmental Prot.")
+      .replace("General Government","General Gov.")
+      .replace(" Department of","").replace("Department of ","");
+    if (short.length <= maxChars) return short;
+    return short.slice(0, Math.max(3, maxChars-1)).trimEnd() + "…";
+  }
+  function renderBar(C){
+    const bar = $("appropBar"); bar.innerHTML = "";
+    C.bySize.forEach(r=>{
+      const light = r.rank < 3;
+      const b = document.createElement("button");
+      b.style.width = Math.max(0,r.pct) + "%";
+      b.style.background = r.color;
+      b.style.cursor = S.drill ? "default" : "pointer";
+      b.setAttribute("aria-label", r.name + ": " + fmtB(r.val) + ", " + r.pct.toFixed(1)
+        + " percent of total" + (S.drill ? "." : ". Open departments."));
+      if (r.pct >= 9){
+        b.innerHTML = '<span class="seg-name" style="color:'+(light?"#f6f3f1":"#242424")+'">'+esc(abbreviate(r.name,r.pct))+'</span>'
+          + '<span class="seg-val" style="color:'+(light?"#f6f3f1":"#242424")+'">'+fmtUnit(r.val,C.total)+'</span>';
+      }
+      if (!S.drill) b.addEventListener("click", ()=>{ doDrill(r.id); });
+      b.addEventListener("mouseenter", ()=>setHover(r.name,C));
+      b.addEventListener("mouseleave", ()=>setHover(null,C));
+      b.addEventListener("focus", ()=>setHover(r.name,C));
+      b.addEventListener("blur", ()=>setHover(null,C));
+      bar.appendChild(b);
     });
+    // ghost prior-year strip, same order
+    const gw = $("ghostWrap");
+    if (C.prevY && C.prevTotal){
+      gw.hidden = false;
+      $("ghostStrip").innerHTML = C.bySize.map(r=>{
+        const w = r.prev!=null ? Math.max(0,(r.prev/C.prevTotal*100)) : 0;
+        return '<i style="width:'+w+'%"></i>';
+      }).join("");
+      $("ghostCap").textContent = "▭ PRIOR-YEAR SHARE · FY " + C.prevY;
+    } else gw.hidden = true;
+  }
+  function setHover(name, C){
+    S.hoverKey = name;
+    const r = name ? C.rows.find(x=>x.name===name) : null;
+    const netPct = C.prevTotal ? (C.total-C.prevTotal)/C.prevTotal*100 : null;
+    $("roName").textContent  = r ? r.name.toUpperCase() : "TOTAL";
+    $("roValue").textContent = fmtB(r ? r.val : C.total);
+    $("roPct").textContent   = (r ? r.pct.toFixed(1) : "100.0") + "% OF TOTAL";
+    const cap = prOf(r ? r.val : C.total, S.year);
+    $("roPR").textContent    = cap==null ? "—" : fmtCap(cap);
+    $("roDelta").textContent = fmtDeltaPct(r ? r.delta : netPct);
+  }
+  function renderPlain(C){
+    const t = C.bySize[0], u = C.bySize[1];
+    if (!t){ $("plainLine").textContent = ""; return; }
+    const c = r => Math.round(r.pct);
+    $("plainLine").textContent = S.drill
+      ? "Within " + drillAgency().name + " in FY " + S.year + ", about " + c(t) + "¢ of every dollar goes to " + t.name + (u ? " and " + c(u) + "¢ to " + u.name : "") + "."
+      : "Of every dollar in California's FY " + S.year + " enacted budget" + (S.fed?" (including federal funds)":"") + ", about " + c(t) + "¢ goes to " + t.name + (u ? " and " + c(u) + "¢ to " + u.name : "") + ".";
+  }
 
-    // departments
-    const wrap = $("dDepts"); wrap.innerHTML = "";
-    const depts = (a.departments||[]).slice().sort((x,y)=>deptTotal(y,S.fed)-deptTotal(x,S.fed));
-    const max = depts.length ? deptTotal(depts[0],S.fed) : 1;
-    depts.forEach(d=>{
-      const v = deptTotal(d,S.fed);
+  /* ---------- allocation view ---------- */
+  function noteText(r){
+    return "This row includes negative appropriations as published in the source — offsets and transfers, not errors. Amounts are kept exactly as enacted.";
+  }
+  function renderAlloc(C){
+    $("hName").textContent = (S.drill ? "DEPARTMENT" : "AGENCY") + arrow("name");
+    $("hValue").textContent = (S.unit==="dollars" ? "FY "+S.year : S.unit==="perResident" ? "PER RESIDENT" : "% OF TOTAL") + arrow("value");
+    $("hDelta").textContent = "Δ PRIOR YR" + arrow("delta");
+    const body = $("tblBody"); body.innerHTML = "";
+    let rows = C.rows.slice();
+    if (S.q){
+      const q = S.q.toLowerCase();
+      rows = rows.filter(r=>r.name.toLowerCase().includes(q));
+    }
+    rows.sort((a,b)=>{
+      if (S.sortKey==="name") return a.name.localeCompare(b.name)*S.sortDir;
+      if (S.sortKey==="delta") return ((a.delta??-1e9)-(b.delta??-1e9))*S.sortDir;
+      return (a.val-b.val)*S.sortDir;
+    });
+    rows.forEach(r=>{
       const row = document.createElement("div");
-      row.className = "dept-row";
-      row.innerHTML = '<span class="nm">'+d.name+'</span>'
-        + '<span class="bar"><i style="width:'+Math.max(0, v/max*100)+'%"></i></span>'
-        + '<span class="amt">'+fmtB(v)+'</span>';
-      wrap.appendChild(row);
+      row.className = "arow" + (S.drill ? "" : " click");
+      row.tabIndex = S.drill ? -1 : 0;
+      if (!S.drill){
+        row.setAttribute("role","button");
+        row.setAttribute("aria-label","Open departments of "+r.name);
+      }
+      row.innerHTML = '<span class="sw" style="background:'+r.color+'"></span>'
+        + '<span class="aname">'+esc(r.name)
+        + (r.hasNeg ? ' <button class="dagger" aria-label="Show method note" data-note="'+esc(r.name)+'">†</button>' : "")
+        + '</span>'
+        + '<span class="num">'+fmtUnit(r.val,C.total)+'</span>'
+        + '<span class="num dim">'+r.pct.toFixed(1)+'%</span>'
+        + '<span class="num delta">'+fmtDeltaPct(r.delta)+'</span>';
+      if (!S.drill){
+        row.addEventListener("click", e=>{
+          if (e.target.classList.contains("dagger")) return;
+          doDrill(r.id);
+        });
+        row.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();doDrill(r.id);} });
+      }
+      row.addEventListener("mouseenter", ()=>setHover(r.name,C));
+      row.addEventListener("mouseleave", ()=>setHover(null,C));
+      body.appendChild(row);
+      if (S.openNote === r.name){
+        const n = document.createElement("div");
+        n.className = "note-row";
+        n.innerHTML = esc(noteText(r)) + ' <a href="#methodology">Methodology →</a>';
+        body.appendChild(n);
+      }
+    });
+    body.querySelectorAll(".dagger").forEach(btn=>{
+      btn.addEventListener("click", e=>{
+        e.stopPropagation();
+        const k = btn.getAttribute("data-note");
+        S.openNote = S.openNote===k ? null : k;
+        render();
+      });
+    });
+    $("fTotal").textContent = fmtUnit(C.total,C.total);
+    const netPct = C.prevTotal ? (C.total-C.prevTotal)/C.prevTotal*100 : null;
+    $("fDelta").textContent = fmtDeltaPct(netPct);
+    // department-sum caveat, computed from the data (M-3)
+    let cap = "† METHOD NOTE — CLICK TO EXPAND";
+    if (S.drill){
+      const a = drillAgency();
+      const agencyTotal = itemTotal(a,S.fed);
+      const gap = agencyTotal - C.total;
+      if (Math.abs(gap) > 0.05)
+        cap = "DEPARTMENT ROWS SUM TO " + fmtB(C.total) + " OF THE " + fmtB(agencyTotal)
+            + " AGENCY TOTAL — SEE METHOD NOTE M-3";
+    }
+    $("capLeft").textContent = cap;
+  }
+  const arrow = k => S.sortKey===k ? (S.sortDir<0 ? " ↓" : " ↑") : "";
+
+  /* ---------- change view ---------- */
+  function renderChange(C){
+    const has = !!C.prevY;
+    $("chgEmpty").hidden = has;
+    $("changeView").querySelector(".chg").style.display = has ? "" : "none";
+    if (!has) return;
+    const matched = C.rows.filter(r=>r.prev!=null);
+    const unmatched = C.rows.length - matched.length;
+    const rows = matched.map(r=>({ name:r.name, db:r.val-r.prev, dp:r.delta }))
+                        .sort((a,b)=>b.db-a.db);
+    const maxAbs = Math.max(0.1, ...rows.map(r=>Math.abs(r.db)));
+    $("chgTitle").textContent = "Change in appropriations, FY " + C.prevY + " → FY " + S.year + " · billions of dollars";
+    $("chgScale").textContent = "SYMMETRIC SCALE: ±" + fmtB(maxAbs).replace("$","$");
+    $("changeRows").innerHTML = rows.map(r=>{
+      const l = r.db<0 ? Math.abs(r.db)/maxAbs*100 : 0;
+      const rt = r.db>0 ? r.db/maxAbs*100 : 0;
+      return '<div class="chg-row"><span style="font-size:13.5px">'+esc(r.name)+'</span>'
+        + '<div class="chg-mid"><div class="l"><i style="width:'+l.toFixed(1)+'%"></i></div><div class="axis"></div><div class="r"><i style="width:'+rt.toFixed(1)+'%"></i></div></div>'
+        + '<span class="num delta">'+(r.db>=0?"+":MINUS)+"$"+Math.abs(r.db).toFixed(1)+'B <span style="color:var(--smoke)">'+fmtDeltaPct(r.dp)+'</span></span></div>';
+    }).join("");
+    const inc = rows.filter(r=>r.db>0).reduce((s,r)=>s+r.db,0);
+    const dec = rows.filter(r=>r.db<0).reduce((s,r)=>s+Math.abs(r.db),0);
+    const net = inc-dec;
+    const netPct = C.prevTotal ? (C.total-C.prevTotal)/C.prevTotal*100 : null;
+    $("chgSum").innerHTML =
+      "<span>DECREASES "+MINUS+"$"+dec.toFixed(1)+"B</span>"
+      + "<span>INCREASES +$"+inc.toFixed(1)+"B</span>"
+      + '<span style="font-weight:600">NET '+(net>=0?"+":MINUS)+"$"+Math.abs(net).toFixed(1)+"B"
+      + (netPct!=null ? " ("+(netPct>=0?"+":MINUS)+Math.abs(netPct).toFixed(1)+"%)" : "")+"</span>";
+    $("chgCaps").firstElementChild.textContent = unmatched
+      ? unmatched + " ROW(S) HAVE NO PRIOR-YEAR LINE AND ARE OMITTED FROM THIS CHART"
+      : "";
+  }
+
+  /* ---------- trend view ---------- */
+  function renderTrend(C){
+    const totals = YEARS.map(y=>{
+      const items = S.drill
+        ? (agencies(y).find(x=>x.id===S.drill)||{departments:[]}).departments
+        : agencies(y);
+      return items.reduce((s,it)=>s+itemTotal(it,S.fed),0);
+    });
+    const maxTot = Math.max(...totals, 0.001);
+    $("trendTitle").textContent = YEARS.length + "-year record, FY " + YEARS[0] + " → FY " + YEARS[YEARS.length-1]
+      + " · " + (S.fed ? "state + federal funds" : "state funds") + " · selected year in ink";
+    $("trendCols").innerHTML = YEARS.map((y,i)=>
+      '<div class="tcol"><span class="tv">'+fmtB(totals[i])+'</span>'
+      + '<div class="tbox"><i style="height:'+(totals[i]/maxTot*100).toFixed(1)+'%;background:'+(y===S.year?"#242424":"#cfc9c4")+'"></i></div>'
+      + '<span class="ty">'+y+'</span></div>').join("");
+    $("trendGrid").innerHTML = C.bySize.map(r=>{
+      const series = seriesFor(r.name);
+      const mx = Math.max(...series.map(v=>v||0), 0.001);
+      return '<div class="tcard"><div class="tn">'+esc(r.name)+'</div>'
+        + '<div class="tb">'+series.map((v,i)=>'<i style="height:'+(((v||0)/mx*100).toFixed(1))+'%;background:'+(YEARS[i]===S.year?"#242424":"#cfc9c4")+'"></i>').join("")+'</div>'
+        + '<div class="tf"><span>FY '+YEARS[0].slice(2)+' '+(series[0]==null?"—":fmtB(series[0]))+'</span><span>FY '+YEARS[YEARS.length-1].slice(2)+' '+(series[series.length-1]==null?"—":fmtB(series[series.length-1]))+'</span></div></div>';
+    }).join("");
+  }
+
+  /* ---------- fund source schedule ---------- */
+  function renderFunds(){
+    const box = $("funds"); box.innerHTML = "";
+    const meta = [["gf","General Fund","income, sales & corporation taxes"],
+                  ["sp","Special Funds","restricted fees & dedicated taxes"],
+                  ["bd","Bond Funds","voter-approved borrowing"]]
+                 .concat(S.fed ? [["fed","Federal Funds","federal pass-through"]] : []);
+    const ags = agencies(S.year);
+    const sums = meta.map(m=>ags.reduce((s,a)=>s+a[m[0]],0));
+    const total = sums.reduce((a,b)=>a+b,0);
+    const max = Math.max(...sums.map(Math.abs), 0.001);
+    meta.forEach((m,i)=>{
+      box.insertAdjacentHTML("beforeend",
+        '<div class="fund"><span class="fn">'+m[1]+'<small>'+m[2].toUpperCase()+'</small></span>'
+        + '<span class="trackbar"><i style="width:'+Math.max(0,sums[i]/max*100)+'%"></i></span>'
+        + '<span class="num">'+fmtB(sums[i])+'</span>'
+        + '<span class="num dim">'+(total?(sums[i]/total*100).toFixed(1):"0.0")+'%</span></div>');
     });
   }
-  $("dClose").addEventListener("click", ()=>{ S.selected=null; syncHash(); renderBar(); renderDetail(); renderTable(); });
 
-  /* ---------- cite this figure ---------- */
+  /* ---------- citation / CSV ---------- */
   function citationText(){
-    const a = agencies().find(x=>x.id===S.selected);
-    if (!a) return "";
-    const t = agencyTotal(a,S.fed);
+    const a = drillAgency();
     const scope = S.fed ? "state and federal funds" : "state funds (General + special + bond)";
-    return a.name + ", FY " + S.year + ": $" + t.toFixed(3) + " billion in " + scope + ". "
+    const C = computeRows();
+    const figure = a
+      ? a.name + ", FY " + S.year + ": $" + itemTotal(a,S.fed).toFixed(3) + " billion in " + scope + ". "
+      : "FY " + S.year + " total: $" + C.total.toFixed(3) + " billion in " + scope + ". ";
+    return 'The California Ledger, "State Budget — Appropriations by '
+      + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + ' (Enacted)." '
+      + figure
       + "Enacted appropriations under California's Budgetary-Legal basis of accounting, not actual expenditures. "
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
   }
-  function fallbackCopy(text){
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.setAttribute("readonly","");
-    ta.style.position = "fixed"; ta.style.left = "-9999px";
-    document.body.appendChild(ta); ta.select();
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch(e){}
-    ta.remove();
-    return ok;
-  }
-  $("dCite").addEventListener("click", ()=>{
-    const text = citationText();
-    if (!text) return;
-    const done = ok => {
-      $("dCite").textContent = ok ? "Copied ✓" : "Copy failed";
-      setTimeout(()=>{ $("dCite").textContent = "Cite"; }, 1800);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(text).then(()=>done(true), ()=>done(fallbackCopy(text)));
-    else done(fallbackCopy(text));
-  });
-
-  /* ---------- fund sources ---------- */
-  function renderFunds(){
-    const box = $("funds"); box.innerHTML = "";
-    const rows = FUND_META.filter(f=> f.key!=="fed" || S.fed);
-    const sums = rows.map(f => agencies().reduce((s,a)=>s+a[f.key],0));
-    const total = sums.reduce((a,b)=>a+b,0);
-    const max = Math.max(...sums);
-    const notes = {gf:"income, sales & corporation taxes", sp:"restricted fees & dedicated taxes", bd:"voter-approved borrowing", fed:"federal pass-through"};
-    rows.forEach((f,i)=>{
-      const row = document.createElement("div");
-      row.className = "fund";
-      row.innerHTML = '<span class="nm">'+f.name+'<small>'+notes[f.key]+'</small></span>'
-        + '<span class="bar"><i style="width:'+(sums[i]/max*100)+'%;background:'+f.color+'"></i></span>'
-        + '<span class="amt">'+fmtB(sums[i])+'<small>'+(sums[i]/total*100).toFixed(1)+'%</small></span>';
-      box.appendChild(row);
-    });
-  }
-
-  /* ---------- trend chart ---------- */
-  function renderTrend(){
-    const svg = $("trendSvg");
-    const W=860,H=300,L=70,R=20,T=26,B=44;
-    const years = D.years, vals = years.map(y=>D.trend[y].state);
-    const maxV = Math.ceil(Math.max(...vals)/50)*50;
-    const x = i => L + i*(W-L-R)/(years.length-1);
-    const y = v => T + (1 - v/maxV)*(H-T-B);
-
-    let s = "";
-    // gridlines + y labels
-    for(let g=0; g<=maxV; g+=100){
-      s += '<line x1="'+L+'" y1="'+y(g)+'" x2="'+(W-R)+'" y2="'+y(g)+'" stroke="#D8E1D7" stroke-width="1"/>';
-      s += '<text class="tick-lbl" x="'+(L-10)+'" y="'+(y(g)+4)+'" text-anchor="end">$'+g+'B</text>';
-    }
-    // area + line
-    const pts = vals.map((v,i)=>x(i)+","+y(v)).join(" ");
-    s += '<polygon points="'+L+','+y(0)+' '+pts+' '+(W-R)+','+y(0)+'" fill="rgba(27,107,82,.10)"/>';
-    s += '<polyline points="'+pts+'" fill="none" stroke="#1B6B52" stroke-width="2.5" stroke-linejoin="round"/>';
-    // points + labels
-    vals.forEach((v,i)=>{
-      const cur = years[i]===S.year && D.budgets[years[i]];
-      s += '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="'+(cur?6:4)+'" fill="'+(cur?"#0E4634":"#1B6B52")+'" stroke="#F7F8F4" stroke-width="2"><title>FY '+years[i]+': $'+v.toFixed(1)+'B state funds</title></circle>';
-      s += '<text class="pt-lbl" x="'+x(i)+'" y="'+(y(v)-12)+'" text-anchor="middle">$'+Math.round(v)+'B</text>';
-      s += '<text class="tick-lbl" x="'+x(i)+'" y="'+(H-16)+'" text-anchor="middle">'+years[i]+'</text>';
-    });
-    svg.innerHTML = s;
-  }
-
-  /* ---------- table ---------- */
-  const COLS = [
-    {key:"name",  lbl:"Agency"},
-    {key:"gf",    lbl:"General Fund"},
-    {key:"sp",    lbl:"Special"},
-    {key:"bd",    lbl:"Bond"},
-    {key:"fed",   lbl:"Federal"},
-    {key:"total", lbl:"Total"},
-    {key:"share", lbl:"Share"},
-    {key:"cap",   lbl:"Per resident"}
-  ];
-  function visibleCols(){ return COLS.filter(c => c.key!=="fed" || S.fed); }
-
-  function renderTableHead(){
-    const tr = $("tblHead"); tr.innerHTML = "";
-    visibleCols().forEach(c=>{
-      const th = document.createElement("th");
-      th.scope = "col";
-      const active = S.sortKey===c.key;
-      th.setAttribute("aria-sort", active ? (S.sortDir<0 ? "descending" : "ascending") : "none");
-      const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "sort-btn";
-      btn.setAttribute("aria-label", "Sort by " + c.lbl);
-      btn.innerHTML = c.lbl + '<span class="arrow">' + (active ? (S.sortDir<0 ? " ▾" : " ▴") : "") + '</span>';
-      btn.addEventListener("click", ()=>{
-        if (S.sortKey===c.key) S.sortDir *= -1;
-        else { S.sortKey = c.key; S.sortDir = c.key==="name" ? 1 : -1; }
-        syncHash();
-        renderTable();
-      });
-      th.appendChild(btn);
-      tr.appendChild(th);
-    });
-  }
-
-  function tableRows(){
-    const total = grandTotal();
-    const pop = (D.meta.population && D.meta.population[S.year]) || null;
-    let rows = agencies().map(a=>{
-      const t = agencyTotal(a,S.fed);
-      return { id:a.id, name:a.name, gf:a.gf, sp:a.sp, bd:a.bd, fed:a.fed,
-               total:t, share:t/total*100, cap: pop ? t*1000/pop : null };
-    });
-    if (S.query){
-      const q = S.query.toLowerCase();
-      rows = rows.filter(r=>r.name.toLowerCase().includes(q));
-    }
-    rows.sort((a,b)=>{
-      const k=S.sortKey;
-      if (k==="name") return S.sortDir * a.name.localeCompare(b.name);
-      return S.sortDir * ((a[k]||0)-(b[k]||0));
-    });
-    return { rows, total, pop };
-  }
-
-  function renderTable(){
-    renderTableHead();
-    const body = $("tblBody"); body.innerHTML = "";
-    const { rows, total, pop } = tableRows();
-
-    rows.forEach(r=>{
-      const tr = document.createElement("tr");
-      tr.tabIndex = 0;
-      tr.setAttribute("role","button");
-      tr.setAttribute("aria-label","Open detail for "+r.name);
-      const cells = visibleCols().map(c=>{
-        if (c.key==="name")  return "<td>"+r.name+"</td>";
-        if (c.key==="share") return '<td class="share-cell">'+r.share.toFixed(1)+"%</td>";
-        if (c.key==="cap")   return "<td>"+(r.cap!=null?fmtCap(r.cap):"—")+"</td>";
-        return "<td>"+fmtB(r[c.key])+"</td>";
-      }).join("");
-      tr.innerHTML = cells;
-      const open = ()=> selectAgency(r.id);
-      tr.addEventListener("click", open);
-      tr.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();open();} });
-      body.appendChild(tr);
-    });
-
-    // totals row
-    if (!S.query){
-      const sum = k => agencies().reduce((s,a)=>s+a[k],0);
-      const tr = document.createElement("tr");
-      tr.className = "total-row";
-      tr.innerHTML = visibleCols().map(c=>{
-        if (c.key==="name")  return "<td>All agencies</td>";
-        if (c.key==="share") return '<td class="share-cell">100%</td>';
-        if (c.key==="cap")   return "<td>"+(pop?fmtCap(total*1000/pop):"—")+"</td>";
-        if (c.key==="total") return "<td>"+fmtB(total)+"</td>";
-        return "<td>"+fmtB(sum(c.key))+"</td>";
-      }).join("");
-      body.appendChild(tr);
-    }
-  }
-
-  /* ---------- CSV export of the current table view ---------- */
-  function csvEscape(v){
-    v = String(v);
-    return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
-  }
+  function csvEscape(v){ v=String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
   function buildCSV(){
-    const { rows, total, pop } = tableRows();
-    const cols = visibleCols();
-    const labels = { name:"Agency", gf:"General Fund ($B)", sp:"Special Funds ($B)",
-                     bd:"Bond Funds ($B)", fed:"Federal Funds ($B)", total:"Total ($B)",
-                     share:"Share of total (%)", cap:"Per resident ($)" };
+    const C = computeRows();
+    let rows = C.rows.slice();
+    if (S.q){ const q=S.q.toLowerCase(); rows = rows.filter(r=>r.name.toLowerCase().includes(q)); }
+    rows.sort((a,b)=> S.sortKey==="name" ? a.name.localeCompare(b.name)*S.sortDir
+      : S.sortKey==="delta" ? ((a.delta??-1e9)-(b.delta??-1e9))*S.sortDir
+      : (a.val-b.val)*S.sortDir);
+    const items = levelItems(S.year) || [];
+    const byName = {}; items.forEach(it=>{ byName[it.name]=it; });
     const lines = [
-      "# The California Ledger — agency table, FY " + S.year,
+      "# The California Ledger — " + (S.drill ? "departments of " + drillAgency().name : "agency table") + ", FY " + S.year,
       "# Source dataset: " + D.meta.sourceLabel,
       "# Accounting basis: enacted appropriations, Budgetary-Legal basis (not actual expenditures)",
       "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),
       "# View: " + (S.fed ? "state + federal funds" : "state funds (General + special + bond)")
-        + (S.query ? ' · filter: "' + S.query + '"' : ""),
-      "# Units: billions of dollars, except Share (percent) and Per resident (dollars)"
+        + (S.q ? ' · filter: "' + S.q + '"' : ""),
+      "# Permalink: " + location.href,
+      "# Units: billions of dollars, except Share (percent) and Per resident (dollars)",
+      (S.drill?"Department":"Agency") + ",General Fund ($B),Special Funds ($B),Bond Funds ($B)"
+        + (S.fed?",Federal Funds ($B)":"") + ",Total ($B),Share of total (%),Per resident ($)"
     ];
-    const cell = (r,c) => {
-      if (c.key==="name")  return csvEscape(r.name);
-      if (c.key==="share") return r.share.toFixed(1);
-      if (c.key==="cap")   return r.cap != null ? Math.round(r.cap) : "";
-      return r[c.key].toFixed(3);
-    };
-    lines.push(cols.map(c=>csvEscape(labels[c.key])).join(","));
-    rows.forEach(r=> lines.push(cols.map(c=>cell(r,c)).join(",")));
-    if (!S.query){
-      const sum = k => agencies().reduce((s,a)=>s+a[k],0);
-      lines.push(cols.map(c=>{
-        if (c.key==="name")  return "All agencies";
-        if (c.key==="share") return "100.0";
-        if (c.key==="cap")   return pop ? Math.round(total*1000/pop) : "";
-        if (c.key==="total") return total.toFixed(3);
-        return sum(c.key).toFixed(3);
-      }).join(","));
+    rows.forEach(r=>{
+      const it = byName[r.name];
+      const cap = prOf(r.val,S.year);
+      lines.push([csvEscape(r.name), it.gf.toFixed(3), it.sp.toFixed(3), it.bd.toFixed(3)]
+        .concat(S.fed?[it.fed.toFixed(3)]:[])
+        .concat([r.val.toFixed(3), r.pct.toFixed(1), cap==null?"":Math.round(cap)]).join(","));
+    });
+    if (!S.q){
+      const sum = k => items.reduce((s,it)=>s+it[k],0);
+      const cap = prOf(C.total,S.year);
+      lines.push(["All " + (S.drill?"departments":"agencies"), sum("gf").toFixed(3), sum("sp").toFixed(3), sum("bd").toFixed(3)]
+        .concat(S.fed?[sum("fed").toFixed(3)]:[])
+        .concat([C.total.toFixed(3), "100.0", cap==null?"":Math.round(cap)]).join(","));
     }
     return lines.join("\r\n") + "\r\n";
   }
+
+  /* ---------- saved views (device-local) ---------- */
+  const SV_KEY = "caledger_saved_views";
+  const readSaved = () => { try{ return JSON.parse(localStorage.getItem(SV_KEY)||"[]"); }catch(e){ return []; } };
+  const writeSaved = list => { try{ localStorage.setItem(SV_KEY, JSON.stringify(list.slice(0,20))); }catch(e){} };
+  function renderSaved(){
+    const mine = readSaved().filter(v=>v.page==="state");
+    $("savedList").innerHTML = mine.length ? mine.map(v=>
+      '<div class="saved-row"><span class="mono" style="font-size:12px;flex:1;min-width:220px">'+esc(v.label)+'</span>'
+      + '<span class="mono" style="font-size:11px;color:var(--smoke)">'+new Date(v.ts).toISOString().slice(0,10)+'</span>'
+      + '<button class="btn sm" data-load="'+esc(v.h)+'">Load</button>'
+      + '<button class="xbtn" data-del="'+v.ts+'">Remove</button></div>').join("")
+      : '<div style="font-size:13px;color:var(--smoke);margin-top:12px">No saved views yet. Saving records the current year, view, unit, and drill level as a permalink.</div>';
+    $("savedList").querySelectorAll("[data-load]").forEach(b=>b.addEventListener("click",()=>{
+      location.hash = b.getAttribute("data-load"); applyHash(); syncControls(); render();
+      $("savedPanel").hidden = true;
+    }));
+    $("savedList").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+      writeSaved(readSaved().filter(x=>String(x.ts)!==b.getAttribute("data-del"))); renderSaved();
+    }));
+  }
+
+  /* ---------- wiring ---------- */
+  function doDrill(id){
+    S.drill = id; S.openNote = null; S.sortKey="value"; S.sortDir=-1; S.q="";
+    $("search").value = "";
+    syncHash(); render();
+  }
+  $("crumbRoot").addEventListener("click", ()=>{ if(S.drill){ S.drill=null; S.openNote=null; syncHash(); render(); } });
+  const yearSel = $("yearSel");
+  YEARS.forEach(y=>{ const o=document.createElement("option"); o.value=y; o.textContent="FY "+y; yearSel.appendChild(o); });
+  yearSel.addEventListener("change", ()=>{ S.year=yearSel.value; S.openNote=null;
+    if (S.drill && !agencies(S.year).some(a=>a.id===S.drill)) S.drill=null;
+    syncHash(); render(); });
+  $("yearPrev").addEventListener("click", ()=>{ const i=YEARS.indexOf(S.year); if(i>0){ S.year=YEARS[i-1]; yearSel.value=S.year; S.openNote=null; syncHash(); render(); }});
+  $("yearNext").addEventListener("click", ()=>{ const i=YEARS.indexOf(S.year); if(i<YEARS.length-1){ S.year=YEARS[i+1]; yearSel.value=S.year; S.openNote=null; syncHash(); render(); }});
+  $("viewGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.view=b.dataset.view; syncHash(); render(); }));
+  $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
+  $("fedToggle").addEventListener("change", e=>{ S.fed=e.target.checked; syncHash(); render(); });
+  $("search").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); render(); });
+  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden; if(!p.hidden) $("citeText").textContent = citationText(); });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").hidden=true; });
+  $("citeCopy").addEventListener("click", ()=>{
+    const text = citationText();
+    const done = ok=>{ $("citeCopy").textContent = ok?"Copied ✓":"Copy failed"; setTimeout(()=>{$("citeCopy").textContent="Copy";},1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(()=>done(true),()=>done(false));
+    else done(false);
+  });
+  $("savedToggle").addEventListener("click", ()=>{ const p=$("savedPanel"); p.hidden=!p.hidden; if(!p.hidden) renderSaved(); });
+  $("savedClose").addEventListener("click", ()=>{ $("savedPanel").hidden=true; });
+  $("saveViewBtn").addEventListener("click", ()=>{
+    const list = readSaved();
+    list.unshift({ page:"state", h:hashOf(),
+      label:(S.drill?drillAgency().name:"All agencies")+" · FY "+S.year+" · "+S.view+" · "+S.unit,
+      ts:Date.now() });
+    writeSaved(list); renderSaved();
+  });
   $("csvBtn").addEventListener("click", ()=>{
-    const blob = new Blob([buildCSV()], {type:"text/csv;charset=utf-8"});
+    const blob = new Blob([buildCSV()],{type:"text/csv;charset=utf-8"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "california-ledger_FY" + S.year + (S.fed ? "_incl-federal" : "_state-funds") + ".csv";
+    a.download = "ca-ledger-state-fy"+S.year.slice(2,4)+(S.drill?"-"+S.drill:"")+".csv";
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   });
 
-  /* ---------- change from the prior year ---------- */
-  const CHG_COLS = [
-    {key:"name",  lbl:()=> "Agency"},
-    {key:"prev",  lbl:()=> "FY " + (prevYearOf(S.year)||"—") + " total"},
-    {key:"cur",   lbl:()=> "FY " + S.year + " total"},
-    {key:"delta", lbl:()=> "Change"},
-    {key:"pct",   lbl:()=> "Change %"}
-  ];
-  const CHG_KEYS = CHG_COLS.map(c=>c.key);
-  function prevYearOf(y){
-    const i = budgetYears.indexOf(y);
-    return i > 0 ? budgetYears[i-1] : null;
+  function syncControls(){
+    yearSel.value = S.year;
+    $("fedToggle").checked = S.fed;
+    $("search").value = S.q;
   }
-  function changeRows(){
-    const prevY = prevYearOf(S.year);
-    if (!prevY) return null;
-    const prevMap = {};
-    D.budgets[prevY].agencies.forEach(a=>{ prevMap[a.id] = agencyTotal(a,S.fed); });
-    const rows = agencies().map(a=>{
-      const cur = agencyTotal(a,S.fed);
-      const prev = (a.id in prevMap) ? prevMap[a.id] : null;
-      return { name:a.name, prev, cur,
-               delta: prev==null ? null : cur-prev,
-               pct: (prev==null || prev<=0) ? null : (cur-prev)/prev*100 };
-    });
-    const curIds = new Set(agencies().map(a=>a.id));
-    D.budgets[prevY].agencies.forEach(a=>{
-      if (!curIds.has(a.id))
-        rows.push({ name:a.name, prev:prevMap[a.id], cur:null, delta:null, pct:null });
-    });
-    rows.sort((a,b)=>{
-      const k = S.cSortKey;
-      if (k==="name") return S.cSortDir * a.name.localeCompare(b.name);
-      const av = a[k], bv = b[k];
-      if (av==null && bv==null) return 0;
-      if (av==null) return 1;             // rows without a value sort last
-      if (bv==null) return -1;
-      return S.cSortDir * (av-bv);
-    });
-    return { rows, prevY };
+  function render(){
+    const C = computeRows();
+    renderChrome(C);
+    $("scheduleLabel").textContent = S.drill
+      ? "SCHEDULE 1." + (agencies(S.year).findIndex(a=>a.id===S.drill)+1) + " — DEPARTMENTS · " + drillAgency().name.toUpperCase()
+      : "SCHEDULE 1 — APPROPRIATIONS BY AGENCY";
+    $("crumbRoot").className = S.drill ? "link" : "";
+    $("crumbSep").hidden = !S.drill;
+    $("crumbName").hidden = !S.drill;
+    if (S.drill) $("crumbName").textContent = drillAgency().name;
+    $("viewGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.view===S.view));
+    $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
+    renderRuler(C); renderBar(C); setHover(null,C); renderPlain(C);
+    $("allocView").hidden = S.view!=="allocation";
+    $("changeView").hidden = S.view!=="change";
+    $("trendView").hidden = S.view!=="trend";
+    if (S.view==="allocation") renderAlloc(C);
+    if (S.view==="change") renderChange(C);
+    if (S.view==="trend") renderTrend(C);
+    renderFunds();
+    $("printCite").textContent = citationText();
   }
-  function renderChange(){
-    const data = changeRows();
-    const note = $("changeNote"), scroll = $("changeScroll");
-    if (!data){
-      note.textContent = "FY " + S.year + " is the earliest fiscal year in this dataset; there is no prior year to compare.";
-      scroll.style.display = "none";
-      return;
-    }
-    scroll.style.display = "";
-    note.textContent = "Each agency's total for FY " + data.prevY + " and FY " + S.year
-      + " in the funds currently displayed, with the change in dollars and in percent. "
-      + "Increases and decreases appear together in one table; click a column to sort.";
+  $("hName").addEventListener("click", ()=>{ S.sortKey==="name" ? S.sortDir*=-1 : (S.sortKey="name",S.sortDir=1); syncHash(); render(); });
+  $("hValue").addEventListener("click", ()=>{ S.sortKey==="value" ? S.sortDir*=-1 : (S.sortKey="value",S.sortDir=-1); syncHash(); render(); });
+  $("hDelta").addEventListener("click", ()=>{ S.sortKey==="delta" ? S.sortDir*=-1 : (S.sortKey="delta",S.sortDir=-1); syncHash(); render(); });
 
-    const head = $("chgHead"); head.innerHTML = "";
-    CHG_COLS.forEach(c=>{
-      const th = document.createElement("th");
-      th.scope = "col";
-      const active = S.cSortKey===c.key;
-      th.setAttribute("aria-sort", active ? (S.cSortDir<0 ? "descending" : "ascending") : "none");
-      const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "sort-btn";
-      btn.setAttribute("aria-label", "Sort by " + c.lbl());
-      btn.innerHTML = c.lbl() + '<span class="arrow">' + (active ? (S.cSortDir<0 ? " ▾" : " ▴") : "") + '</span>';
-      btn.addEventListener("click", ()=>{
-        if (S.cSortKey===c.key) S.cSortDir *= -1;
-        else { S.cSortKey = c.key; S.cSortDir = c.key==="name" ? 1 : -1; }
-        syncHash();
-        renderChange();
-      });
-      th.appendChild(btn);
-      head.appendChild(th);
-    });
-
-    const body = $("chgBody"); body.innerHTML = "";
-    data.rows.forEach(r=>{
-      const tr = document.createElement("tr");
-      tr.style.cursor = "default";
-      tr.innerHTML = "<td>" + r.name + "</td>"
-        + "<td>" + (r.prev==null ? "—" : fmtB(r.prev)) + "</td>"
-        + "<td>" + (r.cur==null ? "—" : fmtB(r.cur)) + "</td>"
-        + '<td class="' + deltaClass(r.delta) + '">' + fmtDelta(r.delta) + "</td>"
-        + '<td class="' + deltaClass(r.pct) + '">' + fmtPct(r.pct) + "</td>";
-      body.appendChild(tr);
-    });
-    const prevTotal = D.budgets[data.prevY].agencies.reduce((s,a)=>s+agencyTotal(a,S.fed),0);
-    const curTotal = grandTotal();
-    const tr = document.createElement("tr");
-    tr.className = "total-row";
-    tr.style.cursor = "default";
-    tr.innerHTML = "<td>All agencies</td>"
-      + "<td>" + fmtB(prevTotal) + "</td>"
-      + "<td>" + fmtB(curTotal) + "</td>"
-      + '<td class="' + deltaClass(curTotal-prevTotal) + '">' + fmtDelta(curTotal-prevTotal) + "</td>"
-      + '<td class="' + deltaClass(curTotal-prevTotal) + '">' + fmtPct((curTotal-prevTotal)/prevTotal*100) + "</td>";
-    body.appendChild(tr);
-  }
-
-  /* ---------- controls ---------- */
-  const yearSel = $("yearSel");
-  budgetYears.forEach(y=>{
-    const o = document.createElement("option");
-    o.value = y; o.textContent = "FY " + y;
-    yearSel.appendChild(o);
-  });
-  yearSel.value = S.year;
-  yearSel.addEventListener("change", ()=>{ S.year = yearSel.value; syncHash(); renderAll(); });
-  $("fedToggle").addEventListener("change", e=>{ S.fed = e.target.checked; syncHash(); renderAll(); });
-  $("search").addEventListener("input", e=>{ S.query = e.target.value.trim(); syncHash(); renderTable(); });
-
-  /* ---------- boot ---------- */
-  function renderAll(){
-    renderBanner(); renderTotals(); renderBar(); renderDetail();
-    renderFunds(); renderTrend(); renderChange(); renderTable();
-  }
-  applyHash();
-  syncControls();
-  renderAll();
-
+  applyHash(); syncControls(); render();
   window.addEventListener("hashchange", ()=>{
-    const raw = location.hash.replace(/^#/, "");
-    if (raw === stateToHash()) return;          // our own write, already rendered
-    if (raw && raw.indexOf("=") < 0) return;    // a plain #anchor link, e.g. #methodology
-    applyHash(); syncControls(); renderAll();
+    const raw = location.hash.replace(/^#/,"");
+    if (raw && raw.indexOf("=")<0) return;   // plain #anchor (e.g. #methodology)
+    applyHash(); syncControls(); render();
   });
 })();
 </script>

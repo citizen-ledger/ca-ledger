@@ -462,6 +462,54 @@ wherever its codes appear.
   change documented earlier (repo is private; Pages must be enabled
   with Source = GitHub Actions).
 
+## Redesign: the Ledger design system (2026-07-13)
+
+Both pages were rebuilt to the design-handoff bundle ("Ledger /
+accounting ledger" direction) — still dependency-free vanilla
+HTML/CSS/JS that works from a file double-click; the data layer,
+pipelines, and test entry point are unchanged. Deviations from the
+handoff, per instruction:
+
+- **Revisions view and source-trace panels dropped.** The eBudget
+  pipeline fetches neither Governor's-proposal figures nor document
+  page references, and the Ledger does not stub records with
+  placeholder data. Allocation, Change, and Trend shipped.
+- **City accounting labels corrected.** The handoff described the city
+  data as "general fund only, enterprise funds excluded"; the actual
+  data is **governmental activities** (broader than the general fund),
+  with enterprise activity shown separately. Every label, hero
+  substat, schedule heading, and method note was rewritten
+  accordingly, and the test suite asserts the corrected language
+  (including that "general fund only" appears nowhere).
+- **8-city chip picker replaced** with the search-based picker over
+  all 482 cities; selection capped at 4, comparison requires 2–4.
+- **Preserved features the handoff omitted:** the federal-funds
+  toggle, the comparability footnotes (contract cities with the
+  FY 2015-16 checklist vintage caveat, San Francisco consolidation,
+  ±40% single-year swings), and the per-city enterprise-fund block.
+- **RECORD INTEGRITY is real.** Both pipelines now stamp
+  `meta.integrity` with the SHA-256 of the canonical JSON payload
+  (sorted keys, compact separators, digest field excluded so the
+  digest can live inside the file it certifies).
+  `pipeline/verify_digest.py` recomputes and compares; both pages
+  display the live digest with verification instructions, and the
+  test suite runs the verifier.
+- **Georgia serif** (Untitled Serif is licensed and not licensed here).
+
+Neutrality rules from the handoff are implemented and tested:
+direction renders as ▲▼ in ink (the legacy green/red delta classes are
+gone and a test asserts grayscale), the Change view uses a mirrored
+center-axis chart on a symmetric scale with both gross totals always
+shown, comparison cities are always alphabetical regardless of
+selection order, and the one blue is reserved for interactive
+affordances. The caption "▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT
+CHARACTERIZE CHANGES" ships as-is.
+
+The test suite was reworked for the new UI: every prior assertion has
+a meaningful equivalent, plus new coverage for the corrected city
+labels, integrity digests, unit-switch arithmetic, drill-down, and
+saved views — **135 assertions, all passing** on the real data files.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

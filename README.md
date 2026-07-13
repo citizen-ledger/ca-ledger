@@ -8,12 +8,14 @@ and it works — including offline.
 
 | File | What it is |
 |---|---|
-| `index.html` | The state-budget site: layout, styles, all interactivity, hand-rolled SVG charts. Zero runtime dependencies. |
+| `index.html` | The state-budget page on the Ledger design system: record surface with dollar ruler, proportional bar with drill-down, Allocation / Change / Trend views, unit switching, cite + saved views. Zero runtime dependencies. |
 | `data.js` | The dataset the state view renders: six years of enacted state budgets (2020-21 through 2025-26), generated from official data. |
 | `pipeline/fetch_state_data.py` | Regenerates `data.js` from the Department of Finance's eBudget API. Python 3, stdlib only. |
 | `cities.html` | The V2 city view: city picker with search, governmental expenditures by function with per-resident figures, a separate enterprise-activities block, service-provision footnotes, and a 2-4 city side-by-side comparison. |
 | `city-data.js` | The city dataset: all 482 reporting cities × 8 fiscal years (2016-17 through 2023-24) of reported actual revenues and expenditures, generated from official SCO data. |
 | `pipeline/fetch_city_data.py` | Regenerates `city-data.js` from the SCO "By the Numbers" Socrata API. Refuses to write unless every city-year total reconciles against the SCO's own published totals. |
+| `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
+| `tests/run_tests.py` | Headless test suite — one command, 135 assertions on the real data. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
@@ -27,18 +29,17 @@ python3 -m http.server 8000     # then open http://localhost:8000
 
 ## Features
 
-- **Appropriation Bar** — total spending as one proportional bar; click any segment (or table row, or legend chip) to drill into that agency's departments and fund mix.
-- **Federal funds toggle** — state funds only vs. state + federal pass-through (Medi-Cal, unemployment insurance, etc.). Every figure on the page recomputes.
-- **Fiscal year selector** with year-over-year change and per-resident figures.
-- **Fund-source breakdown** — General / Special / Bond / Federal.
-- **Six-year trend chart.**
-- **Change from the prior year** — per-agency year-over-year change in dollars and percent, sortable, increases and decreases always shown together in one table.
-- **Sortable, filterable full table** with a totals row.
-- **Permalinks** — the full view state (fiscal year, federal toggle, selected agency, table sort, filter) lives in the URL hash, so any view can be shared and cited; the page restores it on load.
-- **Download this data** — a client-side CSV of the current table view, with a comment header naming the source dataset, accounting basis, and generation date; the raw `data.js` is linked next to it.
-- **Cite** — in the agency detail panel, copies a plain-text citation (figure, agency, fiscal year, source, accounting basis, permalink, access date) to the clipboard.
-- **Methodology section** — what the figures are, what they are not, exact source, update cadence, and known caveats, linked from the top banner and the footer.
-- Responsive to mobile, keyboard-navigable, respects reduced-motion.
+- **Appropriation bar with drill-down** — one proportional bar over a dollar ruler, grayscale ramp by size, ghost strip showing prior-year shares; click a segment or row to open that agency's departments.
+- **Three views** — Allocation (sortable table with data-derived † method notes), Change (mirrored center-axis chart on a symmetric scale, gross decreases and increases always shown together), Trend (six-year columns plus per-agency small multiples).
+- **Unit switching** — dollars, per resident, or % of total; every figure recomputes.
+- **Federal funds toggle** — state funds only vs. state + federal pass-through.
+- **Fund-source schedule** — General / Special / Bond / Federal.
+- **Permalinks** — the full view state (year, view, unit, federal toggle, drill, sort, filter) lives in the URL hash; citations reproduce the exact view.
+- **Cite + Download CSV** — a plain-text citation to the clipboard, and a CSV whose header names the source, basis, generation date, and permalink.
+- **Saved views** — stored in localStorage on the reader's device only.
+- **Record integrity** — each data file carries a SHA-256 digest, displayed on the page with instructions to verify it independently.
+- **Neutrality by construction** — direction is ▲▼ in ink, never red/green; the single blue is reserved for interactive controls; cities are always alphabetical.
+- Keyboard-navigable, print-ready (a citation header prints with the page).
 
 ## The data
 
@@ -78,14 +79,19 @@ update once a year.
 python3 tests/run_tests.py
 ```
 
-One command, 104 assertions against the real data files: V1 and V2
-rendering, permalink hash round-trips, CSV export contents, citation
-output, change-view arithmetic, a banned-adjective scan, the city
-comparability footnotes, and the enterprise-fund block. The suite
-serves the repo under a `/ca-ledger/` subpath (the GitHub Pages
-layout), so it also proves permalinks and citations emit the served
-public URL. Requires Python 3.9+, `pip install playwright`, and system
-Chrome (or `playwright install chromium`).
+One command, 135 assertions against the real data files: V1 and V2
+rendering on the Ledger design system, drill-down and view/unit
+controls, permalink hash round-trips, CSV export contents, citation
+output, Change-view arithmetic, a banned-adjective scan, neutrality
+checks (direction always in ink, never judgment colors), the corrected
+city accounting labels (governmental activities — never "general fund
+only"), the city comparability footnotes, the enterprise-fund block,
+and the RECORD INTEGRITY digests (verified live with
+`pipeline/verify_digest.py`). The suite serves the repo under a
+`/ca-ledger/` subpath (the GitHub Pages layout), so it also proves
+permalinks and citations emit the served public URL. Requires Python
+3.9+, `pip install playwright`, and system Chrome (or `playwright
+install chromium`).
 
 ## Neutrality choices, on purpose
 

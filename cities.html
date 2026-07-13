@@ -3,270 +3,270 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The California Ledger — Cities</title>
-<meta name="description" content="A nonpartisan public record of California city finances, by function and per resident. V2 preview on labeled sample data.">
+<title>The California Ledger — City spending</title>
+<meta name="description" content="A nonpartisan public record of California city spending: governmental activities by function, from State Controller filings, side by side.">
+<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/cities.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="The California Ledger">
-<meta property="og:title" content="The California Ledger — Cities">
-<meta property="og:description" content="A nonpartisan public record of California city finances, by function and per resident. V2 preview on labeled sample data.">
+<meta property="og:title" content="The California Ledger — City spending">
+<meta property="og:description" content="A nonpartisan public record of California city spending: governmental activities by function, from State Controller filings, side by side.">
+<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/cities.html">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="The California Ledger — Cities">
-<meta name="twitter:description" content="A nonpartisan public record of California city finances, by function and per resident. V2 preview on labeled sample data.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Ledger design system — see index.html. Square = record, pill = control,
+     blue = interactive only, direction = ▲▼ in ink, cities alphabetical. */
   :root{
-    --paper:#F7F8F4;
-    --paper-raised:#FFFFFF;
-    --ink:#15231D;
-    --ink-soft:#43554B;
-    --muted:#6E7D73;
-    --rule:#D8E1D7;
-    --rule-strong:#B9C7BB;
-    --green:#1B6B52;
-    --green-deep:#0E4634;
-    --green-wash:#E8F0EA;
-    --gold:#A8842B;
-    --gold-wash:#F4EDDC;
-    --blue:#31607F;
-    --brick:#A3492D;
-    --focus:#1B6B52;
-    --serif:"IBM Plex Serif",Georgia,serif;
-    --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
-    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion: reduce){
-    html{scroll-behavior:auto}
-    *,*::before,*::after{animation:none!important;transition:none!important}
-  }
-  body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:var(--sans);
-    font-size:16px;
-    line-height:1.55;
-    background-image:repeating-linear-gradient(to bottom, transparent 0 31px, rgba(27,107,82,.055) 31px 32px);
-  }
-  a{color:var(--green);text-underline-offset:3px}
-  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important} }
 
-  /* ---- sample banner ---- */
-  .banner{
-    background:var(--gold-wash);
-    border-bottom:1px solid var(--gold);
-    font-family:var(--mono);font-size:12.5px;color:#6b571f;
-    padding:8px 0;text-align:center;letter-spacing:.02em;
-  }
-  .banner strong{color:#5a470f}
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  nav.pn{display:flex;gap:6px}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .hd-actions{display:flex;gap:8px}
+  .btn{font-size:12.5px;border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
+  .btn.sm{padding:6px 14px;font-size:11.5px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:12px}
+  .xbtn:hover{color:var(--ink)}
 
-  /* ---- masthead ---- */
-  header.masthead{border-bottom:3px double var(--rule-strong);padding:44px 0 26px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:10px}
-  h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,5.4vw,52px);line-height:1.06;letter-spacing:-.01em}
-  .masthead p.dek{max-width:56ch;color:var(--ink-soft);margin-top:14px;font-size:17px}
-  .page-nav{font-family:var(--mono);font-size:12.5px;margin-top:12px}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
 
-  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:26px}
-  .control{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft)}
-  select{
-    font-family:var(--mono);font-size:14px;color:var(--ink);
-    background:var(--paper-raised);border:1px solid var(--rule-strong);
-    border-radius:4px;padding:7px 10px;cursor:pointer;
-  }
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  .dek{font-size:15px;color:var(--graphite);margin-top:12px;max-width:500px;line-height:1.5}
+  .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  .hero-sub{font-family:var(--mono);font-size:12px;color:var(--graphite);margin-top:10px}
+  .hero-lbl{font-family:var(--mono);font-size:10.5px;color:var(--smoke);margin-top:4px}
+  .hero-right{text-align:right}
 
-  /* ---- sections ---- */
-  section{padding:44px 0 8px}
-  h2{font-family:var(--serif);font-weight:600;font-size:25px;margin-bottom:4px}
-  .sec-note{color:var(--muted);font-size:14px;margin-bottom:20px;max-width:66ch}
+  .controls{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:34px;flex-wrap:wrap}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .picklbl{font-family:var(--mono);font-size:11px;color:var(--smoke);margin-bottom:8px}
+  input[type="search"]{font-family:var(--mono);font-size:12.5px;padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:230px}
+  input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .pick-results{list-style:none;margin-top:6px;max-height:220px;overflow-y:auto;border:1px solid var(--ash);background:var(--surface);border-radius:2px;max-width:380px}
+  .pick-results:empty{display:none}
+  .pick-results button{display:flex;justify-content:space-between;gap:12px;width:100%;border:none;background:transparent;padding:8px 14px;cursor:pointer;font-size:13px;text-align:left;border-bottom:1px solid var(--hairline)}
+  .pick-results button:hover{background:var(--wash-in)}
+  .pick-results small{font-family:var(--mono);font-size:10.5px;color:var(--smoke)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;border:1px solid var(--ink);background:var(--ink);color:var(--parchment);border-radius:9999px;padding:8px 10px 8px 16px;cursor:pointer}
+  .chip:hover{background:var(--graphite)}
+  .chip i{font-style:normal;font-size:11px;opacity:.75}
+  .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:12.5px;color:var(--ink);border-left:1px solid var(--ash)}
+  .pillgroup>button:first-child{border-left:none}
+  .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
+  .stepper button{color:var(--smoke);padding:9px 14px}
+  .stepper button:hover{background:var(--wash);color:var(--ink)}
+  .stepper select{border:none;background:transparent;font-family:var(--mono);font-size:12.5px;color:var(--ink);cursor:pointer;-webkit-appearance:none;appearance:none;padding:9px 2px}
 
-  /* ---- city picker ---- */
-  input[type="search"]{
-    font-family:var(--sans);font-size:14px;padding:8px 12px;min-width:250px;
-    border:1px solid var(--rule-strong);border-radius:4px;background:var(--paper-raised);color:var(--ink);
-  }
-  .city-list{list-style:none;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-  .city-btn{
-    width:100%;text-align:left;background:var(--paper-raised);border:1px solid var(--rule-strong);
-    border-radius:5px;padding:10px 13px;cursor:pointer;font-family:var(--sans);color:var(--ink);
-  }
-  .city-btn:hover{border-color:var(--green)}
-  .city-btn[aria-pressed="true"]{border-color:var(--green);border-left:5px solid var(--green)}
-  .city-btn .nm{font-weight:500;font-size:15px}
-  .city-btn small{display:block;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:2px}
+  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:20px}
+  .cite-inner{border-top:3px solid var(--ink);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
+  .saved-panel{border:1px solid var(--ash);background:var(--surface);margin-top:20px;padding:16px 22px}
+  .saved-row{display:flex;align-items:center;gap:14px;padding:9px 0;border-top:1px solid var(--hairline);margin-top:8px;flex-wrap:wrap}
 
-  /* ---- appropriation bar (shared pattern) ---- */
-  .approp{display:flex;height:88px;border:1px solid var(--rule-strong);border-radius:5px;overflow:hidden;background:var(--paper-raised)}
-  .seg{
-    position:relative;min-width:3px;border-right:1px solid rgba(255,255,255,.55);
-    cursor:default;border-top:none;border-bottom:none;border-left:none;padding:0;
-  }
-  .seg:last-child{border-right:none}
-  .seg .in-label{
-    position:absolute;left:8px;top:8px;text-align:left;color:#fff;
-    font-family:var(--mono);font-size:11.5px;line-height:1.3;pointer-events:none;
-    text-shadow:0 1px 1px rgba(0,0,0,.35);max-width:calc(100% - 12px);overflow:hidden;
-  }
-  .in-label b{display:block;font-weight:500;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-  .legend{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:14px}
-  .chip{
-    display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);
-    background:none;border:none;padding:3px 4px;font-family:var(--sans);
-  }
-  .chip .sw{width:11px;height:11px;border-radius:2.5px;flex:none}
-  .chip .amt{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  .sched-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .schedlbl{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  .schedlbl.ghosty{color:var(--ghost);font-size:10.5px}
+  .num{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+  .dim{color:var(--smoke)}
+  .dagger{border:none;background:transparent;color:var(--smoke);cursor:pointer;font-size:13px;padding:0 2px;font-family:var(--serif)}
+  .dagger:hover{color:var(--blue)}
+  .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:12.5px;color:var(--graphite);line-height:1.5}
+  .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  .tblwrap{overflow-x:auto}
+  .empty{margin-top:20px;border:1px solid var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
 
-  /* ---- detail panel ---- */
-  .detail{
-    display:none;margin-top:22px;background:var(--paper-raised);
-    border:1px solid var(--rule-strong);border-left:5px solid var(--green);
-    border-radius:5px;padding:24px 26px;
-  }
-  .detail.open{display:block;animation:rise .25s ease}
-  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-  .detail h3{font-family:var(--serif);font-size:21px;font-weight:600}
-  .detail .detail-total{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-top:3px}
-  .close-btn,.action-btn{
-    background:none;border:1px solid var(--rule-strong);border-radius:4px;
-    font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);padding:6px 12px;cursor:pointer;
-  }
-  .close-btn:hover,.action-btn:hover{border-color:var(--ink-soft);color:var(--ink)}
-  .detail-actions{display:flex;gap:10px;align-items:flex-start}
-  .totals{margin-top:18px;display:flex;flex-wrap:wrap;gap:34px;align-items:baseline}
-  .total-sub .num{font-family:var(--mono);font-size:20px;color:var(--ink-soft)}
-  .total-sub .lbl{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  /* comparison grid */
+  .cmp-head{display:grid;gap:0 20px;align-items:end;margin-top:22px;padding-bottom:12px;border-bottom:1px solid var(--ink)}
+  .cmp-row{display:grid;gap:0 20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--hairline)}
+  .cmp-row:hover{background:var(--wash-in)}
+  .cmp-foot{display:grid;gap:0 20px;align-items:center;padding:13px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  .cellbar{height:6px;background:var(--track);border-radius:1px;margin-top:6px;overflow:hidden}
+  .cellbar i{display:block;height:6px}
+  .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .cityhead .nm{font-size:15px;font-weight:600}
+  .cityhead .sub{font-family:var(--mono);font-size:11px;color:var(--smoke);margin-top:4px}
 
-  /* ---- tables ---- */
-  .table-tools{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin:18px 0 14px}
-  .tool-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .raw-link{font-family:var(--mono);font-size:12.5px}
-  .table-scroll{overflow-x:auto;background:var(--paper-raised);border:1px solid var(--rule-strong);border-radius:5px}
-  table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
-  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
-  th:first-child,td:first-child{text-align:left}
-  td:first-child{font-weight:500}
-  thead th{
-    font-family:var(--mono);font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
-    color:var(--muted);user-select:none;background:var(--green-wash);
-    border-bottom:1px solid var(--rule-strong);position:sticky;top:0;
-  }
-  tbody td{font-family:var(--mono);font-size:13.5px}
-  tbody td:first-child{font-family:var(--sans);font-size:14px}
-  tbody tr.total-row{font-weight:600;background:var(--paper)}
-  tbody tr.total-row td{border-top:2px solid var(--rule-strong)}
-  .share-cell{color:var(--muted)}
+  /* single-city detail rows */
+  .det-row{display:grid;grid-template-columns:250px 1fr 110px 80px;gap:0 16px;align-items:center;padding:11px 0;border-bottom:1px solid var(--hairline)}
+  .det-row:hover{background:var(--wash-in)}
+  .det-row .fn{font-size:14px;display:flex;align-items:baseline;gap:6px}
+  .det-foot{display:grid;grid-template-columns:250px 1fr 110px 80px;gap:0 16px;padding:12px 0;border-bottom:1px solid var(--ink);font-weight:600}
 
-  /* ---- comparison ---- */
-  .cmp-controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:18px}
-  .cell-bar{display:block;height:12px;background:var(--green-wash);border-radius:3px;overflow:hidden;margin-top:5px;min-width:110px}
-  .cell-bar i{display:block;height:100%}
-  #cmpTbl td{vertical-align:top}
-  #cmpTbl .num{font-family:var(--mono)}
-
-  /* ---- footer ---- */
-  footer{margin-top:56px;border-top:3px double var(--rule-strong);padding:30px 0 60px}
-  footer h2{font-size:19px}
-  footer p{font-size:14px;color:var(--ink-soft);max-width:74ch;margin-top:10px}
-  footer code{font-family:var(--mono);font-size:12.5px;background:var(--green-wash);padding:1px 6px;border-radius:3px}
-
-  @media(max-width:680px){
-    .approp{height:64px}
-  }
+  .method{margin-top:72px;border-top:1px solid var(--ink);padding-top:28px}
+  .method h2{font-family:var(--serif);font-size:30px;font-weight:400;letter-spacing:-0.6px}
+  .method .lead{font-size:15px;line-height:1.6;color:var(--graphite);max-width:660px;margin-top:14px}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;margin-top:28px}
+  .mcol{display:flex;flex-direction:column;gap:14px}
+  .mnote{display:flex;gap:12px;font-size:13.5px;line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  .integrity{border:1px solid var(--ash);background:var(--surface);padding:14px 16px;margin-top:4px}
+  .digest{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-top:8px;word-break:break-all}
+  .revlog{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--smoke)}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} .det-row,.det-foot{grid-template-columns:1fr 90px} }
 </style>
 </head>
 <body>
 
-<div class="banner" id="dataBanner"></div>
-
-<header class="masthead">
-  <div class="wrap">
-    <div class="eyebrow">A Nonpartisan Public Record</div>
-    <h1>The California Ledger — Cities</h1>
-    <p class="dek">City finances from standardized annual reports, drawn to scale and stated per resident. No commentary, no conclusions — the record, organized so anyone can read it.</p>
-    <p class="page-nav"><a href="index.html">← State budget view</a></p>
-    <div class="controls">
-      <label class="control" for="yearSel">Fiscal year
-        <select id="yearSel" aria-label="Select fiscal year"></select>
-      </label>
-    </div>
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <span class="wordmark">The California Ledger</span>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <span class="active">City spending</span>
+    <a href="#methodology">Methodology</a>
+  </nav>
+  <div class="hd-actions np">
+    <button class="btn" id="savedToggle">Saved views</button>
+    <button class="btn ink" id="citeToggle">Cite</button>
+    <button class="btn blue" id="csvBtn">Download CSV</button>
   </div>
 </header>
 
-<main>
-  <section aria-labelledby="h-pick">
-    <div class="wrap">
-      <h2 id="h-pick">Pick a city</h2>
-      <p class="sec-note">Search and select a city to see its expenditures by function. Populations shown are for the selected fiscal year.</p>
-      <input type="search" id="citySearch" placeholder="Search cities…" aria-label="Search cities">
-      <ul class="city-list" id="cityList"></ul>
+<div class="prov" id="dataBanner"></div>
 
-      <div class="detail" id="detail" aria-live="polite">
-        <div class="detail-head">
-          <div>
-            <h3 id="dName"></h3>
-            <div class="detail-total" id="dTotal"></div>
-          </div>
-          <div class="detail-actions">
-            <button class="action-btn" id="dCite" aria-live="polite" aria-label="Copy a plain-text citation for this figure">Cite</button>
-            <button class="close-btn" id="dClose">Close ✕</button>
-          </div>
-        </div>
-        <div class="totals" id="dFigures"></div>
-        <div style="margin-top:20px" class="approp" id="funcBar" role="group" aria-label="Expenditures by function, proportional bar"></div>
-        <div class="legend" id="funcLegend"></div>
-        <div class="table-tools">
-          <span class="sec-note" style="margin:0">Every function, in dollars and per resident.</span>
-          <div class="tool-actions">
-            <button class="action-btn" id="cityCsvBtn" aria-label="Download this city's expenditures by function as a CSV file">Download this data (CSV)</button>
-            <a class="raw-link" href="city-data.js" download>raw dataset (city-data.js)</a>
-          </div>
-        </div>
-        <div class="table-scroll">
-          <table id="funcTbl">
-            <thead><tr><th scope="col">Function</th><th scope="col">Expenditures</th><th scope="col">Per resident</th><th scope="col">Share</th></tr></thead>
-            <tbody id="funcBody"></tbody>
-          </table>
-        </div>
-        <div id="dEnterprise"></div>
-        <div id="dFoot"></div>
+<main>
+  <div class="po cite-text" id="printCite"></div>
+
+  <div class="hero">
+    <div>
+      <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
+      <h1>City spending</h1>
+      <p class="dek">Governmental-activities spending by function from the standardized annual reports all 482 California cities file with the State Controller. Cities appear alphabetically; the Ledger does not rank.</p>
+    </div>
+    <div class="hero-right">
+      <div class="hero-num" id="heroNum">—</div>
+      <div class="hero-sub" id="heroSub"></div>
+      <div class="hero-lbl">GOVERNMENTAL ACTIVITIES · REPORTED ACTUALS</div>
+    </div>
+  </div>
+
+  <div class="controls np">
+    <div style="flex:1;min-width:260px">
+      <div class="picklbl">CITIES · SELECT 1–4 · 2–4 COMPARE · <span id="pickCount"></span></div>
+      <input type="search" id="citySearch" placeholder="Search 482 cities…" aria-label="Search cities">
+      <ul class="pick-results" id="cityList"></ul>
+      <div class="chips" id="cityChips"></div>
+    </div>
+    <div class="pillgroup stepper">
+      <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
+      <select id="yearSel" aria-label="Select fiscal year"></select>
+      <button id="yearNext" aria-label="Next fiscal year">▸</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
+      <button data-unit="perResident">Per resident</button>
+      <button data-unit="total">Total dollars</button>
+      <button data-unit="percent">% of budget</button>
+    </div>
+  </div>
+
+  <div class="cite-panel" id="citePanel" hidden>
+    <div class="cite-inner">
+      <div style="flex:1;min-width:280px">
+        <div class="microlbl">CITATION · REPRODUCES THIS EXACT VIEW</div>
+        <div class="cite-text" id="citeText"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ink" id="citeCopy">Copy</button>
+        <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <section aria-labelledby="h-cmp">
-    <div class="wrap">
-      <h2 id="h-cmp">Compare cities</h2>
-      <p class="sec-note">Choose two to four cities to see per-resident spending by function side by side. Within each row, bars share one scale; every city gets the same treatment.</p>
-      <div class="cmp-controls" id="cmpControls"></div>
-      <div class="table-tools" id="cmpTools" hidden>
-        <span class="sec-note" style="margin:0" id="cmpNote"></span>
-        <div class="tool-actions">
-          <button class="action-btn" id="cmpCsvBtn" aria-label="Download the comparison as a CSV file">Download this data (CSV)</button>
+  <div class="saved-panel np" id="savedPanel" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="microlbl">SAVED VIEWS · STORED ON THIS DEVICE ONLY</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ink" id="saveViewBtn">Save current view</button>
+        <button class="xbtn" id="savedClose" aria-label="Close saved views">✕</button>
+      </div>
+    </div>
+    <div id="savedList"></div>
+  </div>
+
+  <div class="record" id="mainRecord">
+    <div class="sched-row">
+      <span class="schedlbl" id="scheduleLabel"></span>
+      <span class="schedlbl ghosty" id="scheduleNote"></span>
+    </div>
+    <div id="recordBody"></div>
+  </div>
+
+  <div class="record" id="entPanel" hidden>
+    <div class="sched-row">
+      <span class="schedlbl" id="entLabel">ENTERPRISE ACTIVITIES (RATEPAYER-FUNDED) · EXCLUDED FROM COMPARISONS</span>
+      <span class="schedlbl ghosty">SHOWN SEPARATELY BECAUSE CITIES DIFFER IN WHICH THEY OPERATE</span>
+    </div>
+    <div id="entBody"></div>
+  </div>
+
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <p class="lead">The Ledger records what each city reports to the State Controller, mapped to the Controller's standardized functions. It does not rank cities or characterize their choices. Every figure comes from the official dataset described below and can be independently verified.</p>
+    <div class="mgrid">
+      <div class="mcol">
+        <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote"><b>M-1</b><span>Scope is each city's <strong>governmental activities</strong> — the tax- and grant-funded functions in its annual report. This is broader than the general fund: it includes special-revenue, capital-project, and debt-service funds. Ratepayer-funded enterprise activities (water, power, airports, harbors, hospitals, transit) are recorded separately per city and excluded from comparisons, because cities differ in which they operate. Internal service funds and conduit financing are excluded from both blocks.</span></div>
+        <div class="mnote"><b>M-2</b><span>Functions follow the State Controller's standardized report categories; every source line maps to exactly one function (the crosswalk is in <span class="mono" style="font-size:12px">pipeline/fetch_city_data.py</span>). Capital outlay and debt service are visible functions, not folded away — a single project or bond issue can move a small city's one-year total, and rows that swing more than ±40% year over year are footnoted.</span></div>
+        <div class="mnote"><b>M-3</b><span>Figures are reported actual revenues and expenditures as filed with the State Controller — retrospective figures, not budgets, and not audited by the Ledger. Fiscal years are labeled by ending year ("2023-24" ends June 30, 2024); reports for a fiscal year are published about a year later. Every city-year total is reconciled against the Controller's published per-capita dataset before this page's data file is written.</span></div>
+        <div class="mnote"><b>M-4</b><span>Per-resident figures divide by the population reported in the same State Controller filing — never a mixed vintage.</span></div>
+        <div class="mnote"><b>M-5</b><span>Service-structure notes (†) record where police or fire service is delivered or financed outside the city budget — for example, a city that contracts police to its county sheriff, or receives fire service from a special district. They derive from the State Controller's services checklist, whose most recent published vintage is <strong>FY 2015-16</strong> — service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
+        <div class="mnote"><b>M-6</b><span>San Francisco is California's only consolidated city and county; its report includes county functions (courts, jails, social services, elections) no other city provides, and it is footnoted wherever it appears.</span></div>
+      </div>
+      <div class="mcol">
+        <div class="microlbl">SOURCES &amp; RECORD</div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Primary source: the State Controller's "By the Numbers" open-data portal (<span class="mono" style="font-size:12px">bythenumbers.sco.ca.gov</span>) — City Expenditures (ju3w-4gxp), City Revenues (rrtv-rsj9), City Expenditures Per Capita (ykhf-vfsr, the reconciliation target), and the services checklist (tsz3-29gc). One new fiscal year per annual filing cycle. The <a href="index.html">state budget view</a> shows enacted appropriations — a different accounting basis, stated on its own page.</div>
+        <div class="revlog" id="revLog"></div>
+        <div class="integrity">
+          <div class="microlbl">RECORD INTEGRITY</div>
+          <div class="digest" id="integrityDigest"></div>
+          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="city-data.js" download>city-data.js</a> and run <span class="mono" style="font-size:11.5px">python3 pipeline/verify_digest.py city-data.js</span> from the repository — it recomputes the SHA-256 of the canonical JSON payload, which must match the digest above. A record you can check is a record you can trust.</div>
         </div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Citation links reproduce the exact view — cities, fiscal year, and unit — of the person citing. Values are stated in millions of dollars.</div>
       </div>
-      <p class="sec-note" id="cmpEmpty">Choose at least two cities above.</p>
-      <div class="table-scroll" id="cmpScroll" hidden>
-        <table id="cmpTbl">
-          <thead><tr id="cmpHead"></tr></thead>
-          <tbody id="cmpBody"></tbody>
-        </table>
-      </div>
-      <div id="cmpFoot" hidden></div>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <h2>Sources & method</h2>
-    <p id="srcNote"></p>
-    <p>Figures are reported actual revenues and expenditures from the standardized annual financial reports every California city files with the State Controller's Office, published at bythenumbers.sco.ca.gov — retrospective figures, not budgets. Function figures cover <em>governmental activities</em>; ratepayer-funded enterprise operations (water, power, airports, harbors, hospitals, transit) are shown separately per city and excluded from comparisons, because cities differ in which they operate. Internal service funds and conduit financing are excluded from both blocks; every city-year total is reconciled against the Controller's published per-capita dataset before this page's data file is written. "Per resident" divides each figure by the population reported in the same filing. Police and fire service-provision notes derive from the State Controller's services checklist, whose most recent published vintage is <strong>FY 2015-16</strong> — service arrangements may have changed since then. The additional flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service. San Francisco is footnoted as the state's only consolidated city and county. Reports for a fiscal year are published the following year — run <code>pipeline/fetch_city_data.py --write</code> to refresh. The <a href="index.html">state budget view</a> covers the enacted state budget from official data.</p>
-  </div>
+<footer class="ft">
+  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
 <script src="city-data.js"></script>
@@ -276,420 +276,472 @@
   const D = window.CA_CITY_DATA;
   if(!D){ document.getElementById("dataBanner").textContent = "city-data.js failed to load — the page cannot render."; return; }
 
-  const COLORS = ["#1B6B52","#31607F","#A8842B","#A3492D","#4E7A46","#6A5A8E",
-                  "#2F8C77","#8A6F3B","#54708A","#7A8450","#9C5F55","#3F655B"];
-  const FUNCS = D.functions;
-  const cityIds = Object.keys(D.cities).sort((a,b)=>D.cities[a].name.localeCompare(D.cities[b].name));
-  const MAX_CMP = 4;
-
-  /* ---------- state ---------- */
-  const DEFAULTS = { year: D.years[D.years.length-1], city: null, cmp: [], q: "" };
-  const S = { year: DEFAULTS.year, city: null, cmp: [], q: "" };
-
-  /* ---------- helpers ---------- */
+  const CITY_RAMP = ["#242424","#6f6c69","#a39f9c","#cfc9c4"];
+  const MINUS = "−";
   const $ = id => document.getElementById(id);
-  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
-  const fmtM = v => {              // v in millions of dollars
-    const sign = v < 0 ? "−" : "";
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  const FUNCS = D.functions;
+  const ENT_FUNDS = D.enterpriseFunds || [];
+  const allIds = Object.keys(D.cities).sort((a,b)=>D.cities[a].name.localeCompare(D.cities[b].name));
+  const UNITS = ["perResident","total","percent"];
+  const MAX_SEL = 4;
+
+  const DEFAULTS = { year: D.years[D.years.length-1], unit: "perResident", q: "" };
+  const S = { year: DEFAULTS.year, unit: DEFAULTS.unit, sel: [], q: "", openNote: null };
+
+  /* ---------- formats ---------- */
+  const fmtM = v => {              // v in millions
+    const sign = v < 0 ? MINUS : "";
     const a = Math.abs(v);
     if (a >= 1000) return sign + "$" + (a/1000).toFixed(2) + "B";
     if (a >= 100)  return sign + "$" + a.toFixed(0) + "M";
     return sign + "$" + a.toFixed(1) + "M";
   };
-  const fmtCap = v => "$" + Math.round(v).toLocaleString("en-US");
+  const fmtCap = v => (v<0?MINUS:"") + "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
   const fmtPop = v => v.toLocaleString("en-US");
-  const cityYear = (id, y) => D.cities[id] && D.cities[id].years[y];
-  const perCap = (vM, pop) => vM * 1e6 / pop;
+  const cityYear = (id,y) => D.cities[id] && D.cities[id].years[y];
+  const perCap = (vM,pop) => pop ? vM*1e6/pop : null;
+  function toUnit(vM, yr){
+    if (vM==null) return null;
+    if (S.unit==="perResident") return perCap(vM, yr.population);
+    if (S.unit==="percent") return yr.expenditures ? vM/yr.expenditures*100 : null;
+    return vM;
+  }
+  function fmtUnit(u){
+    if (u==null) return "—";
+    if (S.unit==="perResident") return fmtCap(u);
+    if (S.unit==="percent") return u.toFixed(1)+"%";
+    return fmtM(u);
+  }
+  const unitLabel = () => S.unit==="perResident" ? "PER RESIDENT" : S.unit==="total" ? "TOTAL DOLLARS" : "% OF GOVERNMENTAL TOTAL";
 
-  /* ---------- permalinks ---------- */
-  function stateToHash(){
+  /* ---------- permalink ---------- */
+  function hashOf(){
     const p = new URLSearchParams();
+    if (S.sel.length) p.set("c", S.sel.slice().sort().join(","));
+    if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
     if (S.year !== DEFAULTS.year) p.set("y", S.year);
-    if (S.city) p.set("c", S.city);
-    if (S.cmp.length) p.set("cmp", S.cmp.join(","));
     if (S.q) p.set("q", S.q);
     return p.toString();
   }
   function syncHash(){
-    const h = stateToHash();
-    try { history.replaceState(null, "", h ? "#"+h : location.pathname + location.search); }
+    const h = hashOf();
+    try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
     catch(e){ location.hash = h; }
   }
   function applyHash(){
-    const raw = location.hash.replace(/^#/, "");
-    if (!raw || raw.indexOf("=") < 0) return;
+    const raw = location.hash.replace(/^#/,"");
+    if (!raw || raw.indexOf("=")<0) return;
     const p = new URLSearchParams(raw);
-    const y = p.get("y");
-    S.year = (y && D.years.includes(y)) ? y : DEFAULTS.year;
-    const c = p.get("c");
-    S.city = (c && D.cities[c]) ? c : null;
-    const cmp = (p.get("cmp") || "").split(",").filter(id => D.cities[id]);
-    S.cmp = cmp.slice(0, MAX_CMP);
+    const ids = (p.get("c")||"").split(",").filter(id=>D.cities[id]);
+    S.sel = ids.slice(0, MAX_SEL);
+    S.unit = UNITS.includes(p.get("u")) ? p.get("u") : DEFAULTS.unit;
+    const y = p.get("y"); S.year = (y && D.years.includes(y)) ? y : DEFAULTS.year;
     S.q = p.get("q") || "";
   }
-  function syncControls(){
-    $("yearSel").value = S.year;
-    $("citySearch").value = S.q;
-  }
 
-  /* ---------- banner ---------- */
-  function renderBanner(){
-    const b = $("dataBanner");
-    if (D.meta.source === "SAMPLE"){
-      b.innerHTML = "<strong>Sample data.</strong> These figures are illustrative — run pipeline/fetch_city_data.py to load official data.";
-    } else {
-      b.innerHTML = "Data: " + esc(D.meta.sourceLabel) + " · generated " + D.meta.generated;
-      b.style.background = "var(--green-wash)"; b.style.borderColor = "var(--rule-strong)"; b.style.color = "var(--ink-soft)";
-    }
-    $("srcNote").textContent = (D.meta.source === "SAMPLE")
-      ? "This build is running on clearly labeled sample data. Do not cite these numbers."
-      : "Data source: " + D.meta.sourceLabel + ", generated " + D.meta.generated + ".";
-  }
+  /* ---------- neutrality: alphabetical selection order, always ---------- */
+  const selCities = () => S.sel.slice()
+    .sort((a,b)=>D.cities[a].name.localeCompare(D.cities[b].name))
+    .filter(id=>cityYear(id,S.year));
 
-  /* ---------- city picker ---------- */
-  function renderPicker(){
-    const ul = $("cityList"); ul.innerHTML = "";
-    const q = S.q.toLowerCase();
-    cityIds
-      .filter(id => !q || D.cities[id].name.toLowerCase().includes(q) || D.cities[id].county.toLowerCase().includes(q))
-      .forEach(id=>{
-        const c = D.cities[id], yr = c.years[S.year];
-        const li = document.createElement("li");
-        const btn = document.createElement("button");
-        btn.className = "city-btn";
-        btn.setAttribute("aria-pressed", S.city===id ? "true" : "false");
-        btn.innerHTML = '<span class="nm">'+esc(c.name)+'</span>'
-          + '<small>'+esc(c.county)+' County · pop. '+fmtPop(yr.population)+'</small>';
-        btn.addEventListener("click", ()=>{
-          S.city = (S.city === id) ? null : id;
-          syncHash(); renderPicker(); renderDetail();
-        });
-        li.appendChild(btn); ul.appendChild(li);
-      });
-  }
-
-  /* ---------- city detail ---------- */
-  function funcRows(id){
-    const yr = cityYear(id, S.year);
-    const rows = FUNCS.map((f,i)=>({ key:f.key, name:f.name, color:COLORS[i%COLORS.length],
-                                     v: yr.byFunction[f.key] || 0 }))
-                      .sort((a,b)=>b.v-a.v);
-    return { rows, yr };
-  }
-  function renderDetail(){
-    const box = $("detail");
-    if (!S.city){ box.classList.remove("open"); return; }
-    box.classList.add("open");
-    const c = D.cities[S.city];
-    const { rows, yr } = funcRows(S.city);
-    const total = yr.expenditures, pop = yr.population;
-
-    $("dName").textContent = c.name;
-    $("dTotal").textContent = fmtM(total) + " governmental expenditures · FY " + S.year;
-    $("dFigures").innerHTML = [
-      ["Per resident (governmental)", fmtCap(perCap(total,pop))],
-      ["Governmental revenues", fmtM(yr.revenues)],
-      ["Population", fmtPop(pop)],
-      ["County", esc(c.county)]
-    ].map(kv=>'<div class="total-sub"><span class="num">'+kv[1]+'</span><span class="lbl">'+kv[0]+'</span></div>').join("");
-
-    const bar = $("funcBar"), legend = $("funcLegend");
-    bar.innerHTML = ""; legend.innerHTML = "";
-    rows.forEach(r=>{
-      const share = total ? r.v/total*100 : 0;
-      const seg = document.createElement("div");
-      seg.className = "seg";
-      seg.style.width = Math.max(0, share) + "%";
-      seg.style.background = r.color;
-      seg.setAttribute("role","img");
-      seg.setAttribute("aria-label", r.name + ", " + fmtM(r.v) + ", " + share.toFixed(1) + " percent of expenditures");
-      seg.title = r.name + " — " + fmtM(r.v) + " (" + share.toFixed(1) + "%)";
-      if (share > 11) seg.innerHTML = '<span class="in-label"><b>'+esc(r.name)+'</b>'+fmtM(r.v)+' · '+share.toFixed(0)+'%</span>';
-      bar.appendChild(seg);
-      const chip = document.createElement("span");
-      chip.className = "chip";
-      chip.innerHTML = '<span class="sw" style="background:'+r.color+'"></span>'
-        + '<span class="chip-name">'+esc(r.name)+'</span>'
-        + '<span class="amt">'+fmtM(r.v)+' · '+(total?(r.v/total*100).toFixed(1):"0.0")+'%</span>';
-      legend.appendChild(chip);
-    });
-
-    const body = $("funcBody"); body.innerHTML = "";
-    rows.forEach(r=>{
-      const tr = document.createElement("tr");
-      tr.innerHTML = "<td>"+esc(r.name)+"</td><td>"+fmtM(r.v)+"</td>"
-        + "<td>"+fmtCap(perCap(r.v,pop))+"</td>"
-        + '<td class="share-cell">'+(total?(r.v/total*100).toFixed(1):"0.0")+"%</td>";
-      body.appendChild(tr);
-    });
-    const tr = document.createElement("tr");
-    tr.className = "total-row";
-    tr.innerHTML = "<td>All governmental functions</td><td>"+fmtM(total)+"</td><td>"+fmtCap(perCap(total,pop))+"</td>"
-      + '<td class="share-cell">100%</td>';
-    body.appendChild(tr);
-
-    renderEnterprise(yr, pop);
-    $("dFoot").innerHTML = cityNotes(S.city, S.year)
-      .map(n=>'<p class="sec-note" style="margin:10px 0 0">'+esc(n)+'</p>').join("");
-  }
-  function renderEnterprise(yr, pop){
-    const box = $("dEnterprise");
-    const ent = yr.enterprise;
-    if (!ent || !ent.total){ box.innerHTML = ""; return; }
-    const funds = (D.enterpriseFunds||[]).map(f=>({name:f.name, v:(ent.byFund||{})[f.key]||0}))
-                                         .filter(r=>r.v).sort((a,b)=>b.v-a.v);
-    let html = '<h4 style="font-family:var(--serif);font-size:17px;margin:24px 0 4px">Enterprise activities (ratepayer-funded)</h4>'
-      + '<p class="sec-note" style="margin-bottom:12px">Business-type operations funded mainly by charges to users — not by general city taxes. Cities differ in which they operate, so these are shown apart from the governmental figures above and excluded from comparisons.</p>'
-      + '<div class="table-scroll"><table><thead><tr><th scope="col">Enterprise fund</th><th scope="col">Expenses</th><th scope="col">Per resident</th></tr></thead><tbody>';
-    funds.forEach(r=>{
-      html += "<tr><td>"+esc(r.name)+"</td><td>"+fmtM(r.v)+"</td><td>"+fmtCap(perCap(r.v,pop))+"</td></tr>";
-    });
-    html += '<tr class="total-row"><td>All enterprise funds</td><td>'+fmtM(ent.total)+'</td><td>'+fmtCap(perCap(ent.total,pop))+'</td></tr>'
-      + "</tbody></table></div>"
-      + '<p class="sec-note" style="margin-top:8px">Enterprise revenues: '+fmtM(ent.revenues||0)
-      + (yr.internalService ? ' · Internal service funds (excluded from totals): '+fmtM(yr.internalService) : '')
-      + (yr.conduitFinancing ? ' · Conduit financing (excluded from totals): '+fmtM(yr.conduitFinancing) : '')
-      + '</p>';
-    box.innerHTML = html;
-  }
-  function cityNotes(id, year){
-    const c = D.cities[id], yr = cityYear(id, year), notes = [];
+  /* ---------- comparability notes ---------- */
+  function cityNotes(id){
+    const c = D.cities[id], yr = cityYear(id,S.year), notes = [];
+    if (!yr) return notes;
     if (c.flags && c.flags.consolidated)
-      notes.push(c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities.");
+      notes.push({key:"consolidated", text: c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."});
     const vin = D.meta.servicesChecklistVintage;
     [["police","Police","lowPolice"],["fire","Fire","lowFire"]].forEach(([k,label,lowKey])=>{
       const svc = c.services && c.services[k];
-      const low = yr && yr.notes && yr.notes.includes(lowKey);
-      if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
-        notes.push(label + " service " + svc.label + " (as reported to the State Controller for FY " + vin + ", the most recent services checklist published).");
+      const low = yr.notes && yr.notes.includes(lowKey);
+      if (svc && svc.code && svc.code!=="A" && svc.code!=="B" && svc.label)
+        notes.push({key:k, text: label + " service " + svc.label + " (as reported to the State Controller for FY " + vin + ", the most recent services checklist published — arrangements may have changed since)."});
       else if (low)
-        notes.push("Reports under $5 per resident of municipal " + k + " expenditure in FY " + year + "; the service may be provided or financed outside the city budget.");
+        notes.push({key:k, text:"Reports under $5 per resident of municipal " + k + " expenditure in FY " + S.year + "; the service may be provided or financed outside the city budget. This flag is a heuristic, not a survey."});
     });
-    if (yr && yr.notes && yr.notes.includes("bigSwing"))
-      notes.push("Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing.");
+    if (yr.notes && yr.notes.includes("bigSwing"))
+      notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
     return notes;
   }
-  $("dClose").addEventListener("click", ()=>{ S.city=null; syncHash(); renderPicker(); renderDetail(); });
+  const funcNoteKeys = id => cityNotes(id).map(n=>n.key);
 
-  /* ---------- cite ---------- */
+  /* ---------- chrome ---------- */
+  function renderChrome(){
+    $("dataBanner").innerHTML =
+      "<span>SOURCE: STATE CONTROLLER · BYTHENUMBERS.SCO.CA.GOV</span>"
+      + "<span>BASIS: REPORTED ACTUALS · GOVERNMENTAL ACTIVITIES</span>"
+      + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + "<span>PUBLIC RECORD</span>";
+    $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
+    const sel = selCities();
+    if (sel.length){
+      const popSum = sel.reduce((s,id)=>s+cityYear(id,S.year).population,0);
+      $("heroNum").textContent = sel.length===1 ? D.cities[sel[0]].name : sel.length + " CITIES";
+      $("heroSub").textContent = "COMBINED POPULATION " + fmtPop(popSum);
+    } else {
+      $("heroNum").textContent = allIds.length + " CITIES";
+      $("heroSub").textContent = "SELECT CITIES TO OPEN THE RECORD";
+    }
+    $("revLog").innerHTML = D.years.slice().reverse().map(y=>"FY "+y+" · REPORTED ACTUALS").join("<br>")
+      + "<br>GENERATED " + esc(D.meta.generated)
+      + "<br>SERVICES CHECKLIST · FY " + esc(D.meta.servicesChecklistVintage);
+    const integ = (D.meta.integrity||{});
+    $("integrityDigest").textContent = integ.digest
+      ? "SHA-256 · " + integ.digest + " (city-data.js)"
+      : "No digest recorded — regenerate city-data.js with the pipeline.";
+    $("pickCount").textContent = S.sel.length + " SELECTED";
+  }
+
+  /* ---------- picker ---------- */
+  function renderPicker(){
+    const list = $("cityList"); list.innerHTML = "";
+    const q = S.q.toLowerCase();
+    if (q){
+      allIds.filter(id => D.cities[id].name.toLowerCase().includes(q)
+                       || D.cities[id].county.toLowerCase().includes(q))
+        .slice(0, 30)
+        .forEach(id=>{
+          const c = D.cities[id], yr = cityYear(id,S.year);
+          const li = document.createElement("li");
+          const b = document.createElement("button");
+          b.innerHTML = "<span>"+esc(c.name)+"</span><small>"+esc(c.county)+" CO."
+            + (yr ? " · POP "+fmtPop(yr.population) : "")+"</small>";
+          b.addEventListener("click", ()=>{
+            if (!S.sel.includes(id) && S.sel.length < MAX_SEL) S.sel.push(id);
+            S.q = ""; $("citySearch").value = "";
+            syncHash(); render();
+          });
+          li.appendChild(b); list.appendChild(li);
+        });
+    }
+    $("cityChips").innerHTML = "";
+    selCities().forEach(id=>{
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.setAttribute("aria-label","Remove "+D.cities[id].name);
+      b.innerHTML = esc(D.cities[id].name) + " <i>✕</i>";
+      b.addEventListener("click", ()=>{
+        S.sel = S.sel.filter(x=>x!==id); syncHash(); render();
+      });
+      $("cityChips").appendChild(b);
+    });
+  }
+
+  /* ---------- record body ---------- */
+  function render(){
+    renderChrome(); renderPicker();
+    $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
+    $("yearSel").value = S.year;
+    const sel = selCities();
+    if (sel.length === 0) renderEmpty();
+    else if (sel.length === 1) renderDetail(sel[0]);
+    else renderCompare(sel);
+    renderEnterprise(sel);
+    $("printCite").textContent = citationText();
+  }
+  function renderEmpty(){
+    $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + unitLabel();
+    $("scheduleNote").textContent = "ALPHABETICAL ORDER · SHARED SCALE";
+    $("recordBody").innerHTML = '<div class="empty">Search above and select one city to open its record, or two to four to compare. The record shows governmental activities by function; ratepayer-funded enterprise activities appear separately.</div>';
+  }
+
+  function daggerHtml(id, fnKey){
+    const keys = funcNoteKeys(id);
+    if (fnKey==="police" && keys.includes("police")) return ' <button class="dagger" data-note="'+id+':police" aria-label="Service-structure note">†</button>';
+    if (fnKey==="fire" && keys.includes("fire")) return ' <button class="dagger" data-note="'+id+':fire" aria-label="Service-structure note">†</button>';
+    return "";
+  }
+  function noteFor(id, key){
+    const n = cityNotes(id).find(x=>x.key===key);
+    return n ? n.text : "";
+  }
+  function wireDaggers(container){
+    container.querySelectorAll(".dagger").forEach(btn=>{
+      btn.addEventListener("click", e=>{
+        e.stopPropagation();
+        const k = btn.getAttribute("data-note");
+        S.openNote = S.openNote===k ? null : k;
+        render();
+      });
+    });
+  }
+  function noteRowHtml(gridCols){
+    if (!S.openNote) return "";
+    const [id,key] = S.openNote.split(":");
+    const t = noteFor(id,key);
+    if (!t) return "";
+    return '<div class="note-row" style="grid-column:1/-1"><span class="mono" style="font-size:11px;color:var(--smoke)">'+esc(D.cities[id].name.toUpperCase())+' · </span>'+esc(t)+' <a href="#methodology">Method note M-5 →</a></div>';
+  }
+
+  /* single-city detail */
+  function renderDetail(id){
+    const c = D.cities[id], yr = cityYear(id,S.year);
+    $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + c.name.toUpperCase() + " · " + unitLabel();
+    $("scheduleNote").textContent = c.county.toUpperCase() + " COUNTY · POP " + fmtPop(yr.population) + " · GOVERNMENTAL " + fmtM(yr.expenditures) + " · REVENUES " + fmtM(yr.revenues);
+    const rows = FUNCS.map(f=>({ f, vM: (yr.byFunction||{})[f.key]||0 }));
+    const maxU = Math.max(...rows.map(r=>toUnit(r.vM,yr)||0), 0.001);
+    let html = '<div class="tblwrap"><div style="min-width:640px">';
+    rows.forEach(r=>{
+      const u = toUnit(r.vM,yr);
+      const w = u==null?0:Math.max(0,u/maxU*100);
+      html += '<div class="det-row"><span class="fn">'+esc(r.f.name)+daggerHtml(id,r.f.key)+'</span>'
+        + '<span class="cellbar" style="margin-top:0"><i style="width:'+w.toFixed(1)+'%;background:#242424"></i></span>'
+        + '<span class="num" style="text-align:right">'+fmtUnit(u)+'</span>'
+        + '<span class="num dim" style="text-align:right;font-size:12.5px">'+(yr.expenditures?(r.vM/yr.expenditures*100).toFixed(1):"0.0")+'%</span></div>';
+      if (S.openNote === id+":"+r.f.key) html += noteRowHtml();
+    });
+    const totU = S.unit==="percent" ? 100 : toUnit(yr.expenditures,yr);
+    html += '<div class="det-foot"><span style="font-size:14px">Total governmental</span><span></span>'
+      + '<span class="num" style="text-align:right">'+(S.unit==="percent"?"100.0%":fmtUnit(totU))+'</span><span></span></div>';
+    const generalNotes = cityNotes(id).filter(n=>!["police","fire"].includes(n.key));
+    generalNotes.forEach(n=>{ html += '<div class="note-row" style="border-bottom:none;background:transparent;padding-left:0">† '+esc(n.text)+'</div>'; });
+    html += '<div class="caps"><span>† SERVICE-STRUCTURE NOTE — CLICK TO EXPAND · SEE METHOD NOTE M-5</span><span>GOVERNMENTAL ACTIVITIES ONLY — ENTERPRISE FUNDS SHOWN BELOW</span></div>';
+    html += "</div></div>";
+    $("recordBody").innerHTML = html;
+    wireDaggers($("recordBody"));
+  }
+
+  /* 2-4 city comparison */
+  function renderCompare(sel){
+    $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + unitLabel();
+    $("scheduleNote").textContent = "ALPHABETICAL ORDER · SHARED SCALE";
+    const grid = "220px repeat(" + sel.length + ",1fr)";
+    const colors = {}; sel.forEach((id,i)=>colors[id]=CITY_RAMP[Math.min(i,3)]);
+    let maxU = 0.001;
+    FUNCS.forEach(f=>sel.forEach(id=>{
+      const yr = cityYear(id,S.year);
+      const u = toUnit((yr.byFunction||{})[f.key]||0, yr);
+      if (u!=null && u>maxU) maxU = u;
+    }));
+    let html = '<div class="tblwrap"><div style="min-width:720px">'
+      + '<div class="cmp-head" style="grid-template-columns:'+grid+'">'
+      + '<span class="schedlbl">FUNCTION</span>'
+      + sel.map(id=>{
+          const c = D.cities[id], yr = cityYear(id,S.year);
+          const flagged = cityNotes(id).length ? ' <button class="dagger" data-note="'+id+':consolidated" aria-label="City note">†</button>' : "";
+          return '<div class="cityhead"><div style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:'+colors[id]+'"></span><span class="nm">'+esc(c.name)+'</span>'
+            + (c.flags && c.flags.consolidated ? flagged : "")
+            + '</div><div class="sub">POP '+fmtPop(yr.population)+' · GOV '+fmtM(yr.expenditures)+'</div></div>';
+        }).join("")
+      + "</div>";
+    FUNCS.forEach(f=>{
+      html += '<div class="cmp-row" style="grid-template-columns:'+grid+'">'
+        + '<span style="font-size:14px">'+esc(f.name)+'</span>'
+        + sel.map(id=>{
+            const yr = cityYear(id,S.year);
+            const u = toUnit((yr.byFunction||{})[f.key]||0, yr);
+            return '<div><div style="display:flex;align-items:baseline;gap:6px"><span class="num">'+fmtUnit(u)+'</span>'+daggerHtml(id,f.key)+'</div>'
+              + '<div class="cellbar"><i style="width:'+(u==null?0:Math.max(0,u/maxU*100)).toFixed(1)+'%;background:'+colors[id]+'"></i></div></div>';
+          }).join("")
+        + "</div>";
+      if (S.openNote && S.openNote.split(":")[1]===f.key && sel.includes(S.openNote.split(":")[0]))
+        html += noteRowHtml();
+    });
+    html += '<div class="cmp-foot" style="grid-template-columns:'+grid+'">'
+      + '<span style="font-size:14px">Total governmental</span>'
+      + sel.map(id=>{
+          const yr = cityYear(id,S.year);
+          return '<span class="num">'+(S.unit==="percent"?"100.0%":fmtUnit(toUnit(yr.expenditures,yr)))+'</span>';
+        }).join("")
+      + "</div>";
+    // city-level comparability notes (consolidated, swings, service structure)
+    const noteLines = [];
+    sel.forEach(id=>cityNotes(id).forEach(n=>noteLines.push("<strong>"+esc(D.cities[id].name)+":</strong> "+esc(n.text))));
+    if (noteLines.length)
+      html += noteLines.map(n=>'<div class="note-row" style="border-bottom:none;background:transparent;padding-left:0">† '+n+'</div>').join("");
+    html += '<div class="caps"><span>† SERVICE-STRUCTURE NOTE — SEE METHOD NOTE M-5</span><span>GOVERNMENTAL ACTIVITIES ONLY · BARS SHARE ONE SCALE ACROSS ALL CITIES AND FUNCTIONS</span></div>';
+    html += "</div></div>";
+    $("recordBody").innerHTML = html;
+    wireDaggers($("recordBody"));
+  }
+
+  /* enterprise block (schedule 3) */
+  function renderEnterprise(sel){
+    const panel = $("entPanel");
+    if (!sel.length){ panel.hidden = true; return; }
+    panel.hidden = false;
+    let html = "";
+    if (sel.length === 1){
+      const id = sel[0], yr = cityYear(id,S.year);
+      const ent = yr.enterprise || {total:0, revenues:0, byFund:{}};
+      const funds = ENT_FUNDS.map(f=>({name:f.name, v:(ent.byFund||{})[f.key]||0})).filter(r=>r.v).sort((a,b)=>b.v-a.v);
+      if (!funds.length){
+        html = '<div class="empty" style="margin-top:14px">'+esc(D.cities[id].name)+' reports no enterprise-fund activity in FY '+S.year+'.</div>';
+      } else {
+        html = '<div class="tblwrap"><div style="min-width:560px;margin-top:8px">';
+        funds.forEach(r=>{
+          html += '<div class="det-row" style="grid-template-columns:250px 1fr 110px 80px"><span class="fn">'+esc(r.name)+'</span>'
+            + '<span class="cellbar" style="margin-top:0"><i style="width:'+(r.v/funds[0].v*100).toFixed(1)+'%;background:#6f6c69"></i></span>'
+            + '<span class="num" style="text-align:right">'+fmtM(r.v)+'</span>'
+            + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(r.v,yr.population))+'</span></div>';
+        });
+        html += '<div class="det-foot" style="grid-template-columns:250px 1fr 110px 80px"><span style="font-size:14px">All enterprise funds</span><span></span>'
+          + '<span class="num" style="text-align:right">'+fmtM(ent.total)+'</span>'
+          + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(ent.total,yr.population))+'</span></div>'
+          + '<div class="caps"><span>ENTERPRISE REVENUES '+fmtM(ent.revenues||0)
+          + (yr.internalService ? ' · INTERNAL SERVICE FUNDS (EXCLUDED) '+fmtM(yr.internalService) : '')
+          + (yr.conduitFinancing ? ' · CONDUIT FINANCING (EXCLUDED) '+fmtM(yr.conduitFinancing) : '')
+          + '</span><span>PER-RESIDENT COLUMN AT RIGHT</span></div></div></div>';
+      }
+    } else {
+      html = '<div class="tblwrap"><div style="min-width:560px;margin-top:8px">';
+      sel.forEach(id=>{
+        const yr = cityYear(id,S.year);
+        const ent = (yr.enterprise||{});
+        html += '<div class="det-row" style="grid-template-columns:220px 1fr 130px"><span class="fn">'+esc(D.cities[id].name)+'</span>'
+          + '<span class="num dim" style="font-size:12px">'+(ent.total ? "OPERATES ENTERPRISE FUNDS" : "NO ENTERPRISE-FUND ACTIVITY")+'</span>'
+          + '<span class="num" style="text-align:right">'+fmtM(ent.total||0)+' · '+fmtCap(perCap(ent.total||0,yr.population))+'/RES</span></div>';
+      });
+      html += '<div class="caps"><span>SELECT A SINGLE CITY FOR ITS FULL ENTERPRISE SCHEDULE</span><span></span></div></div></div>';
+    }
+    $("entBody").innerHTML = html;
+  }
+
+  /* ---------- citation / CSV ---------- */
   function citationText(){
-    if (!S.city) return "";
-    const c = D.cities[S.city], yr = cityYear(S.city, S.year);
-    const sample = D.meta.source === "SAMPLE"
-      ? "SAMPLE DATA for interface development — not official figures; do not cite. Production source: State Controller's Office city annual financial reports (bythenumbers.sco.ca.gov). "
-      : "";
-    const noteStr = cityNotes(S.city, S.year).join(" ");
-    return c.name + ", FY " + S.year + ": $" + yr.expenditures.toFixed(1) + " million governmental expenditures ("
-      + fmtCap(perCap(yr.expenditures, yr.population)) + " per resident, population " + fmtPop(yr.population) + "); "
-      + "ratepayer-funded enterprise activities excluded ($" + ((yr.enterprise&&yr.enterprise.total)||0).toFixed(1) + " million, shown separately). "
-      + "Reported actual expenditures from standardized city annual financial reports. "
-      + sample
-      + (noteStr ? noteStr + " " : "")
+    const sel = selCities();
+    const names = sel.map(id=>D.cities[id].name);
+    let figure = "";
+    if (sel.length === 1){
+      const yr = cityYear(sel[0],S.year);
+      figure = names[0] + ", FY " + S.year + ": $" + yr.expenditures.toFixed(1)
+        + " million in governmental expenditures ("
+        + fmtCap(perCap(yr.expenditures,yr.population)) + " per resident, population " + fmtPop(yr.population)
+        + "); ratepayer-funded enterprise activities excluded ($" + ((yr.enterprise&&yr.enterprise.total)||0).toFixed(1) + " million, shown separately). ";
+    } else if (sel.length){
+      figure = sel.map(id=>{
+        const yr = cityYear(id,S.year);
+        return D.cities[id].name + " $" + yr.expenditures.toFixed(1) + "M governmental expenditures";
+      }).join("; ") + ". ";
+    }
+    const notes = sel.length===1 ? cityNotes(sel[0]).map(n=>n.text).join(" ") : "";
+    return 'The California Ledger, "City Spending — Governmental Activities by Function'
+      + (names.length ? ": " + names.join(", ") : "") + ', FY ' + S.year + ' (Reported actuals)." '
+      + figure
+      + "Reported actual expenditures from standardized city annual financial reports; governmental activities only. "
+      + (notes ? notes + " " : "")
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
   }
-  function fallbackCopy(text){
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.setAttribute("readonly","");
-    ta.style.position = "fixed"; ta.style.left = "-9999px";
-    document.body.appendChild(ta); ta.select();
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch(e){}
-    ta.remove();
-    return ok;
-  }
-  $("dCite").addEventListener("click", ()=>{
-    const text = citationText();
-    if (!text) return;
-    const done = ok => {
-      $("dCite").textContent = ok ? "Copied ✓" : "Copy failed";
-      setTimeout(()=>{ $("dCite").textContent = "Cite"; }, 1800);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(text).then(()=>done(true), ()=>done(fallbackCopy(text)));
-    else done(fallbackCopy(text));
-  });
-
-  /* ---------- CSV ---------- */
-  function csvEscape(v){
-    v = String(v);
-    return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
-  }
-  function csvComments(extra){
+  function csvEscape(v){ v=String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+  function buildCSV(){
+    const sel = selCities();
     const lines = [
-      "# The California Ledger — cities (V2 preview)",
+      "# The California Ledger — cities",
       "# Source dataset: " + D.meta.sourceLabel,
+      "# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports",
+      "# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures",
+      "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),
+      "# Permalink: " + location.href
     ];
-    if (D.meta.source === "SAMPLE")
-      lines.push("# SAMPLE DATA — illustrative figures for interface development; do not cite.");
-    lines.push("# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports");
-    lines.push("# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures");
-    lines.push("# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10));
-    return lines.concat(extra);
+    if (sel.length === 1){
+      const id = sel[0], c = D.cities[id], yr = cityYear(id,S.year);
+      lines.push("# City: " + c.name + " (" + c.county + " County) · FY " + S.year + " · population " + yr.population);
+      lines.push("# Units: millions of dollars; Per resident in dollars; Share in percent");
+      lines.push("Function,Governmental expenditures ($M),Per resident ($),Share (%)");
+      FUNCS.forEach(f=>{
+        const v = (yr.byFunction||{})[f.key]||0;
+        lines.push([csvEscape(f.name), v.toFixed(1), Math.round(perCap(v,yr.population)),
+          (yr.expenditures?(v/yr.expenditures*100):0).toFixed(1)].join(","));
+      });
+      lines.push(["All governmental functions", yr.expenditures.toFixed(1),
+        Math.round(perCap(yr.expenditures,yr.population)), "100.0"].join(","));
+      if (yr.enterprise && yr.enterprise.total)
+        lines.push(["Enterprise activities (excluded from above)", yr.enterprise.total.toFixed(1),
+          Math.round(perCap(yr.enterprise.total,yr.population)), ""].join(","));
+      cityNotes(id).forEach(n=>lines.push("# Note: " + csvEscape(n.text)));
+    } else if (sel.length){
+      const names = sel.map(id=>D.cities[id].name);
+      lines.push("# Comparison: " + names.join(" · ") + " · FY " + S.year);
+      lines.push("# " + sel.map(id=>{ const yr=cityYear(id,S.year);
+        return D.cities[id].name + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "));
+      lines.push("# Units: dollars per resident · governmental activities only");
+      lines.push(["Function"].concat(names.map(n=>csvEscape(n+" ($/resident)"))).join(","));
+      FUNCS.forEach(f=>{
+        lines.push([csvEscape(f.name)].concat(sel.map(id=>{
+          const yr = cityYear(id,S.year);
+          return Math.round(perCap((yr.byFunction||{})[f.key]||0, yr.population));
+        })).join(","));
+      });
+      lines.push(["All governmental functions"].concat(sel.map(id=>{
+        const yr = cityYear(id,S.year);
+        return Math.round(perCap(yr.expenditures, yr.population));
+      })).join(","));
+      sel.forEach(id=>cityNotes(id).forEach(n=>
+        lines.push("# Note (" + csvEscape(D.cities[id].name) + "): " + csvEscape(n.text))));
+    } else {
+      lines.push("# No cities selected.");
+    }
+    return lines.join("\r\n") + "\r\n";
   }
-  function download(name, text){
-    const blob = new Blob([text], {type:"text/csv;charset=utf-8"});
+
+  /* ---------- saved views ---------- */
+  const SV_KEY = "caledger_saved_views";
+  const readSaved = () => { try{ return JSON.parse(localStorage.getItem(SV_KEY)||"[]"); }catch(e){ return []; } };
+  const writeSaved = list => { try{ localStorage.setItem(SV_KEY, JSON.stringify(list.slice(0,20))); }catch(e){} };
+  function renderSaved(){
+    const mine = readSaved().filter(v=>v.page==="cities");
+    $("savedList").innerHTML = mine.length ? mine.map(v=>
+      '<div class="saved-row"><span class="mono" style="font-size:12px;flex:1;min-width:220px">'+esc(v.label)+'</span>'
+      + '<span class="mono" style="font-size:11px;color:var(--smoke)">'+new Date(v.ts).toISOString().slice(0,10)+'</span>'
+      + '<button class="btn sm" data-load="'+esc(v.h)+'">Load</button>'
+      + '<button class="xbtn" data-del="'+v.ts+'">Remove</button></div>').join("")
+      : '<div style="font-size:13px;color:var(--smoke);margin-top:12px">No saved views yet. Saving records the current cities, year, and unit as a permalink.</div>';
+    $("savedList").querySelectorAll("[data-load]").forEach(b=>b.addEventListener("click",()=>{
+      location.hash = b.getAttribute("data-load"); applyHash();
+      $("citySearch").value = S.q; render();
+      $("savedPanel").hidden = true;
+    }));
+    $("savedList").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+      writeSaved(readSaved().filter(x=>String(x.ts)!==b.getAttribute("data-del"))); renderSaved();
+    }));
+  }
+
+  /* ---------- wiring ---------- */
+  const yearSel = $("yearSel");
+  D.years.forEach(y=>{ const o=document.createElement("option"); o.value=y; o.textContent="FY "+y; yearSel.appendChild(o); });
+  yearSel.addEventListener("change", ()=>{ S.year=yearSel.value; S.openNote=null; syncHash(); render(); });
+  $("yearPrev").addEventListener("click", ()=>{ const i=D.years.indexOf(S.year); if(i>0){ S.year=D.years[i-1]; S.openNote=null; syncHash(); render(); }});
+  $("yearNext").addEventListener("click", ()=>{ const i=D.years.indexOf(S.year); if(i<D.years.length-1){ S.year=D.years[i+1]; S.openNote=null; syncHash(); render(); }});
+  $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
+  $("citySearch").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); renderPicker(); });
+  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden; if(!p.hidden) $("citeText").textContent = citationText(); });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").hidden=true; });
+  $("citeCopy").addEventListener("click", ()=>{
+    const text = citationText();
+    const done = ok=>{ $("citeCopy").textContent = ok?"Copied ✓":"Copy failed"; setTimeout(()=>{$("citeCopy").textContent="Copy";},1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(()=>done(true),()=>done(false));
+    else done(false);
+  });
+  $("savedToggle").addEventListener("click", ()=>{ const p=$("savedPanel"); p.hidden=!p.hidden; if(!p.hidden) renderSaved(); });
+  $("savedClose").addEventListener("click", ()=>{ $("savedPanel").hidden=true; });
+  $("saveViewBtn").addEventListener("click", ()=>{
+    const list = readSaved();
+    const names = selCities().map(id=>D.cities[id].name);
+    list.unshift({ page:"cities", h:hashOf(),
+      label:(names.length?names.join(" · "):"No cities")+" · FY "+S.year+" · "+unitLabel().toLowerCase(),
+      ts:Date.now() });
+    writeSaved(list); renderSaved();
+  });
+  $("csvBtn").addEventListener("click", ()=>{
+    const blob = new Blob([buildCSV()],{type:"text/csv;charset=utf-8"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = name;
+    a.download = "ca-ledger-cities-fy"+S.year.slice(2,4)+".csv";
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
-  }
-  $("cityCsvBtn").addEventListener("click", ()=>{
-    if (!S.city) return;
-    const c = D.cities[S.city];
-    const { rows, yr } = funcRows(S.city);
-    const lines = csvComments([
-      "# City: " + c.name + " (" + c.county + " County) · FY " + S.year + " · population " + yr.population,
-      "# Units: millions of dollars; Per resident in dollars; Share in percent",
-      "Function,Expenditures ($M),Per resident ($),Share (%)"
-    ]);
-    rows.forEach(r=> lines.push([csvEscape(r.name), r.v.toFixed(1),
-      Math.round(perCap(r.v,yr.population)), (yr.expenditures?(r.v/yr.expenditures*100):0).toFixed(1)].join(",")));
-    lines.push(["All governmental functions", yr.expenditures.toFixed(1),
-      Math.round(perCap(yr.expenditures,yr.population)), "100.0"].join(","));
-    if (yr.enterprise && yr.enterprise.total)
-      lines.push(["Enterprise activities (excluded from above)", yr.enterprise.total.toFixed(1),
-        Math.round(perCap(yr.enterprise.total,yr.population)), ""].join(","));
-    cityNotes(S.city, S.year).forEach(n=> lines.push("# Note: " + csvEscape(n)));
-    download("california-ledger-city_" + S.city + "_FY" + S.year + ".csv", lines.join("\r\n") + "\r\n");
-  });
-  $("cmpCsvBtn").addEventListener("click", ()=>{
-    if (S.cmp.length < 2) return;
-    const names = S.cmp.map(id=>D.cities[id].name);
-    const lines = csvComments([
-      "# Comparison: " + names.join(" · ") + " · FY " + S.year,
-      "# " + S.cmp.map(id=>{ const yr=cityYear(id,S.year);
-          return D.cities[id].name + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "),
-      "# Units: dollars per resident · governmental activities only",
-      ["Function"].concat(names.map(n=>csvEscape(n + " ($/resident)"))).join(",")
-    ]);
-    FUNCS.forEach(f=>{
-      lines.push([csvEscape(f.name)].concat(S.cmp.map(id=>{
-        const yr = cityYear(id,S.year);
-        return Math.round(perCap(yr.byFunction[f.key]||0, yr.population));
-      })).join(","));
-    });
-    lines.push(["All governmental functions"].concat(S.cmp.map(id=>{
-      const yr = cityYear(id,S.year);
-      return Math.round(perCap(yr.expenditures, yr.population));
-    })).join(","));
-    S.cmp.forEach(id=> cityNotes(id, S.year).forEach(n=>
-      lines.push("# Note (" + csvEscape(D.cities[id].name) + "): " + csvEscape(n))));
-    download("california-ledger-compare_FY" + S.year + ".csv", lines.join("\r\n") + "\r\n");
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   });
 
-  /* ---------- comparison ---------- */
-  function renderCmpControls(){
-    const box = $("cmpControls"); box.innerHTML = "";
-    for (let i=0; i<MAX_CMP; i++){
-      const label = document.createElement("label");
-      label.className = "control";
-      label.textContent = "City " + (i+1) + " ";
-      const sel = document.createElement("select");
-      sel.setAttribute("aria-label", "Comparison city " + (i+1));
-      const none = document.createElement("option");
-      none.value = ""; none.textContent = "—";
-      sel.appendChild(none);
-      cityIds.forEach(id=>{
-        const o = document.createElement("option");
-        o.value = id; o.textContent = D.cities[id].name;
-        sel.appendChild(o);
-      });
-      sel.value = S.cmp[i] || "";
-      sel.addEventListener("change", ()=>{
-        const picked = [];
-        box.querySelectorAll("select").forEach(s=>{
-          if (s.value && D.cities[s.value] && !picked.includes(s.value)) picked.push(s.value);
-        });
-        S.cmp = picked.slice(0, MAX_CMP);
-        syncHash(); renderCmpControls(); renderCmp();
-      });
-      label.appendChild(sel);
-      box.appendChild(label);
-    }
-  }
-  function renderCmp(){
-    const active = S.cmp.length >= 2;
-    $("cmpEmpty").hidden = active;
-    $("cmpScroll").hidden = !active;
-    $("cmpTools").hidden = !active;
-    if (!active) return;
-
-    $("cmpNote").textContent = "FY " + S.year + " · dollars per resident · governmental activities only (ratepayer-funded enterprise funds excluded) · bars in each row share one scale";
-    const head = $("cmpHead"); head.innerHTML = "";
-    const th0 = document.createElement("th"); th0.scope="col"; th0.textContent = "Function";
-    head.appendChild(th0);
-    S.cmp.forEach((id,i)=>{
-      const yr = cityYear(id, S.year);
-      const th = document.createElement("th"); th.scope="col";
-      th.innerHTML = esc(D.cities[id].name) + '<br><span style="letter-spacing:0;text-transform:none">pop. ' + fmtPop(yr.population) + '</span>';
-      head.appendChild(th);
-    });
-
-    const body = $("cmpBody"); body.innerHTML = "";
-    FUNCS.forEach(f=>{
-      const vals = S.cmp.map(id=>{
-        const yr = cityYear(id, S.year);
-        return perCap(yr.byFunction[f.key]||0, yr.population);
-      });
-      const max = Math.max(...vals, 1);
-      const tr = document.createElement("tr");
-      tr.innerHTML = "<td>"+esc(f.name)+"</td>" + vals.map((v,i)=>
-        '<td><span class="num">'+fmtCap(v)+'</span>'
-        + '<span class="cell-bar" aria-hidden="true"><i style="width:'+Math.max(0, v/max*100)+'%;background:'+COLORS[i%COLORS.length]+'"></i></span></td>'
-      ).join("");
-      body.appendChild(tr);
-    });
-    const totals = S.cmp.map(id=>{
-      const yr = cityYear(id, S.year);
-      return perCap(yr.expenditures, yr.population);
-    });
-    const maxT = Math.max(...totals, 1);
-    const tr = document.createElement("tr");
-    tr.className = "total-row";
-    tr.innerHTML = "<td>All governmental functions</td>" + totals.map((v,i)=>
-      '<td><span class="num">'+fmtCap(v)+'</span>'
-      + '<span class="cell-bar" aria-hidden="true"><i style="width:'+Math.max(0, v/maxT*100)+'%;background:'+COLORS[i%COLORS.length]+'"></i></span></td>'
-    ).join("");
-    body.appendChild(tr);
-
-    const foot = $("cmpFoot");
-    if (foot){
-      const items = [];
-      S.cmp.forEach(id=>{
-        cityNotes(id, S.year).forEach(n=>items.push("<strong>"+esc(D.cities[id].name)+":</strong> "+esc(n)));
-      });
-      foot.innerHTML = items.map(n=>'<p class="sec-note" style="margin:8px 0 0">'+n+'</p>').join("");
-      foot.hidden = !items.length;
-    }
-  }
-
-  /* ---------- controls ---------- */
-  const yearSel = $("yearSel");
-  D.years.forEach(y=>{
-    const o = document.createElement("option");
-    o.value = y; o.textContent = "FY " + y;
-    yearSel.appendChild(o);
-  });
-  yearSel.value = S.year;
-  yearSel.addEventListener("change", ()=>{ S.year = yearSel.value; syncHash(); renderAll(); });
-  $("citySearch").addEventListener("input", e=>{ S.q = e.target.value.trim(); syncHash(); renderPicker(); });
-
-  /* ---------- boot ---------- */
-  function renderAll(){
-    renderBanner(); renderPicker(); renderDetail(); renderCmpControls(); renderCmp();
-  }
   applyHash();
-  syncControls();
-  renderAll();
-
+  $("citySearch").value = S.q;
+  render();
   window.addEventListener("hashchange", ()=>{
-    const raw = location.hash.replace(/^#/, "");
-    if (raw === stateToHash()) return;
-    if (raw && raw.indexOf("=") < 0) return;
-    applyHash(); syncControls(); renderAll();
+    const raw = location.hash.replace(/^#/,"");
+    if (raw && raw.indexOf("=")<0) return;
+    applyHash(); $("citySearch").value = S.q; render();
   });
 })();
 </script>
