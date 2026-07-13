@@ -557,6 +557,82 @@ simplified, 6 rings / 468 points), parsed with a stdlib-only
   fills, swatch order, selection parity, hash round-trip, a11y) —
   **159 total, all passing**; the 135 prior assertions are intact.
 
+## V3 built: actuals beside enacted (2026-07-13)
+
+Per the approved finding (docs/V3_ACTUALS_FINDING.md, option (a)).
+
+**Extraction.** `pipeline/schedule9.py` extracts prior-year actuals
+from DOF Schedule 9 ("Comparative Statement of Expenditures") PDFs —
+the authoritative source; the eBudget API's prior-year columns were
+used only as the cross-check, never as figures. Two hard gates run
+before anything is written:
+
+- **Gate 1** — the sum of Schedule 9's agency groups must reconcile
+  with the same publication's Schedule 6 statewide row, on BOTH the
+  General Fund and the total, within Schedule 6's $1M rounding.
+- **Gate 2** — department rows must sum exactly to their group total,
+  or department-level actuals for that group are withheld (the gate-1-
+  proven group total still publishes).
+
+**Shipped: four fiscal years, all gate-exact.**
+2021-22 $270.694B (2023-24 Enacted), 2022-23 $274.039B (2024-25
+Enacted), 2023-24 $303.246B (2025-26 Enacted), 2024-25 $319.151B
+(2026-27 Governor's Budget) — each equal to its Schedule 6 control.
+
+**Not shipped: FY 2020-21 — reported, not worked around.** Both PDFs
+carrying those actuals (2022-23 Governor's Budget and Enacted) emit
+scrambled text at page-spanning agency groups under both pypdf
+extraction modes; recovery attempts failed Gate 1 and were discarded.
+Per instruction there was no fallback to the API. The view shows an
+explanatory empty state for 2020-21 (as it does for 2025-26, whose
+actuals first publish in January 2027).
+
+**Education mapping.** Schedule 9 groups K-12 and Higher Education as
+one "EDUCATION" agency; department rows are assigned to our split
+using each display year's own org-code map, with named overrides for
+codes absent from the web lists (community-college retirement and the
+GO-bond lines). Cross-group movers are deliberate and correct — e.g.
+ScholarShare sits under LJE in Schedule 9 but under K-12 in our
+enacted structure ($184M in 2023-24), so mapping by OUR structure is
+what makes the actual comparable to the enacted column. Statewide
+conservation is gated exactly; the tests assert CDE→K-12, UC and
+Community Colleges→Higher Education, and a ±0.5% bound on the split
+vs. the source group.
+
+**Known dept-level limitation (gated, disclosed).** In every vintage,
+the HEALTH AND HUMAN SERVICES and GENERAL GOVERNMENT groups' department
+rows do not extract in a form that sums to their group totals, so
+Gate 2 withholds department actuals there; drilled views say so and
+point at the gate-verified agency total. All other groups carry full
+department detail.
+
+**API cross-check (2023-24, report only):** agency-level API
+prior-year sums vs. shipped Schedule 9 actuals — seven agencies within
+0.1%; Corrections 80.1%, Transportation 90.6%, Natural Resources 90.3%
+(the API's web department lists omit e.g. CDCR's realignment funds) —
+confirming the finding's instruction that the API must never be the
+source of the difference column.
+
+**The view.** A fourth view (Allocation / Change / Trend / Actuals):
+enacted and actual columns with a signed difference per agency,
+drillable to departments where gate 2 allows. On its face, not buried:
+both columns Budgetary-Legal; the vintage; and the statement that the
+difference reflects mid-year legislation, re-appropriations, carryover,
+reversions, and fund reclassifications — not a judgment of any kind.
+Direction is ▲▼ grayscale ink (asserted); gross below- and
+above-enactment totals always shown together; default sort is by
+enacted size, never by gap; sorting is the reader's (asort permalink
+param). CSV and Cite carry the basis, vintage, and
+non-characterization lines. The banned-term scan now also rejects
+"waste", "overrun", "savings", "underspend", "mismanage" (with a
+carve-out for the SCO category "solid waste" on the city page).
+
+Tests: 214 assertions, all passing (all 159 prior kept; 55 added —
+reconciliation gates re-asserted against hardcoded Schedule 6
+controls, education mapping, difference arithmetic recomputed
+independently, grayscale direction, empty states with reasons,
+permalink round-trips, CSV/citation content).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

@@ -61,6 +61,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import schedule9  # noqa: E402  (pypdf loaded lazily, only when refreshing actuals)
 
 API_BASE = "https://ebudget.ca.gov/api/publication/e"
 
@@ -178,6 +179,7 @@ def fetch_year(year: str):
         dept_nodes = {}
         for d, fed in zip(depts, feds):
             dept_nodes[d["legalTitl"].strip()] = {
+                "code": d["orgCd"],
                 "gf": d["generalFundTotal"] or 0, "sp": d["specialFundTotal"] or 0,
                 "bd": d["bondFundTotal"] or 0, "fed": fed or 0,
             }
@@ -245,6 +247,69 @@ def slugify(name: str) -> str:
     return slug.strip("-")[:24]
 
 
+def attach_actuals(payload, cached, refresh=False):
+    """Adds Schedule 9 prior-year actuals (Budgetary-Legal basis) to the
+    payload: agency.actual / department.actual (billions) plus
+    meta.actuals vintage/unavailability notes. Gate failures raise —
+    nothing is written on a failed reconciliation."""
+    meta = {}
+    for year in payload["years"]:
+        if year in schedule9.UNAVAILABLE:
+            meta[year] = {"unavailable": schedule9.UNAVAILABLE[year]}
+            continue
+        if year not in schedule9.SOURCES:
+            meta[year] = {"unavailable":
+                          "Actual expenditures for this fiscal year have not yet "
+                          "been published; they first appear in the Governor's "
+                          "Budget the following January."}
+            continue
+        acts = schedule9.load_actuals_year(year, refresh=refresh)
+        code_to_agency = {}
+        for aname, node in cached[year].items():
+            for dv in node["departments"].values():
+                if dv.get("code"):
+                    code_to_agency[dv["code"]] = aname
+        by_agency, by_dept, unsplit = schedule9.map_to_agencies(acts, code_to_agency)
+        if unsplit:
+            raise schedule9.GateError(
+                f"actuals {year}: unmapped Schedule 9 groups {unsplit}")
+        # conservation: mapped sums equal the gate-proven group sums
+        for k, gk in (("gf", "gf"), ("sp", "sp"), ("bd", "bd")):
+            mapped = sum(v[k] for v in by_agency.values())
+            gated = sum(g[gk] for g in acts["groups"].values())
+            if abs(mapped - gated) > schedule9.GATE_TOLERANCE:
+                raise schedule9.GateError(
+                    f"actuals {year}: conservation failure on {k}: "
+                    f"{mapped:,} vs {gated:,}")
+        B = THOUSANDS_PER_BILLION
+        for a in payload["budgets"][year]["agencies"]:
+            act = by_agency.get(a["name"])
+            if act:
+                a["actual"] = {k: round(act[k] / B, 3)
+                               for k in ("gf", "sp", "bd", "fed")}
+            for d in a["departments"]:
+                dact = by_dept.get(d.get("code"))
+                if dact:
+                    d["actual"] = {k: round(dact[k] / B, 3)
+                                   for k in ("gf", "sp", "bd", "fed")}
+        note = {"vintage": acts["vintage"]}
+        if acts.get("deptDetailDropped"):
+            note["deptDetailDropped"] = acts["deptDetailDropped"]
+        missing = [a["name"] for a in payload["budgets"][year]["agencies"]
+                   if "actual" not in a]
+        if missing:
+            note["agenciesWithoutActuals"] = missing
+        meta[year] = note
+    payload["meta"]["actuals"] = {
+        "basis": "Actual expenditures under the Budgetary-Legal basis of "
+                 "accounting, as published by the Department of Finance in "
+                 "Schedule 9 (Comparative Statement of Expenditures) of the "
+                 "publication named per year; reconciled against Schedule 6 "
+                 "statewide control totals before publication.",
+        "years": meta,
+    }
+
+
 def build_payload(cached):
     years_sorted = sorted(cached.keys())
     budgets, trend = {}, {}
@@ -256,6 +321,7 @@ def build_payload(cached):
         ):
             depts = [
                 {"name": dn,
+                 **({"code": dv["code"]} if dv.get("code") else {}),
                  **{k: round(dv[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS}}
                 for dn, dv in sorted(
                     node["departments"].items(),
@@ -337,6 +403,8 @@ def main():
                          f"(default: the {DEFAULT_YEARS} most recent enacted years)")
     ap.add_argument("--refresh", action="store_true",
                     help="refetch requested years even if cached")
+    ap.add_argument("--refresh-actuals", action="store_true",
+                    help="refetch Schedule 9 actuals even if cached")
     args = ap.parse_args()
 
     if args.inspect:
@@ -359,6 +427,7 @@ def main():
     if not cached:
         sys.exit("No fiscal years cached — nothing to write.")
     payload = build_payload(cached)
+    attach_actuals(payload, cached, refresh=args.refresh_actuals)
 
     for w in plausibility_report(payload):
         print(f"  PLAUSIBILITY WARNING: {w}", file=sys.stderr)

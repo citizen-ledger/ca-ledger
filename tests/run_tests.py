@@ -141,12 +141,17 @@ def start_server(tmp):
 
 # ----------------------------------------------------------------------
 BANNED = ["ballooning", "skyrocket", "soaring", "surging", "plummet",
-          "slashed", "bloated", "wasteful", "staggering", "whopping",
+          "slashed", "bloated", "staggering", "whopping",
           "exploding", "spiraling", "runaway", "boondoggle", "reckless",
-          "out of control"]
+          "out of control",
+          # a difference column must never be characterized:
+          "waste", "overrun", "savings", "underspend", "mismanage"]
 
 def banned_scan(page, label):
     text = page.inner_text("body").lower()
+    # "solid waste" is an SCO expenditure CATEGORY on the city page, not a
+    # characterization; every other occurrence of "waste" is banned.
+    text = text.replace("solid waste", "")
     for w in BANNED:
         check(f"{label}: no banned term {w!r}", w not in text)
 
@@ -492,6 +497,152 @@ def test_v2(page, base):
     check("V2 methodology: reconciliation stated", "reconciled against" in body)
     banned_scan(page, "V2")
 
+# Schedule 6 statewide control totals (GF, total) in $M, per the vintage
+# publication each year's actuals were extracted from. The pipeline gates
+# on these before writing; this re-asserts the gate on the shipped data.
+SCH6_CONTROL = {
+    "2021-22": (216785, 270694),   # 2023-24 Enacted Budget
+    "2022-23": (195189, 274039),   # 2024-25 Enacted Budget
+    "2023-24": (205670, 303246),   # 2025-26 Enacted Budget
+    "2024-25": (229231, 319151),   # 2026-27 Governor's Budget
+}
+SCH9_EDUCATION_2324 = 93361       # $M — EDUCATION group total, Actual 2023-24
+
+def test_actuals_data():
+    years_meta = (STATE["meta"].get("actuals") or {}).get("years") or {}
+    for year, (gf_m, tot_m) in SCH6_CONTROL.items():
+        ags = STATE["budgets"][year]["agencies"]
+        acts = [a["actual"] for a in ags if "actual" in a]
+        check(f"actuals {year}: every agency has an actual", len(acts) == len(ags),
+              f"{len(acts)}/{len(ags)}")
+        gf = sum(a["gf"] for a in acts) * 1000
+        tot = sum(a["gf"] + a["sp"] + a["bd"] for a in acts) * 1000
+        check(f"actuals {year}: statewide GF reconciles to Schedule 6",
+              abs(gf - gf_m) <= 10, f"{gf:,.0f} vs {gf_m:,}")
+        check(f"actuals {year}: statewide total reconciles to Schedule 6",
+              abs(tot - tot_m) <= 10, f"{tot:,.0f} vs {tot_m:,}")
+        check(f"actuals {year}: vintage recorded",
+              "vintage" in (years_meta.get(year) or {}))
+    # unavailable years carry explanations, not silent blanks
+    for year in ("2020-21", "2025-26"):
+        info = years_meta.get(year) or {}
+        check(f"actuals {year}: explanation recorded", bool(info.get("unavailable")),
+              str(info)[:80])
+        check(f"actuals {year}: no actual figures shipped",
+              all("actual" not in a for a in STATE["budgets"][year]["agencies"]))
+    # Education split: departments mapped, our agencies not merged.
+    # K-12 + Higher Ed tracks Schedule 9's EDUCATION group; small, named
+    # cross-group movers are expected because assignment follows OUR org
+    # structure (e.g. ScholarShare sits under LJE in Schedule 9 but under
+    # K-12 in the display structure) — bound them at 0.5%.
+    ags = {a["name"]: a for a in STATE["budgets"]["2023-24"]["agencies"]}
+    k12, hied = ags["K thru 12 Education"], ags["Higher Education"]
+    edu_sum = sum(k12["actual"][k] + hied["actual"][k] for k in ("gf", "sp", "bd")) * 1000
+    check("actuals: K-12 + Higher Ed tracks Schedule 9 EDUCATION group (±0.5%)",
+          abs(edu_sum - SCH9_EDUCATION_2324) <= SCH9_EDUCATION_2324 * 0.005,
+          f"{edu_sum:,.0f} vs {SCH9_EDUCATION_2324:,}")
+    cde = next((d for d in k12["departments"] if d.get("code") == "6100"), None)
+    uc = next((d for d in hied["departments"] if d.get("code") == "6440"), None)
+    ccc = next((d for d in hied["departments"] if d.get("code") == "6870"), None)
+    check("actuals: CDE (6100) maps under K thru 12 with an actual",
+          cde is not None and "actual" in cde)
+    check("actuals: UC (6440) maps under Higher Education with an actual",
+          uc is not None and "actual" in uc)
+    check("actuals: Community Colleges (6870) map under Higher Education",
+          ccc is not None and "actual" in ccc)
+
+def test_actuals_view(page, base):
+    ags = STATE["budgets"]["2023-24"]["agencies"]
+    hhs = next(a for a in ags if "Health" in a["name"])
+    hhs_en = hhs["gf"] + hhs["sp"] + hhs["bd"]
+    hhs_act = hhs["actual"]["gf"] + hhs["actual"]["sp"] + hhs["actual"]["bd"]
+
+    page.goto(f"{base}/index.html#v=actuals&y=2023-24")
+    page.wait_for_selector("#actBody .arow")
+    check("actuals view: button active",
+          "on" in (page.get_attribute('[data-view="actuals"]', "class") or ""))
+    check("actuals view: one row per agency",
+          page.locator("#actBody .arow").count() == len(ags))
+    check("actuals view: vintage on the face",
+          "SCHEDULE 9" in page.inner_text("#actVintage"),
+          page.inner_text("#actVintage"))
+    note = page.inner_text("#actNote")
+    check("actuals view: non-characterization on the face",
+          "not a judgment" in note and "Budgetary-Legal" in note, note[:80])
+    check("actuals view: lag statement present (methodology)",
+          "six and a half months" in page.inner_text("body"))
+
+    # difference arithmetic, recomputed independently
+    cells = page.locator(f'#actBody .arow:has-text("{hhs["name"]}")').first \
+                .locator(".num").all_inner_texts()
+    check("actuals: HHS enacted cell", money_close(cells[0], hhs_en * 1e9), cells[0])
+    check("actuals: HHS actual cell", money_close(cells[1], hhs_act * 1e9), cells[1])
+    m = re.match(r"([+−]\$[\d.]+[BM])\s+([▲▼]\s*[\d.]+%)", cells[2])
+    check("actuals: HHS difference parses", m is not None, cells[2])
+    if m:
+        check("actuals: HHS difference arithmetic",
+              money_close(m.group(1), (hhs_act - hhs_en) * 1e9), m.group(1))
+        pct = (hhs_act - hhs_en) / abs(hhs_en) * 100
+        check("actuals: HHS difference percent",
+              abs(parse_glyph_pct(m.group(2)) - pct) <= 0.1, m.group(2))
+
+    # neutrality: default sort is by enacted size, not largest gap
+    first = page.locator("#actBody .arow").first.inner_text()
+    biggest = max(ags, key=lambda a: a["gf"] + a["sp"] + a["bd"])
+    check("actuals: default sort is size, not gap", biggest["name"] in first, first[:60])
+    # direction glyphs render grayscale
+    color = page.evaluate(
+        "getComputedStyle(document.querySelector('#actBody .num.delta')).color")
+    rgb = [int(x) for x in re.findall(r"\d+", color)[:3]]
+    check("actuals: difference is grayscale ink", max(rgb) - min(rgb) <= 2, color)
+    # both gross totals always together
+    summ = page.inner_text("#actSum")
+    check("actuals: symmetric gross totals",
+          "BELOW ENACTMENT" in summ and "ABOVE ENACTMENT" in summ and "NET" in summ, summ)
+
+    # drill to departments
+    page.locator(f'#actBody .arow:has-text("{hhs["name"]}")').first.click()
+    page.wait_for_selector("#crumbName")
+    check("actuals drill: departments render",
+          page.locator("#actBody .arow").count() == len(hhs["departments"]))
+    page.click("#crumbRoot")
+
+    # CSV
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("actuals CSV: header", "Agency,Enacted ($B),Actual ($B),Difference ($B)" in csv)
+    check("actuals CSV: basis line", "BOTH columns Budgetary-Legal" in csv)
+    check("actuals CSV: non-characterization line", "not a judgment" in csv)
+
+    # citation
+    cite = clipboard_of(page)
+    check("actuals citation: names both figures", "Enacted vs. Actual" in cite, cite[:80])
+    check("actuals citation: vintage", "Schedule 9" in cite)
+
+    # empty states, with reasons
+    page.goto(f"{base}/index.html#v=actuals&y=2025-26")
+    page.wait_for_selector("#actEmpty:not([hidden])")
+    check("actuals: future year explains itself",
+          "not yet been published" in page.inner_text("#actEmpty").lower()
+          or "first published" in page.inner_text("#actEmpty").lower(),
+          page.inner_text("#actEmpty")[:80])
+    page.goto(f"{base}/index.html#v=actuals&y=2020-21")
+    page.wait_for_selector("#actEmpty:not([hidden])")
+    check("actuals: 2020-21 explains the verification failure",
+          "reconcile" in page.inner_text("#actEmpty").lower(),
+          page.inner_text("#actEmpty")[:100])
+
+    # permalink round-trip with the actuals sort param
+    page.goto(f"{base}/index.html#v=actuals&y=2023-24&asort=name.asc")
+    page.wait_for_selector("#actBody .arow")
+    first = page.locator("#actBody .arow").first.inner_text()
+    alpha_first = sorted(a["name"] for a in ags)[0]
+    check("actuals: asort round-trip", alpha_first in first, first[:60])
+    page.click("#ahDiff")
+    check("actuals: sort emits hash param", "asort=diff" in page.evaluate("location.hash"))
+
+
 def test_map(page, base):
     # data-level: coordinate coverage for every city, within California
     missing = [k for k, c in CITY["cities"].items()
@@ -594,6 +745,7 @@ def main():
     from playwright.sync_api import sync_playwright
 
     test_integrity()
+    test_actuals_data()
 
     with tempfile.TemporaryDirectory() as tmp:
         httpd, base = start_server(tmp)
@@ -608,6 +760,7 @@ def main():
             errors = []
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
+            test_actuals_view(page, base)
             test_v2(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))

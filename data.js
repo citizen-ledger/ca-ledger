@@ -12,9 +12,48 @@ window.CA_LEDGER_DATA = {
       "2024-25": 39.65,
       "2025-26": 39.59
     },
+    "actuals": {
+      "basis": "Actual expenditures under the Budgetary-Legal basis of accounting, as published by the Department of Finance in Schedule 9 (Comparative Statement of Expenditures) of the publication named per year; reconciled against Schedule 6 statewide control totals before publication.",
+      "years": {
+        "2020-21": {
+          "unavailable": "The PDFs carrying FY 2020-21 actuals could not be extracted in a form that reconciles with Schedule 6's statewide control totals; rather than publish unverified figures, none are shown."
+        },
+        "2021-22": {
+          "vintage": "2023-24 Enacted Budget",
+          "deptDetailDropped": [
+            "HEALTH AND HUMAN SERVICES",
+            "GENERAL GOVERNMENT"
+          ]
+        },
+        "2022-23": {
+          "vintage": "2024-25 Enacted Budget",
+          "deptDetailDropped": [
+            "HEALTH AND HUMAN SERVICES",
+            "GENERAL GOVERNMENT"
+          ]
+        },
+        "2023-24": {
+          "vintage": "2025-26 Enacted Budget",
+          "deptDetailDropped": [
+            "HEALTH AND HUMAN SERVICES",
+            "GENERAL GOVERNMENT"
+          ]
+        },
+        "2024-25": {
+          "vintage": "2026-27 Governor's Budget",
+          "deptDetailDropped": [
+            "HEALTH AND HUMAN SERVICES",
+            "GENERAL GOVERNMENT"
+          ]
+        },
+        "2025-26": {
+          "unavailable": "Actual expenditures for this fiscal year have not yet been published; they first appear in the Governor's Budget the following January."
+        }
+      }
+    },
     "integrity": {
       "algorithm": "SHA-256",
-      "digest": "804c5e08434eb91a313e57d7f66bc5787506f1831cb35a0245c4062a4d9f9c1f",
+      "digest": "fabe5611a2f8b5549eff55a56120a1f16fdabb4fd11d9851e1a16ed09dbcb4ec",
       "verify": "python3 pipeline/verify_digest.py"
     }
   },
@@ -65,6 +104,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 24.208,
               "sp": 14.097,
               "bd": 0.0,
@@ -72,6 +112,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 11.616,
               "sp": 0.041,
               "bd": 0.0,
@@ -79,6 +120,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 5.883,
               "sp": 0.004,
               "bd": 0.0,
@@ -86,6 +128,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 5.287,
               "bd": 0.0,
@@ -93,6 +136,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.012,
               "sp": 4.439,
               "bd": 0.0,
@@ -100,6 +144,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 0.214,
               "sp": 1.098,
               "bd": 0.0,
@@ -107,6 +152,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 1.928,
               "sp": 0.0,
               "bd": 0.0,
@@ -114,6 +160,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.315,
               "sp": 0.0,
               "bd": 0.0,
@@ -121,6 +168,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.076,
               "sp": 0.0,
               "bd": 0.0,
@@ -128,6 +176,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.349,
               "sp": 0.0,
               "bd": 0.0,
@@ -135,6 +184,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.347,
               "bd": 0.0,
@@ -142,6 +192,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -149,6 +200,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Aging",
+              "code": "4170",
               "gf": 0.068,
               "sp": 0.005,
               "bd": 0.0,
@@ -156,6 +208,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide Health Planning, Development",
+              "code": "4140",
               "gf": 0.033,
               "sp": 0.137,
               "bd": 0.0,
@@ -163,6 +216,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.096,
               "bd": 0.0,
@@ -170,6 +224,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Mental Hlth Svcs Ovrst and Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.045,
               "bd": 0.0,
@@ -177,6 +232,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.007,
               "sp": 0.002,
               "bd": 0.0,
@@ -184,6 +240,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.011,
               "sp": 0.005,
               "bd": 0.0,
@@ -191,6 +248,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -198,6 +256,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -205,6 +264,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -212,6 +272,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -229,6 +290,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 42.102,
               "sp": 0.089,
               "bd": 0.003,
@@ -236,6 +298,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 3.894,
               "sp": 0.0,
               "bd": 0.0,
@@ -243,6 +306,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 0.0,
               "sp": 0.008,
               "bd": 1.538,
@@ -250,6 +314,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.032,
               "sp": 0.001,
               "bd": 0.0,
@@ -257,6 +322,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.0,
               "sp": 0.03,
               "bd": 0.0,
@@ -264,6 +330,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -271,6 +338,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -278,6 +346,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -295,6 +364,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 0.121,
               "sp": 0.176,
               "bd": 0.0,
@@ -302,6 +372,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.0,
               "sp": 0.662,
               "bd": 0.0,
@@ -309,6 +380,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.012,
               "sp": 0.008,
               "bd": 0.0,
@@ -316,6 +388,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -323,6 +396,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.01,
               "sp": 0.002,
               "bd": 0.0,
@@ -330,6 +404,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.003,
               "sp": 0.007,
               "bd": 0.0,
@@ -347,6 +422,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 0.0,
               "sp": 8.717,
               "bd": 0.141,
@@ -354,6 +430,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 2.394,
               "bd": 0.496,
@@ -361,6 +438,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.007,
               "sp": 2.546,
               "bd": 0.0,
@@ -368,6 +446,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.01,
               "sp": 1.343,
               "bd": 0.0,
@@ -375,6 +454,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 0.707,
               "bd": 0.0,
@@ -382,6 +462,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 0.0,
               "sp": 0.277,
               "bd": 0.0,
@@ -389,6 +470,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.004,
@@ -396,6 +478,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
@@ -413,6 +496,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 3.466,
               "sp": 0.171,
               "bd": 0.0,
@@ -420,6 +504,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 5.168,
               "sp": 0.007,
               "bd": 0.457,
@@ -427,6 +512,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 3.727,
               "sp": 0.002,
               "bd": 0.0,
@@ -434,6 +520,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 2.248,
               "sp": 0.001,
               "bd": 0.0,
@@ -441,6 +528,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.362,
               "sp": 0.0,
               "bd": 0.0,
@@ -448,6 +536,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.266,
@@ -455,6 +544,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Hastings College of the Law",
+              "code": "6600",
               "gf": 0.018,
               "sp": 0.0,
               "bd": 0.0,
@@ -472,6 +562,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 13.117,
               "sp": 0.0,
               "bd": 0.0,
@@ -479,6 +570,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.126,
               "sp": 0.106,
               "bd": 0.0,
@@ -486,6 +578,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -503,6 +596,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 2.159,
               "sp": 1.695,
               "bd": 0.0,
@@ -510,6 +604,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 0.325,
               "sp": 0.189,
               "bd": 0.003,
@@ -517,6 +612,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.369,
               "sp": 0.381,
               "bd": 0.0,
@@ -524,6 +620,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Planning and Research",
+              "code": "0650",
               "gf": 0.027,
               "sp": 0.531,
               "bd": 0.0,
@@ -531,6 +628,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.0,
               "sp": 0.066,
               "bd": 0.534,
@@ -538,6 +636,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.011,
               "sp": 0.307,
               "bd": 0.0,
@@ -545,6 +644,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Judges Retirement System Contributions",
+              "code": "0390",
               "gf": 0.31,
               "sp": 0.0,
               "bd": 0.0,
@@ -552,6 +652,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.09,
               "sp": 0.076,
               "bd": 0.0,
@@ -559,6 +660,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.199,
               "sp": 0.0,
               "bd": 0.0,
@@ -566,6 +668,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.137,
               "sp": 0.0,
               "bd": 0.001,
@@ -573,6 +676,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.151,
               "sp": 0.0,
               "bd": 0.0,
@@ -580,6 +684,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.111,
               "sp": 0.031,
               "bd": 0.0,
@@ -587,6 +692,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.095,
               "sp": 0.0,
               "bd": 0.0,
@@ -594,6 +700,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.077,
               "sp": 0.011,
               "bd": 0.001,
@@ -601,6 +708,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.031,
               "sp": 0.0,
               "bd": 0.0,
@@ -608,6 +716,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.029,
               "sp": 0.0,
               "bd": 0.0,
@@ -615,6 +724,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.024,
               "sp": 0.0,
               "bd": 0.0,
@@ -622,6 +732,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.021,
               "sp": 0.0,
               "bd": 0.0,
@@ -629,6 +740,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.012,
               "bd": 0.0,
@@ -636,6 +748,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.01,
               "sp": 0.0,
               "bd": 0.0,
@@ -643,6 +756,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.0,
@@ -650,6 +764,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -657,6 +772,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
@@ -664,6 +780,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.0,
@@ -671,6 +788,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -678,6 +796,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -685,6 +804,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Redistricting Initiative",
+              "code": "0911",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -692,6 +812,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -699,6 +820,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -706,6 +828,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Legislators' Retirement Sys Contribution",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -713,6 +836,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Portrait",
+              "code": "0720",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -720,6 +844,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governor Elect and Outgoing Governor",
+              "code": "0730",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -727,6 +852,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -734,6 +860,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Transportation Financing Authority",
+              "code": "0964",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -741,6 +868,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Industrial Dvlmt Financing Advisory Comm",
+              "code": "0965",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -748,6 +876,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -755,6 +884,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -762,6 +892,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Urban Waterfront Restoration Fin Auth",
+              "code": "0983",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -769,6 +900,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Secure Choice Retirement Svngs Invst Brd",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -786,6 +918,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.001,
               "sp": 2.776,
               "bd": 0.0,
@@ -793,6 +926,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 2.068,
               "sp": 0.0,
               "bd": 0.0,
@@ -800,6 +934,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.0,
               "sp": 1.608,
               "bd": 0.0,
@@ -807,6 +942,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.755,
               "sp": 0.0,
               "bd": 0.0,
@@ -814,6 +950,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.149,
               "sp": 0.256,
               "bd": 0.008,
@@ -821,6 +958,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 0.281,
               "sp": 0.23,
               "bd": 0.0,
@@ -828,6 +966,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.447,
               "sp": 0.003,
               "bd": 0.0,
@@ -835,6 +974,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.415,
               "sp": -0.003,
               "bd": 0.0,
@@ -842,6 +982,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.094,
               "sp": 0.002,
               "bd": 0.0,
@@ -849,6 +990,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.059,
               "sp": 0.0,
               "bd": 0.0,
@@ -856,6 +998,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.053,
               "sp": 0.0,
               "bd": 0.0,
@@ -863,6 +1006,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.048,
               "sp": 0.0,
               "bd": 0.0,
@@ -870,6 +1014,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.044,
               "sp": 0.002,
               "bd": 0.0,
@@ -877,6 +1022,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.045,
               "sp": 0.0,
               "bd": 0.0,
@@ -884,6 +1030,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.02,
               "sp": 0.015,
               "bd": 0.0,
@@ -891,6 +1038,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.03,
               "sp": 0.002,
               "bd": 0.0,
@@ -898,6 +1046,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.031,
               "sp": 0.002,
               "bd": 0.0,
@@ -905,6 +1054,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.025,
               "sp": 0.0,
               "bd": 0.0,
@@ -912,6 +1062,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.019,
               "sp": 0.0,
               "bd": 0.0,
@@ -919,6 +1070,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -926,6 +1078,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.014,
               "sp": 0.0,
               "bd": 0.0,
@@ -933,6 +1086,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -940,6 +1094,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -947,6 +1102,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -954,6 +1110,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -961,6 +1118,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -968,6 +1126,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -975,6 +1134,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -982,6 +1142,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -989,6 +1150,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -996,6 +1158,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1003,6 +1166,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1010,6 +1174,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1017,6 +1182,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1024,6 +1190,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1031,6 +1198,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1038,6 +1206,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1045,6 +1214,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1052,6 +1222,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1059,6 +1230,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -0.762,
               "sp": 0.699,
               "bd": 0.001,
@@ -1076,6 +1248,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 1.531,
               "sp": 0.211,
               "bd": 0.006,
@@ -1083,6 +1256,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.195,
               "sp": 0.423,
               "bd": 0.576,
@@ -1090,6 +1264,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 0.215,
               "sp": 0.039,
               "bd": 0.661,
@@ -1097,6 +1272,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.137,
               "sp": 0.267,
               "bd": 0.046,
@@ -1104,6 +1280,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 0.0,
               "sp": 0.437,
               "bd": 0.0,
@@ -1111,6 +1288,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.067,
               "sp": 0.054,
               "bd": 0.013,
@@ -1118,6 +1296,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.004,
               "sp": 0.119,
               "bd": 0.002,
@@ -1125,6 +1304,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.019,
               "sp": 0.004,
               "bd": 0.008,
@@ -1132,6 +1312,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.0,
               "sp": 0.008,
               "bd": 0.047,
@@ -1139,6 +1320,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.03,
               "sp": 0.024,
               "bd": 0.0,
@@ -1146,6 +1328,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.009,
               "sp": 0.016,
               "bd": 0.026,
@@ -1153,6 +1336,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.027,
               "sp": 0.01,
               "bd": 0.0,
@@ -1160,6 +1344,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.021,
               "sp": 0.003,
               "bd": 0.0,
@@ -1167,6 +1352,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.019,
               "sp": 0.001,
               "bd": 0.0,
@@ -1174,6 +1360,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.013,
@@ -1181,6 +1368,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.0,
               "sp": 0.005,
               "bd": 0.006,
@@ -1188,6 +1376,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.002,
@@ -1195,6 +1384,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.01,
@@ -1202,6 +1392,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.007,
               "sp": 0.002,
               "bd": 0.0,
@@ -1209,6 +1400,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
@@ -1216,6 +1408,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -1223,6 +1416,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.001,
@@ -1230,6 +1424,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.003,
@@ -1237,6 +1432,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.002,
@@ -1244,6 +1440,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Baldwin Hills Conservancy",
+              "code": "3835",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.002,
@@ -1251,6 +1448,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -1258,6 +1456,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -1265,6 +1464,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1272,6 +1472,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1289,6 +1490,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 0.13,
               "sp": 0.038,
               "bd": 1.154,
@@ -1296,6 +1498,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.0,
               "sp": 0.762,
               "bd": 0.0,
@@ -1303,6 +1506,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 0.304,
               "sp": 0.001,
               "bd": 0.0,
@@ -1310,6 +1514,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Business Oversight",
+              "code": "1701",
               "gf": 0.0,
               "sp": 0.109,
               "bd": 0.0,
@@ -1317,6 +1522,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.0,
               "sp": 0.088,
               "bd": 0.0,
@@ -1324,6 +1530,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.055,
               "bd": 0.0,
@@ -1331,6 +1538,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Fair Employment, Housing",
+              "code": "1700",
               "gf": 0.034,
               "sp": 0.001,
               "bd": 0.0,
@@ -1338,6 +1546,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.016,
               "bd": 0.0,
@@ -1345,6 +1554,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
@@ -1352,6 +1562,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -1359,6 +1570,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Seismic Safety Commission, A. E. Alquist",
+              "code": "1690",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1376,6 +1588,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.006,
               "sp": 1.571,
               "bd": 0.0,
@@ -1383,6 +1596,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 0.052,
               "sp": 0.708,
               "bd": 0.017,
@@ -1390,6 +1604,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Air Resources Board",
+              "code": "3900",
               "gf": 0.0,
               "sp": 0.546,
               "bd": 0.001,
@@ -1397,6 +1612,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.056,
               "sp": 0.222,
               "bd": 0.0,
@@ -1404,6 +1620,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.0,
               "sp": 0.109,
               "bd": 0.0,
@@ -1411,6 +1628,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.007,
               "sp": 0.019,
               "bd": 0.0,
@@ -1418,6 +1636,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.004,
               "sp": 0.013,
               "bd": 0.0,
@@ -1435,6 +1654,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 0.859,
               "sp": 0.023,
               "bd": 0.0,
@@ -1442,6 +1662,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.332,
               "sp": 0.118,
               "bd": 0.0,
@@ -1449,6 +1670,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Employees' Retirement System",
+              "code": "7900",
               "gf": 0.243,
               "sp": 0.0,
               "bd": 0.0,
@@ -1456,6 +1678,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 0.091,
               "sp": 0.126,
               "bd": 0.008,
@@ -1463,6 +1686,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.024,
               "sp": 0.084,
               "bd": 0.0,
@@ -1470,6 +1694,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.016,
               "sp": 0.0,
               "bd": 0.0,
@@ -1477,6 +1702,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.012,
               "sp": 0.0,
               "bd": 0.0,
@@ -1484,6 +1710,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -1491,6 +1718,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -1498,6 +1726,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -1505,6 +1734,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1526,6 +1756,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 28.656,
               "sp": 12.396,
               "bd": 0.0,
@@ -1533,6 +1764,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 16.169,
               "sp": 0.039,
               "bd": 0.0,
@@ -1540,6 +1772,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 6.741,
               "sp": 0.002,
               "bd": 0.0,
@@ -1547,6 +1780,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 6.381,
               "bd": 0.0,
@@ -1554,6 +1788,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.013,
               "sp": 5.598,
               "bd": 0.0,
@@ -1561,6 +1796,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 1.474,
               "sp": 1.159,
               "bd": 0.0,
@@ -1568,6 +1804,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 2.59,
               "sp": 0.0,
               "bd": 0.0,
@@ -1575,6 +1812,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.025,
               "sp": 0.0,
               "bd": 0.0,
@@ -1582,6 +1820,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide Health Planning, Development",
+              "code": "4140",
               "gf": 0.804,
               "sp": 0.113,
               "bd": 0.0,
@@ -1589,6 +1828,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.344,
               "sp": 0.0,
               "bd": 0.0,
@@ -1596,6 +1836,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.087,
               "sp": 0.0,
               "bd": 0.0,
@@ -1603,6 +1844,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Aging",
+              "code": "4170",
               "gf": 0.293,
               "sp": 0.007,
               "bd": 0.0,
@@ -1610,6 +1852,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.406,
               "bd": 0.0,
@@ -1617,6 +1860,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Mental Hlth Svcs Ovrst and Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.155,
               "bd": 0.0,
@@ -1624,13 +1868,21 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.105,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.013
+              "fed": 0.013,
+              "actual": {
+                "gf": -0.008,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.013
+              }
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.103,
               "bd": 0.0,
@@ -1638,6 +1890,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.06,
               "sp": 0.005,
               "bd": 0.0,
@@ -1645,6 +1898,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.02,
               "sp": 0.0,
               "bd": 0.0,
@@ -1652,6 +1906,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1659,6 +1914,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1666,6 +1922,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -1673,12 +1930,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 48.87,
+            "sp": 29.284,
+            "bd": 0.0,
+            "fed": 100.871
+          }
         },
         {
           "id": "k-thru-12-education",
@@ -1690,61 +1954,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 57.481,
               "sp": 0.103,
               "bd": 0.003,
-              "fed": 18.364
+              "fed": 18.364,
+              "actual": {
+                "gf": 70.713,
+                "sp": 0.1,
+                "bd": 0.003,
+                "fed": 15.009
+              }
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 4.273,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 4.273,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 0.74,
               "sp": 0.0,
               "bd": 1.512,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.943,
+                "sp": -0.487,
+                "bd": 1.38,
+                "fed": 0.0
+              }
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.108,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 1.778
+              "fed": 1.778,
+              "actual": {
+                "gf": 1.807,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.613,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.03
+              "fed": 0.03,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.026
+              }
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.022,
               "sp": 0.03,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.209,
+                "sp": 0.023,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 80.458,
+            "sp": -0.362,
+            "bd": 1.383,
+            "fed": 15.035
+          }
         },
         {
           "id": "labor-and-workforce-deve",
@@ -1756,47 +2082,95 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 0.524,
               "sp": 0.179,
               "bd": 0.0,
-              "fed": 34.554
+              "fed": 34.554,
+              "actual": {
+                "gf": 1.134,
+                "sp": 0.19,
+                "bd": 0.0,
+                "fed": 34.572
+              }
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.024,
               "sp": 0.667,
               "bd": 0.0,
-              "fed": 0.037
+              "fed": 0.037,
+              "actual": {
+                "gf": 0.024,
+                "sp": 0.731,
+                "bd": 0.0,
+                "fed": 0.054
+              }
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.002,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.6
+              "fed": 0.6,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.354,
               "sp": 0.008,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.391,
+                "sp": 0.007,
+                "bd": 0.0,
+                "fed": 0.007
+              }
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.016,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.01,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.579,
+            "sp": 0.93,
+            "bd": 0.0,
+            "fed": 34.633
+          }
         },
         {
           "id": "higher-education",
@@ -1808,54 +2182,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 4.674,
               "sp": 0.14,
               "bd": 0.0,
-              "fed": 4.218
+              "fed": 4.218,
+              "actual": {
+                "gf": 4.753,
+                "sp": 0.143,
+                "bd": 0.0,
+                "fed": 4.91
+              }
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 7.082,
               "sp": 0.005,
               "bd": 0.663,
-              "fed": 0.25
+              "fed": 0.25,
+              "actual": {
+                "gf": 8.262,
+                "sp": 0.006,
+                "bd": 0.345,
+                "fed": 0.1
+              }
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 5.193,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 1.425
+              "fed": 1.425,
+              "actual": {
+                "gf": 5.006,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 1.576
+              }
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 3.128,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.472
+              "fed": 0.472,
+              "actual": {
+                "gf": 2.248,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.41,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.356,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.267,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.127,
+                "fed": 0.0
+              }
             },
             {
               "name": "Hastings College of the Law",
+              "code": "6600",
               "gf": 0.026,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.031,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 21.029,
+            "sp": 0.151,
+            "bd": 0.48,
+            "fed": 6.585
+          }
         },
         {
           "id": "transportation",
@@ -1867,61 +2296,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 1.285,
               "sp": 8.227,
               "bd": 0.125,
-              "fed": 6.518
+              "fed": 6.518,
+              "actual": {
+                "gf": 0.266,
+                "sp": 6.32,
+                "bd": 0.014,
+                "fed": 4.784
+              }
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 2.88,
               "sp": 0.542,
               "bd": 0.0,
-              "fed": 0.15
+              "fed": 0.15,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.321,
+                "bd": 0.0,
+                "fed": 0.049
+              }
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.171,
               "sp": 2.585,
               "bd": 0.0,
-              "fed": 0.022
+              "fed": 0.022,
+              "actual": {
+                "gf": 0.015,
+                "sp": 2.631,
+                "bd": 0.0,
+                "fed": 0.021
+              }
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.362,
               "sp": 1.285,
               "bd": 0.0,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.206,
+                "sp": 1.263,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 0.947,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 1.021,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 0.532,
               "bd": 0.074,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 1.723,
+                "bd": 4.692,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.004,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.007,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 0.713,
+            "sp": 14.875,
+            "bd": 4.707,
+            "fed": 4.854
+          }
         },
         {
           "id": "corrections-and-rehabili",
@@ -1933,26 +2424,47 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 13.453,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 13.487,
+                "sp": 0.17,
+                "bd": 0.0,
+                "fed": 0.004
+              }
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.349,
               "sp": 0.162,
               "bd": 0.0,
-              "fed": 0.106
+              "fed": 0.106,
+              "actual": {
+                "gf": 0.245,
+                "sp": 0.02,
+                "bd": 0.0,
+                "fed": 0.024
+              }
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 13.797,
+            "sp": 3.669,
+            "bd": 0.0,
+            "fed": 0.091
+          }
         },
         {
           "id": "government-operations",
@@ -1964,82 +2476,159 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 9.108,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 16.51,
+                "sp": -9.142,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.068,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 3.25
+              "fed": 3.25,
+              "actual": {
+                "gf": 0.036,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.02
+              }
             },
             {
               "name": "Public Employees' Retirement System",
+              "code": "7900",
               "gf": 1.881,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.881,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 0.518,
               "sp": 0.037,
               "bd": 0.008,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.32,
+                "sp": 0.023,
+                "bd": 0.008,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.404,
               "sp": 0.07,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.372,
+                "sp": 0.05,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.041,
               "sp": 0.082,
               "bd": 0.0,
-              "fed": 0.025
+              "fed": 0.025,
+              "actual": {
+                "gf": 0.041,
+                "sp": 0.055,
+                "bd": 0.0,
+                "fed": 0.016
+              }
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.12,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.067,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.014,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.013,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 19.244,
+            "sp": -9.014,
+            "bd": 0.008,
+            "fed": 0.036
+          }
         },
         {
           "id": "legislative-judicial-and",
@@ -2051,216 +2640,427 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 2.877,
               "sp": 1.784,
               "bd": 0.0,
-              "fed": 0.047
+              "fed": 0.047,
+              "actual": {
+                "gf": 2.859,
+                "sp": 1.547,
+                "bd": 0.0,
+                "fed": 0.044
+              }
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.558,
               "sp": 0.057,
               "bd": 0.0,
-              "fed": 1.595
+              "fed": 1.595,
+              "actual": {
+                "gf": 2.002,
+                "sp": 0.057,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 0.861,
               "sp": 0.184,
               "bd": 0.003,
-              "fed": 1.142
+              "fed": 1.142,
+              "actual": {
+                "gf": 6.558,
+                "sp": -5.643,
+                "bd": 0.0,
+                "fed": 1.976
+              }
             },
             {
               "name": "Office of Planning and Research",
+              "code": "0650",
               "gf": 0.085,
               "sp": 0.426,
               "bd": 0.0,
-              "fed": 0.366
+              "fed": 0.366,
+              "actual": {
+                "gf": 0.109,
+                "sp": 0.004,
+                "bd": 0.0,
+                "fed": 0.283
+              }
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.387,
               "sp": 0.398,
               "bd": 0.0,
-              "fed": 0.054
+              "fed": 0.054,
+              "actual": {
+                "gf": 0.401,
+                "sp": 0.334,
+                "bd": 0.0,
+                "fed": 0.048
+              }
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.006,
               "sp": 0.308,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.005,
+                "sp": 0.301,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Judges Retirement System Contributions",
+              "code": "0390",
               "gf": 0.279,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.286,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.0,
               "sp": 0.144,
               "bd": 0.116,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.044,
+                "sp": 0.137,
+                "bd": 0.305,
+                "fed": 0.0
+              }
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.208,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.208,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.061,
               "sp": 0.074,
               "bd": 0.0,
-              "fed": 0.033
+              "fed": 0.033,
+              "actual": {
+                "gf": 0.15,
+                "sp": 0.086,
+                "bd": 0.0,
+                "fed": 0.018
+              }
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.144,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.021
+              "fed": 0.021,
+              "actual": {
+                "gf": 0.144,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.018
+              }
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.158,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.158,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.085,
               "sp": 0.012,
               "bd": 0.001,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.087,
+                "sp": 0.012,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.099,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.102,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.036,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.028,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.031,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.027,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.024,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.021,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.022,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.022,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.014,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.012,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Citizens Redistricting Initiative",
+              "code": "0911",
               "gf": 0.013,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.008,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.012,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.009,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.008,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.007,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.117,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislators' Retirement Sys Contribution",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2268,6 +3068,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Portrait",
+              "code": "0720",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2275,6 +3076,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2282,6 +3084,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Transportation Financing Authority",
+              "code": "0964",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2289,13 +3092,21 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Urban Waterfront Restoration Fin Auth",
+              "code": "0983",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2303,12 +3114,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CalSavers Retirement Savings Board",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 13.241,
+            "sp": -3.027,
+            "bd": 0.306,
+            "fed": 2.388
+          }
         },
         {
           "id": "natural-resources",
@@ -2320,202 +3138,399 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 1.871,
               "sp": 0.206,
               "bd": 0.0,
-              "fed": 0.022
+              "fed": 0.022,
+              "actual": {
+                "gf": 2.293,
+                "sp": 0.326,
+                "bd": 0.001,
+                "fed": 0.015
+              }
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 1.219,
               "sp": 0.041,
               "bd": 0.612,
-              "fed": 0.028
+              "fed": 0.028,
+              "actual": {
+                "gf": 1.019,
+                "sp": 0.039,
+                "bd": 0.273,
+                "fed": 0.007
+              }
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 1.301,
               "sp": 0.407,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.218,
+                "sp": 0.341,
+                "bd": 0.0,
+                "fed": 0.004
+              }
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.879,
               "sp": 0.341,
               "bd": 0.065,
-              "fed": 0.104
+              "fed": 0.104,
+              "actual": {
+                "gf": 1.38,
+                "sp": 0.336,
+                "bd": 0.067,
+                "fed": 0.104
+              }
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.328,
               "sp": 0.287,
               "bd": 0.055,
-              "fed": 0.092
+              "fed": 0.092,
+              "actual": {
+                "gf": 0.242,
+                "sp": 0.231,
+                "bd": 0.079,
+                "fed": 0.083
+              }
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.07,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.25
+              "fed": 0.25,
+              "actual": {
+                "gf": 0.332,
+                "sp": 0.024,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.083,
               "sp": 0.003,
               "bd": 0.084,
-              "fed": 0.035
+              "fed": 0.035,
+              "actual": {
+                "gf": 0.074,
+                "sp": 0.002,
+                "bd": 0.092,
+                "fed": 0.018
+              }
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.11,
               "sp": 0.017,
               "bd": 0.02,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.119,
+                "sp": 0.02,
+                "bd": 0.17,
+                "fed": 0.001
+              }
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.078,
               "sp": 0.054,
               "bd": 0.005,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.085,
+                "sp": 0.059,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.005,
               "sp": 0.12,
               "bd": 0.001,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.048,
+                "sp": 0.169,
+                "bd": 0.009,
+                "fed": 0.002
+              }
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.064,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.03,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.014,
               "sp": 0.008,
               "bd": 0.032,
-              "fed": 0.011
+              "fed": 0.011,
+              "actual": {
+                "gf": 0.106,
+                "sp": 0.008,
+                "bd": 0.032,
+                "fed": 0.011
+              }
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.033,
               "sp": 0.01,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.033,
+                "sp": 0.009,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.019,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.018,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Office of Energy Infrastructure Safety",
+              "code": "3355",
               "gf": 0.0,
               "sp": 0.018,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.039,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.015,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.016,
+                "sp": 0.001,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.012,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.01,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.003,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.005,
+                "bd": 0.003,
+                "fed": 0.003
+              }
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.007,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.008,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.021,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.0,
               "sp": 0.005,
               "bd": 0.001,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.005,
+                "bd": 0.005,
+                "fed": 0.002
+              }
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.004,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.002,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.003,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.012,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.002,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Baldwin Hills Conservancy",
+              "code": "3835",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.002,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2523,12 +3538,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 7.356,
+            "sp": 1.628,
+            "bd": 0.749,
+            "fed": 0.253
+          }
         },
         {
           "id": "business-consumer-servic",
@@ -2540,96 +3562,187 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 1.481,
               "sp": 0.038,
               "bd": 1.22,
-              "fed": 4.013
+              "fed": 4.013,
+              "actual": {
+                "gf": 0.766,
+                "sp": 0.839,
+                "bd": 0.998,
+                "fed": 5.05
+              }
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 1.103,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.223,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.005,
               "sp": 0.682,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.014,
+                "sp": 0.604,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Cannabis Control",
+              "code": "1115",
               "gf": 0.13,
               "sp": 0.164,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.095,
+                "sp": 0.119,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Dept Financial Protection and Innovation",
+              "code": "1701",
               "gf": 0.01,
               "sp": 0.135,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.121,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.0,
               "sp": 0.087,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.009,
+                "sp": 0.076,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.056,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.056,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Fair Employment, Housing",
+              "code": "1700",
               "gf": 0.042,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.043,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.006
+              }
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.017,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.016,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Privacy Protection Agency",
+              "code": "1703",
               "gf": 0.01,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Seismic Safety Commission, A. E. Alquist",
+              "code": "1690",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.272,
+            "sp": 1.836,
+            "bd": 0.998,
+            "fed": 5.056
+          }
         },
         {
           "id": "environmental-protection",
@@ -2641,54 +3754,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 1.499,
               "sp": 0.942,
               "bd": 0.016,
-              "fed": 1.314
+              "fed": 1.314,
+              "actual": {
+                "gf": 0.158,
+                "sp": 0.904,
+                "bd": 0.016,
+                "fed": 1.119
+              }
             },
             {
               "name": "Air Resources Board",
+              "code": "3900",
               "gf": 1.063,
               "sp": 1.286,
               "bd": 0.001,
-              "fed": 0.017
+              "fed": 0.017,
+              "actual": {
+                "gf": 1.406,
+                "sp": 1.215,
+                "bd": 0.0,
+                "fed": 0.009
+              }
             },
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.004,
               "sp": 1.587,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.324,
+                "sp": 1.644,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.389,
               "sp": 0.39,
               "bd": 0.0,
-              "fed": 0.036
+              "fed": 0.036,
+              "actual": {
+                "gf": 0.147,
+                "sp": 0.234,
+                "bd": 0.0,
+                "fed": 0.033
+              }
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.02,
               "sp": 0.117,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.004,
+                "sp": 0.117,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.008,
               "sp": 0.019,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.018,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.008,
               "sp": 0.016,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.014,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 2.056,
+            "sp": 4.147,
+            "bd": 0.016,
+            "fed": 1.164
+          }
         },
         {
           "id": "general-government",
@@ -2700,6 +3868,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.0,
               "sp": 2.924,
               "bd": 0.0,
@@ -2707,6 +3876,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.074,
               "sp": 1.609,
               "bd": 0.0,
@@ -2714,6 +3884,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 2.335,
               "sp": 0.0,
               "bd": 0.0,
@@ -2721,6 +3892,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 1.069,
               "sp": 0.642,
               "bd": 0.0,
@@ -2728,6 +3900,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.475,
               "sp": 0.21,
               "bd": 0.002,
@@ -2735,6 +3908,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.186,
               "sp": 0.0,
               "bd": 0.0,
@@ -2742,6 +3916,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.543,
               "sp": 0.003,
               "bd": 0.0,
@@ -2749,6 +3924,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.415,
               "sp": 0.004,
               "bd": 0.0,
@@ -2756,6 +3932,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.126,
               "sp": 0.002,
               "bd": 0.0,
@@ -2763,6 +3940,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.129,
               "sp": 0.002,
               "bd": 0.0,
@@ -2770,6 +3948,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.048,
               "sp": 0.002,
               "bd": 0.0,
@@ -2777,6 +3956,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.045,
               "sp": 0.0,
               "bd": 0.0,
@@ -2784,6 +3964,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.048,
               "sp": 0.0,
               "bd": 0.0,
@@ -2791,6 +3972,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.044,
               "sp": 0.0,
               "bd": 0.0,
@@ -2798,6 +3980,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.035,
               "sp": 0.0,
               "bd": 0.0,
@@ -2805,6 +3988,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.02,
               "sp": 0.015,
               "bd": 0.0,
@@ -2812,6 +3996,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.025,
               "sp": 0.0,
               "bd": 0.0,
@@ -2819,6 +4004,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.02,
               "sp": 0.0,
               "bd": 0.0,
@@ -2826,6 +4012,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.019,
               "sp": 0.0,
               "bd": 0.0,
@@ -2833,6 +4020,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.015,
               "sp": 0.001,
               "bd": 0.0,
@@ -2840,6 +4028,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -2847,6 +4036,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -2854,6 +4044,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -2861,6 +4052,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -2868,6 +4060,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -2875,6 +4068,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -2882,6 +4076,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -2889,6 +4084,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2896,6 +4092,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2903,6 +4100,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2910,6 +4108,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2917,6 +4116,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2924,6 +4124,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2931,6 +4132,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2938,6 +4140,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2945,6 +4148,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2952,6 +4156,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2959,6 +4164,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -2966,6 +4172,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 2.617,
               "sp": -2.617,
               "bd": 0.0,
@@ -2973,12 +4180,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -0.901,
               "sp": 0.814,
               "bd": 0.001,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 7.171,
+            "sp": 1.139,
+            "bd": 0.006,
+            "fed": 0.576
+          }
         }
       ]
     },
@@ -2994,6 +4208,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 37.333,
               "sp": 13.515,
               "bd": 0.0,
@@ -3001,6 +4216,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 17.167,
               "sp": 0.232,
               "bd": 0.0,
@@ -3008,6 +4224,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 7.676,
               "sp": 0.392,
               "bd": 0.0,
@@ -3015,6 +4232,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 7.288,
               "bd": 0.0,
@@ -3022,6 +4240,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.016,
               "sp": 6.583,
               "bd": 0.0,
@@ -3029,6 +4248,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 1.205,
               "sp": 3.022,
               "bd": 0.0,
@@ -3036,6 +4256,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 2.891,
               "sp": 0.083,
               "bd": 0.0,
@@ -3043,6 +4264,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.025,
               "sp": 1.2,
               "bd": 0.0,
@@ -3050,6 +4272,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.365,
               "sp": 0.0,
               "bd": 0.0,
@@ -3057,6 +4280,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept Health Care Access and Information",
+              "code": "4140",
               "gf": 0.717,
               "sp": 0.131,
               "bd": 0.0,
@@ -3064,6 +4288,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.09,
               "sp": 0.004,
               "bd": 0.0,
@@ -3071,6 +4296,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Department of Aging",
+              "code": "4170",
               "gf": 0.283,
               "sp": 0.005,
               "bd": 0.0,
@@ -3078,6 +4304,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.342,
               "bd": 0.0,
@@ -3085,6 +4312,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.02,
               "sp": 0.304,
               "bd": 0.0,
@@ -3092,13 +4320,21 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.122,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.013
+              "fed": 0.013,
+              "actual": {
+                "gf": 0.12,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.013
+              }
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.126,
               "bd": 0.0,
@@ -3106,6 +4342,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Mental Hlth Svcs Ovrst and Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.069,
               "bd": 0.0,
@@ -3113,6 +4350,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.045,
               "sp": 0.006,
               "bd": 0.0,
@@ -3120,6 +4358,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3127,6 +4366,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3134,6 +4374,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3141,12 +4382,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 55.01,
+            "sp": 31.635,
+            "bd": 0.0,
+            "fed": 106.524
+          }
         },
         {
           "id": "k-thru-12-education",
@@ -3158,61 +4406,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 72.012,
               "sp": 0.089,
               "bd": 0.004,
-              "fed": 10.923
+              "fed": 10.923,
+              "actual": {
+                "gf": 61.208,
+                "sp": 0.112,
+                "bd": 0.003,
+                "fed": 7.299
+              }
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 3.712,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 3.712,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 0.0,
               "sp": 0.225,
               "bd": 1.484,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.334,
+                "sp": 0.124,
+                "bd": 0.987,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.202,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.491,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.016
+              }
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.202,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.154,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.048,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.046,
+                "sp": 0.027,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 69.36,
+            "sp": 0.264,
+            "bd": 0.99,
+            "fed": 7.314
+          }
         },
         {
           "id": "higher-education",
@@ -3224,54 +4534,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 5.125,
               "sp": 0.125,
               "bd": 0.0,
-              "fed": 4.718
+              "fed": 4.718,
+              "actual": {
+                "gf": 4.902,
+                "sp": 0.081,
+                "bd": 0.0,
+                "fed": 5.028
+              }
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 9.0,
               "sp": 0.003,
               "bd": 0.74,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 7.134,
+                "sp": 0.003,
+                "bd": 0.351,
+                "fed": 0.15
+              }
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 5.155,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 1.721
+              "fed": 1.721,
+              "actual": {
+                "gf": 4.935,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 1.523
+              }
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 3.152,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 2.396,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.408,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.374,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.338,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.448,
+                "fed": 0.0
+              }
             },
             {
               "name": "Hastings College of the Law",
+              "code": "6600",
               "gf": 0.113,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.113,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 20.218,
+            "sp": 0.086,
+            "bd": 0.81,
+            "fed": 6.701
+          }
         },
         {
           "id": "transportation",
@@ -3283,61 +4648,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 0.478,
               "sp": 9.148,
               "bd": 0.059,
-              "fed": 8.602
+              "fed": 8.602,
+              "actual": {
+                "gf": 0.73,
+                "sp": 7.307,
+                "bd": 0.094,
+                "fed": 5.931
+              }
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.23,
               "sp": 2.799,
               "bd": 0.0,
-              "fed": 0.023
+              "fed": 0.023,
+              "actual": {
+                "gf": 0.02,
+                "sp": 2.9,
+                "bd": 0.0,
+                "fed": 0.03
+              }
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.223,
               "sp": 1.396,
               "bd": 0.0,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.217,
+                "sp": 1.38,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 1.307,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 1.342,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 1.232,
               "bd": 0.033,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": -0.281,
+                "bd": 0.038,
+                "fed": 0.049
+              }
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 0.6,
               "sp": 0.308,
               "bd": 0.0,
-              "fed": 0.127
+              "fed": 0.127,
+              "actual": {
+                "gf": 0.022,
+                "sp": 0.081,
+                "bd": 0.0,
+                "fed": 0.115
+              }
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.001,
               "sp": 0.009,
               "bd": 0.004,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.008,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.317,
+            "sp": 14.105,
+            "bd": 0.132,
+            "fed": 6.125
+          }
         },
         {
           "id": "general-government",
@@ -3349,6 +4776,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.0,
               "sp": 3.315,
               "bd": 0.0,
@@ -3356,6 +4784,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 2.302,
               "sp": 0.0,
               "bd": 0.0,
@@ -3363,6 +4792,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.25,
               "sp": 1.566,
               "bd": 0.0,
@@ -3370,6 +4800,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 0.563,
               "sp": 0.36,
               "bd": 0.0,
@@ -3377,6 +4808,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.517,
               "sp": 0.215,
               "bd": 0.002,
@@ -3384,6 +4816,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.639,
               "sp": 0.003,
               "bd": 0.0,
@@ -3391,6 +4824,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.31,
               "sp": 0.002,
               "bd": 0.0,
@@ -3398,6 +4832,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.415,
               "sp": 0.004,
               "bd": 0.0,
@@ -3405,6 +4840,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.234,
               "sp": 0.0,
               "bd": 0.0,
@@ -3412,6 +4848,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.091,
               "sp": 0.005,
               "bd": 0.0,
@@ -3419,6 +4856,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.078,
               "sp": 0.0,
               "bd": 0.0,
@@ -3426,6 +4864,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.07,
               "sp": 0.002,
               "bd": 0.0,
@@ -3433,6 +4872,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.063,
               "sp": 0.0,
               "bd": 0.0,
@@ -3440,6 +4880,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.061,
               "sp": 0.0,
               "bd": 0.0,
@@ -3447,6 +4888,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.053,
               "sp": 0.0,
               "bd": 0.0,
@@ -3454,6 +4896,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.04,
               "sp": 0.015,
               "bd": 0.0,
@@ -3461,6 +4904,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.027,
               "sp": 0.0,
               "bd": 0.0,
@@ -3468,6 +4912,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.027,
               "sp": 0.0,
               "bd": 0.0,
@@ -3475,6 +4920,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.021,
               "sp": 0.0,
               "bd": 0.0,
@@ -3482,6 +4928,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -3489,6 +4936,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.011,
               "sp": 0.0,
               "bd": 0.0,
@@ -3496,6 +4944,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.009,
               "sp": 0.0,
               "bd": 0.0,
@@ -3503,6 +4952,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -3510,6 +4960,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.004,
               "sp": 0.001,
               "bd": 0.0,
@@ -3517,6 +4968,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -3524,6 +4976,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -3531,6 +4984,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Youth Empowerment Commission",
+              "code": "8815",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -3538,6 +4992,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -3545,6 +5000,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -3552,6 +5008,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3559,6 +5016,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3566,6 +5024,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3573,6 +5032,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3580,6 +5040,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3587,6 +5048,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3594,6 +5056,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3601,6 +5064,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3608,6 +5072,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3615,6 +5080,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3622,6 +5088,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 2.224,
               "sp": -2.224,
               "bd": 0.0,
@@ -3629,12 +5096,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -0.891,
               "sp": 0.844,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.75,
+            "sp": 5.661,
+            "bd": 0.003,
+            "fed": 0.478
+          }
         },
         {
           "id": "corrections-and-rehabili",
@@ -3646,26 +5120,47 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 13.796,
               "sp": 0.199,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 14.318,
+                "sp": 0.161,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.782,
               "sp": 0.188,
               "bd": 0.0,
-              "fed": 0.047
+              "fed": 0.047,
+              "actual": {
+                "gf": 0.724,
+                "sp": 0.096,
+                "bd": 0.0,
+                "fed": 0.025
+              }
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 15.137,
+            "sp": 3.869,
+            "bd": 0.0,
+            "fed": 0.101
+          }
         },
         {
           "id": "legislative-judicial-and",
@@ -3677,230 +5172,455 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 3.524,
               "sp": 1.692,
               "bd": 0.0,
-              "fed": 0.027
+              "fed": 0.027,
+              "actual": {
+                "gf": 3.233,
+                "sp": 1.6,
+                "bd": 0.0,
+                "fed": 0.023
+              }
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 4.943,
               "sp": -3.884,
               "bd": 0.003,
-              "fed": 1.182
+              "fed": 1.182,
+              "actual": {
+                "gf": 3.068,
+                "sp": -1.813,
+                "bd": 0.0,
+                "fed": 2.16
+              }
             },
             {
               "name": "Office of Planning and Research",
+              "code": "0650",
               "gf": 0.578,
               "sp": 0.71,
               "bd": 0.0,
-              "fed": 0.056
+              "fed": 0.056,
+              "actual": {
+                "gf": 0.177,
+                "sp": 0.185,
+                "bd": 0.0,
+                "fed": 0.106
+              }
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.57,
               "sp": 0.407,
               "bd": 0.0,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 1.685,
+                "sp": 0.108,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.434,
               "sp": 0.367,
               "bd": 0.0,
-              "fed": 0.062
+              "fed": 0.062,
+              "actual": {
+                "gf": 0.457,
+                "sp": 0.359,
+                "bd": 0.0,
+                "fed": 0.063
+              }
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.065,
               "sp": 0.144,
               "bd": 0.116,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.05,
+                "sp": 0.151,
+                "bd": 0.005,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.006,
               "sp": 0.319,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.316,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Judges Retirement System Contributions",
+              "code": "0390",
               "gf": 0.293,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.297,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.224,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.224,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.185,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.021
+              "fed": 0.021,
+              "actual": {
+                "gf": 0.185,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.021
+              }
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.191,
               "sp": 0.012,
               "bd": 0.001,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.105,
+                "sp": 0.013,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.185,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.189,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.17,
               "sp": -0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.17,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.1,
               "sp": 0.038,
               "bd": 0.0,
-              "fed": 0.014
+              "fed": 0.014,
+              "actual": {
+                "gf": 0.085,
+                "sp": 0.05,
+                "bd": 0.0,
+                "fed": 0.009
+              }
             },
             {
               "name": "HOPE Trust Account Program Board",
+              "code": "0957",
               "gf": 0.1,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.1,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.05,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.05,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.042,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.031,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.032,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.029,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.027,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.023,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.025,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.025,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.014,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.014,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.01,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.008,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.008,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.004,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Citizens Redistricting Commission",
+              "code": "0911",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.08,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislators' Retirement Sys Contribution",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3908,6 +5628,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3915,6 +5636,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Transportation Financing Authority",
+              "code": "0964",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3922,6 +5644,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Urban Waterfront Restoration Fin Auth",
+              "code": "0983",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -3929,12 +5652,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CalSavers Retirement Savings Board",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 10.217,
+            "sp": 1.072,
+            "bd": 0.007,
+            "fed": 2.384
+          }
         },
         {
           "id": "natural-resources",
@@ -3946,202 +5676,399 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 2.85,
               "sp": 0.351,
               "bd": 0.0,
-              "fed": 0.022
+              "fed": 0.022,
+              "actual": {
+                "gf": 3.089,
+                "sp": 0.294,
+                "bd": 0.0,
+                "fed": 0.017
+              }
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 1.568,
               "sp": 0.09,
               "bd": 0.466,
-              "fed": 0.03
+              "fed": 0.03,
+              "actual": {
+                "gf": 1.632,
+                "sp": 0.69,
+                "bd": 0.266,
+                "fed": 0.01
+              }
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.463,
               "sp": 0.401,
               "bd": 0.051,
-              "fed": 0.104
+              "fed": 0.104,
+              "actual": {
+                "gf": 0.764,
+                "sp": 0.404,
+                "bd": 0.231,
+                "fed": 0.043
+              }
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 0.395,
               "sp": 0.408,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.538,
+                "sp": 0.278,
+                "bd": 0.0,
+                "fed": 0.005
+              }
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.273,
               "sp": 0.33,
               "bd": 0.054,
-              "fed": 0.094
+              "fed": 0.094,
+              "actual": {
+                "gf": 0.314,
+                "sp": 0.3,
+                "bd": 0.044,
+                "fed": 0.09
+              }
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.411,
               "sp": 0.088,
               "bd": 0.03,
-              "fed": 0.011
+              "fed": 0.011,
+              "actual": {
+                "gf": 0.079,
+                "sp": 0.015,
+                "bd": 0.03,
+                "fed": 0.011
+              }
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.436,
               "sp": 0.002,
               "bd": 0.01,
-              "fed": 0.035
+              "fed": 0.035,
+              "actual": {
+                "gf": 0.188,
+                "sp": 0.004,
+                "bd": 0.17,
+                "fed": 0.027
+              }
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.428,
               "sp": 0.018,
               "bd": 0.021,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.254,
+                "sp": 0.021,
+                "bd": 0.038,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.158,
               "sp": 0.136,
               "bd": 0.001,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.156,
+                "sp": 0.194,
+                "bd": 0.006,
+                "fed": 0.024
+              }
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.179,
               "sp": 0.054,
               "bd": 0.005,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.121,
+                "sp": 0.055,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.026,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.061,
+                "sp": 0.021,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.031,
               "sp": 0.011,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.041,
+                "sp": 0.011,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Energy Infrastructure Safety",
+              "code": "3355",
               "gf": 0.0,
               "sp": 0.042,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.025,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.023,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.032,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.006,
               "sp": 0.006,
               "bd": 0.01,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.017,
+                "sp": 0.005,
+                "bd": 0.002,
+                "fed": 0.002
+              }
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.02,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.022,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.0,
+                "bd": 0.007,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.013,
               "sp": 0.005,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.061,
+                "sp": 0.006,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.007,
               "sp": 0.001,
               "bd": 0.01,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.017,
+                "sp": 0.0,
+                "bd": 0.011,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.013,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.0,
+                "bd": 0.007,
+                "fed": 0.0
+              }
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.008,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.008,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.002,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Baldwin Hills Conservancy",
+              "code": "3835",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -4149,12 +6076,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 8.679,
+            "sp": 2.339,
+            "bd": 0.816,
+            "fed": 0.235
+          }
         },
         {
           "id": "labor-and-workforce-deve",
@@ -4166,47 +6100,95 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 1.061,
               "sp": 0.257,
               "bd": 0.0,
-              "fed": 7.73
+              "fed": 7.73,
+              "actual": {
+                "gf": 0.621,
+                "sp": 0.231,
+                "bd": 0.0,
+                "fed": 6.315
+              }
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.124,
               "sp": 0.723,
               "bd": 0.0,
-              "fed": 0.036
+              "fed": 0.036,
+              "actual": {
+                "gf": 0.124,
+                "sp": 0.713,
+                "bd": 0.0,
+                "fed": 0.038
+              }
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.266,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.007
+              "fed": 0.007,
+              "actual": {
+                "gf": 0.134,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.007
+              }
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.016,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.016,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.01,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.011,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.003,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 0.909,
+            "sp": 0.948,
+            "bd": 0.0,
+            "fed": 6.36
+          }
         },
         {
           "id": "business-consumer-servic",
@@ -4218,89 +6200,179 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 2.146,
               "sp": 0.04,
               "bd": 0.937,
-              "fed": 1.439
+              "fed": 1.439,
+              "actual": {
+                "gf": 2.022,
+                "sp": 0.043,
+                "bd": 1.08,
+                "fed": 2.907
+              }
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 1.306,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.045,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.023,
               "sp": 0.673,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.026,
+                "sp": 0.577,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Cannabis Control",
+              "code": "1115",
               "gf": 0.022,
               "sp": 0.179,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.15,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Dept Financial Protection and Innovation",
+              "code": "1701",
               "gf": 0.01,
               "sp": 0.145,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.145,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.029,
               "sp": 0.06,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.011,
+                "sp": 0.083,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.058,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.061,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Fair Employment, Housing",
+              "code": "1700",
               "gf": 0.049,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.057,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.006
+              }
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.02,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.02,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Privacy Protection Agency",
+              "code": "1703",
               "gf": 0.01,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.005,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.272,
+            "sp": 1.082,
+            "bd": 1.08,
+            "fed": 2.913
+          }
         },
         {
           "id": "environmental-protection",
@@ -4312,54 +6384,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Air Resources Board",
+              "code": "3900",
               "gf": 0.612,
               "sp": 1.606,
               "bd": 0.001,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.257,
+                "sp": 1.409,
+                "bd": 0.0,
+                "fed": 0.013
+              }
             },
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.121,
               "sp": 2.113,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.142,
+                "sp": 1.609,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 0.228,
               "sp": 0.944,
               "bd": 0.013,
-              "fed": 0.344
+              "fed": 0.344,
+              "actual": {
+                "gf": 0.645,
+                "sp": 0.848,
+                "bd": 0.107,
+                "fed": 0.306
+              }
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.185,
               "sp": 0.343,
               "bd": 0.0,
-              "fed": 0.038
+              "fed": 0.038,
+              "actual": {
+                "gf": 0.111,
+                "sp": 0.265,
+                "bd": 0.0,
+                "fed": 0.03
+              }
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.01,
               "sp": 0.123,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.118,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.017,
               "sp": 0.018,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.008,
+                "sp": 0.014,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.015,
               "sp": 0.018,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.015,
+                "sp": 0.016,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.191,
+            "sp": 4.28,
+            "bd": 0.107,
+            "fed": 0.351
+          }
         },
         {
           "id": "government-operations",
@@ -4371,82 +6498,159 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Public Employees' Retirement System",
+              "code": "7900",
               "gf": 2.925,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 2.925,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 1.209,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.134,
+                "sp": 10.187,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.376,
               "sp": 0.102,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.326,
+                "sp": 0.078,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 1.089,
               "sp": -0.776,
               "bd": 0.007,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.486,
+                "sp": -0.754,
+                "bd": 0.006,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.071,
               "sp": 0.086,
               "bd": 0.0,
-              "fed": 0.036
+              "fed": 0.036,
+              "actual": {
+                "gf": 0.057,
+                "sp": 0.065,
+                "bd": 0.0,
+                "fed": 0.02
+              }
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.157,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.11,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.235
+              }
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.049,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.058,
+                "sp": -0.018,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.033,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.026,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 6.128,
+            "sp": 9.557,
+            "bd": 0.006,
+            "fed": 0.256
+          }
         }
       ]
     },
@@ -4462,6 +6666,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 38.266,
               "sp": 23.18,
               "bd": 0.0,
@@ -4469,6 +6674,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 21.653,
               "sp": 0.194,
               "bd": 0.0,
@@ -4476,6 +6682,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 8.545,
               "sp": 0.449,
               "bd": 0.0,
@@ -4483,6 +6690,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 7.288,
               "bd": 0.0,
@@ -4490,6 +6698,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.021,
               "sp": 6.396,
               "bd": 0.0,
@@ -4497,6 +6706,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 0.997,
               "sp": 1.165,
               "bd": 0.0,
@@ -4504,6 +6714,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 3.293,
               "sp": 0.0,
               "bd": 0.0,
@@ -4511,6 +6722,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.379,
               "sp": 0.0,
               "bd": 0.0,
@@ -4518,6 +6730,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept Health Care Access and Information",
+              "code": "4140",
               "gf": 0.288,
               "sp": 0.325,
               "bd": 0.0,
@@ -4525,6 +6738,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.082,
               "sp": 0.0,
               "bd": 0.0,
@@ -4532,6 +6746,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Department of Aging",
+              "code": "4170",
               "gf": 0.181,
               "sp": 0.005,
               "bd": 0.0,
@@ -4539,6 +6754,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.342,
               "bd": 0.0,
@@ -4546,6 +6762,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.0,
               "sp": 0.025,
               "bd": 0.0,
@@ -4553,6 +6770,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.161,
               "bd": 0.0,
@@ -4560,13 +6778,21 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.11,
               "sp": 0.016,
               "bd": 0.0,
-              "fed": 0.005
+              "fed": 0.005,
+              "actual": {
+                "gf": 0.065,
+                "sp": 0.014,
+                "bd": 0.0,
+                "fed": 0.007
+              }
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.02,
               "sp": 0.085,
               "bd": 0.0,
@@ -4574,6 +6800,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Mental Hlth Svcs Ovrst and Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.048,
               "bd": 0.0,
@@ -4581,6 +6808,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.034,
               "sp": 0.006,
               "bd": 0.0,
@@ -4588,6 +6816,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -4595,6 +6824,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -4602,6 +6832,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -4609,12 +6840,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 70.157,
+            "sp": 40.491,
+            "bd": 0.0,
+            "fed": 111.991
+          }
         },
         {
           "id": "k-thru-12-education",
@@ -4626,61 +6864,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 70.396,
               "sp": 0.084,
               "bd": 0.004,
-              "fed": 8.204
+              "fed": 8.204,
+              "actual": {
+                "gf": 62.44,
+                "sp": 0.096,
+                "bd": 0.003,
+                "fed": 7.514
+              }
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 3.939,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 3.939,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 1.96,
               "sp": 0.36,
               "bd": 0.625,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.224,
+                "sp": 0.363,
+                "bd": 0.477,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.689,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.281,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.015
+              }
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.194,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.184,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.032,
               "sp": 0.024,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.032,
+                "sp": 0.025,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 70.431,
+            "sp": 0.484,
+            "bd": 0.48,
+            "fed": 7.53
+          }
         },
         {
           "id": "higher-education",
@@ -4692,54 +6992,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 4.834,
               "sp": 0.124,
               "bd": 0.0,
-              "fed": 4.927
+              "fed": 4.927,
+              "actual": {
+                "gf": 4.818,
+                "sp": 0.085,
+                "bd": 0.0,
+                "fed": 5.147
+              }
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 8.725,
               "sp": 0.01,
               "bd": 0.33,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 7.105,
+                "sp": 0.008,
+                "bd": 0.777,
+                "fed": 0.0
+              }
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 5.018,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 1.655
+              "fed": 1.655,
+              "actual": {
+                "gf": 5.024,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 1.666
+              }
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 2.924,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 2.89,
+                "sp": -0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.428,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.402,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.276,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.561,
+                "fed": 0.0
+              }
             },
             {
               "name": "College of the Law, San Francisco",
+              "code": "6600",
               "gf": 0.027,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.027,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 20.69,
+            "sp": 0.094,
+            "bd": 1.366,
+            "fed": 6.814
+          }
         },
         {
           "id": "transportation",
@@ -4751,68 +7106,137 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 0.879,
               "sp": 8.547,
               "bd": 0.06,
-              "fed": 8.592
+              "fed": 8.592,
+              "actual": {
+                "gf": 0.651,
+                "sp": 7.964,
+                "bd": 0.053,
+                "fed": 6.005
+              }
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 2.05,
               "sp": 0.985,
               "bd": 0.0,
-              "fed": 0.128
+              "fed": 0.128,
+              "actual": {
+                "gf": 1.54,
+                "sp": 0.037,
+                "bd": 0.0,
+                "fed": 0.121
+              }
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.031,
               "sp": 2.952,
               "bd": 0.0,
-              "fed": 0.034
+              "fed": 0.034,
+              "actual": {
+                "gf": 0.017,
+                "sp": 3.109,
+                "bd": 0.0,
+                "fed": 0.033
+              }
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.053,
               "sp": 1.398,
               "bd": 0.0,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.052,
+                "sp": 1.451,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 1.267,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 1.246,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 0.889,
               "bd": 0.034,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.166,
+                "bd": 0.028,
+                "fed": 3.296
+              }
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.0,
               "sp": 0.01,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.008,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Auth Ofc Inspector Genrl",
+              "code": "2667",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 2.58,
+            "sp": 15.357,
+            "bd": 0.081,
+            "fed": 9.455
+          }
         },
         {
           "id": "corrections-and-rehabili",
@@ -4824,26 +7248,47 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 14.134,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 14.31,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.565,
               "sp": 0.137,
               "bd": 0.0,
-              "fed": 0.077
+              "fed": 0.077,
+              "actual": {
+                "gf": 0.625,
+                "sp": 0.118,
+                "bd": 0.0,
+                "fed": 0.039
+              }
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 14.988,
+            "sp": 3.808,
+            "bd": 0.0,
+            "fed": 0.105
+          }
         },
         {
           "id": "general-government",
@@ -4855,6 +7300,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.0,
               "sp": 3.449,
               "bd": 0.0,
@@ -4862,6 +7308,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.461,
               "sp": 2.044,
               "bd": 0.0,
@@ -4869,6 +7316,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 2.417,
               "sp": 0.0,
               "bd": 0.0,
@@ -4876,6 +7324,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.225,
               "sp": 0.269,
               "bd": 0.001,
@@ -4883,6 +7332,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.589,
               "sp": 0.003,
               "bd": 0.001,
@@ -4890,6 +7340,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.415,
               "sp": 0.003,
               "bd": 0.0,
@@ -4897,6 +7348,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 0.122,
               "sp": 0.263,
               "bd": 0.0,
@@ -4904,6 +7356,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.148,
               "sp": 0.004,
               "bd": 0.0,
@@ -4911,6 +7364,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.168,
               "sp": 0.002,
               "bd": 0.0,
@@ -4918,6 +7372,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.162,
               "sp": 0.0,
               "bd": 0.0,
@@ -4925,6 +7380,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.098,
               "sp": 0.0,
               "bd": 0.0,
@@ -4932,6 +7388,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.068,
               "sp": 0.0,
               "bd": 0.0,
@@ -4939,6 +7396,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.067,
               "sp": 0.0,
               "bd": 0.0,
@@ -4946,6 +7404,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.058,
               "sp": 0.0,
               "bd": 0.0,
@@ -4953,6 +7412,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.04,
               "sp": 0.015,
               "bd": 0.0,
@@ -4960,6 +7420,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.045,
               "sp": 0.003,
               "bd": 0.0,
@@ -4967,6 +7428,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.037,
               "sp": 0.002,
               "bd": 0.0,
@@ -4974,6 +7436,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.028,
               "sp": 0.0,
               "bd": 0.0,
@@ -4981,6 +7444,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.026,
               "sp": 0.0,
               "bd": 0.0,
@@ -4988,6 +7452,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.018,
               "sp": 0.0,
               "bd": 0.0,
@@ -4995,6 +7460,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.017,
               "sp": 0.0,
               "bd": 0.0,
@@ -5002,6 +7468,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.011,
               "sp": 0.0,
               "bd": 0.0,
@@ -5009,6 +7476,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -5016,6 +7484,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -5023,6 +7492,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -5030,6 +7500,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -5037,6 +7508,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -5044,6 +7516,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -5051,6 +7524,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5058,6 +7532,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5065,6 +7540,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5072,6 +7548,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5079,6 +7556,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5086,6 +7564,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Youth Empowerment Commission",
+              "code": "8815",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5093,6 +7572,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5100,6 +7580,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5107,6 +7588,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5114,6 +7596,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5121,6 +7604,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5128,6 +7612,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 0.903,
               "sp": -0.903,
               "bd": 0.0,
@@ -5135,12 +7620,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -0.728,
               "sp": 0.728,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.495,
+            "sp": 15.424,
+            "bd": 0.001,
+            "fed": 0.459
+          }
         },
         {
           "id": "legislative-judicial-and",
@@ -5152,223 +7644,441 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 3.146,
               "sp": 1.685,
               "bd": 0.0,
-              "fed": 0.027
+              "fed": 0.027,
+              "actual": {
+                "gf": 3.144,
+                "sp": 1.567,
+                "bd": 0.0,
+                "fed": 0.023
+              }
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 0.644,
               "sp": 0.235,
               "bd": 0.003,
-              "fed": 2.167
+              "fed": 2.167,
+              "actual": {
+                "gf": 0.483,
+                "sp": 0.328,
+                "bd": 0.003,
+                "fed": 4.901
+              }
             },
             {
               "name": "Office of Planning and Research",
+              "code": "0650",
               "gf": 0.378,
               "sp": 0.711,
               "bd": 0.0,
-              "fed": 0.029
+              "fed": 0.029,
+              "actual": {
+                "gf": 0.322,
+                "sp": 0.006,
+                "bd": 0.0,
+                "fed": 0.088
+              }
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.487,
               "sp": 0.41,
               "bd": 0.0,
-              "fed": 0.068
+              "fed": 0.068,
+              "actual": {
+                "gf": 0.489,
+                "sp": 0.367,
+                "bd": 0.0,
+                "fed": 0.06
+              }
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.341,
               "sp": 0.068,
               "bd": 0.0,
-              "fed": 0.026
+              "fed": 0.026,
+              "actual": {
+                "gf": 0.287,
+                "sp": 0.097,
+                "bd": 0.0,
+                "fed": 0.021
+              }
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.025,
               "sp": 0.144,
               "bd": 0.246,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.004,
+                "sp": 0.389,
+                "bd": 0.357,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.007,
               "sp": 0.331,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.318,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Judges Retirement System Contributions",
+              "code": "0390",
               "gf": 0.3,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.307,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.231,
               "sp": 0.013,
               "bd": 0.001,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.123,
+                "sp": 0.013,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.234,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.234,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.195,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.021
+              "fed": 0.021,
+              "actual": {
+                "gf": 0.195,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.01
+              }
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.072,
               "sp": 0.094,
               "bd": 0.0,
-              "fed": 0.026
+              "fed": 0.026,
+              "actual": {
+                "gf": 0.07,
+                "sp": 0.073,
+                "bd": 0.0,
+                "fed": 0.018
+              }
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.177,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.177,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.173,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.177,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.051,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.04,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.033,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.027,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.028,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.024,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.026,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.027,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "HOPE for Children Trust Account Prog Bd",
+              "code": "0957",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.015,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.014,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.01,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.012,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.015,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.008,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Citizens Redistricting Commission",
+              "code": "0911",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.137,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislators",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5376,6 +8086,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5383,6 +8094,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5390,12 +8102,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CalSavers Retirement Savings Board",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 6.187,
+            "sp": 3.321,
+            "bd": 0.361,
+            "fed": 5.122
+          }
         },
         {
           "id": "natural-resources",
@@ -5407,202 +8126,399 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 2.897,
               "sp": 0.386,
               "bd": 0.0,
-              "fed": 0.03
+              "fed": 0.03,
+              "actual": {
+                "gf": 2.67,
+                "sp": 0.378,
+                "bd": 0.0,
+                "fed": 0.035
+              }
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 0.351,
               "sp": 1.307,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.188,
+                "sp": 1.153,
+                "bd": 0.0,
+                "fed": 0.012
+              }
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 0.859,
               "sp": 0.046,
               "bd": 0.531,
-              "fed": 0.055
+              "fed": 0.055,
+              "actual": {
+                "gf": 1.659,
+                "sp": 0.971,
+                "bd": 1.374,
+                "fed": 0.021
+              }
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.386,
               "sp": 0.445,
               "bd": 0.037,
-              "fed": 0.105
+              "fed": 0.105,
+              "actual": {
+                "gf": 0.626,
+                "sp": 0.424,
+                "bd": 0.059,
+                "fed": 0.033
+              }
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.257,
               "sp": 0.331,
               "bd": 0.101,
-              "fed": 0.095
+              "fed": 0.095,
+              "actual": {
+                "gf": 0.397,
+                "sp": 0.308,
+                "bd": 0.025,
+                "fed": 0.083
+              }
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.575,
               "sp": 0.009,
               "bd": 0.023,
-              "fed": 0.011
+              "fed": 0.011,
+              "actual": {
+                "gf": 0.233,
+                "sp": 0.104,
+                "bd": 0.023,
+                "fed": 0.011
+              }
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.364,
               "sp": 0.018,
               "bd": 0.035,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.311,
+                "sp": 0.017,
+                "bd": 0.045,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.108,
               "sp": 0.15,
               "bd": 0.001,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.111,
+                "sp": 0.272,
+                "bd": 0.0,
+                "fed": 0.005
+              }
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.22,
               "sp": 0.002,
               "bd": 0.005,
-              "fed": 0.035
+              "fed": 0.035,
+              "actual": {
+                "gf": 0.435,
+                "sp": 0.0,
+                "bd": 0.028,
+                "fed": 0.012
+              }
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.124,
               "sp": 0.054,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.188,
+                "sp": 0.056,
+                "bd": 0.004,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.022,
               "sp": 0.025,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.041,
+                "sp": 0.022,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.037,
               "sp": 0.005,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.049,
+                "sp": 0.006,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.028,
               "sp": 0.015,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.03,
+                "sp": 0.012,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Energy Infrastructure Safety",
+              "code": "3355",
               "gf": 0.0,
               "sp": 0.041,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.031,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.025,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.004
+              "fed": 0.004,
+              "actual": {
+                "gf": 0.034,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.016,
               "sp": 0.007,
               "bd": 0.001,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.016,
+                "sp": 0.006,
+                "bd": 0.006,
+                "fed": 0.001
+              }
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.02,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.01,
               "sp": 0.001,
               "bd": 0.007,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.143,
+                "sp": 0.0,
+                "bd": 0.007,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.013,
               "sp": 0.0,
               "bd": 0.003,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.031,
+                "sp": 0.0,
+                "bd": -0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.015,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.096,
+                "sp": 0.0,
+                "bd": 0.007,
+                "fed": 0.0
+              }
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.008,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.008,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.04,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.009,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.004,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Baldwin Hills Conservancy",
+              "code": "3835",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.001,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": -0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -5610,12 +8526,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 8.694,
+            "sp": 3.776,
+            "bd": 1.579,
+            "fed": 0.218
+          }
         },
         {
           "id": "labor-and-workforce-deve",
@@ -5627,47 +8550,95 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 0.632,
               "sp": 0.262,
               "bd": 0.0,
-              "fed": 8.432
+              "fed": 8.432,
+              "actual": {
+                "gf": 0.794,
+                "sp": 0.172,
+                "bd": 0.0,
+                "fed": 4.767
+              }
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.087,
               "sp": 0.867,
               "bd": 0.0,
-              "fed": 0.037
+              "fed": 0.037,
+              "actual": {
+                "gf": 0.14,
+                "sp": 0.675,
+                "bd": 0.0,
+                "fed": 0.036
+              }
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.116,
               "sp": 0.018,
               "bd": 0.0,
-              "fed": 0.013
+              "fed": 0.013,
+              "actual": {
+                "gf": 0.176,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.011
+              }
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.017,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.018,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.012,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.011,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.004,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.142,
+            "sp": 0.856,
+            "bd": 0.0,
+            "fed": 4.814
+          }
         },
         {
           "id": "environmental-protection",
@@ -5679,54 +8650,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 0.222,
               "sp": 1.098,
               "bd": 0.011,
-              "fed": 0.611
+              "fed": 0.611,
+              "actual": {
+                "gf": 0.864,
+                "sp": 0.687,
+                "bd": 0.13,
+                "fed": 0.995
+              }
             },
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.007,
               "sp": 1.91,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": -0.017,
+                "sp": 1.94,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Air Resources Board",
+              "code": "3900",
               "gf": 0.209,
               "sp": 1.056,
               "bd": 0.001,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.771,
+                "sp": 1.677,
+                "bd": 0.001,
+                "fed": 0.002
+              }
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.133,
               "sp": 0.391,
               "bd": 0.0,
-              "fed": 0.038
+              "fed": 0.038,
+              "actual": {
+                "gf": 0.049,
+                "sp": 0.321,
+                "bd": 0.0,
+                "fed": 0.032
+              }
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.003,
               "sp": 0.126,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.123,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.013,
               "sp": 0.019,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.013,
+                "sp": 0.016,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.01,
               "sp": 0.021,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.011,
+                "sp": 0.021,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 1.698,
+            "sp": 4.786,
+            "bd": 0.131,
+            "fed": 1.031
+          }
         },
         {
           "id": "business-consumer-servic",
@@ -5738,96 +8764,193 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 2.429,
               "sp": 0.041,
               "bd": 0.536,
-              "fed": 0.482
+              "fed": 0.482,
+              "actual": {
+                "gf": 1.377,
+                "sp": 2.635,
+                "bd": 0.254,
+                "fed": 0.862
+              }
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.008,
               "sp": 0.711,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.009,
+                "sp": 0.607,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 0.406,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.483,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Cannabis Control",
+              "code": "1115",
               "gf": 0.033,
               "sp": 0.143,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.031,
+                "sp": 0.115,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Dept Financial Protection and Innovation",
+              "code": "1701",
               "gf": 0.0,
               "sp": 0.155,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.007,
+                "sp": 0.164,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.021,
               "sp": 0.078,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.015,
+                "sp": 0.087,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Civil Rights Department",
+              "code": "1700",
               "gf": 0.056,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.06,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.006
+              }
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.06,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.061,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.02,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.021,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Privacy Protection Agency",
+              "code": "1703",
               "gf": 0.018,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.018,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Housing Finance Agency",
+              "code": "2245",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.02,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 2.183,
+            "sp": 3.694,
+            "bd": 0.254,
+            "fed": 0.868
+          }
         },
         {
           "id": "government-operations",
@@ -5839,89 +8962,173 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Public Employees",
+              "code": "7900",
               "gf": 1.657,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.657,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 1.193,
               "sp": 0.025,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.722,
+                "sp": 1.092,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.539,
               "sp": -0.045,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.495,
+                "sp": -0.072,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.389,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.005
+              "fed": 0.005,
+              "actual": {
+                "gf": 0.324,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 1.045
+              }
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 0.126,
               "sp": 0.136,
               "bd": 0.007,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.109,
+                "sp": 0.153,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.048,
               "sp": 0.079,
               "bd": 0.0,
-              "fed": 0.036
+              "fed": 0.036,
+              "actual": {
+                "gf": 0.045,
+                "sp": 0.057,
+                "bd": 0.0,
+                "fed": 0.033
+              }
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.034,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.03,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.02,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.021,
+                "sp": -0.006,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Data and Innovation",
+              "code": "7504",
               "gf": 0.017,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.018,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.428,
+            "sp": 1.229,
+            "bd": 0.002,
+            "fed": 1.078
+          }
         }
       ]
     },
@@ -5937,6 +9144,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 35.731,
               "sp": 26.576,
               "bd": 0.34,
@@ -5944,6 +9152,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 20.478,
               "sp": 0.039,
               "bd": 0.0,
@@ -5951,6 +9160,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 10.285,
               "sp": 0.002,
               "bd": 0.0,
@@ -5958,6 +9168,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 7.512,
               "bd": 0.0,
@@ -5965,6 +9176,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.043,
               "sp": 6.514,
               "bd": 0.0,
@@ -5972,6 +9184,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 0.787,
               "sp": 1.192,
               "bd": 0.0,
@@ -5979,6 +9192,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 3.14,
               "sp": 0.0,
               "bd": 0.0,
@@ -5986,6 +9200,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.374,
               "sp": 0.0,
               "bd": 0.0,
@@ -5993,6 +9208,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.086,
               "sp": 0.004,
               "bd": 0.0,
@@ -6000,6 +9216,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Department of Aging",
+              "code": "4170",
               "gf": 0.162,
               "sp": 0.009,
               "bd": 0.0,
@@ -6007,6 +9224,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -6014,6 +9232,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.342,
               "bd": 0.0,
@@ -6021,13 +9240,21 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.296,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.014
+              "fed": 0.014,
+              "actual": {
+                "gf": 0.278,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.014
+              }
             },
             {
               "name": "Dept Health Care Access and Information",
+              "code": "4140",
               "gf": 0.107,
               "sp": 0.131,
               "bd": 0.0,
@@ -6035,6 +9262,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.02,
               "sp": 0.167,
               "bd": 0.0,
@@ -6042,6 +9270,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.178,
               "bd": 0.0,
@@ -6049,6 +9278,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Mental Hlth Svcs Ovrst and Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.049,
               "bd": 0.0,
@@ -6056,6 +9286,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.038,
               "sp": 0.006,
               "bd": 0.0,
@@ -6063,6 +9294,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.005,
               "sp": 0.0,
               "bd": 0.0,
@@ -6070,6 +9302,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6077,6 +9310,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6084,12 +9318,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 73.504,
+            "sp": 48.267,
+            "bd": 0.34,
+            "fed": 122.583
+          }
         },
         {
           "id": "k-thru-12-education",
@@ -6101,61 +9342,123 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 73.843,
               "sp": 0.094,
               "bd": 0.0,
-              "fed": 7.851
+              "fed": 7.851,
+              "actual": {
+                "gf": 78.876,
+                "sp": 0.089,
+                "bd": 0.0,
+                "fed": 7.779
+              }
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 4.258,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 4.258,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 0.756,
               "sp": 0.0,
               "bd": 0.016,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.933,
+                "sp": -0.028,
+                "bd": 0.058,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.204,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.102,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.015
+              }
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.189,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.188,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.009,
               "sp": 0.028,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.306,
+                "sp": 0.028,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 87.21,
+            "sp": 0.09,
+            "bd": 0.058,
+            "fed": 7.794
+          }
         },
         {
           "id": "higher-education",
@@ -6167,54 +9470,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 4.989,
               "sp": 0.096,
               "bd": 0.0,
-              "fed": 5.795
+              "fed": 5.795,
+              "actual": {
+                "gf": 4.865,
+                "sp": 0.151,
+                "bd": 0.0,
+                "fed": 5.526
+              }
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 8.913,
               "sp": 0.008,
               "bd": 0.032,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 9.353,
+                "sp": 0.005,
+                "bd": 0.187,
+                "fed": 0.0
+              }
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 5.24,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 1.586
+              "fed": 1.586,
+              "actual": {
+                "gf": 5.03,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 1.976
+              }
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 3.116,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 3.113,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.515,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.244,
+                "fed": 0.0
+              }
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.484,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.454,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "College of the Law, San Francisco",
+              "code": "6600",
               "gf": 0.026,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.026,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 23.211,
+            "sp": 0.16,
+            "bd": 0.478,
+            "fed": 7.502
+          }
         },
         {
           "id": "transportation",
@@ -6226,68 +9584,137 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 0.218,
               "sp": 8.3,
               "bd": 0.05,
-              "fed": 6.745
+              "fed": 6.745,
+              "actual": {
+                "gf": 0.197,
+                "sp": 7.787,
+                "bd": 0.087,
+                "fed": 5.802
+              }
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.019,
               "sp": 3.174,
               "bd": 0.0,
-              "fed": 0.025
+              "fed": 0.025,
+              "actual": {
+                "gf": 0.049,
+                "sp": 3.211,
+                "bd": 0.0,
+                "fed": 0.029
+              }
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 1.25,
               "sp": 1.088,
               "bd": 0.0,
-              "fed": 0.129
+              "fed": 0.129,
+              "actual": {
+                "gf": 2.575,
+                "sp": 1.66,
+                "bd": 0.0,
+                "fed": 0.147
+              }
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.03,
               "sp": 1.457,
               "bd": 0.0,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.034,
+                "sp": 1.448,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 1.279,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 1.135,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 1.109,
               "bd": 0.035,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.349,
+                "bd": 0.033,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.0,
               "sp": 0.01,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.009,
+                "bd": 0.008,
+                "fed": 0.0
+              }
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "High-Speed Rail Auth Ofc Inspector Genrl",
+              "code": "2667",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.234,
+            "sp": 16.992,
+            "bd": 0.128,
+            "fed": 5.978
+          }
         },
         {
           "id": "corrections-and-rehabili",
@@ -6299,26 +9726,47 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 13.91,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 13.504,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.229,
               "sp": 0.201,
               "bd": 0.0,
-              "fed": 0.064
+              "fed": 0.064,
+              "actual": {
+                "gf": 0.313,
+                "sp": 0.17,
+                "bd": 0.0,
+                "fed": 0.041
+              }
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 13.869,
+            "sp": 3.93,
+            "bd": 0.0,
+            "fed": 0.09
+          }
         },
         {
           "id": "legislative-judicial-and",
@@ -6330,230 +9778,455 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 2.978,
               "sp": 1.817,
               "bd": 0.0,
-              "fed": 0.007
+              "fed": 0.007,
+              "actual": {
+                "gf": 2.918,
+                "sp": 1.814,
+                "bd": 0.0,
+                "fed": 0.003
+              }
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 0.716,
               "sp": 0.261,
               "bd": 0.003,
-              "fed": 2.177
+              "fed": 2.177,
+              "actual": {
+                "gf": 0.709,
+                "sp": 0.228,
+                "bd": 0.003,
+                "fed": 6.117
+              }
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.504,
               "sp": 0.435,
               "bd": 0.0,
-              "fed": 0.076
+              "fed": 0.076,
+              "actual": {
+                "gf": 0.482,
+                "sp": 0.398,
+                "bd": 0.0,
+                "fed": 0.062
+              }
             },
             {
               "name": "Gov's Office of Land Use & Climate Innov",
+              "code": "0650",
               "gf": 0.032,
               "sp": 0.902,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.29,
+                "sp": 0.019,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.0,
               "sp": 0.144,
               "bd": 0.247,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": -0.021,
+                "sp": 0.172,
+                "bd": 0.017,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.007,
               "sp": 0.347,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.333,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Judges' Retirement System Contributions",
+              "code": "0390",
               "gf": 0.31,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.319,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Gov Ofc Service and Community Engagement",
+              "code": "0680",
               "gf": 0.211,
               "sp": 0.009,
               "bd": 0.0,
-              "fed": 0.028
+              "fed": 0.028,
+              "actual": {
+                "gf": 0.2,
+                "sp": 0.009,
+                "bd": 0.0,
+                "fed": 0.059
+              }
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.243,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.243,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.081,
               "sp": 0.091,
               "bd": 0.0,
-              "fed": 0.029
+              "fed": 0.029,
+              "actual": {
+                "gf": 0.08,
+                "sp": 0.084,
+                "bd": 0.0,
+                "fed": 0.014
+              }
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.169,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.021
+              "fed": 0.021,
+              "actual": {
+                "gf": 0.169,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.02
+              }
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.114,
               "sp": 0.068,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.127,
+                "sp": 0.072,
+                "bd": 0.0,
+                "fed": 0.001
+              }
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.184,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.184,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.181,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.18,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.142,
               "sp": 0.013,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.141,
+                "sp": 0.013,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.051,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.047,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.035,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.03,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.029,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.025,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.027,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.025,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "HOPE for Children Trust Account Prog Bd",
+              "code": "0957",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.015,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.015,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.012,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.014,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.012,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.008,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.006,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Citizens Redistricting Commission",
+              "code": "0911",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.3,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Legislators Retirement Sys Contribution",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6561,6 +10234,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6568,6 +10242,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6575,12 +10250,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CalSavers Retirement Savings Board",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 6.208,
+            "sp": 3.469,
+            "bd": 0.021,
+            "fed": 6.28
+          }
         },
         {
           "id": "labor-and-workforce-deve",
@@ -6592,47 +10274,95 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 0.812,
               "sp": 0.298,
               "bd": 0.0,
-              "fed": 8.416
+              "fed": 8.416,
+              "actual": {
+                "gf": 0.645,
+                "sp": 0.181,
+                "bd": 0.0,
+                "fed": 7.085
+              }
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.04,
               "sp": 0.889,
               "bd": 0.0,
-              "fed": 0.038
+              "fed": 0.038,
+              "actual": {
+                "gf": 0.024,
+                "sp": 0.768,
+                "bd": 0.0,
+                "fed": 0.036
+              }
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.066,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.008
+              "fed": 0.008,
+              "actual": {
+                "gf": 0.089,
+                "sp": 0.015,
+                "bd": 0.0,
+                "fed": 0.02
+              }
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.013,
               "sp": 0.007,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.011,
+                "sp": 0.004,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.018,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.017,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.005,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 0.787,
+            "sp": 0.972,
+            "bd": 0.0,
+            "fed": 7.141
+          }
         },
         {
           "id": "natural-resources",
@@ -6644,202 +10374,399 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 2.811,
               "sp": 0.4,
               "bd": 0.0,
-              "fed": 0.034
+              "fed": 0.034,
+              "actual": {
+                "gf": 3.601,
+                "sp": 0.59,
+                "bd": 0.0,
+                "fed": 0.052
+              }
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 0.416,
               "sp": 0.748,
               "bd": 0.439,
-              "fed": 0.09
+              "fed": 0.09,
+              "actual": {
+                "gf": 1.072,
+                "sp": 0.833,
+                "bd": 0.454,
+                "fed": 0.09
+              }
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 0.0,
               "sp": 0.51,
               "bd": 0.0,
-              "fed": 0.375
+              "fed": 0.375,
+              "actual": {
+                "gf": 0.264,
+                "sp": 1.803,
+                "bd": 0.0,
+                "fed": 0.758
+              }
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.264,
               "sp": 0.469,
               "bd": 0.032,
-              "fed": 0.105
+              "fed": 0.105,
+              "actual": {
+                "gf": 0.359,
+                "sp": 0.453,
+                "bd": 0.061,
+                "fed": 0.063
+              }
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.192,
               "sp": 0.371,
               "bd": 0.023,
-              "fed": 0.095
+              "fed": 0.095,
+              "actual": {
+                "gf": 0.202,
+                "sp": 0.341,
+                "bd": 0.119,
+                "fed": 0.096
+              }
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.067,
               "sp": 0.173,
               "bd": 0.003,
-              "fed": 0.035
+              "fed": 0.035,
+              "actual": {
+                "gf": 0.155,
+                "sp": 0.063,
+                "bd": 0.044,
+                "fed": 0.011
+              }
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.011,
               "sp": 0.167,
               "bd": 0.001,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.03,
+                "sp": 0.16,
+                "bd": 0.0,
+                "fed": 0.041
+              }
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.099,
               "sp": 0.056,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.105,
+                "sp": 0.073,
+                "bd": 0.003,
+                "fed": 0.0
+              }
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.017,
               "sp": 0.047,
               "bd": 0.011,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.178,
+                "sp": 0.032,
+                "bd": 0.01,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.005,
               "sp": 0.049,
               "bd": 0.007,
-              "fed": 0.011
+              "fed": 0.011,
+              "actual": {
+                "gf": 0.167,
+                "sp": 0.012,
+                "bd": 0.031,
+                "fed": 0.019
+              }
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.025,
               "sp": 0.026,
               "bd": 0.0,
-              "fed": 0.021
+              "fed": 0.021,
+              "actual": {
+                "gf": 0.026,
+                "sp": 0.024,
+                "bd": 0.0,
+                "fed": 0.02
+              }
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.04,
               "sp": 0.014,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.038,
+                "sp": 0.012,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Energy Infrastructure Safety",
+              "code": "3355",
               "gf": 0.0,
               "sp": 0.044,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.04,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.035,
               "sp": 0.005,
               "bd": 0.0,
-              "fed": 0.004
+              "fed": 0.004,
+              "actual": {
+                "gf": 0.037,
+                "sp": 0.004,
+                "bd": 0.0,
+                "fed": 0.004
+              }
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.021,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.003
+              "fed": 0.003,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.004,
-              "fed": 0.004
+              "fed": 0.004,
+              "actual": {
+                "gf": 0.013,
+                "sp": 0.007,
+                "bd": 0.004,
+                "fed": 0.001
+              }
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.01,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.008,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.009,
+                "sp": 0.006,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.005,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.003,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.033,
+                "sp": -0.001,
+                "bd": 0.054,
+                "fed": 0.0
+              }
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.001,
-              "fed": 0.001
+              "fed": 0.001,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.0,
+                "bd": 0.002,
+                "fed": 0.0
+              }
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.002,
+                "sp": 0.001,
+                "bd": 0.016,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.001,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.004,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Baldwin Hills and Urban Watersheds Cnsrv",
+              "code": "3835",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.007,
+                "fed": 0.0
+              }
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.0,
+                "bd": 0.001,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -6847,12 +10774,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 7.641,
+            "sp": 4.464,
+            "bd": 0.81,
+            "fed": 1.155
+          }
         },
         {
           "id": "general-government",
@@ -6864,6 +10798,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.0,
               "sp": 3.619,
               "bd": 0.0,
@@ -6871,6 +10806,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.0,
               "sp": 1.733,
               "bd": 0.0,
@@ -6878,6 +10814,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 2.723,
               "sp": 0.0,
               "bd": 0.0,
@@ -6885,6 +10822,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 0.639,
               "sp": 0.394,
               "bd": 0.0,
@@ -6892,6 +10830,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.197,
               "sp": 0.246,
               "bd": 0.001,
@@ -6899,6 +10838,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.594,
               "sp": 0.003,
               "bd": 0.001,
@@ -6906,6 +10846,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.423,
               "sp": 0.006,
               "bd": 0.0,
@@ -6913,6 +10854,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.157,
               "sp": 0.004,
               "bd": 0.0,
@@ -6920,6 +10862,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.202,
               "sp": 0.0,
               "bd": 0.0,
@@ -6927,6 +10870,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.134,
               "sp": 0.002,
               "bd": 0.0,
@@ -6934,6 +10878,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.095,
               "sp": 0.0,
               "bd": 0.0,
@@ -6941,6 +10886,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.085,
               "sp": 0.004,
               "bd": 0.0,
@@ -6948,6 +10894,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.078,
               "sp": 0.0,
               "bd": 0.0,
@@ -6955,6 +10902,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.065,
               "sp": 0.0,
               "bd": 0.0,
@@ -6962,6 +10910,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.063,
               "sp": 0.0,
               "bd": 0.0,
@@ -6969,6 +10918,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.057,
               "sp": 0.0,
               "bd": 0.0,
@@ -6976,6 +10926,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.04,
               "sp": 0.015,
               "bd": 0.0,
@@ -6983,6 +10934,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.031,
               "sp": 0.001,
               "bd": 0.0,
@@ -6990,6 +10942,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.029,
               "sp": 0.0,
               "bd": 0.0,
@@ -6997,6 +10950,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.021,
               "sp": 0.0,
               "bd": 0.0,
@@ -7004,6 +10958,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.021,
               "sp": 0.0,
               "bd": 0.0,
@@ -7011,6 +10966,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.019,
               "sp": 0.0,
               "bd": 0.0,
@@ -7018,6 +10974,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -7025,6 +10982,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -7032,6 +10990,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -7039,6 +10998,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -7046,6 +11006,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -7053,6 +11014,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7060,6 +11022,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7067,6 +11030,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7074,6 +11038,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7081,6 +11046,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7088,6 +11054,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Youth Empowerment Commission",
+              "code": "8815",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7095,6 +11062,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7102,6 +11070,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7109,6 +11078,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7116,6 +11086,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7123,6 +11094,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7130,6 +11102,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7137,6 +11110,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 1.054,
               "sp": -1.054,
               "bd": 0.0,
@@ -7144,12 +11118,19 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -0.992,
               "sp": 0.899,
               "bd": 0.003,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 7.188,
+            "sp": 2.508,
+            "bd": 0.004,
+            "fed": 0.696
+          }
         },
         {
           "id": "environmental-protection",
@@ -7161,54 +11142,109 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.007,
               "sp": 2.014,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.094,
+                "sp": 1.909,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 0.161,
               "sp": 1.149,
               "bd": 0.01,
-              "fed": 0.505
+              "fed": 0.505,
+              "actual": {
+                "gf": 0.232,
+                "sp": 1.157,
+                "bd": 0.184,
+                "fed": 0.48
+              }
             },
             {
               "name": "State Air Resources Board",
+              "code": "3900",
               "gf": 0.002,
               "sp": 0.973,
               "bd": 0.001,
-              "fed": 0.018
+              "fed": 0.018,
+              "actual": {
+                "gf": 0.058,
+                "sp": 1.268,
+                "bd": 0.012,
+                "fed": 0.018
+              }
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.034,
               "sp": 0.372,
               "bd": 0.0,
-              "fed": 0.039
+              "fed": 0.039,
+              "actual": {
+                "gf": 0.047,
+                "sp": 0.371,
+                "bd": 0.0,
+                "fed": 0.03
+              }
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.0,
               "sp": 0.15,
               "bd": 0.0,
-              "fed": 0.002
+              "fed": 0.002,
+              "actual": {
+                "gf": 0.005,
+                "sp": 0.136,
+                "bd": 0.0,
+                "fed": 0.002
+              }
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.013,
               "sp": 0.019,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.015,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.005,
               "sp": 0.02,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.017,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 0.456,
+            "sp": 4.874,
+            "bd": 0.196,
+            "fed": 0.531
+          }
         },
         {
           "id": "business-consumer-servic",
@@ -7220,96 +11256,193 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 1.254,
               "sp": 0.045,
               "bd": 0.538,
-              "fed": 0.282
+              "fed": 0.282,
+              "actual": {
+                "gf": 1.985,
+                "sp": 0.779,
+                "bd": 0.184,
+                "fed": 0.578
+              }
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.007,
               "sp": 0.739,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.005,
+                "sp": 0.638,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Dept Financial Protection and Innovation",
+              "code": "1701",
               "gf": 0.0,
               "sp": 0.177,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.001,
+                "sp": 0.166,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Cannabis Control",
+              "code": "1115",
               "gf": 0.0,
               "sp": 0.171,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": -0.001,
+                "sp": 0.147,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.0,
               "sp": 0.107,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.102,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.067,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.06,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Civil Rights Department",
+              "code": "1700",
               "gf": 0.05,
               "sp": 0.011,
               "bd": 0.0,
-              "fed": 0.006
+              "fed": 0.006,
+              "actual": {
+                "gf": 0.049,
+                "sp": 0.01,
+                "bd": 0.0,
+                "fed": 0.006
+              }
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 0.021,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.017,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.02,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.019,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Privacy Protection Agency",
+              "code": "1703",
               "gf": 0.012,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.01,
+                "sp": 0.002,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.003,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.001,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "California Housing Finance Agency",
+              "code": "2245",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.0,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             }
-          ]
+          ],
+          "actual": {
+            "gf": 2.258,
+            "sp": 1.93,
+            "bd": 0.184,
+            "fed": 0.584
+          }
         },
         {
           "id": "government-operations",
@@ -7321,89 +11454,173 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 1.22,
               "sp": 0.028,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.126,
+                "sp": 0.02,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 0.41,
               "sp": 0.145,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.462,
+                "sp": -0.137,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.409,
               "sp": 0.113,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.354,
+                "sp": 0.082,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Public Employees' Retirement System",
+              "code": "7900",
               "gf": 0.337,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.337,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.307,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 1.281,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 1.224
+              }
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.024,
               "sp": 0.104,
               "bd": 0.0,
-              "fed": 0.036
+              "fed": 0.036,
+              "actual": {
+                "gf": 0.028,
+                "sp": 0.073,
+                "bd": 0.0,
+                "fed": 0.031
+              }
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.036,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.032,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Data and Innovation",
+              "code": "7504",
               "gf": 0.018,
               "sp": 0.016,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.007,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.019,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.019,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
-              "fed": 0.0
+              "fed": 0.0,
+              "actual": {
+                "gf": 0.003,
+                "sp": 0.0,
+                "bd": 0.0,
+                "fed": 0.0
+              }
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
               "fed": 0.0
             }
-          ]
+          ],
+          "actual": {
+            "gf": 3.664,
+            "sp": 0.045,
+            "bd": 0.0,
+            "fed": 1.255
+          }
         }
       ]
     },
@@ -7419,6 +11636,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "State Department of Health Care Services",
+              "code": "4260",
               "gf": 45.604,
               "sp": 28.286,
               "bd": 0.45,
@@ -7426,6 +11644,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Social Services",
+              "code": "5180",
               "gf": 24.542,
               "sp": 0.039,
               "bd": 0.0,
@@ -7433,6 +11652,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Developmental Services",
+              "code": "4300",
               "gf": 12.165,
               "sp": 0.002,
               "bd": 0.0,
@@ -7440,6 +11660,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 1991",
+              "code": "5195",
               "gf": 0.0,
               "sp": 7.763,
               "bd": 0.0,
@@ -7447,6 +11668,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State-Local Realignment, 2011",
+              "code": "5196",
               "gf": 0.044,
               "sp": 6.641,
               "bd": 0.0,
@@ -7454,6 +11676,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Public Health",
+              "code": "4265",
               "gf": 0.799,
               "sp": 1.242,
               "bd": 0.0,
@@ -7461,6 +11684,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of State Hospitals",
+              "code": "4440",
               "gf": 2.99,
               "sp": 0.0,
               "bd": 0.0,
@@ -7468,6 +11692,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Child Support Services",
+              "code": "5175",
               "gf": 0.371,
               "sp": 0.0,
               "bd": 0.0,
@@ -7475,6 +11700,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Rehabilitation",
+              "code": "5160",
               "gf": 0.084,
               "sp": 0.004,
               "bd": 0.0,
@@ -7482,6 +11708,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept Health Care Access and Information",
+              "code": "4140",
               "gf": 0.164,
               "sp": 0.343,
               "bd": 0.0,
@@ -7489,6 +11716,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Department of Aging",
+              "code": "4170",
               "gf": 0.163,
               "sp": 0.005,
               "bd": 0.0,
@@ -7496,6 +11724,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Community Services and Development",
+              "code": "4700",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7503,6 +11732,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Human Services Agency, Secy",
+              "code": "0530",
               "gf": 0.262,
               "sp": 0.003,
               "bd": 0.0,
@@ -7510,6 +11740,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Children and Families Commission",
+              "code": "4250",
               "gf": 0.0,
               "sp": 0.27,
               "bd": 0.0,
@@ -7517,6 +11748,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Health Benefit Exchange",
+              "code": "4800",
               "gf": 0.02,
               "sp": 0.192,
               "bd": 0.0,
@@ -7524,6 +11756,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Managed Health Care",
+              "code": "4150",
               "gf": 0.0,
               "sp": 0.18,
               "bd": 0.0,
@@ -7531,6 +11764,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Behavioral Hlth Svcs Ovrst Acntblty Comm",
+              "code": "4560",
               "gf": 0.0,
               "sp": 0.049,
               "bd": 0.0,
@@ -7538,6 +11772,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Emergency Medical Services Authority",
+              "code": "4120",
               "gf": 0.036,
               "sp": 0.006,
               "bd": 0.0,
@@ -7545,6 +11780,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Council-Developmental Disabilities",
+              "code": "4100",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7552,6 +11788,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Aging",
+              "code": "4180",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7559,6 +11796,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Senior Legislature",
+              "code": "4185",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7566,6 +11804,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Independent Living Council",
+              "code": "5170",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7583,6 +11822,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Education",
+              "code": "6100",
               "gf": 73.375,
               "sp": 0.071,
               "bd": 0.004,
@@ -7590,6 +11830,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Teachers Retirement System Contributions",
+              "code": "6300",
               "gf": 4.632,
               "sp": 0.0,
               "bd": 0.0,
@@ -7597,6 +11838,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "School Facilities Aid Program",
+              "code": "6350",
               "gf": 0.118,
               "sp": 0.0,
               "bd": 1.512,
@@ -7604,6 +11846,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Scholarshare Investment Board",
+              "code": "0954",
               "gf": 0.195,
               "sp": 0.0,
               "bd": 0.0,
@@ -7611,6 +11854,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Library",
+              "code": "6120",
               "gf": 0.137,
               "sp": 0.001,
               "bd": 0.0,
@@ -7618,6 +11862,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Teacher Credentialing",
+              "code": "6360",
               "gf": 0.077,
               "sp": 0.033,
               "bd": 0.0,
@@ -7625,6 +11870,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Summer School for the Arts",
+              "code": "6255",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -7632,6 +11878,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Education Audit Appeals Panel",
+              "code": "6125",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -7649,6 +11896,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "University of California",
+              "code": "6440",
               "gf": 4.942,
               "sp": 0.164,
               "bd": 0.003,
@@ -7656,6 +11904,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of Governors of Community Colleges",
+              "code": "6870",
               "gf": 8.946,
               "sp": 0.005,
               "bd": 0.071,
@@ -7663,6 +11912,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State University",
+              "code": "6610",
               "gf": 4.958,
               "sp": 0.002,
               "bd": 0.0,
@@ -7670,6 +11920,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Student Aid Commission",
+              "code": "6980",
               "gf": 2.542,
               "sp": 0.0,
               "bd": 0.0,
@@ -7677,6 +11928,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CSU Health Benefits, Retired Annuitants",
+              "code": "6645",
               "gf": 0.542,
               "sp": 0.0,
               "bd": 0.0,
@@ -7684,6 +11936,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Institute for Regenerative Medicine",
+              "code": "6445",
               "gf": 0.0,
               "sp": 0.005,
               "bd": 0.442,
@@ -7691,6 +11944,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "College of the Law, San Francisco",
+              "code": "6600",
               "gf": 0.038,
               "sp": 0.0,
               "bd": 0.0,
@@ -7708,6 +11962,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Transportation",
+              "code": "2660",
               "gf": 0.134,
               "sp": 9.165,
               "bd": 0.057,
@@ -7715,6 +11970,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept of the California Highway Patrol",
+              "code": "2720",
               "gf": 0.051,
               "sp": 3.234,
               "bd": 0.0,
@@ -7722,6 +11978,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Transportation, Secy",
+              "code": "0521",
               "gf": 1.471,
               "sp": 0.373,
               "bd": 0.0,
@@ -7729,6 +11986,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Motor Vehicles",
+              "code": "2740",
               "gf": 0.015,
               "sp": 1.442,
               "bd": 0.0,
@@ -7736,6 +11994,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Transit Assistance",
+              "code": "2640",
               "gf": 0.0,
               "sp": 1.09,
               "bd": 0.0,
@@ -7743,6 +12002,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "High-Speed Rail Authority",
+              "code": "2665",
               "gf": 0.0,
               "sp": 0.759,
               "bd": 0.039,
@@ -7750,6 +12010,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of Pilot Commissioners",
+              "code": "2670",
               "gf": 0.0,
               "sp": 0.011,
               "bd": 0.0,
@@ -7757,6 +12018,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Transportation Commission",
+              "code": "2600",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.001,
@@ -7764,6 +12026,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "High-Speed Rail Auth Ofc Inspector Genrl",
+              "code": "2667",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
@@ -7781,6 +12044,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Corrections and Rehabilitation",
+              "code": "5225",
               "gf": 13.262,
               "sp": 0.0,
               "bd": 0.0,
@@ -7788,6 +12052,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Board of State and Community Corrections",
+              "code": "5227",
               "gf": 0.118,
               "sp": 0.171,
               "bd": 0.0,
@@ -7795,6 +12060,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Prison Industry Authority",
+              "code": "5420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -7812,6 +12078,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Shared Revenues",
+              "code": "9350",
               "gf": 0.0,
               "sp": 3.721,
               "bd": 0.0,
@@ -7819,6 +12086,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health, Dental Benefits for Annuitants",
+              "code": "9650",
               "gf": 3.03,
               "sp": 0.0,
               "bd": 0.0,
@@ -7826,6 +12094,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Utilities Commission",
+              "code": "8660",
               "gf": 0.0,
               "sp": 1.888,
               "bd": 0.0,
@@ -7833,6 +12102,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Veterans Affairs",
+              "code": "8955",
               "gf": 0.592,
               "sp": 0.003,
               "bd": 0.001,
@@ -7840,6 +12110,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Food and Agriculture",
+              "code": "8570",
               "gf": 0.18,
               "sp": 0.228,
               "bd": 0.001,
@@ -7847,6 +12118,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public School System Stabilization Acct",
+              "code": "9889",
               "gf": 0.0,
               "sp": 0.455,
               "bd": 0.0,
@@ -7854,6 +12126,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Relief",
+              "code": "9100",
               "gf": 0.413,
               "sp": 0.006,
               "bd": 0.0,
@@ -7861,6 +12134,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Military Department",
+              "code": "8940",
               "gf": 0.162,
               "sp": 0.005,
               "bd": 0.0,
@@ -7868,6 +12142,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Local Government Financing",
+              "code": "9210",
               "gf": 0.194,
               "sp": 0.0,
               "bd": 0.0,
@@ -7875,6 +12150,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Augmentation for Employee Compensation",
+              "code": "9800",
               "gf": 0.105,
               "sp": 0.071,
               "bd": 0.0,
@@ -7882,6 +12158,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Financial Information System for CA",
+              "code": "8880",
               "gf": 0.1,
               "sp": 0.0,
               "bd": 0.0,
@@ -7889,6 +12166,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on State Mandates",
+              "code": "8885",
               "gf": 0.095,
               "sp": 0.002,
               "bd": 0.0,
@@ -7896,6 +12174,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Interest Payments to the Federal Govt",
+              "code": "9625",
               "gf": 0.08,
               "sp": 0.004,
               "bd": 0.0,
@@ -7903,6 +12182,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Service GO Bonds Commercial Paper",
+              "code": "9600",
               "gf": 0.081,
               "sp": 0.0,
               "bd": 0.0,
@@ -7910,6 +12190,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Finance",
+              "code": "8860",
               "gf": 0.079,
               "sp": 0.0,
               "bd": 0.0,
@@ -7917,6 +12198,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Peace Officer Standards, Training Comm",
+              "code": "8120",
               "gf": 0.056,
               "sp": 0.0,
               "bd": 0.0,
@@ -7924,6 +12206,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Contingencies-Emergencies Augmentation",
+              "code": "9840",
               "gf": 0.04,
               "sp": 0.015,
               "bd": 0.0,
@@ -7931,6 +12214,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Public Defender",
+              "code": "8140",
               "gf": 0.036,
               "sp": 0.0,
               "bd": 0.0,
@@ -7938,6 +12222,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Arts Council",
+              "code": "8260",
               "gf": 0.033,
               "sp": 0.001,
               "bd": 0.0,
@@ -7945,6 +12230,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cash Management and Budgetary Loans",
+              "code": "9620",
               "gf": 0.035,
               "sp": 0.0,
               "bd": 0.0,
@@ -7952,6 +12238,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California State Auditor's Office",
+              "code": "8855",
               "gf": 0.028,
               "sp": 0.0,
               "bd": 0.0,
@@ -7959,6 +12246,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security-Court Construction",
+              "code": "9285",
               "gf": 0.02,
               "sp": 0.0,
               "bd": 0.0,
@@ -7966,6 +12254,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Fair Political Practices Commission",
+              "code": "8620",
               "gf": 0.019,
               "sp": 0.0,
               "bd": 0.0,
@@ -7973,6 +12262,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Trial Court Security - Judgeships",
+              "code": "9286",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -7980,6 +12270,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Political Reform Act of 1974",
+              "code": "8640",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -7987,6 +12278,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on the Status of Women and Girls",
+              "code": "8820",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -7994,6 +12286,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Milton Marks Little Hoover Commission",
+              "code": "8780",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -8001,6 +12294,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Comm on Asian & Pacf Islndr Amer Affairs",
+              "code": "8825",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.0,
@@ -8008,6 +12302,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Compensation Commission",
+              "code": "8385",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8015,6 +12310,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Payment to Counties for Homicide Trials",
+              "code": "9300",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8022,6 +12318,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Enhanced Tobacco Asset-Backed Bonds",
+              "code": "9612",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8029,6 +12326,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Historic State Capitol Commission",
+              "code": "8270",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8036,6 +12334,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Compensation Insurance Fund",
+              "code": "8420",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8043,6 +12342,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Law Revision Commission",
+              "code": "8830",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8050,6 +12350,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Lease-Rev Notes and Bonds",
+              "code": "9610",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8057,6 +12358,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Budget Stabilization Account",
+              "code": "9658",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8064,6 +12366,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Equity Claims & Settlements & Judgments",
+              "code": "9670",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8071,6 +12374,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Capital Outlay Planning, Studies",
+              "code": "9860",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8078,6 +12382,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Reserve for Liquidation of Encumbrances",
+              "code": "9885",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8085,6 +12390,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Statewide General Admin Exp (Pro Rata)",
+              "code": "9900",
               "gf": -1.147,
               "sp": 1.082,
               "bd": 0.001,
@@ -8102,6 +12408,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Judicial Branch",
+              "code": "0250",
               "gf": 3.232,
               "sp": 1.826,
               "bd": 0.0,
@@ -8109,6 +12416,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Emergency Services",
+              "code": "0690",
               "gf": 0.74,
               "sp": 0.219,
               "bd": 0.003,
@@ -8116,6 +12424,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Justice",
+              "code": "0820",
               "gf": 0.5,
               "sp": 0.441,
               "bd": 0.0,
@@ -8123,6 +12432,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Gov's Office of Land Use & Climate Innov",
+              "code": "0650",
               "gf": 0.03,
               "sp": 0.609,
               "bd": 0.0,
@@ -8130,6 +12440,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Health Facilities Financing Authority",
+              "code": "0977",
               "gf": 0.021,
               "sp": 0.144,
               "bd": 0.246,
@@ -8137,6 +12448,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Insurance",
+              "code": "0845",
               "gf": 0.019,
               "sp": 0.342,
               "bd": 0.0,
@@ -8144,6 +12456,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Office of Bus, Econ Developm",
+              "code": "0509",
               "gf": 0.212,
               "sp": 0.068,
               "bd": 0.0,
@@ -8151,6 +12464,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Judges' Retirement System Contributions",
+              "code": "0390",
               "gf": 0.277,
               "sp": 0.0,
               "bd": 0.0,
@@ -8158,6 +12472,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Assembly",
+              "code": "0120",
               "gf": 0.259,
               "sp": 0.0,
               "bd": 0.0,
@@ -8165,6 +12480,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Joint Expenses",
+              "code": "0130",
               "gf": 0.0,
               "sp": 0.25,
               "bd": 0.0,
@@ -8172,6 +12488,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Gov Ofc Service and Community Engagement",
+              "code": "0680",
               "gf": 0.197,
               "sp": 0.0,
               "bd": 0.0,
@@ -8179,6 +12496,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Controller",
+              "code": "0840",
               "gf": 0.191,
               "sp": 0.013,
               "bd": 0.0,
@@ -8186,6 +12504,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "School Finance Authority",
+              "code": "0985",
               "gf": 0.183,
               "sp": 0.0,
               "bd": 0.001,
@@ -8193,6 +12512,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Secretary of State",
+              "code": "0890",
               "gf": 0.085,
               "sp": 0.097,
               "bd": 0.0,
@@ -8200,6 +12520,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Senate",
+              "code": "0110",
               "gf": 0.197,
               "sp": 0.0,
               "bd": 0.0,
@@ -8207,6 +12528,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Legislative Counsel Bureau",
+              "code": "0160",
               "gf": 0.193,
               "sp": 0.0,
               "bd": 0.0,
@@ -8214,6 +12536,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of the Inspector General",
+              "code": "0552",
               "gf": 0.048,
               "sp": 0.0,
               "bd": 0.0,
@@ -8221,6 +12544,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Board of Equalization",
+              "code": "0860",
               "gf": 0.033,
               "sp": 0.0,
               "bd": 0.0,
@@ -8228,6 +12552,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Tax Appeals",
+              "code": "0870",
               "gf": 0.028,
               "sp": 0.0,
               "bd": 0.0,
@@ -8235,6 +12560,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Governors Office",
+              "code": "0500",
               "gf": 0.024,
               "sp": 0.0,
               "bd": 0.0,
@@ -8242,6 +12568,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tax Credit Allocation Committee",
+              "code": "0968",
               "gf": 0.0,
               "sp": 0.016,
               "bd": 0.0,
@@ -8249,6 +12576,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Treasurer",
+              "code": "0950",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -8256,6 +12584,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "HOPE for Children Trust Account Prog Bd",
+              "code": "0957",
               "gf": 0.015,
               "sp": 0.0,
               "bd": 0.0,
@@ -8263,6 +12592,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Gambling Control Commission",
+              "code": "0855",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.0,
@@ -8270,6 +12600,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Commission on Judicial Performance",
+              "code": "0280",
               "gf": 0.007,
               "sp": 0.0,
               "bd": 0.0,
@@ -8277,6 +12608,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Investment Advisory Commission",
+              "code": "0956",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
@@ -8284,6 +12616,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Debt Limit Allocation Committee",
+              "code": "0959",
               "gf": 0.0,
               "sp": 0.004,
               "bd": 0.0,
@@ -8291,6 +12624,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of the Lieutenant Governor",
+              "code": "0750",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -8298,6 +12632,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California ABLE Act Board",
+              "code": "0981",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -8305,6 +12640,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Alt Energy, Advanced Trans Fin Auth",
+              "code": "0971",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -8312,6 +12648,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Citizens Redistricting Commission",
+              "code": "0911",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8319,6 +12656,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Educational Facilities Authority",
+              "code": "0989",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8326,6 +12664,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Legislators Retirement Sys Contribution",
+              "code": "0150",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8333,6 +12672,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lottery Commission",
+              "code": "0850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8340,6 +12680,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Pollution Control Financing Authority",
+              "code": "0974",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8347,6 +12688,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "CalSavers Retirement Savings Board",
+              "code": "0984",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8364,6 +12706,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Employment Development Department",
+              "code": "7100",
               "gf": 0.88,
               "sp": 0.3,
               "bd": 0.0,
@@ -8371,6 +12714,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Industrial Relations",
+              "code": "7350",
               "gf": 0.015,
               "sp": 0.912,
               "bd": 0.0,
@@ -8378,6 +12722,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Workforce Development Board",
+              "code": "7120",
               "gf": 0.032,
               "sp": 0.0,
               "bd": 0.0,
@@ -8385,6 +12730,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Agricultural Labor Relations Board",
+              "code": "7300",
               "gf": 0.012,
               "sp": 0.009,
               "bd": 0.0,
@@ -8392,6 +12738,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Employment Relations Board",
+              "code": "7320",
               "gf": 0.02,
               "sp": 0.0,
               "bd": 0.0,
@@ -8399,6 +12746,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Labor and Workforce Development, Secy",
+              "code": "0559",
               "gf": 0.003,
               "sp": 0.008,
               "bd": 0.0,
@@ -8416,6 +12764,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Department of Forestry, Fire Protection",
+              "code": "3540",
               "gf": 1.865,
               "sp": 1.355,
               "bd": 0.0,
@@ -8423,6 +12772,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Energy Resource Conservation,Dvlmt Comm",
+              "code": "3360",
               "gf": 0.0,
               "sp": 0.425,
               "bd": 0.0,
@@ -8430,6 +12780,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Water Resources",
+              "code": "3860",
               "gf": 0.318,
               "sp": 0.046,
               "bd": 0.422,
@@ -8437,6 +12788,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Parks, Recreation",
+              "code": "3790",
               "gf": 0.22,
               "sp": 0.456,
               "bd": 0.013,
@@ -8444,6 +12796,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Fish and Wildlife",
+              "code": "3600",
               "gf": 0.166,
               "sp": 0.329,
               "bd": 0.008,
@@ -8451,6 +12804,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Conservation",
+              "code": "3480",
               "gf": 0.009,
               "sp": 0.184,
               "bd": 0.0,
@@ -8458,6 +12812,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Conservation Corps",
+              "code": "3340",
               "gf": 0.108,
               "sp": 0.063,
               "bd": 0.0,
@@ -8465,6 +12820,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Natural Resources Agency, Secy",
+              "code": "0540",
               "gf": 0.063,
               "sp": 0.018,
               "bd": 0.012,
@@ -8472,6 +12828,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Lands Commission",
+              "code": "3560",
               "gf": 0.034,
               "sp": 0.024,
               "bd": 0.0,
@@ -8479,6 +12836,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Coastal Conservancy",
+              "code": "3760",
               "gf": 0.0,
               "sp": 0.009,
               "bd": 0.008,
@@ -8486,6 +12844,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Exposition Park",
+              "code": "3100",
               "gf": 0.031,
               "sp": 0.014,
               "bd": 0.0,
@@ -8493,6 +12852,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Energy Infrastructure Safety",
+              "code": "3355",
               "gf": 0.0,
               "sp": 0.045,
               "bd": 0.0,
@@ -8500,6 +12860,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Wildlife Conservation Board",
+              "code": "3640",
               "gf": 0.021,
               "sp": 0.001,
               "bd": -0.016,
@@ -8507,6 +12868,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Coastal Commission",
+              "code": "3720",
               "gf": 0.027,
               "sp": 0.004,
               "bd": 0.0,
@@ -8514,6 +12876,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Delta Stewardship Council",
+              "code": "3885",
               "gf": 0.019,
               "sp": 0.001,
               "bd": 0.0,
@@ -8521,6 +12884,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Tahoe Conservancy",
+              "code": "3125",
               "gf": 0.0,
               "sp": 0.007,
               "bd": 0.007,
@@ -8528,6 +12892,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "SF Bay Conservation, Development Comm",
+              "code": "3820",
               "gf": 0.011,
               "sp": 0.002,
               "bd": 0.0,
@@ -8535,6 +12900,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Sierra Nevada Conservancy",
+              "code": "3855",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.005,
@@ -8542,6 +12908,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Santa Monica Mountains Conservancy",
+              "code": "3810",
               "gf": 0.005,
               "sp": 0.001,
               "bd": 0.001,
@@ -8549,6 +12916,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Special Resources Programs",
+              "code": "3110",
               "gf": 0.0,
               "sp": 0.006,
               "bd": 0.0,
@@ -8556,6 +12924,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Gabriel,Lower LA River,Mtns Consvcy",
+              "code": "3825",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.004,
@@ -8563,6 +12932,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Native American Heritage Commission",
+              "code": "3780",
               "gf": 0.004,
               "sp": 0.0,
               "bd": 0.0,
@@ -8570,6 +12940,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Diego River Conservancy",
+              "code": "3845",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.003,
@@ -8577,6 +12948,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Sacramento-San Joaquin Delta Conservancy",
+              "code": "3875",
               "gf": 0.001,
               "sp": 0.0,
               "bd": 0.001,
@@ -8584,6 +12956,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Coachella Valley Mountains Conservancy",
+              "code": "3850",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.002,
@@ -8591,6 +12964,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Delta Protection Commission",
+              "code": "3840",
               "gf": 0.0,
               "sp": 0.002,
               "bd": 0.0,
@@ -8598,6 +12972,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "San Joaquin River Conservancy",
+              "code": "3830",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.001,
@@ -8605,6 +12980,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Baldwin Hills and Urban Watersheds Cnsrv",
+              "code": "3835",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.001,
@@ -8612,6 +12988,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Protection Program",
+              "code": "3210",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8619,6 +12996,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Colorado River Board of California",
+              "code": "3460",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,
@@ -8636,6 +13014,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Resources Recycling and Recovery",
+              "code": "3970",
               "gf": 0.015,
               "sp": 1.934,
               "bd": 0.0,
@@ -8643,6 +13022,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Water Resources Control Board",
+              "code": "3940",
               "gf": 0.074,
               "sp": 0.809,
               "bd": 0.012,
@@ -8650,6 +13030,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Air Resources Board",
+              "code": "3900",
               "gf": 0.003,
               "sp": 0.808,
               "bd": 0.001,
@@ -8657,6 +13038,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Toxic Substances Control",
+              "code": "3960",
               "gf": 0.032,
               "sp": 0.379,
               "bd": 0.0,
@@ -8664,6 +13046,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Pesticide Regulation",
+              "code": "3930",
               "gf": 0.0,
               "sp": 0.159,
               "bd": 0.0,
@@ -8671,6 +13054,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Health Hazard Assessment",
+              "code": "3980",
               "gf": 0.011,
               "sp": 0.019,
               "bd": 0.0,
@@ -8678,6 +13062,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Environmental Protection, Secy",
+              "code": "0555",
               "gf": 0.004,
               "sp": 0.025,
               "bd": 0.0,
@@ -8695,6 +13080,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Dept of Housing, Community Development",
+              "code": "2240",
               "gf": 0.343,
               "sp": 0.047,
               "bd": 0.522,
@@ -8702,6 +13088,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Consumer Affairs",
+              "code": "1111",
               "gf": 0.0,
               "sp": 0.738,
               "bd": 0.0,
@@ -8709,6 +13096,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Housing Finance Agency",
+              "code": "2245",
               "gf": 0.3,
               "sp": 0.0,
               "bd": 0.0,
@@ -8716,6 +13104,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Dept Financial Protection and Innovation",
+              "code": "1701",
               "gf": 0.0,
               "sp": 0.179,
               "bd": 0.0,
@@ -8723,6 +13112,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Cannabis Control",
+              "code": "1115",
               "gf": 0.0,
               "sp": 0.176,
               "bd": 0.0,
@@ -8730,6 +13120,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Alcoholic Beverage Control",
+              "code": "2100",
               "gf": 0.0,
               "sp": 0.102,
               "bd": 0.0,
@@ -8737,6 +13128,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Civil Rights Department",
+              "code": "1700",
               "gf": 0.064,
               "sp": 0.001,
               "bd": 0.0,
@@ -8744,6 +13136,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Real Estate",
+              "code": "2320",
               "gf": 0.0,
               "sp": 0.068,
               "bd": 0.0,
@@ -8751,6 +13144,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Horse Racing Board",
+              "code": "1750",
               "gf": 0.0,
               "sp": 0.02,
               "bd": 0.0,
@@ -8758,6 +13152,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Business, Consumer Svcs, Housing, Scty",
+              "code": "0515",
               "gf": 0.018,
               "sp": 0.001,
               "bd": 0.0,
@@ -8765,6 +13160,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Privacy Protection Agency",
+              "code": "1703",
               "gf": 0.012,
               "sp": 0.003,
               "bd": 0.0,
@@ -8772,6 +13168,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Cannabis Control Appeals Panel",
+              "code": "1045",
               "gf": 0.0,
               "sp": 0.003,
               "bd": 0.0,
@@ -8779,6 +13176,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Alcoholic Beverage Control Appeals Board",
+              "code": "2120",
               "gf": 0.0,
               "sp": 0.001,
               "bd": 0.0,
@@ -8796,6 +13194,7 @@ window.CA_LEDGER_DATA = {
           "departments": [
             {
               "name": "Franchise Tax Board",
+              "code": "7730",
               "gf": 1.181,
               "sp": 0.029,
               "bd": 0.0,
@@ -8803,6 +13202,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Public Employees' Retirement System",
+              "code": "7900",
               "gf": 0.584,
               "sp": 0.0,
               "bd": 0.0,
@@ -8810,6 +13210,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Tax and Fee Administration",
+              "code": "7600",
               "gf": 0.384,
               "sp": 0.117,
               "bd": 0.0,
@@ -8817,6 +13218,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of General Services",
+              "code": "7760",
               "gf": 0.412,
               "sp": -0.061,
               "bd": 0.012,
@@ -8824,6 +13226,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "California Victim Compensation Board",
+              "code": "7870",
               "gf": 0.039,
               "sp": 0.093,
               "bd": 0.0,
@@ -8831,6 +13234,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Technology",
+              "code": "7502",
               "gf": 0.057,
               "sp": 0.0,
               "bd": 0.0,
@@ -8838,6 +13242,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Department of Human Resources",
+              "code": "7501",
               "gf": 0.037,
               "sp": 0.0,
               "bd": 0.0,
@@ -8845,6 +13250,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Data and Innovation",
+              "code": "7504",
               "gf": 0.016,
               "sp": 0.007,
               "bd": 0.0,
@@ -8852,6 +13258,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Government Operations, Secretary",
+              "code": "0511",
               "gf": 0.021,
               "sp": 0.0,
               "bd": 0.0,
@@ -8859,6 +13266,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "Office of Administrative Law",
+              "code": "7910",
               "gf": 0.003,
               "sp": 0.0,
               "bd": 0.0,
@@ -8866,6 +13274,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Personnel Board",
+              "code": "7503",
               "gf": 0.002,
               "sp": 0.0,
               "bd": 0.0,
@@ -8873,6 +13282,7 @@ window.CA_LEDGER_DATA = {
             },
             {
               "name": "State Teachers' Retirement System",
+              "code": "7920",
               "gf": 0.0,
               "sp": 0.0,
               "bd": 0.0,

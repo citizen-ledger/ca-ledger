@@ -188,6 +188,10 @@
   .tcard .tb i{flex:1;border-radius:2px 2px 0 0}
   .tcard .tf{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--smoke)}
 
+  /* actuals view */
+  .act-grid{display:grid;grid-template-columns:14px 1fr 120px 120px 170px;gap:0 14px;align-items:center}
+  .act-note{font-size:13.5px;color:var(--graphite);line-height:1.55;max-width:820px;margin-top:10px}
+
   /* fund source schedule */
   .fund{display:grid;grid-template-columns:190px 1fr 110px 70px;gap:0 14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--hairline)}
   .fund .fn{font-size:14.5px}
@@ -258,6 +262,7 @@
       <button data-view="allocation">Allocation</button>
       <button data-view="change">Change</button>
       <button data-view="trend">Trend</button>
+      <button data-view="actuals">Actuals</button>
     </div>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="dollars">Dollars</button>
@@ -366,6 +371,38 @@
         <div class="tgrid" id="trendGrid"></div>
       </div>
     </div>
+
+    <div class="tblwrap" id="actualsView" hidden>
+      <div style="min-width:820px;margin-top:14px">
+        <div class="chg-head">
+          <span class="trend-note" id="actTitle"></span>
+          <span class="schedlbl" id="actVintage"></span>
+        </div>
+        <p class="act-note" id="actNote"></p>
+        <div id="actTable">
+          <div class="arow ahead act-grid">
+            <span></span>
+            <button class="l" id="ahName"></button>
+            <button id="ahEnacted"></button>
+            <button id="ahActual"></button>
+            <button id="ahDiff"></button>
+          </div>
+          <div class="abody" id="actBody"></div>
+          <div class="arow afoot act-grid">
+            <span></span><span style="font-size:14.5px" id="afLabel">Total</span>
+            <span class="num" id="afEnacted"></span>
+            <span class="num" id="afActual"></span>
+            <span class="num delta" id="afDiff"></span>
+          </div>
+          <div class="chg-sum" id="actSum"></div>
+          <div class="caps">
+            <span id="actCapLeft"></span>
+            <span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span>
+          </div>
+        </div>
+        <div class="empty" id="actEmpty" hidden></div>
+      </div>
+    </div>
   </div>
 
   <div class="record" id="fundsPanel">
@@ -387,6 +424,7 @@
         <div class="mnote"><b>M-3</b><span>Department rows may not sum to the agency total: agency totals come from the source's agency-level table, while the department list is the set of rows the source publishes for web display. Where the gap exceeds rounding, the schedule says so.</span></div>
         <div class="mnote"><b>M-4</b><span>Agency groupings reflect the Department of Finance's current organizational mapping, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</span></div>
         <div class="mnote"><b>M-5</b><span>The <a href="cities.html">city view</a> shows reported actual revenues and expenditures from cities' standardized State Controller filings — a different accounting basis from this page's enacted appropriations. Its police and fire service-provision notes derive from the State Controller's services checklist, whose most recent published vintage is FY 2015-16, and service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
+        <div class="mnote"><b>M-6</b><span>The Actuals view places actual expenditures beside enacted appropriations — both under the Budgetary-Legal basis, from the Department of Finance's own Schedule 9 ("Comparative Statement of Expenditures"). Actuals for a fiscal year first publish about six and a half months after it closes and may be restated in later publications; the vintage used is named on the view and in every citation. Extraction is verified against Schedule 6 statewide control totals before publication — a year that cannot be verified (currently FY 2020-21, whose source PDFs do not extract reliably) shows no actuals rather than approximate ones. The difference column reflects mid-year legislation, re-appropriations and carryover of multi-year authority, reversions, and fund reclassifications between publications; it is not a judgment of any kind, and actuals legitimately exceed enactment for some agencies.</span></div>
       </div>
       <div class="mcol">
         <div class="microlbl">SOURCES &amp; RECORD</div>
@@ -422,10 +460,11 @@
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 
   const YEARS = Object.keys(D.budgets).sort();
-  const VIEWS = ["allocation","change","trend"];
+  const VIEWS = ["allocation","change","trend","actuals"];
   const UNITS = ["dollars","perResident","percent"];
   const DEFAULTS = { year: YEARS[YEARS.length-1], view:"allocation", unit:"dollars",
-                     fed:false, drill:null, sortKey:"value", sortDir:-1, q:"" };
+                     fed:false, drill:null, sortKey:"value", sortDir:-1,
+                     aSortKey:"enacted", aSortDir:-1, q:"" };
   const S = Object.assign({}, DEFAULTS, { openNote:null, hoverKey:null });
 
   /* ---------- data helpers ---------- */
@@ -477,6 +516,8 @@
     if (S.drill) p.set("a", S.drill);
     if (S.sortKey!==DEFAULTS.sortKey || S.sortDir!==DEFAULTS.sortDir)
       p.set("sort", S.sortKey + "." + (S.sortDir<0?"desc":"asc"));
+    if (S.aSortKey!==DEFAULTS.aSortKey || S.aSortDir!==DEFAULTS.aSortDir)
+      p.set("asort", S.aSortKey + "." + (S.aSortDir<0?"desc":"asc"));
     if (S.q) p.set("q", S.q);
     return p.toString();
   }
@@ -499,6 +540,10 @@
     if (["name","value","delta"].includes(sort[0])){
       S.sortKey = sort[0]; S.sortDir = sort[1]==="asc" ? 1 : -1;
     } else { S.sortKey = DEFAULTS.sortKey; S.sortDir = DEFAULTS.sortDir; }
+    const asort = (p.get("asort")||"").split(".");
+    if (["name","enacted","actual","diff"].includes(asort[0])){
+      S.aSortKey = asort[0]; S.aSortDir = asort[1]==="asc" ? 1 : -1;
+    } else { S.aSortKey = DEFAULTS.aSortKey; S.aSortDir = DEFAULTS.aSortDir; }
     S.q = p.get("q") || "";
   }
 
@@ -782,6 +827,125 @@
     }).join("");
   }
 
+  /* ---------- actuals view (enacted vs actual, both Budgetary-Legal) ---------- */
+  const actInfo = () => (D.meta.actuals && D.meta.actuals.years) ? D.meta.actuals.years[S.year] : null;
+  const actTotalOf = it => it && it.actual
+    ? it.actual.gf + it.actual.sp + it.actual.bd + (S.fed ? it.actual.fed : 0) : null;
+  const fmtSigned = v => (v>=0 ? "+" : MINUS) + fmtB(Math.abs(v));
+  const aArrow = k => S.aSortKey===k ? (S.aSortDir<0 ? " ↓" : " ↑") : "";
+
+  function renderActuals(C){
+    const info = actInfo();
+    const available = info && !info.unavailable;
+    $("actTable").hidden = !available;
+    $("actEmpty").hidden = available;
+    if (!available){
+      $("actTitle").textContent = "Enacted vs. actual expenditures, FY " + S.year;
+      $("actVintage").textContent = "";
+      $("actNote").textContent = "";
+      $("actEmpty").textContent = (info ? info.unavailable + " " : "")
+        + "Actual expenditures for a fiscal year are first published by the Department of "
+        + "Finance about six and a half months after it closes, in the following January's "
+        + "Governor's Budget. Step to another year to view the comparison.";
+      return;
+    }
+    $("actTitle").textContent = "Enacted vs. actual expenditures, FY " + S.year
+      + (S.drill ? " · " + drillAgency().name : "")
+      + " · " + (S.fed ? "state + federal funds" : "state funds");
+    $("actVintage").textContent = "ACTUAL: DOF SCHEDULE 9 · " + info.vintage.toUpperCase();
+    $("actNote").textContent =
+      "Enacted is the appropriation at Budget Act signing; actual is what the Department of "
+      + "Finance later published for the same year (Schedule 9, " + info.vintage + ") — both on "
+      + "the Budgetary-Legal basis. This is the state's own comparative statement, reproduced. "
+      + "The difference is not a judgment of any kind: it reflects mid-year legislation, "
+      + "re-appropriations and carryover of multi-year authority, reversions, and fund "
+      + "reclassifications between publications, and actuals legitimately exceed enactment for "
+      + "some agencies. Actuals are unaudited by the Ledger.";
+
+    const items = levelItems(S.year) || [];
+    const byName = {}; items.forEach(it=>{ byName[it.name]=it; });
+    const rows = C.rows.map(r=>{
+      const act = actTotalOf(byName[r.name]);
+      return { name:r.name, color:r.color, enacted:r.val, actual:act,
+               diff: act==null ? null : act - r.val,
+               diffPct: (act==null || !r.val) ? null : (act - r.val)/Math.abs(r.val)*100 };
+    }).filter(r=> !S.q || r.name.toLowerCase().includes(S.q.toLowerCase()));
+    rows.sort((a,b)=>{
+      const k = S.aSortKey, d = S.aSortDir;
+      if (k==="name") return a.name.localeCompare(b.name)*d;
+      if (k==="actual") return ((a.actual??-1e12)-(b.actual??-1e12))*d;
+      if (k==="diff") return ((a.diff??-1e12)-(b.diff??-1e12))*d;
+      return (a.enacted-b.enacted)*d;
+    });
+
+    $("ahName").textContent = (S.drill ? "DEPARTMENT" : "AGENCY") + aArrow("name");
+    $("ahEnacted").textContent = "ENACTED" + aArrow("enacted");
+    $("ahActual").textContent = "ACTUAL" + aArrow("actual");
+    $("ahDiff").textContent = "DIFFERENCE" + aArrow("diff");
+
+    const body = $("actBody"); body.innerHTML = "";
+    rows.forEach(r=>{
+      const row = document.createElement("div");
+      row.className = "arow act-grid" + (S.drill ? "" : " click");
+      if (!S.drill){
+        row.tabIndex = 0;
+        row.setAttribute("role","button");
+        row.setAttribute("aria-label","Open departments of "+r.name);
+        const id = (agencies(S.year).find(a=>a.name===r.name)||{}).id;
+        row.addEventListener("click", ()=>doDrill(id));
+        row.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();doDrill(id);} });
+      }
+      row.innerHTML = '<span class="sw" style="background:'+r.color+'"></span>'
+        + '<span class="aname">'+esc(r.name)+'</span>'
+        + '<span class="num">'+fmtUnit(r.enacted, C.total)+'</span>'
+        + '<span class="num">'+(r.actual==null ? "—" : fmtUnit(r.actual, C.total))+'</span>'
+        + '<span class="num delta">'+(r.diff==null ? "—"
+            : fmtSigned(r.diff)+' <span style="color:var(--smoke)">'+fmtDeltaPct(r.diffPct)+'</span>')+'</span>';
+      body.appendChild(row);
+    });
+
+    const withAct = rows.filter(r=>r.actual!=null);
+    const enSub = withAct.reduce((s,r)=>s+r.enacted,0);
+    const actSubTotal = withAct.reduce((s,r)=>s+r.actual,0);
+    const missing = rows.length - withAct.length;
+    const noneMatched = withAct.length === 0;
+    $("afLabel").textContent = (missing && !noneMatched) ? "Total (rows with published actuals)" : "Total";
+    $("afEnacted").textContent = fmtUnit((missing && !noneMatched) ? enSub : C.total, C.total);
+    $("afActual").textContent = noneMatched ? "—" : fmtUnit(actSubTotal, C.total);
+    const netDiff = actSubTotal - enSub;
+    $("afDiff").textContent = noneMatched ? "—" : fmtSigned(netDiff)
+      + (enSub ? " " + fmtDeltaPct(netDiff/Math.abs(enSub)*100) : "");
+
+    const inc = withAct.filter(r=>r.diff>0).reduce((s,r)=>s+r.diff,0);
+    const dec = withAct.filter(r=>r.diff<0).reduce((s,r)=>s+Math.abs(r.diff),0);
+    $("actSum").innerHTML = noneMatched ? "" :
+      "<span>BELOW ENACTMENT "+MINUS+"$"+dec.toFixed(1)+"B</span>"
+      + "<span>ABOVE ENACTMENT +$"+inc.toFixed(1)+"B</span>"
+      + '<span style="font-weight:600">NET '+(netDiff>=0?"+":MINUS)+"$"+Math.abs(netDiff).toFixed(1)+"B</span>";
+
+    const caps = [];
+    if (noneMatched && S.drill){
+      const agencyAct = actTotalOf(drillAgency());
+      caps.push("THE SOURCE SCHEDULE'S DEPARTMENT ROWS FOR THIS AGENCY DO NOT VERIFY AGAINST ITS TOTAL, SO NO DEPARTMENT ACTUALS ARE SHOWN"
+        + (agencyAct!=null ? " — THE GATE-VERIFIED AGENCY ACTUAL (" + fmtB(agencyAct) + ") APPEARS AT THE AGENCY LEVEL" : "")
+        + " · SEE METHOD NOTE M-6");
+    } else if (missing) {
+      caps.push(missing + " ROW(S) HAVE NO PUBLISHED ACTUAL IN THE SOURCE SCHEDULE AND ARE EXCLUDED FROM THE TOTALS");
+    }
+    if (S.drill && !noneMatched){
+      const a = drillAgency();
+      const agencyAct = actTotalOf(a);
+      if (agencyAct!=null && Math.abs(actSubTotal - agencyAct) > 0.05)
+        caps.push("DEPARTMENT ACTUALS SUM TO " + fmtB(actSubTotal) + " OF THE "
+          + fmtB(agencyAct) + " AGENCY ACTUAL — SEE METHOD NOTE M-3");
+    }
+    $("actCapLeft").textContent = caps.join(" · ");
+  }
+  $("ahName").addEventListener("click", ()=>{ S.aSortKey==="name" ? S.aSortDir*=-1 : (S.aSortKey="name",S.aSortDir=1); syncHash(); render(); });
+  $("ahEnacted").addEventListener("click", ()=>{ S.aSortKey==="enacted" ? S.aSortDir*=-1 : (S.aSortKey="enacted",S.aSortDir=-1); syncHash(); render(); });
+  $("ahActual").addEventListener("click", ()=>{ S.aSortKey==="actual" ? S.aSortDir*=-1 : (S.aSortKey="actual",S.aSortDir=-1); syncHash(); render(); });
+  $("ahDiff").addEventListener("click", ()=>{ S.aSortKey==="diff" ? S.aSortDir*=-1 : (S.aSortKey="diff",S.aSortDir=-1); syncHash(); render(); });
+
   /* ---------- fund source schedule ---------- */
   function renderFunds(){
     const box = $("funds"); box.innerHTML = "";
@@ -807,6 +971,25 @@
     const a = drillAgency();
     const scope = S.fed ? "state and federal funds" : "state funds (General + special + bond)";
     const C = computeRows();
+    const info = actInfo();
+    if (S.view === "actuals" && info && !info.unavailable){
+      const items = levelItems(S.year) || [];
+      const actTot = items.reduce((s,it)=>{ const v=actTotalOf(it); return v==null?s:s+v; },0);
+      const figure = a
+        ? a.name + ", FY " + S.year + ": enacted $" + itemTotal(a,S.fed).toFixed(3)
+          + " billion, actual $" + (actTotalOf(a)==null?"—":actTotalOf(a).toFixed(3)) + " billion in " + scope + ". "
+        : "FY " + S.year + ": enacted $" + C.total.toFixed(3) + " billion, actual $"
+          + actTot.toFixed(3) + " billion in " + scope + ". ";
+      return 'The California Ledger, "State Budget — Enacted vs. Actual by '
+        + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + '." '
+        + figure
+        + "Both figures under California's Budgetary-Legal basis of accounting; actual expenditures as published in the "
+        + info.vintage + " (Schedule 9), unaudited. The difference reflects mid-year legislation, re-appropriations, "
+        + "carryover, reversions, and fund reclassifications between publications. "
+        + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
+        + "Permalink: " + location.href + ". "
+        + "Accessed " + new Date().toISOString().slice(0,10) + ".";
+    }
     const figure = a
       ? a.name + ", FY " + S.year + ": $" + itemTotal(a,S.fed).toFixed(3) + " billion in " + scope + ". "
       : "FY " + S.year + " total: $" + C.total.toFixed(3) + " billion in " + scope + ". ";
@@ -821,6 +1004,30 @@
   function csvEscape(v){ v=String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
   function buildCSV(){
     const C = computeRows();
+    const info = actInfo();
+    if (S.view === "actuals" && info && !info.unavailable){
+      const items = levelItems(S.year) || [];
+      const byName = {}; items.forEach(it=>{ byName[it.name]=it; });
+      const lines = [
+        "# The California Ledger — enacted vs. actual, " + (S.drill ? "departments of " + drillAgency().name : "by agency") + ", FY " + S.year,
+        "# Source dataset: " + D.meta.sourceLabel,
+        "# Accounting basis: BOTH columns Budgetary-Legal — enacted appropriations at Budget Act signing; actual expenditures as published in the " + info.vintage + " (DOF Schedule 9), unaudited",
+        "# The difference reflects mid-year legislation, re-appropriations, carryover, reversions, and fund reclassifications between publications; it is not a judgment of any kind",
+        "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),
+        "# View: " + (S.fed ? "state + federal funds" : "state funds (General + special + bond)"),
+        "# Permalink: " + location.href,
+        "# Units: billions of dollars",
+        (S.drill?"Department":"Agency") + ",Enacted ($B),Actual ($B),Difference ($B),Difference (%)"
+      ];
+      C.rows.slice().sort((a,b)=>b.val-a.val).forEach(r=>{
+        const act = actTotalOf(byName[r.name]);
+        lines.push([csvEscape(r.name), r.val.toFixed(3),
+          act==null ? "" : act.toFixed(3),
+          act==null ? "" : (act-r.val).toFixed(3),
+          (act==null || !r.val) ? "" : ((act-r.val)/Math.abs(r.val)*100).toFixed(1)].join(","));
+      });
+      return lines.join("\r\n") + "\r\n";
+    }
     let rows = C.rows.slice();
     if (S.q){ const q=S.q.toLowerCase(); rows = rows.filter(r=>r.name.toLowerCase().includes(q)); }
     rows.sort((a,b)=> S.sortKey==="name" ? a.name.localeCompare(b.name)*S.sortDir
@@ -944,9 +1151,11 @@
     $("allocView").hidden = S.view!=="allocation";
     $("changeView").hidden = S.view!=="change";
     $("trendView").hidden = S.view!=="trend";
+    $("actualsView").hidden = S.view!=="actuals";
     if (S.view==="allocation") renderAlloc(C);
     if (S.view==="change") renderChange(C);
     if (S.view==="trend") renderTrend(C);
+    if (S.view==="actuals") renderActuals(C);
     renderFunds();
     $("printCite").textContent = citationText();
   }
