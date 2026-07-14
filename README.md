@@ -32,6 +32,7 @@ basemap tiles — see STATUS.md; everything else stays dependency-free.)
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
 | `tests/run_tests.py` | Headless test suite — one command, 338 assertions on the real data. |
+| `docs/SCOPE.md` | Standing scope decisions and the architectural rule: no server, no API keys, no per-use costs, no runtime third-party services — features requiring one are out of scope by default. Read it before proposing features. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it

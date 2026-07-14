@@ -1133,6 +1133,22 @@ failure; the extended does-not-add with live share absent from
 source; per-ADA CSV and citation; the not-determined strip on
 school-less responses).
 
+## 2026-07-14 — Scope decision: "Ask the Ledger" permanently out; the no-server rule made standing
+
+The project owner ruled a natural-language query interface
+permanently out of scope, and made the underlying rule standing:
+**no server, no API keys, no per-use costs, no runtime third-party
+services — any feature requiring one is out of scope by default.**
+The reasoning (an LLM call per question needs a key, a key needs a
+server, and a server is the failure mode the landscape finding's
+graveyard documents; the Ledger is already queryable via search,
+filters, comparison, and permalinks; survivability is the scarce
+resource) is recorded normatively in **docs/SCOPE.md**, which also
+states precisely how the two existing keyless, non-load-bearing
+runtime enhancements (map tiles, Census geocoder) relate to the rule.
+A repo-wide search confirmed no reference to the feature existed
+anywhere before this decision — the record exists to keep it that way.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
