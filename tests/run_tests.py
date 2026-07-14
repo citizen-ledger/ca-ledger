@@ -774,7 +774,7 @@ def test_map(page, base):
           "m=7.3" in page.evaluate("decodeURIComponent(location.hash)"),
           page.evaluate("location.hash")[:90])
     page.click("#mapReset")
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(1800)   # outlast the deliberate 1.2s reset ease
     check("map reset: statewide + m cleared",
           "m=" not in page.evaluate("location.hash"))
 

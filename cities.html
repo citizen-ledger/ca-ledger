@@ -501,6 +501,8 @@
      The basemap style is the Ledger's own: parchment land, muted water,
      ash county lines, smoke labels — nothing shaded by any data. */
   let MAP = null, mapLibLoading = false, hoverSlug = null, tileNoticeShown = false;
+  let resetPending = false;
+  const EASE_OUT = t => 1 - Math.pow(1 - t, 3);   // gentle cubic ease-out
   const MAP_STYLE = {
     version: 8,
     glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
@@ -603,7 +605,12 @@
         container: "mapContainer", style: MAP_STYLE,
         bounds: CA_BOUNDS, fitBoundsOptions: { padding: 16 },
         attributionControl: { compact: true },
-        customAttribution: "Basemap © OpenStreetMap contributors · tiles: OpenFreeMap"
+        customAttribution: "Basemap © OpenStreetMap contributors · tiles: OpenFreeMap",
+        /* a flat reference document: no rotation, no tilt — accidental
+           trackpad rotation is a common MapLibre-default annoyance */
+        dragRotate: false, pitchWithRotate: false, touchPitch: false,
+        /* damp drag inertia: dragging stops deliberately, no long glide */
+        dragPan: { linearity: 0.22, maxSpeed: 700, deceleration: 3600 }
       });
     } catch(e){
       mapFail("The map could not start in this browser (" + e.message + ").");
@@ -613,6 +620,13 @@
     window._clMap = map;   // exposed for the test suite
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     map.keyboard.enable();
+    map.keyboard.disableRotation();
+    map.touchZoomRotate.disableRotation();
+    /* deliberate zoom: a bit over half of MapLibre's default rate per
+       wheel notch / trackpad delta, smoothly eased, always anchored
+       under the cursor (the default anchor — never "around: center") */
+    map.scrollZoom.setWheelZoomRate(1 / 750);
+    map.scrollZoom.setZoomRate(1 / 220);
     map.on("error", ev => {
       // per-tile/basemap failures degrade softly: boundaries still render
       if (!tileNoticeShown && ev && ev.error && MAP && MAP.getSource("cities")){
@@ -654,7 +668,12 @@
         if (f) toggleCity(f.properties.slug);
       });
       map.on("moveend", () => {
-        S.mView = mapViewString();
+        if (resetPending){           // reset lands on the default view:
+          resetPending = false;      // keep the permalink clean of m=
+          S.mView = null;
+        } else {
+          S.mView = mapViewString();
+        }
         syncHash();
       });
     });
@@ -686,7 +705,8 @@
         cityReadout(id);
         setHoverSlug(id);
         if (MAP) MAP.easeTo({ center: [g.clng, g.clat],
-                              zoom: Math.max(MAP.getZoom(), 8.5), duration: 250 });
+                              zoom: Math.max(MAP.getZoom(), 8.5),
+                              duration: 750, easing: EASE_OUT });
       });
       b.addEventListener("blur", () => { setHoverSlug(null); mapDefaultReadout(); });
       b.addEventListener("click", () => toggleCity(id));
@@ -974,7 +994,10 @@
   $("pickerModeGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
     S.picker=b.dataset.mode; syncHash(); renderPicker(); }));
   $("mapReset").addEventListener("click", ()=>{
-    if (MAP){ MAP.fitBounds(CA_BOUNDS, { padding: 16 }); }
+    if (MAP){
+      resetPending = true;
+      MAP.fitBounds(CA_BOUNDS, { padding: 16, duration: 1200, easing: EASE_OUT });
+    }
     S.mView = null; syncHash();
   });
   $("citySearch").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); renderPicker(); });
