@@ -1455,6 +1455,68 @@ def test_schools(page, base):
         check(f"schools source: no banned term {w!r}", w not in low)
 
 
+def test_shape():
+    """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
+    Added 2026-07-14 after FY 2016-17 city functions shipped
+    misclassified while the totals gate stayed green."""
+    # cities: statewide core functions nonzero, 'other' bounded, every year
+    sw = {y: {} for y in CITY["years"]}
+    for c in CITY["cities"].values():
+        for y, yr in c["years"].items():
+            for k, v in yr.get("byFunction", {}).items():
+                sw[y][k] = sw[y].get(k, 0.0) + v
+    for y in CITY["years"]:
+        tot = sum(sw[y].values())
+        check(f"shape cities {y}: statewide police/fire/admin/streets/parks all nonzero",
+              all(sw[y].get(k, 0) > 0 for k in
+                  ("police", "fire", "admin", "streets", "parks")))
+        check(f"shape cities {y}: 'other' below 10% of governmental spending",
+              sw[y].get("other", 0) / tot < 0.10,
+              f"{sw[y].get('other',0)/tot*100:.1f}%")
+    # the specific regression: LA 2016-17 police consistent with neighbors
+    la = CITY["cities"]["los-angeles"]["years"]
+    check("shape: LA FY 2016-17 police restored and consistent",
+          2000 < la["2016-17"]["byFunction"].get("police", 0) < 3000
+          and la["2016-17"]["byFunction"].get("fire", 0) > 400,
+          str(la["2016-17"]["byFunction"].get("police")))
+    # sandwich rule (materiality $1M), skipping zero-filled source years
+    yrs = CITY["years"]
+    violations = []
+    for slug, c in CITY["cities"].items():
+        for i in range(1, len(yrs) - 1):
+            cur = c["years"].get(yrs[i], {}).get("byFunction", {})
+            if sum(cur.values()) == 0:
+                continue
+            prev = c["years"].get(yrs[i-1], {}).get("byFunction", {})
+            nxt = c["years"].get(yrs[i+1], {}).get("byFunction", {})
+            for fn in ("police", "fire"):
+                if prev.get(fn, 0) > 1.0 and nxt.get(fn, 0) > 1.0 \
+                        and cur.get(fn, 0) == 0:
+                    violations.append(f"{slug} {yrs[i]} {fn}")
+    check("shape cities: no material police/fire sandwich zeros",
+          not violations, str(violations[:5]))
+    # counties: every function nonzero statewide, every year
+    for y in COUNTY["years"]:
+        swc = {}
+        for c in COUNTY["counties"].values():
+            for k, v in c["years"].get(y, {}).get("byFunction", {}).items():
+                swc[k] = swc.get(k, 0.0) + v
+        check(f"shape counties {y}: all 14 functions nonzero statewide",
+              all(v > 0 for v in swc.values()) and len(swc) == 14)
+    # schools: ADA>0 implies instruction dollars
+    bad = [f"{s} {y}" for s, d in SCHOOL["districts"].items()
+           for y, v in d["years"].items()
+           if v["ada"] > 0 and v["byFunction"].get("instruction", 0) <= 0]
+    check("shape schools: every district with ADA has instruction dollars",
+          not bad, str(bad[:3]))
+    # special districts: both buckets alive every year
+    for iy, y in enumerate(DIST["years"]):
+        gov = sum((r["exp"][iy] or [0]*4)[0] for r in DIST["districts"].values())
+        ent = sum((r["exp"][iy] or [0]*4)[1] for r in DIST["districts"].values())
+        check(f"shape districts {y}: governmental and enterprise both nonzero",
+              gov > 0 and ent > 0)
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1631,6 +1693,7 @@ def main():
             errors = []
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
+            test_shape()
             test_actuals_view(page, base)
             test_v2(page, base)
             test_county(page, base)

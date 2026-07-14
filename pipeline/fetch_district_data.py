@@ -408,6 +408,18 @@ def main():
         },
     }
 
+    # THE CLASSIFICATION-SHAPE GATE (hard): statewide, governmental and
+    # enterprise buckets must both be nonzero in every year (unknown
+    # categories already stop the write via classify()).
+    for fy_l in YEAR_LABELS:
+        iy = YEAR_LABELS.index(fy_l)
+        gov = sum((r["exp"][iy] or [0, 0, 0, 0])[0] for r in districts.values())
+        ent = sum((r["exp"][iy] or [0, 0, 0, 0])[1] for r in districts.values())
+        if gov <= 0 or ent <= 0:
+            raise SystemExit(f"SHAPE FY {fy_l}: statewide gov=${gov:,.0f} "
+                             f"ent=${ent:,.0f} — classification broke; "
+                             "nothing written")
+
     payload = {
         "meta": {
             "source": "bythenumbers.sco.ca.gov",

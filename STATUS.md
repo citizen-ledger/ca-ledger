@@ -1191,6 +1191,75 @@ persisted; pin-map label layer present with neutral literal color and
 uniform county fill; current-year empty state names the year and the
 January edition).
 
+## 2026-07-14 — INCIDENT: FY 2016-17 city functions shipped misclassified; fixed, and a new gate class added
+
+**The bug.** Every city's FY 2016-17 `byFunction` was wrong from the
+first city-data publication until today: the SCO source's FY2017
+vintage puts the function group in `category` (line in
+`subcategory_1`), while 2017-18+ puts paired super-groups in
+`category` and the group in `subcategory_1`. The classifier read
+`subcategory_1` as the group and silently fell through to "other" for
+anything unrecognized — so Los Angeles shipped FY 2016-17 as
+`{other: $6,716M, debt, capital}` with no police or fire line, and
+statewide "other" was 83.2% of city governmental spending that year
+(clean years measure ≤0.6%). Found by the V8 depth investigation;
+re-verified before fixing.
+
+**Why the gate missed it.** The reconciliation gate proves
+conservation — every city-year total reproduced the Controller's
+published figure exactly, including the broken year. Totals cannot
+see classification: the money was all there, in the wrong buckets.
+
+**The fix.** `classify_expenditure()` is now shape-driven, not
+year-driven: it detects the function group by value wherever it sits
+(handling both vintage layouts, including FY2017's combined
+"Debt Service and Capital Outlay" splitting in `subcategory_1`), and
+**refuses to classify unrecognized shapes** — the silent
+fall-through to "other" is gone, as is the county classifier's
+equivalent silent catch-all to "admin". city-data.js regenerated
+(all totals gates still pass; digest restamped). Verified: LA FY
+2016-17 now shows police $2,494.2M / fire $624.0M, consistent with
+the series ($2,610M police in 2017-18); statewide 2016-17 "other" is
+0.04%; functions still sum exactly to the gated totals.
+
+**The new gate class — classification-shape gates, hard, in every
+pipeline** (no write on failure), alongside the totals gates:
+- cities: statewide police/fire/admin/streets/parks nonzero every
+  year; statewide "other" ≤10% of governmental spending; per city,
+  police/fire above $1M in both adjacent years cannot be zero in
+  between (unless the whole filing is zero at source);
+- counties: all 14 functions nonzero statewide, every year;
+- schools: ADA>0 implies instruction dollars >0 per district; core
+  function groups nonzero statewide;
+- special districts: governmental and enterprise buckets both
+  nonzero statewide, every year.
+All four pipelines ran clean under the new gates across every year;
+the same rules are re-asserted from the shipped files by the test
+suite so a regression cannot pass CI.
+
+**What else the sweep found** — the honest answer to "how much don't
+we know about what we've shipped":
+- **Counties, schools, special districts: clean.** Every year of
+  every other layer passes every shape rule; county vintage
+  differences are punctuation-only (hyphen vs en-dash), already
+  normalized. The FY 2016-17 city year was the only classification
+  casualty.
+- **Three all-zero source filings surfaced:** Hollister and Novato
+  FY 2021-22 and Woodland FY 2022-23 are zero-filled governmental
+  forms at the SCO source (non-timely filings published as zeros) —
+  source facts, not our error, and the sandwich rule exempts
+  zero-total years for exactly this reason.
+- **One materiality lesson:** Mendota's fire line is genuinely $16k →
+  $0 → $1.5k at source — tiny incidental lines legitimately touch
+  zero, which is why the sandwich gate carries a $1M floor. A real
+  department cannot flicker to zero; a bookkeeping line can.
+
+Tests: **489 assertions, all passing** — 454 existing (all green
+against the regenerated data) plus 35 shape assertions (statewide
+function presence per layer-year, the other-share bound, the LA
+2016-17 regression lock, the material-sandwich rule, ADA-implies-
+instruction, and district bucket liveness).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

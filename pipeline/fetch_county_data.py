@@ -127,7 +127,12 @@ def classify(category, sub1):
         return "gov", "debt" if g.startswith("Debt") else "capital"
     if cat == "General Government":
         return "gov", "admin"
-    return "gov", "admin"     # conservative catch-all; gate guards totals
+    raise SystemExit(
+        "UNRECOGNIZED EXPENDITURE SHAPE — refusing to classify: "
+        f"category={category!r} sub1={sub1!r}. A source vintage has "
+        "shifted; extend classify() deliberately. (The silent catch-all "
+        "this replaced is how FY 2016-17 city functions shipped wrong — "
+        "see STATUS.md, 2026-07-14.)")
 
 
 def fetch_year(source_year):
@@ -208,6 +213,19 @@ def main():
     years_data = {y: fetch_year(y) for y in SOURCE_YEARS}
 
     errors, notes = [], []
+    # THE CLASSIFICATION-SHAPE GATE (hard): statewide, every function
+    # must be nonzero in every year (measured clean on all 8 shipped
+    # vintages); a column shift zeroes whole functions while totals
+    # still reconcile.
+    for sy, counties in years_data.items():
+        sw = {}
+        for c in counties.values():
+            for k, v in c["byFunction"].items():
+                sw[k] = sw.get(k, 0.0) + v
+        for key, _label in FUNCTIONS:
+            if sw.get(key, 0) <= 0:
+                errors.append(f"SHAPE FY {fy_label(sy)}: statewide "
+                              f"{key!r} is zero — classification broke")
     for sy, counties in years_data.items():
         if len(counties) != 57:
             errors.append(f"FY {fy_label(sy)}: {len(counties)} counties (expected 57)")

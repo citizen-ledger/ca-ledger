@@ -219,9 +219,23 @@ def fy_label(source_year: str) -> str:
 # ----------------------------------------------------------------------
 # Classification
 # ----------------------------------------------------------------------
+GOV_GROUPS = {"Public Safety", "Health", "Culture and Leisure",
+              "General Government", "Transportation",
+              "Community Development", "Public Utilities",
+              "Other Expenditures", "Debt Service", "Capital Outlay"}
+
+
 def classify_expenditure(category, sub1, sub2):
     """Returns ('gov', function_key) | ('ent', fund_key) |
-    ('isf', None) | ('conduit', None)."""
+    ('isf', None) | ('conduit', None).
+
+    SHAPE-DRIVEN, not year-driven: the FY 2016-17 source vintage puts
+    the function group in `category` (line in subcategory_1), while
+    2017-18+ puts paired super-groups in `category` and the group in
+    subcategory_1. Detect the group by VALUE wherever it sits, and
+    refuse to classify anything whose group is unrecognized — the
+    silent fall-through to "other" is what shipped a year of
+    misclassified functions (see STATUS.md, 2026-07-14)."""
     cat = norm(category)
     if cat in ENTERPRISE_BY_CATEGORY:
         return "ent", ENTERPRISE_BY_CATEGORY[cat]
@@ -229,7 +243,16 @@ def classify_expenditure(category, sub1, sub2):
         return "isf", None
     if cat == "Conduit Financing":
         return "conduit", None
-    g, line = norm(sub1), norm(sub2)
+    if norm(sub1) in GOV_GROUPS:                # 2017-18+ shape
+        g, line = norm(sub1), norm(sub2)
+    elif cat in GOV_GROUPS:                     # 2016-17 shape
+        g, line = cat, norm(sub1)
+    else:
+        raise SystemExit(
+            "UNRECOGNIZED EXPENDITURE SHAPE — refusing to classify: "
+            f"category={category!r} sub1={sub1!r} sub2={sub2!r}. "
+            "A source vintage has shifted columns again; extend "
+            "classify_expenditure deliberately.")
     if g == "Public Safety":
         if line.startswith("Police"):
             return "gov", "police"
@@ -254,7 +277,7 @@ def classify_expenditure(category, sub1, sub2):
         "Other Expenditures": "other",
         "Debt Service": "debt",
         "Capital Outlay": "capital",
-    }.get(g, "other")
+    }[g]   # g is guaranteed to be a known group; KeyError here is a bug
 
 
 def classify_revenue(category):
@@ -547,6 +570,62 @@ def write_city_js(payload):
 # ----------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------
+def shape_gate(years_data):
+    """THE CLASSIFICATION-SHAPE GATE (hard; added 2026-07-14 after the
+    FY 2016-17 misclassification shipped). The totals gate proves
+    conservation of money; this gate proves the money landed in the
+    right functions:
+      1. statewide, every core function (police, fire, admin, streets,
+         parks) must be nonzero in every year;
+      2. statewide, 'other' must never exceed 10% of governmental
+         spending (clean vintages measure <= 0.6%; the broken FY
+         2016-17 measured 83.2%);
+      3. per city: police/fire above $1M in both adjacent years cannot
+         be zero in between — unless the whole governmental filing for
+         that year is zero at the source (SCO publishes zero-filled
+         forms for some non-timely filers: Hollister and Novato FY
+         2021-22, Woodland FY 2022-23, verified at source). The $1M
+         materiality floor exists because tiny incidental lines
+         legitimately touch zero (Mendota fire: $16k, $0, $1.5k —
+         verified at source); a real department cannot."""
+    errors = []
+    yrs = SOURCE_YEARS
+    core = ("police", "fire", "admin", "streets", "parks")
+    statewide = {sy: {} for sy in yrs}
+    for sy in yrs:
+        for name, c in years_data[sy].items():
+            for k, v in c["byFunction"].items():
+                statewide[sy][k] = statewide[sy].get(k, 0.0) + v
+    for sy in yrs:
+        tot = sum(statewide[sy].values())
+        for k in core:
+            if statewide[sy].get(k, 0) <= 0:
+                errors.append(f"SHAPE FY {fy_label(sy)}: statewide "
+                              f"{k!r} is zero — classification broke")
+        if tot and statewide[sy].get("other", 0) / tot > 0.10:
+            errors.append(f"SHAPE FY {fy_label(sy)}: 'other' is "
+                          f"{statewide[sy]['other']/tot*100:.1f}% of "
+                          "governmental spending (clean years are <1%)")
+    for i in range(1, len(yrs) - 1):
+        prev_y, cur_y, next_y = yrs[i-1], yrs[i], yrs[i+1]
+        for name in years_data[cur_y]:
+            cur = years_data[cur_y][name]
+            if sum(cur["byFunction"].values()) == 0:
+                continue                      # zero-filled source filing
+            prev = years_data[prev_y].get(name)
+            nxt = years_data[next_y].get(name)
+            if not prev or not nxt:
+                continue
+            for fn in ("police", "fire"):
+                if (prev["byFunction"].get(fn, 0) > 1_000_000
+                        and nxt["byFunction"].get(fn, 0) > 1_000_000
+                        and cur["byFunction"].get(fn, 0) == 0):
+                    errors.append(f"SHAPE {name} FY {fy_label(cur_y)}: "
+                                  f"{fn} is zero between two nonzero "
+                                  "years — classification suspect")
+    return errors
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Rebuild city-data.js from SCO 'By the Numbers'")
@@ -576,6 +655,7 @@ def main():
         years_data[sy] = fetch_year(sy)
 
     errors, warnings = sanity_check(years_data, official)
+    errors += shape_gate(years_data)
     # coordinate coverage: report failures rather than guessing or
     # silently dropping — an unmatched city fails the write.
     unmatched = sorted({n for cities in years_data.values() for n in cities

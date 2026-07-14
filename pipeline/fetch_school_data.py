@@ -365,6 +365,28 @@ def process_year(yy, fy):
                       "edp": float(rec["EDP 365"]),
                       "ada": float(rec["Current Expense ADA"]),
                       "type": str(rec["LEA Type"]).strip()}
+    # THE CLASSIFICATION-SHAPE GATE (hard): per district, ADA>0 implies
+    # instruction dollars > 0; statewide, the core function groups must
+    # be nonzero. A function-code shift would keep the to-the-cent
+    # totals gate green while gutting the classification.
+    shape_fail = []
+    sw = defaultdict(float)
+    for key, fn in edp_fn.items():
+        for g, v in fn.items():
+            sw[g] += v
+    for g in ("instruction", "instrRelated", "pupilServices", "genAdmin", "plant"):
+        if sw.get(g, 0) <= 0:
+            shape_fail.append(f"statewide {g!r} is zero")
+    for (c, d), pub in ce.items():
+        if pub["ada"] > 0 and edp_fn.get((c, d), {}).get("instruction", 0) <= 0:
+            shape_fail.append(f"{pub['name']} ({c}-{d}): ADA {pub['ada']} "
+                              "but zero instruction dollars")
+    if shape_fail:
+        for s in shape_fail[:10]:
+            print("  SHAPE FAIL:", s, file=sys.stderr)
+        raise SystemExit(f"FY {fy}: {len(shape_fail)} classification-shape "
+                         "failure(s) — nothing written")
+
     gate_fail = []
     for (c, d), pub in ce.items():
         ours = edp.get((c, d), 0.0)
