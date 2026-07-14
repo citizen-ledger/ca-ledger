@@ -1336,6 +1336,31 @@ locked — no program prior-year columns, object families only, no
 district lines; and the rendered bridge, negative lines, and
 restricted split verified in the UI).
 
+## 2026-07-14 — Year-reachability report and guard
+
+A report that FY 2016-17 was unreachable in the cities page's year
+selector **did not reproduce**: empirically, every page's selector
+offers exactly its data file's years (cities and counties: all 8
+including 2016-17; state: 6; schools: 3), the earliest year is
+reachable by dropdown, stepper, and permalink (verified rendering
+LA's police row), and the districts page's tables carry all 8 years.
+No layer has data the UI hides — with one by-design exception already
+documented: the address view's stacked records show the latest fiscal
+year only, linking through to the full multi-year records.
+
+Likely causes of the report: a stale cached page (identical symptom
+seen during the county build) or the GitHub Pages deployment, which
+has been unavailable while the repository is private (noted at Pages
+setup; the owner's settings decision).
+
+The guard requested was added regardless: the suite now asserts, per
+layer, that the year set offered in the UI exactly equals the year
+set in that layer's data file, that the earliest city year renders,
+and that the districts tables carry every data year — so a future
+selector regression cannot ship silently.
+
+Tests: **515 assertions, all passing** (509 + 6 year-coverage).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

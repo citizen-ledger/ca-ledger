@@ -1637,6 +1637,39 @@ def test_depth(page, base):
           and "SUM EXACTLY" in page.inner_text("#recordBody"))
 
 
+def test_year_coverage(page, base):
+    """No silently unreachable data: for every layer, the years the UI
+    offers must exactly equal the years in that layer's data file."""
+    def ui_years(url, sel="#yearSel"):
+        page.goto(f"{base}/{url}")
+        page.wait_for_selector(sel)
+        return page.eval_on_selector_all(sel + " option",
+                                         "els => els.map(e => e.value)")
+    for url, data, label in ((("cities.html"), CITY, "cities"),
+                             (("cities.html#l=county"), COUNTY, "counties"),
+                             (("index.html"), STATE, "state"),
+                             (("schools.html"), SCHOOL, "schools")):
+        opts = ui_years(url)
+        check(f"year coverage {label}: selector == data file exactly",
+              opts == data["years"], f"UI {opts} vs data {data['years']}")
+    # the year selector actually navigates to the earliest year
+    page.goto(f"{base}/cities.html#c=los-angeles")
+    page.wait_for_selector("#yearSel")
+    page.select_option("#yearSel", CITY["years"][0])
+    page.wait_for_timeout(200)
+    check("year coverage: earliest city year reachable and rendered",
+          CITY["years"][0] in page.inner_text("#kicker")
+          and "Police" in page.inner_text("#recordBody"))
+    # districts has no selector: its record tables must carry every year
+    slug = next(s for s, r in DIST["districts"].items() if r["exp"][-1])
+    page.goto(f"{base}/districts.html#d={slug}")
+    page.wait_for_selector("#expTbl .u-row")
+    fys = page.eval_on_selector_all("#expTbl .u-row .y",
+                                    "els => els.map(e => e.textContent)")
+    check("year coverage districts: record table carries every data year",
+          set(DIST["years"]) <= set(fys))
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1822,6 +1855,7 @@ def main():
             test_rename(page, base)
             test_schools(page, base)
             test_depth(page, base)
+            test_year_coverage(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
