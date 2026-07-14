@@ -54,6 +54,7 @@ def load_data_js(path):
 
 STATE = load_data_js(ROOT / "data.js")
 CITY = load_data_js(ROOT / "city-data.js")
+GEO = load_data_js(ROOT / "city-geo.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -166,14 +167,15 @@ def clipboard_of(page, toggle_sel="#citeToggle", copy_sel="#citeCopy"):
 
 # ----------------------------------------------------------------------
 def test_integrity():
-    for name, payload in (("data.js", STATE), ("city-data.js", CITY)):
+    for name, payload in (("data.js", STATE), ("city-data.js", CITY),
+                          ("city-geo.js", GEO)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
     r = subprocess.run([sys.executable, "pipeline/verify_digest.py",
-                        "data.js", "city-data.js"],
+                        "data.js", "city-data.js", "city-geo.js"],
                        cwd=ROOT, capture_output=True, text=True)
-    check("integrity: verify_digest.py verifies both files", r.returncode == 0,
+    check("integrity: verify_digest.py verifies all data files", r.returncode == 0,
           (r.stdout + r.stderr)[-200:])
 
 def test_v1(page, base):
@@ -644,13 +646,15 @@ def test_actuals_view(page, base):
 
 
 def test_map(page, base):
-    # data-level: coordinate coverage for every city, within California
-    missing = [k for k, c in CITY["cities"].items()
-               if "lat" not in c or "lng" not in c]
-    check("map: every city has coordinates", not missing, str(missing[:5]))
-    bad = [k for k, c in CITY["cities"].items()
-           if not (32.4 <= c.get("lat", 0) <= 42.1 and -124.5 <= c.get("lng", 0) <= -114.0)]
-    check("map: all coordinates within California bounds", not bad, str(bad[:5]))
+    # data-level: boundary coverage — every city has a polygon, 482/482
+    missing = [slug for slug in CITY["cities"] if slug not in GEO["cities"]]
+    check("map: boundary coverage 482/482", not missing, str(missing[:5]))
+    check("map: boundary count matches city count",
+          len(GEO["cities"]) == len(CITY["cities"]),
+          f"{len(GEO['cities'])} vs {len(CITY['cities'])}")
+    bad = [s for s, g in GEO["cities"].items()
+           if not g.get("d", "").startswith("M") or "cx" not in g or "r" not in g]
+    check("map: every boundary has a path + hit anchor", not bad, str(bad[:5]))
 
     # map view renders behind the toggle; search picker unchanged
     page.goto(f"{base}/cities.html")
@@ -658,32 +662,48 @@ def test_map(page, base):
     check("map: hidden by default", page.is_hidden("#mapPanel"))
     check("map: search picker visible by default", page.is_visible("#citySearch"))
     page.click('#pickerModeGroup [data-mode="map"]')
-    page.wait_for_selector("#mapDots circle")
+    page.wait_for_selector("#mapShapes path")
     check("map: panel shown, search hidden",
           page.is_visible("#mapPanel") and page.is_hidden("#citySearch"))
-    check("map: one dot per city",
-          page.locator("#mapDots circle").count() == len(CITY["cities"]))
+    check("map: one boundary polygon per city",
+          page.locator("#mapShapes path").count() == len(CITY["cities"]))
+    check("map: one hit-target per city",
+          page.locator("#mapHits circle").count() == len(CITY["cities"]))
     check("map: outline present", page.locator("#mapSvg path.outline").count() == 1)
     check("map: hash encodes view", "p=map" in page.evaluate("location.hash"))
 
-    # HARD NEUTRALITY: dots are never colored by spending — with nothing
-    # selected, every dot must share one identical computed fill (ink)
+    # HARD NEUTRALITY: boundaries are never filled by spending — with
+    # nothing selected, all 482 shapes share one computed fill (ink) and
+    # one fill-opacity
     fills = page.evaluate(
-        "[...new Set([...document.querySelectorAll('#mapDots circle')]"
+        "[...new Set([...document.querySelectorAll('#mapShapes path')]"
         ".map(d=>getComputedStyle(d).fill))]")
-    check("map neutrality: single uniform dot fill", len(fills) == 1, str(fills))
+    check("map neutrality: single uniform boundary fill", len(fills) == 1, str(fills))
     check("map neutrality: fill is ink", fills[0] == "rgb(36, 36, 36)", fills[0])
     ops = page.evaluate(
-        "[...new Set([...document.querySelectorAll('#mapDots circle')]"
-        ".map(d=>getComputedStyle(d).opacity))]")
-    check("map neutrality: single uniform dot opacity", len(ops) == 1, str(ops))
+        "[...new Set([...document.querySelectorAll('#mapShapes path')]"
+        ".map(d=>getComputedStyle(d).fillOpacity))]")
+    check("map neutrality: single uniform fill-opacity", len(ops) == 1, str(ops))
 
-    # dot semantics: area from population, keyboard-accessible buttons
+    # minimum hit-target size: smallest target must render at a forgiving
+    # screen size at statewide zoom
+    min_px = page.evaluate(
+        """(() => {
+          const svg = document.getElementById('mapSvg');
+          const scale = svg.getBoundingClientRect().width /
+                        svg.viewBox.baseVal.width;
+          return Math.min(...[...document.querySelectorAll('#mapHits circle')]
+            .map(c => parseFloat(c.getAttribute('r')) * scale));
+        })()""")
+    check("map: minimum hit-target radius ≥ 6px on screen", min_px >= 6.0,
+          f"{min_px:.2f}px")
+
+    # a11y: hit-targets are the keyboard buttons
     lk_pop = CITY["cities"]["lakewood"]["years"][CITY["years"][-1]]["population"]
-    lk_dot = page.locator('#mapDots circle[aria-label^="Lakewood,"]')
+    lk_dot = page.locator('#mapHits circle[aria-label^="Lakewood,"]')
     aria = lk_dot.get_attribute("aria-label")
     check("map a11y: aria-label carries population", f"{lk_pop:,}" in aria, aria)
-    check("map a11y: dot is a tabbable button",
+    check("map a11y: hit-target is a tabbable button",
           lk_dot.get_attribute("role") == "button" and lk_dot.get_attribute("tabindex") == "0")
 
     # keyboard selection produces identical state to the search picker
@@ -693,6 +713,8 @@ def test_map(page, base):
           "LAKEWOOD" in page.inner_text("#mapReadout")
           and f"{lk_pop:,}" in page.inner_text("#mapReadout"),
           page.inner_text("#mapReadout"))
+    check("map hover affordance: boundary highlights on focus",
+          page.evaluate("document.querySelectorAll('#mapShapes path.hot').length") == 1)
     page.keyboard.press("Enter")
     page.wait_for_selector("#recordBody .det-row")
     map_hash = page.evaluate("location.hash")
@@ -712,21 +734,19 @@ def test_map(page, base):
     check("map selection: identical c= param as search selection",
           "c=lakewood" in search_hash and "p=map" not in search_hash, search_hash)
 
-    # selected dots reuse the comparison swatches in alphabetical order
+    # selected boundaries reuse the comparison swatches in alphabetical
+    # order (shapes render in alphabetical DOM order by construction)
     page.goto(f"{base}/cities.html#p=map&c=santa-monica,lakewood,san-francisco")
-    page.wait_for_selector("#mapDots circle.sel")
-    sel = page.evaluate(
-        "[...document.querySelectorAll('#mapDots circle.sel')]"
-        ".map(d=>({n:d.getAttribute('aria-label').split(',')[0], f:d.getAttribute('fill')}))")
-    by_name = {s["n"]: s["f"] for s in sel}
+    page.wait_for_selector("#mapShapes path.sel")
+    fills = page.evaluate(
+        "[...document.querySelectorAll('#mapShapes path.sel')]"
+        ".map(d=>d.getAttribute('fill'))")
     check("map selected swatches: alphabetical ramp order",
-          by_name.get("Lakewood") == "#242424"
-          and by_name.get("San Francisco") == "#6f6c69"
-          and by_name.get("Santa Monica") == "#a39f9c", str(by_name))
+          fills == ["#242424", "#6f6c69", "#a39f9c"], str(fills))
 
     # permalink round-trip with view + region params
     page.goto(f"{base}/cities.html#p=map&r=bay&c=lakewood")
-    page.wait_for_selector("#mapDots circle")
+    page.wait_for_selector("#mapShapes path")
     check("map hash restore: map view active",
           "on" in (page.get_attribute('#pickerModeGroup [data-mode="map"]', "class") or ""))
     check("map hash restore: region pill",

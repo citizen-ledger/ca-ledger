@@ -633,6 +633,50 @@ controls, education mapping, difference arithmetic recomputed
 independently, grayscale direction, empty states with reasons,
 permalink round-trips, CSV/citation content).
 
+## Map upgraded to real city boundaries (2026-07-13)
+
+The city map's population-scaled dots are replaced by every city's
+true incorporated boundary.
+
+- **Source:** Census cartographic boundary file cb_2023_06_place_500k
+  (public domain), filtered to incorporated places — exactly 482,
+  one-to-one with the SCO cities, matched by the same normalization +
+  alias rules as the gazetteer (including the UTF-8 repair for La
+  Cañada Flintridge). The generator
+  (`pipeline/make_city_boundaries.py`, stdlib-only with a hand-rolled
+  Douglas-Peucker) fails with a named report unless all 482 match;
+  nothing is guessed or dropped.
+- **Payload:** simplification at 0.2 viewBox units (≈275 m ground)
+  keeps full ring structure (enclaves and exclaves included) at
+  15,121 points — **city-geo.js is 202 KB** (options measured: 102 KB
+  at 0.5, 134 KB at 0.35, 202 KB at 0.2; chosen for fidelity at the
+  regional zooms, and nowhere near the multi-megabyte threshold that
+  would have required a decision). The file carries its own SHA-256
+  integrity digest, verified by pipeline/verify_digest.py and the
+  test suite.
+- **Rendering:** real polygons at every zoom, all 482 — no dot
+  fallback, no representation swap. A city that is a few pixels at
+  statewide zoom is shown at its true size; the regional presets make
+  small cities workable. Uniform ink fill with a uniform parchment
+  hairline between adjacent boundaries (structural, encodes nothing);
+  selected cities take the comparison swatches in alphabetical order;
+  hover/focus highlights in the interactive blue only.
+- **Clickability:** an invisible circle above each polygon provides a
+  minimum hit-target (screen-constant across zooms; the tests assert
+  ≥6 px radius for the smallest at statewide) and doubles as the
+  keyboard button (role=button, tabindex, full aria-labels). Small
+  cities' targets stack above larger ones so overlaps resolve in
+  their favor; the polygon itself is also clickable.
+- **Neutrality unchanged and asserted:** all 482 unselected shapes
+  share one computed fill and one fill-opacity; the caption reads
+  "TRUE INCORPORATED BOUNDARIES (CENSUS, SIMPLIFIED) · THE MAP SHOWS
+  WHERE, NEVER HOW MUCH."
+
+Tests: 219 assertions, all passing — the 214 prior kept (map dot
+assertions translated to polygons), plus boundary coverage (482/482),
+hit-anchor validity, minimum hit-target size, hover affordance, and
+the geo file's integrity digest.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
