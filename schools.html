@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — K-12 schools</title>
+<meta name="description" content="A nonpartisan record of California government spending. K-12 school district spending per ADA, gated to CDE's published figures to the cent; county offices and charters as records.">
+<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/schools.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — K-12 schools">
+<meta property="og:description" content="A nonpartisan record of California government spending. K-12 school district spending per ADA, gated to CDE's published figures to the cent; county offices and charters as records.">
+<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/schools.html">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Ledger design system — see index.html. K-12 layer: districts are
+     gated to CDE's published figure to the cent and compared per ADA;
+     county offices and charters are records only, and the page never
+     lets them into a comparison. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .btn{font-size:12.5px;border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
+  .btn.sm{padding:6px 14px;font-size:11.5px}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
+
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400}
+  .dek{font-size:15px;color:var(--graphite);margin-top:12px;max-width:560px;line-height:1.5}
+  .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  .hero-sub{font-family:var(--mono);font-size:12px;color:var(--graphite);margin-top:10px}
+  .hero-lbl{font-family:var(--mono);font-size:10.5px;color:var(--smoke);margin-top:4px}
+  .hero-right{text-align:right}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .schedlbl{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .dim{color:var(--smoke)}
+  .tblwrap{overflow-x:auto}
+
+  .controls{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:34px;flex-wrap:wrap}
+  .picklbl{font-family:var(--mono);font-size:11px;color:var(--smoke)}
+  input[type="search"]{font-family:var(--mono);font-size:12.5px;padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:250px}
+  input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .pick-results{list-style:none;margin-top:6px;max-height:230px;overflow-y:auto;border:1px solid var(--ash);background:var(--surface);border-radius:2px;max-width:430px}
+  .pick-results:empty{display:none}
+  .pick-results button{display:flex;justify-content:space-between;gap:12px;width:100%;border:none;background:transparent;padding:8px 14px;cursor:pointer;font-size:13px;text-align:left;border-bottom:1px solid var(--hairline)}
+  .pick-results button:hover{background:var(--wash-in)}
+  .pick-results small{font-family:var(--mono);font-size:10.5px;color:var(--smoke)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;border:1px solid var(--ink);background:var(--ink);color:var(--parchment);border-radius:9999px;padding:8px 10px 8px 16px;cursor:pointer}
+  .chip:hover{background:var(--graphite)}
+  .chip i{font-style:normal;font-size:11px;opacity:.75}
+  .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:12.5px;color:var(--ink);border-left:1px solid var(--ash)}
+  .pillgroup>button:first-child{border-left:none}
+  .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
+  .stepper button{color:var(--smoke);padding:9px 14px;border:none;background:transparent;cursor:pointer}
+  .stepper button:hover{background:var(--wash);color:var(--ink)}
+  .stepper select{border:none;background:transparent;font-family:var(--mono);font-size:12.5px;color:var(--ink);cursor:pointer;-webkit-appearance:none;appearance:none;padding:9px 2px}
+
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  .sched-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .gate-line{font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;color:var(--graphite);margin-top:8px;padding:8px 12px;background:var(--wash-in);border:1px solid var(--hairline)}
+  .rec-name{font-family:var(--serif);font-size:26px;margin-top:12px}
+  .rec-meta{font-family:var(--mono);font-size:11.5px;color:var(--smoke);margin-top:6px}
+  .rec-big{font-family:var(--mono);font-size:38px;font-weight:500;letter-spacing:-0.6px;margin-top:14px}
+  .rec-biglbl{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;color:var(--smoke);margin-top:4px}
+  .det-row{display:grid;grid-template-columns:240px 1fr 130px;gap:0 16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hairline)}
+  .det-row:hover{background:var(--wash-in)}
+  .det-row .fn{font-size:14px}
+  .det-row .bar{height:6px;background:var(--track);border-radius:1px;overflow:hidden}
+  .det-row .bar i{display:block;height:6px;background:var(--ink)}
+  .det-row .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .det-foot{display:grid;grid-template-columns:240px 1fr 130px;gap:0 16px;padding:12px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:12.5px;color:var(--graphite);line-height:1.5}
+  .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+
+  .cmp-head{display:grid;gap:0 20px;align-items:end;margin-top:22px;padding-bottom:12px;border-bottom:1px solid var(--ink)}
+  .cmp-row{display:grid;gap:0 20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--hairline)}
+  .cmp-row:hover{background:var(--wash-in)}
+  .cmp-foot{display:grid;gap:0 20px;align-items:center;padding:13px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  .cellbar{height:6px;background:var(--track);border-radius:1px;margin-top:6px;overflow:hidden}
+  .cellbar i{display:block;height:6px}
+  .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .dhead .nm{font-size:15px;font-weight:600}
+  .dhead .sub{font-family:var(--mono);font-size:11px;color:var(--smoke);margin-top:4px}
+
+  .statement{margin-top:16px;border:1px solid var(--ink);background:var(--surface);padding:13px 18px;font-size:13.5px;line-height:1.6}
+  .overlap{margin-top:28px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:18px 22px;font-size:14px;line-height:1.65}
+  .overlap b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
+  .empty{margin-top:20px;border:1px solid var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
+  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:20px}
+  .cite-inner{border-top:3px solid var(--ink);padding:16px 22px}
+  .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
+
+  .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
+  .method .lead{font-size:15px;color:var(--graphite);max-width:640px;margin-top:10px}
+  .mgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;margin-top:26px}
+  .mcol{display:flex;flex-direction:column;gap:16px}
+  .mnote{display:flex;gap:12px;font-size:13.5px;line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  .revlog{font-family:var(--mono);font-size:11px;color:var(--smoke);line-height:1.9;border:1px solid var(--hairline);padding:12px 16px}
+  .integrity{border:1px solid var(--hairline);padding:12px 16px}
+  .digest{font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--graphite);margin-top:6px}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .det-row,.det-foot{grid-template-columns:1fr 110px} .det-row .bar{display:none} }
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">A nonpartisan record of California government spending</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <span class="active">K-12 schools</span>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <a href="#methodology">Methodology</a>
+  </nav>
+  <div class="hd-actions np" style="display:flex;gap:8px">
+    <button class="btn ink" id="citeToggle">Cite</button>
+    <button class="btn blue" id="csvBtn">Download CSV</button>
+  </div>
+</header>
+
+<div class="prov" id="dataBanner"></div>
+
+<main>
+  <div class="po cite-text" id="printCite"></div>
+
+  <div class="hero">
+    <div>
+      <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
+      <h1>K-12 schools</h1>
+      <p class="dek" id="dek"></p>
+    </div>
+    <div class="hero-right">
+      <div class="hero-num" id="heroNum">—</div>
+      <div class="hero-sub" id="heroSub"></div>
+      <div class="hero-lbl">SACS UNAUDITED ACTUALS · GATED TO CDE'S PUBLISHED FIGURES</div>
+    </div>
+  </div>
+
+  <div class="controls np">
+    <div style="flex:1;min-width:280px">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="pillgroup" role="group" aria-label="Entity type" id="typeGroup">
+          <button data-type="districts">School districts</button>
+          <button data-type="coes">County offices</button>
+          <button data-type="charters">Charter schools</button>
+        </div>
+        <span class="picklbl" id="pickLbl"></span>
+      </div>
+      <div id="coeStatement" class="statement" hidden><strong>Records only — county offices of education are never compared.</strong> CDE itself excludes COEs from its per-ADA statistic: they run court and community schools, SELPAs, and countywide services no district runs, and much of their book is pass-through. This page shows each office's record and offers no comparison and no per-ADA figure for them.</div>
+      <div id="charterStatement" class="statement" hidden><strong>Records only — charter schools are never compared here.</strong> Charters file three different ways (own SACS report, the Alternative Form, or inside their authorizer's books), and CDE excludes them from its per-ADA statistic. Each record states how the school filed; charters reported inside an authorizer's books point back to that district.</div>
+      <input type="search" id="schoolSearch" placeholder="" aria-label="Search schools">
+      <ul class="pick-results" id="schoolList"></ul>
+      <div class="chips" id="schoolChips"></div>
+    </div>
+    <div class="pillgroup stepper">
+      <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
+      <select id="yearSel" aria-label="Select fiscal year"></select>
+      <button id="yearNext" aria-label="Next fiscal year">▸</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
+      <button data-unit="perAda">Per ADA</button>
+      <button data-unit="total">Total dollars</button>
+    </div>
+  </div>
+
+  <section id="recordSec" aria-live="polite">
+    <div class="empty" id="emptyState"></div>
+    <div class="record" id="recordCard" hidden>
+      <div class="sched-row">
+        <span class="schedlbl" id="scheduleLabel"></span>
+        <span class="schedlbl ghosty" id="scheduleNote"></span>
+      </div>
+      <div class="gate-line" id="gateLine"></div>
+      <div id="recordBody"></div>
+      <div class="caps" id="recordCaps"></div>
+    </div>
+  </section>
+
+  <div class="overlap" id="overlapPanel"></div>
+
+  <div class="cite-panel np" id="citePanel" hidden>
+    <div class="cite-inner">
+      <div class="microlbl">CITATION</div>
+      <div class="cite-text" id="citeText"></div>
+      <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
+    </div>
+  </div>
+
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <p class="lead">The Ledger records what each local education agency reports to the California Department of Education, and publishes district figures only when they reproduce CDE's own published numbers exactly. It does not rank schools or characterize their choices.</p>
+    <div class="mgrid">
+      <div class="mcol">
+        <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote"><b>S-1</b><span><strong>The gate is exact.</strong> Every school district figure on this page is the <strong>Current Expense of Education</strong> (CDE's EDP 365: General Fund current operating expense — instruction, services, administration, plant — excluding food services, facilities construction, community-service and non-agency activities, and retiree-benefit objects, per CDE's formula). The pipeline recomputes it from the raw SACS general ledger and refuses to publish unless every district-year matches CDE's published figure to within five cents — in practice, to the cent. The function rows on each record sum exactly to that gated figure.</span></div>
+        <div class="mnote"><b>S-2</b><span><strong>Comparison is districts only, per ADA.</strong> Average daily attendance is the standard education denominator, and the ADA here is the same figure CDE publishes beside its per-ADA statistic. County offices of education are <strong>records only, never compared</strong> — CDE itself excludes them from its per-ADA statistic, and their responsibilities (court and community schools, SELPAs, fiscal oversight, pass-through) are not a district's. Charter schools are records only as well. K-12 entities are never compared to or summed with cities, counties, special districts, or the state budget.</span></div>
+        <div class="mnote"><b>S-3</b><span><strong>Three structural notes travel with district figures.</strong> <em>Basic aid:</em> districts whose local property tax exceeds their LCFF entitlement keep the excess, so per-ADA spending partly reflects tax-base geography rather than choices (the share of districts in this position is computed from CDE's LCFF data each run). <em>Small districts:</em> necessary-small-school funding floors make per-ADA figures structurally high below a few hundred ADA. <em>Sponsored charters:</em> a district whose separately-reporting charter ADA is large relative to its own is shown with that fact, because its record describes only the district-run schools.</span></div>
+        <div class="mnote"><b>S-4</b><span><strong>Charters file three ways, and this page never double-counts them.</strong> Most charter spending (about 80% of charter ADA) is filed separately — those schools have their own records here, reconciled through CDE's rollups. Charters in an authorizer's Funds 09/62 sit outside the district's Current Expense figure and are shown as a separate line on the district record. Charters commingled in an authorizer's Fund 01 <strong>cannot be separated</strong>; the affected district records state the count and ADA on their face, and CDE's own published figure for those districts includes them.</span></div>
+        <div class="mnote"><b>S-5</b><span><strong>This layer and the state budget see the same money.</strong> The overlap statement on this page is computed by the pipeline on every run from the ledger itself and the state layer's own data file. Named traps: the Education Protection Account is continuously appropriated outside the annual Budget Act but inside the state's General Fund display; STRS on-behalf contributions appear in both layers at different values; statewide LEA sums contain inter-LEA pass-throughs; and Proposition 98 is a K-14 guarantee that also counts property taxes — it is neither the state agency total nor total school funding. The two layers agree to roughly 1–3.5% and never to the dollar (enacted appropriations vs. year-end accrual actuals).</span></div>
+        <div class="mnote"><b>S-6</b><span><strong>Scope and vintages.</strong> Fiscal years 2022-23 through 2024-25 (SACS archives exist back to 2003-04; the window extends by running the pipeline). Figures are unaudited actuals as filed. ROPs, SELPAs, and other education JPAs file to CDE and are inside the reconciliation rollups but are not shown as records in this version. Traditional-LEA filing completeness is 100% — every district and county office files, under AB 1200 oversight.</span></div>
+      </div>
+      <div class="mcol">
+        <div class="microlbl">SOURCES &amp; RECORD</div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Primary sources: CDE SACS unaudited actuals (<span class="mono" style="font-size:12px">www3.cde.ca.gov/fiscal-downloads</span>, annual archives), CDE's published Current Expense of Education (the reconciliation target), and LCFF summary data (basic-aid flag, county-office ADA). The <a href="index.html">state budget page</a> shows the K-12 agency's appropriations — the same money seen from the other direction, on a different accounting basis; see the overlap statement above.</div>
+        <div class="revlog" id="revLog"></div>
+        <div class="integrity">
+          <div class="microlbl">RECORD INTEGRITY</div>
+          <div class="digest" id="integrityDigest"></div>
+          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="school-data.js" download>school-data.js</a> and run <span class="mono" style="font-size:11.5px">python3 pipeline/verify_digest.py school-data.js</span> — it recomputes the SHA-256 of the canonical JSON payload. Each district record also stores CDE's published figure beside the recomputed one, so the gate itself can be re-checked from the data file.</div>
+        </div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Citations reproduce the exact view — entities, fiscal year, and unit. District dollar figures are exact as filed; per-ADA figures are rounded to the dollar.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="school-data.js"></script>
+<script>
+(function(){
+  "use strict";
+  const D = window.CA_SCHOOL_DATA;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  const fmt = n => n.toLocaleString("en-US");
+  const money0 = v => "$" + fmt(Math.round(v));
+  const moneyExact = v => "$" + v.toLocaleString("en-US", {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  const YEARS = D.years;
+  const FN = D.functions, OBJ = D.objectFamilies;
+  const RAMP = ["#242424","#6f6c69","#a39f9c","#cfc9c4"];
+  const TYPES = {
+    districts: {store: D.districts, label: "SCHOOL DISTRICTS", max: 4},
+    coes: {store: D.countyOffices, label: "COUNTY OFFICES", max: 1},
+    charters: {store: D.charters, label: "CHARTER SCHOOLS", max: 1},
+  };
+  // live counts for the basic-aid note — never hardcoded
+  const latest = YEARS[YEARS.length-1];
+  const BA_COUNT = Object.values(D.districts).filter(d => (d.years[latest]||{}).basicAid).length;
+  const D_COUNT = Object.keys(D.districts).length;
+  const OL = D.meta.overlap.years[D.meta.overlap.latest];
+
+  const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
+  const S = {...DEFAULTS, sel: []};
+
+  /* ---------- permalink ---------- */
+  function hashOf(){
+    const p = new URLSearchParams();
+    if (S.type !== DEFAULTS.type) p.set("t", S.type);
+    if (S.sel.length) p.set("c", S.sel.slice().sort().join(","));
+    if (S.year !== DEFAULTS.year) p.set("y", S.year);
+    if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
+    if (S.q) p.set("q", S.q);
+    return p.toString();
+  }
+  function syncHash(){
+    const h = hashOf();
+    try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
+    catch(e){ location.hash = h; }
+  }
+  function applyHash(){
+    const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    S.type = TYPES[p.get("t")] ? p.get("t") : "districts";
+    S.year = YEARS.includes(p.get("y")) ? p.get("y") : latest;
+    S.unit = ["perAda","total"].includes(p.get("u")) ? p.get("u") : "perAda";
+    S.q = p.get("q") || "";
+    const store = TYPES[S.type].store;
+    S.sel = (p.get("c")||"").split(",").filter(s => store[s]).slice(0, TYPES[S.type].max);
+  }
+
+  /* ---------- helpers ---------- */
+  const ent = id => TYPES[S.type].store[id];
+  const yr = (id, y) => (ent(id).years[y||S.year]);
+  function districtNotes(id, y){
+    const d = D.districts[id], v = d.years[y];
+    if (!v) return [];
+    const notes = [];
+    if (v.basicAid) notes.push({key:"basicAid", text:
+      "Basic aid: local property tax exceeds this district's LCFF entitlement and the district keeps the excess — per-ADA spending partly reflects local tax-base geography, not spending choices. "
+      + BA_COUNT + " of " + D_COUNT + " districts (" + (BA_COUNT/D_COUNT*100).toFixed(1) + "%) are in this position."});
+    if (v.smallNSS) notes.push({key:"smallNSS", text:
+      "Fewer than 250 ADA: necessary-small-school funding floors make small districts' per-ADA figures structurally high."});
+    if (v.sponsoredCharterADA > 0 && v.sponsoredCharterADA >= 0.25 * v.ada) notes.push({key:"sponsored", text:
+      "Sponsors " + fmt(Math.round(v.sponsoredCharterADA)) + " ADA of separately-reporting charter schools against "
+      + fmt(Math.round(v.ada)) + " ADA of its own — this record describes only the district-run schools."});
+    if (v.commingledCharters) notes.push({key:"commingled", text:
+      v.commingledCharters.count + " charter school" + (v.commingledCharters.count>1?"s":"") + " ("
+      + fmt(Math.round(v.commingledCharters.ada)) + " ADA) report inside this district's Fund 01 and cannot be separated — this record, and CDE's published figure for it, include them."});
+    if (v.depFundsCharterExp > 0) notes.push({key:"depFunds", text:
+      "Charter schools in the district's books outside this record's scope (Funds 09/62): "
+      + money0(v.depFundsCharterExp) + " of expenditures."});
+    return notes;
+  }
+
+  /* ---------- chrome ---------- */
+  function renderChrome(){
+    $("dataBanner").innerHTML =
+      "<span>SOURCE: CALIF. DEPT. OF EDUCATION · SACS UNAUDITED ACTUALS</span>"
+      + "<span>DISTRICT GATE: REPRODUCES CDE'S PUBLISHED FIGURE TO THE CENT</span>"
+      + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + "<span>PUBLIC RECORD</span>";
+    $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
+    $("dek").textContent = "Current expense of education for California's "
+      + fmt(D_COUNT) + " school districts, reconciled to the Department of "
+      + "Education's published figures to the cent, compared per ADA with the "
+      + "structural notes a fair reading needs. County offices of education "
+      + "and charter schools appear as records only — never in comparison. "
+      + "Schools appear alphabetically; the Ledger does not rank.";
+    const sel = S.sel;
+    const T = TYPES[S.type];
+    if (sel.length === 1){
+      $("heroNum").textContent = ent(sel[0]).name;
+      const v = yr(sel[0]);
+      $("heroSub").textContent = v && v.ada ? "ADA " + fmt(Math.round(v.ada)) : "";
+    } else if (sel.length > 1){
+      $("heroNum").textContent = sel.length + " DISTRICTS";
+      $("heroSub").textContent = "COMPARED PER ADA · ALPHABETICAL";
+    } else {
+      $("heroNum").textContent = fmt(Object.keys(T.store).length) + " " + T.label;
+      $("heroSub").textContent = S.type === "districts"
+        ? "SELECT 1–4 · 2–4 COMPARE" : "SELECT ONE · RECORDS ONLY";
+    }
+    $("pickLbl").textContent = T.label + (S.type === "districts"
+      ? " · SELECT 1–4 · 2–4 COMPARE · " : " · RECORDS ONLY · ") + S.sel.length + " SELECTED";
+    $("schoolSearch").placeholder = "Search " + fmt(Object.keys(T.store).length)
+      + " " + T.label.toLowerCase() + "…";
+    $("coeStatement").hidden = S.type !== "coes";
+    $("charterStatement").hidden = S.type !== "charters";
+    $("revLog").innerHTML = YEARS.slice().reverse().map(y=>"FY "+y+" · UNAUDITED ACTUALS · GATED").join("<br>")
+      + "<br>GENERATED " + esc(D.meta.generated);
+    const integ = D.meta.integrity || {};
+    $("integrityDigest").textContent = integ.digest
+      ? "SHA-256 · " + integ.digest + " (school-data.js)"
+      : "No digest recorded — regenerate school-data.js with the pipeline.";
+    document.querySelectorAll("#typeGroup button").forEach(b =>
+      b.classList.toggle("on", b.dataset.type === S.type));
+    document.querySelectorAll("#unitGroup button").forEach(b =>
+      b.classList.toggle("on", b.dataset.unit === S.unit));
+    $("unitGroup").style.display = S.type === "districts" ? "" : "none";
+  }
+
+  /* ---------- overlap panel: live values only ---------- */
+  function renderOverlap(){
+    const y = D.meta.overlap.latest;
+    $("overlapPanel").innerHTML = "<b>THIS LAYER AND THE STATE BUDGET SEE THE SAME MONEY — THEY ARE NEVER ADDED</b>"
+      + "In FY " + y + ", " + (OL.stateShare*100).toFixed(1) + "% of the $" + OL.leaRevenuesB.toFixed(1)
+      + "B California's schools reported receiving was state money — the dollars the "
+      + "<a href=\"index.html\">state budget page</a> shows as its K-12 agency ($" + OL.agencyEnactedB.toFixed(1)
+      + "B enacted; the two layers agree to roughly 1–3.5% and never to the dollar, because one is an enacted "
+      + "plan and the other is year-end accrual actuals). Another " + (OL.propertyTaxShare*100).toFixed(1)
+      + "% ($" + OL.propertyTaxB.toFixed(1) + "B) is local property tax that counts toward the LCFF formula "
+      + "but never appears in the state budget, and " + (OL.federalShare*100).toFixed(1) + "% is federal. "
+      + "Adding this page to the state page would count the same dollars twice, so the Ledger never adds them. "
+      + "Also named, so no one trips on them: the Education Protection Account ($" + OL.epaB.toFixed(1)
+      + "B) is continuously appropriated outside the annual Budget Act but inside the state's General Fund "
+      + "display; STRS on-behalf contributions appear in both layers at different values ($" + OL.strsOnBehalfB.toFixed(1)
+      + "B recognized by LEAs); statewide school sums contain $" + OL.interLeaPassThroughB.toFixed(1)
+      + "B of inter-LEA pass-throughs; and Proposition 98 is a K-14 guarantee that also counts property "
+      + "taxes — it is neither the agency total nor total school funding.";
+  }
+
+  /* ---------- picker ---------- */
+  function renderPicker(){
+    const store = TYPES[S.type].store;
+    const q = S.q.trim().toLowerCase();
+    const list = $("schoolList");
+    if (!q){ list.innerHTML = ""; renderChips(); return; }
+    const ids = Object.keys(store).filter(id => {
+      const e = store[id];
+      return e.name.toLowerCase().includes(q) || (e.county||"").toLowerCase().includes(q)
+        || (e.authorizer||"").toLowerCase().includes(q);
+    }).slice(0, 40);
+    let extra = "";
+    if (S.type === "charters"){
+      const dep = D.dependentCharters.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+      extra = dep.map(c =>
+        '<button data-dep="1"><span>'+esc(c.name)+'</span><small>REPORTS INSIDE '
+        + esc(c.authorizer).toUpperCase() + (c.commingled ? " · FUND 01, COMMINGLED — NOT SEPARABLE" : " · FUNDS 09/62")
+        + '</small></button>').join("");
+    }
+    list.innerHTML = ids.map(id => {
+      const e = store[id];
+      return '<button data-id="'+id+'"><span>'+esc(e.name)+'</span><small>'
+        + esc(e.county).toUpperCase() + (e.type ? " · " + esc(e.type).toUpperCase() : "")
+        + (e.charterNumber ? " · CHARTER #" + esc(e.charterNumber) : "") + '</small></button>';
+    }).join("") + extra;
+  }
+  function renderChips(){
+    $("schoolChips").innerHTML = S.sel.map(id =>
+      '<button class="chip" data-id="'+id+'"><span>'+esc(ent(id).name)+'</span><i>×</i></button>').join("");
+  }
+
+  /* ---------- record rendering ---------- */
+  const val = (v, ada) => S.unit === "perAda" && ada ? v/ada : v;
+  const fmtVal = (v, ada) => S.unit === "perAda" && ada ? money0(v/ada) : moneyExact(v);
+
+  function renderSingleDistrict(id){
+    const d = D.districts[id], v = d.years[S.year];
+    $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION — BY FUNCTION · "
+      + d.name.toUpperCase() + " · " + (S.unit==="perAda" ? "PER ADA" : "TOTAL DOLLARS")
+      + " · FY " + S.year;
+    $("scheduleNote").textContent = d.county.toUpperCase() + " COUNTY · " + d.type.toUpperCase()
+      + " · ADA " + fmt(Math.round(v.ada));
+    $("gateLine").textContent = "GATED · RECOMPUTED FROM THE SACS GENERAL LEDGER = CDE'S PUBLISHED FIGURE: "
+      + moneyExact(v.cePublished) + " · DIFFERENCE $" + Math.abs(v.currentExpense - v.cePublished).toFixed(2);
+    const rows = FN.map(f => [f.name, v.byFunction[f.key]||0]).filter(r => r[1] !== 0)
+      .sort((a,b) => b[1]-a[1]);
+    const max = rows.length ? Math.max(...rows.map(r => Math.abs(r[1]))) : 1;
+    const notes = districtNotes(id, S.year);
+    $("recordBody").innerHTML =
+      '<div class="rec-big num">' + fmtVal(v.currentExpense, v.ada) + '</div>'
+      + '<div class="rec-biglbl">CURRENT EXPENSE OF EDUCATION'
+      + (S.unit==="perAda" ? " PER ADA" : "") + ' · UNAUDITED ACTUALS · RECONCILED</div>'
+      + '<div style="margin-top:16px">'
+      + rows.map(([name, x]) =>
+        '<div class="det-row"><span class="fn">'+esc(name)+'</span>'
+        + '<span class="bar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%"></i></span>'
+        + '<span class="v">'+fmtVal(x, v.ada)+'</span></div>').join("")
+      + '<div class="det-foot"><span>Current expense of education</span><span></span>'
+      + '<span class="v">'+fmtVal(v.currentExpense, v.ada)+'</span></div></div>'
+      + notes.map(n => '<div class="note-row">† '+esc(n.text)+'</div>').join("");
+    $("recordCaps").innerHTML = "<span>FUNCTION ROWS SUM EXACTLY TO THE GATED FIGURE</span>"
+      + "<span>FOOD SERVICES, FACILITIES CONSTRUCTION &amp; OTHER FUNDS EXCLUDED PER CDE'S FORMULA</span>";
+  }
+
+  function renderCompare(){
+    const sel = S.sel.slice().sort((a,b) => D.districts[a].name.localeCompare(D.districts[b].name));
+    const cols = sel.map(id => ({id, d: D.districts[id], v: D.districts[id].years[S.year]}));
+    $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION — BY FUNCTION · "
+      + (S.unit==="perAda" ? "PER ADA" : "TOTAL DOLLARS") + " · FY " + S.year;
+    $("scheduleNote").textContent = "ALPHABETICAL ORDER · SHARED SCALE";
+    $("gateLine").textContent = "GATED · EVERY DISTRICT FIGURE REPRODUCES CDE'S PUBLISHED CURRENT EXPENSE OF EDUCATION";
+    const grid = "240px repeat(" + cols.length + ", 1fr)";
+    let html = '<div class="cmp-head" style="grid-template-columns:'+grid+'"><span class="microlbl">FUNCTION</span>'
+      + cols.map((c,i) => '<div class="dhead"><span class="sw" style="background:'+RAMP[i]+'"></span> '
+        + '<span class="nm">'+esc(c.d.name)+'</span><div class="sub">ADA '+fmt(Math.round(c.v.ada))
+        + ' · '+esc(c.d.county).toUpperCase()+'</div></div>').join("") + '</div>';
+    const allVals = [];
+    FN.forEach(f => cols.forEach(c => allVals.push(val(c.v.byFunction[f.key]||0, c.v.ada))));
+    const max = Math.max(...allVals, 1);
+    FN.forEach(f => {
+      const vals = cols.map(c => val(c.v.byFunction[f.key]||0, c.v.ada));
+      if (vals.every(x => x === 0)) return;
+      html += '<div class="cmp-row" style="grid-template-columns:'+grid+'"><span class="fn">'+esc(f.name)+'</span>'
+        + cols.map((c,i) => { const x = vals[i];
+          return '<div><span class="num" style="font-size:12.5px">'
+            + (S.unit==="perAda" ? money0(x) : moneyExact(x)) + '</span>'
+            + '<div class="cellbar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%;background:'+RAMP[i]+'"></i></div></div>'; }).join("");
+      html += '</div>';
+    });
+    html += '<div class="cmp-foot" style="grid-template-columns:'+grid+'"><span>Current expense of education</span>'
+      + cols.map(c => '<span class="num">'+fmtVal(c.v.currentExpense, c.v.ada)+'</span>').join("") + '</div>';
+    const notes = [];
+    cols.forEach(c => districtNotes(c.id, S.year).forEach(n =>
+      notes.push("<strong>"+esc(c.d.name)+":</strong> "+esc(n.text))));
+    html += notes.map(n => '<div class="note-row">† '+n+'</div>').join("");
+    $("recordBody").innerHTML = html;
+    $("recordCaps").innerHTML = "<span>DISTRICTS APPEAR ALPHABETICALLY · SHARED SCALE · NEVER RANKED</span>"
+      + "<span>PER-ADA COMPARISON CARRIES EACH DISTRICT'S STRUCTURAL NOTES</span>";
+  }
+
+  function renderCoe(id){
+    const c = D.countyOffices[id], v = c.years[S.year];
+    $("scheduleLabel").textContent = "GENERAL FUND EXPENDITURES — BY FUNCTION · "
+      + c.name.toUpperCase() + " · TOTAL DOLLARS · FY " + S.year;
+    $("scheduleNote").textContent = "RECORDS ONLY · NEVER COMPARED · NO PER-ADA FIGURE";
+    $("gateLine").textContent = "RECONCILES THROUGH CDE'S PUBLISHED COUNTY AND STATE ROLLUPS · "
+      + "COUNTY OFFICES HAVE NO PUBLISHED PER-ENTITY CONTROL FIGURE";
+    const rows = FN.map(f => [f.name, (v.byFunction||{})[f.key]||0]).filter(r => r[1] !== 0)
+      .sort((a,b) => b[1]-a[1]);
+    const max = rows.length ? Math.max(...rows.map(r => Math.abs(r[1]))) : 1;
+    $("recordBody").innerHTML =
+      '<div class="rec-big num">' + moneyExact(v.expenditures) + '</div>'
+      + '<div class="rec-biglbl">GENERAL FUND EXPENDITURES · UNAUDITED ACTUALS</div>'
+      + '<div class="rec-meta">FUNDED ADA (LCFF): ' + (v.fundedADA ? fmt(Math.round(v.fundedADA)) : "—")
+      + ' · SHOWN AS CONTEXT ONLY — COE PROGRAMS SERVE POPULATIONS NO DISTRICT SERVES</div>'
+      + '<div style="margin-top:16px">'
+      + rows.map(([name, x]) =>
+        '<div class="det-row"><span class="fn">'+esc(name)+'</span>'
+        + '<span class="bar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%"></i></span>'
+        + '<span class="v">'+moneyExact(x)+'</span></div>').join("")
+      + '</div>'
+      + '<div class="note-row">† County offices run court and community schools, SELPAs, countywide services, and fiscal oversight of districts; much of their book is pass-through. CDE excludes them from its per-ADA statistic, and so does this page.</div>';
+    $("recordCaps").innerHTML = "<span>RECORDS ONLY — COUNTY OFFICES ARE NEVER COMPARED</span>";
+  }
+
+  function renderCharter(id){
+    const c = D.charters[id], v = c.years[S.year];
+    if (!v){ renderEmpty("No filing for " + c.name + " in FY " + S.year + "."); return; }
+    $("scheduleLabel").textContent = "EXPENDITURES — BY OBJECT · " + c.name.toUpperCase()
+      + " · TOTAL DOLLARS · FY " + S.year;
+    $("scheduleNote").textContent = "RECORDS ONLY · NEVER COMPARED";
+    $("gateLine").textContent = (v.mode === "alt"
+      ? "FILED THE CHARTER ALTERNATIVE FORM · RECONCILES THROUGH ITS PUBLISHED TOTALS"
+      : "FILED ITS OWN SACS REPORT · RECONCILES THROUGH CDE'S PUBLISHED ROLLUPS");
+    const rows = OBJ.map(f => [f.name, (v.byObject||{})[f.key]||0]).filter(r => r[1] !== 0)
+      .sort((a,b) => b[1]-a[1]);
+    const max = rows.length ? Math.max(...rows.map(r => Math.abs(r[1]))) : 1;
+    $("recordBody").innerHTML =
+      '<div class="rec-big num">' + moneyExact(v.expenditures) + '</div>'
+      + '<div class="rec-biglbl">EXPENDITURES · UNAUDITED ACTUALS</div>'
+      + '<div class="rec-meta">AUTHORIZER: ' + esc(c.authorizer).toUpperCase()
+      + ' · ' + esc(c.county).toUpperCase() + ' COUNTY · ADA ' + fmt(Math.round(v.ada)) + '</div>'
+      + '<div style="margin-top:16px">'
+      + rows.map(([name, x]) =>
+        '<div class="det-row"><span class="fn">'+esc(name)+'</span>'
+        + '<span class="bar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%"></i></span>'
+        + '<span class="v">'+moneyExact(x)+'</span></div>').join("")
+      + '</div>';
+    $("recordCaps").innerHTML = "<span>RECORDS ONLY — CHARTERS ARE NEVER COMPARED HERE</span>"
+      + "<span>CDE EXCLUDES CHARTERS FROM ITS PER-ADA STATISTIC</span>";
+  }
+
+  function renderEmpty(msg){
+    $("recordCard").hidden = true;
+    $("emptyState").hidden = false;
+    $("emptyState").innerHTML = msg;
+  }
+
+  function render(){
+    renderChrome(); renderPicker();
+    const sel = S.sel.filter(id => ent(id) && ent(id).years[S.year]);
+    if (!sel.length){
+      renderEmpty(S.type === "districts"
+        ? "Select a school district to open its record, or two to four to compare them per ADA. County offices and charter schools have records of their own — never comparisons — under the buttons above."
+        : "Select a " + (S.type === "coes" ? "county office" : "charter school")
+          + " to open its record. This entity type is records only — the Ledger does not compare it.");
+      return;
+    }
+    $("emptyState").hidden = true;
+    $("recordCard").hidden = false;
+    if (S.type === "districts" && sel.length > 1) renderCompare();
+    else if (S.type === "districts") renderSingleDistrict(sel[0]);
+    else if (S.type === "coes") renderCoe(sel[0]);
+    else renderCharter(sel[0]);
+    $("citePanel").hidden = true;
+  }
+
+  /* ---------- cite + CSV ---------- */
+  function citationText(){
+    const sel = S.sel;
+    const names = sel.map(id => ent(id).name);
+    let figure = "";
+    if (S.type === "districts" && sel.length){
+      figure = sel.map(id => { const v = yr(id);
+        return ent(id).name + " " + money0(v.currentExpense / v.ada) + " per ADA"; }).join("; ") + ". ";
+    } else if (sel.length){
+      const v = yr(sel[0]);
+      figure = names[0] + " " + moneyExact(v.expenditures) + " expenditures. ";
+    }
+    const title = S.type === "districts" ? "K-12 School District Spending — Current Expense of Education"
+      : S.type === "coes" ? "K-12 County Office Record" : "K-12 Charter School Record";
+    return 'Citizen Ledger, "' + title + (names.length ? ": " + names.join(", ") : "")
+      + ', FY ' + S.year + '." ' + figure
+      + (S.type === "districts"
+        ? "Unaudited actuals; every district figure reproduces CDE's published Current Expense of Education to the cent; per-ADA uses CDE's own ADA. "
+        : "Unaudited actuals as filed; records only, never compared. ")
+      + "About " + (OL.stateShare*100).toFixed(0) + "% of school revenues are the state budget's K-12 money — the layers are never added. "
+      + "Source: California Department of Education, SACS unaudited actuals. Generated " + D.meta.generated + ". "
+      + "Permalink: " + location.href;
+  }
+  function csvText(){
+    const lines = [
+      "# Citizen Ledger — K-12 schools (" + (S.type === "districts" ? "school districts, gated" : S.type) + ")",
+      "# District figures reproduce CDE's published Current Expense of Education to the cent; unaudited actuals.",
+      "# About " + (OL.stateShare*100).toFixed(1) + "% of school revenues are state money shown on the state budget page — the layers are never added.",
+      "# Source: CDE SACS unaudited actuals · Generated: " + D.meta.generated,
+      "# Permalink: " + location.href];
+    if (S.type === "districts"){
+      lines.push("district,county,type,fiscal_year,ada,current_expense_total,cde_published_total,per_ada,basic_aid,small_nss,sponsored_charter_ada,"
+        + FN.map(f => f.key).join(","));
+      S.sel.forEach(id => { const d = D.districts[id], v = d.years[S.year];
+        if (!v) return;
+        lines.push([d.name, d.county, d.type, S.year, v.ada, v.currentExpense.toFixed(2),
+          v.cePublished.toFixed(2), Math.round(v.currentExpense / v.ada),
+          v.basicAid, v.smallNSS, v.sponsoredCharterADA,
+          ...FN.map(f => (v.byFunction[f.key]||0).toFixed(2))]
+          .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+      });
+    } else {
+      lines.push("entity,county,fiscal_year,expenditures");
+      S.sel.forEach(id => { const e = ent(id), v = e.years[S.year];
+        if (!v) return;
+        lines.push([e.name, e.county, S.year, v.expenditures.toFixed(2)]
+          .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+      });
+    }
+    return lines.join("\r\n");
+  }
+
+  /* ---------- events ---------- */
+  $("typeGroup").addEventListener("click", e => {
+    const b = e.target.closest("button[data-type]");
+    if (!b || b.dataset.type === S.type) return;
+    S.type = b.dataset.type;
+    S.sel = []; S.q = ""; $("schoolSearch").value = "";
+    syncHash(); render();
+  });
+  $("schoolSearch").addEventListener("input", e => { S.q = e.target.value; syncHash(); renderPicker(); });
+  $("schoolList").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.dep) return;                    // dependent pointers inform, never select
+    const id = b.dataset.id;
+    const max = TYPES[S.type].max;
+    if (S.sel.includes(id)) return;
+    if (max === 1) S.sel = [id];
+    else if (S.sel.length < max) S.sel = S.sel.concat(id);
+    S.q = ""; $("schoolSearch").value = "";
+    syncHash(); render();
+  });
+  $("schoolChips").addEventListener("click", e => {
+    const b = e.target.closest(".chip");
+    if (!b) return;
+    S.sel = S.sel.filter(x => x !== b.dataset.id);
+    syncHash(); render();
+  });
+  $("unitGroup").addEventListener("click", e => {
+    const b = e.target.closest("button[data-unit]");
+    if (!b) return;
+    S.unit = b.dataset.unit; syncHash(); render();
+  });
+  function stepYear(d){
+    const i = YEARS.indexOf(S.year) + d;
+    if (i >= 0 && i < YEARS.length){ S.year = YEARS[i]; $("yearSel").value = S.year; syncHash(); render(); }
+  }
+  $("yearPrev").addEventListener("click", () => stepYear(-1));
+  $("yearNext").addEventListener("click", () => stepYear(1));
+  $("yearSel").addEventListener("change", e => { S.year = e.target.value; syncHash(); render(); });
+  $("citeToggle").addEventListener("click", () => {
+    const p = $("citePanel"); p.hidden = !p.hidden;
+    if (!p.hidden) $("citeText").textContent = citationText();
+  });
+  $("citeCopy").addEventListener("click", () => {
+    if (navigator.clipboard) navigator.clipboard.writeText($("citeText").textContent);
+  });
+  $("csvBtn").addEventListener("click", () => {
+    const blob = new Blob([csvText()], {type: "text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "citizen-ledger-schools-" + (S.sel.join("-") || "view") + ".csv";
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  window.addEventListener("hashchange", () => { applyHash();
+    $("schoolSearch").value = S.q; $("yearSel").value = S.year; render(); });
+
+  /* ---------- boot ---------- */
+  $("yearSel").innerHTML = YEARS.map(y => '<option value="'+y+'">FY '+y+'</option>').join("");
+  applyHash();
+  $("yearSel").value = S.year;
+  $("schoolSearch").value = S.q;
+  renderOverlap();
+  render();
+  $("printCite").textContent = "Citizen Ledger — K-12 schools. District figures reproduce CDE's published "
+    + "Current Expense of Education to the cent. Generated " + D.meta.generated + ".";
+})();
+</script>
+</body>
+</html>

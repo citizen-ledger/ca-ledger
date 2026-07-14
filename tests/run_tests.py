@@ -58,6 +58,7 @@ GEO = load_data_js(ROOT / "city-geo.js")
 COUNTY = load_data_js(ROOT / "county-data.js")
 CGEO = load_data_js(ROOT / "county-geo.js")
 DIST = load_data_js(ROOT / "district-data.js")
+SCHOOL = load_data_js(ROOT / "school-data.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -172,7 +173,8 @@ def clipboard_of(page, toggle_sel="#citeToggle", copy_sel="#citeCopy"):
 def test_integrity():
     for name, payload in (("data.js", STATE), ("city-data.js", CITY),
                           ("city-geo.js", GEO), ("county-data.js", COUNTY),
-                          ("county-geo.js", CGEO), ("district-data.js", DIST)):
+                          ("county-geo.js", CGEO), ("district-data.js", DIST),
+                          ("school-data.js", SCHOOL)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
@@ -1134,6 +1136,163 @@ def test_rename(page, base):
           , cite[:90])
 
 
+def test_schools(page, base):
+    Y = SCHOOL["years"]
+    latest = Y[-1]
+    src = (ROOT / "schools.html").read_text(encoding="utf-8")
+
+    # ---- THE GATE, re-asserted from the shipped data for every district-year
+    check("schools: 934 districts, 58 county offices",
+          len(SCHOOL["districts"]) == 934 and len(SCHOOL["countyOffices"]) == 58,
+          f"{len(SCHOOL['districts'])}/{len(SCHOOL['countyOffices'])}")
+    bad_gate, bad_sum = [], []
+    for slug, d in SCHOOL["districts"].items():
+        for fy, v in d["years"].items():
+            if abs(v["currentExpense"] - v["cePublished"]) > 0.05:
+                bad_gate.append(f"{slug} {fy}")
+            if abs(sum(v["byFunction"].values()) - v["currentExpense"]) > 0.05:
+                bad_sum.append(f"{slug} {fy}")
+    check("schools GATE: every district-year reproduces CDE's published "
+          "Current Expense figure", not bad_gate, str(bad_gate[:3]))
+    check("schools: function rows sum exactly to the gated figure",
+          not bad_sum, str(bad_sum[:3]))
+
+    # ---- dagger source data
+    pa = SCHOOL["districts"]["palo-alto-unified"]["years"][latest]
+    al = SCHOOL["districts"]["alpine-county-unified"]["years"][latest]
+    nj = SCHOOL["districts"]["new-jerusalem-elementary"]["years"][latest]
+    check("schools daggers: Palo Alto basic aid, Alpine small, New Jerusalem "
+          "charter-sponsor", pa["basicAid"] and al["smallNSS"]
+          and nj["sponsoredCharterADA"] > 100 * nj["ada"])
+    ba_count = sum(1 for d in SCHOOL["districts"].values()
+                   if d["years"].get(latest, {}).get("basicAid"))
+    check("schools: basic-aid population is material (the K-12 contract-city "
+          "problem)", 100 < ba_count < 200, str(ba_count))
+
+    # ---- district record: gate line + basic-aid dagger, live count
+    page.goto(f"{base}/schools.html#c=palo-alto-unified")
+    page.wait_for_selector("#recordBody .det-row")
+    gate = page.inner_text("#gateLine")
+    check("schools UI: the gate is on the face with the published figure",
+          "PUBLISHED FIGURE" in gate and "DIFFERENCE $0.00" in gate, gate[:90])
+    body = page.inner_text("body")
+    live_count = f"{ba_count} of {len(SCHOOL['districts'])} districts"
+    check("schools UI: basic-aid note carries the live count",
+          "tax-base geography" in body and live_count in body, live_count)
+    check("schools UI: basic-aid count not hardcoded in source",
+          live_count not in src and "13.7%" not in src)
+
+    page.goto(f"{base}/schools.html#c=alpine-county-unified")
+    page.wait_for_selector("#recordBody .det-row")
+    check("schools UI: small-district funding-floor note",
+          "necessary-small-school" in page.inner_text("body").lower())
+    page.goto(f"{base}/schools.html#c=new-jerusalem-elementary")
+    page.wait_for_selector("#recordBody .det-row")
+    check("schools UI: sponsored-charter note names both ADA figures",
+          "describes only the district-run schools" in page.inner_text("body"))
+
+    # ---- commingled-charter limit on the face of an affected record
+    com_slug = next(s for s, d in SCHOOL["districts"].items()
+                    if d["years"].get(latest, {}).get("commingledCharters"))
+    page.goto(f"{base}/schools.html#c={com_slug}")
+    page.wait_for_selector("#recordBody .det-row")
+    check("schools UI: commingled-charter limit stated on the face",
+          "cannot be separated" in page.inner_text("#recordBody"), com_slug)
+
+    # ---- comparison: districts only, alphabetical, notes travel
+    page.goto(f"{base}/schools.html#c=palo-alto-unified,fresno-unified")
+    page.wait_for_selector("#recordBody .cmp-row")
+    heads = page.locator(".dhead .nm").all_inner_texts()
+    check("schools cmp: alphabetical", heads == sorted(heads), str(heads))
+    check("schools cmp: never ranked, shared scale",
+          "NEVER RANKED" in page.inner_text("#recordCaps"))
+    check("schools cmp: basic-aid note travels into comparison",
+          "tax-base geography" in page.inner_text("#recordBody"))
+
+    # ---- COEs: records only, structurally outside comparison
+    page.goto(f"{base}/schools.html#t=coes")
+    page.wait_for_selector("#coeStatement:not([hidden])")
+    check("schools COE: exclusion stated before any selection",
+          "never compared" in page.inner_text("#coeStatement"))
+    coe = next(iter(SCHOOL["countyOffices"]))
+    coe2 = list(SCHOOL["countyOffices"])[1]
+    page.goto(f"{base}/schools.html#t=coes&c={coe}")
+    page.wait_for_selector("#recordBody .det-row")
+    check("schools COE: no per-ADA figure and no unit toggle",
+          "PER ADA" not in page.inner_text("#recordBody")
+          and page.evaluate("document.getElementById('unitGroup').style.display") == "none")
+    check("schools COE: rollup-gate basis stated",
+          "ROLLUPS" in page.inner_text("#gateLine"))
+    page.fill("#schoolSearch", SCHOOL["countyOffices"][coe2]["name"][:20])
+    page.wait_for_selector("#schoolList button")
+    page.locator("#schoolList button").first.click()
+    page.wait_for_timeout(200)
+    h = page.evaluate("location.hash")
+    check("schools COE: single selection — a second choice replaces",
+          h.count("%2C") == 0 and h.count(",") == 0, h[:70])
+
+    # ---- charters: records only; dependent pointers never select
+    ch = next(iter(SCHOOL["charters"]))
+    page.goto(f"{base}/schools.html#t=charters&c={ch}")
+    page.wait_for_selector("#recordBody .det-row")
+    check("schools charter: filing mode on the face",
+          "FILED" in page.inner_text("#gateLine"))
+    dep = SCHOOL["dependentCharters"][0]
+    page.fill("#schoolSearch", dep["name"][:24])
+    page.wait_for_timeout(250)
+    depbtn = page.locator('#schoolList button[data-dep]')
+    if depbtn.count():
+        before = page.evaluate("location.hash")
+        depbtn.first.click()
+        page.wait_for_timeout(150)
+        check("schools charter: dependent pointer informs, never selects",
+              page.evaluate("location.hash") == before)
+        check("schools charter: pointer names the authorizer",
+              "REPORTS INSIDE" in depbtn.first.inner_text())
+
+    # ---- the overlap statement: live values, never hardcoded
+    OL = SCHOOL["meta"]["overlap"]["years"][SCHOOL["meta"]["overlap"]["latest"]]
+    share = f"{OL['stateShare']*100:.1f}%"
+    page.goto(f"{base}/schools.html")
+    page.wait_for_selector("#overlapPanel")
+    ov = page.inner_text("#overlapPanel")
+    check("schools overlap: live state share rendered", share in ov, share)
+    check("schools overlap: share not hardcoded in source",
+          share not in src and "50.7" not in src)
+    for trap in ("Education Protection Account", "STRS", "pass-throughs",
+                 "K-14", "never adds", "never to the dollar"):
+        check(f"schools overlap: names {trap!r}", trap in ov)
+    check("schools overlap: precision honestly bounded",
+          "1–3.5%" in ov or "1-3.5%" in ov)
+
+    # ---- cross-layer rule
+    check("schools: never compared to other layers, stated",
+          "never compared to or summed with cities, counties, special "
+          "districts" in page.inner_text("body"))
+    csrc = (ROOT / "cities.html").read_text(encoding="utf-8")
+    check("layer boundary: city/county picker has no school layer",
+          '"school"' not in csrc.split("const LAYERS")[1][:400])
+
+    # ---- cite + CSV
+    page.goto(f"{base}/schools.html#c=palo-alto-unified")
+    page.wait_for_selector("#recordBody .det-row")
+    page.click("#citeToggle")
+    cite = page.inner_text("#citeText")
+    check("schools citation: format and gate claim",
+          cite.startswith('Citizen Ledger, "K-12 School District Spending — ')
+          and "to the cent" in cite and "never added" in cite, cite[:80])
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("schools CSV: carries the published figure beside the computed one",
+          "cde_published_total" in csv_text and "never added" in csv_text)
+
+    # ---- authored-copy neutrality
+    low = src.lower()
+    for w in BANNED:
+        check(f"schools source: no banned term {w!r}", w not in low)
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1316,6 +1475,7 @@ def main():
             test_districts(page, base)
             test_address(page, base)
             test_rename(page, base)
+            test_schools(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

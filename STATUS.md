@@ -996,6 +996,89 @@ pages). An independent three-auditor verification pass (residual
 scan, rendered surfaces, citation/CSV format conformance) ran on top
 of the suite.
 
+## 2026-07-14 — V7 build: the K-12 schools layer (schools.html)
+
+Built per docs/V7_SCHOOLS_FINDING.md, option (a): GATED AND COMPARABLE,
+comparison scoped to school districts only.
+
+- **The gate is the strictest on the site.**
+  `pipeline/fetch_school_data.py` recomputes every district's Current
+  Expense of Education (CDE's EDP 365 formula: Fund 01; objects
+  1000-5999, 6500, 7300-7399; minus non-agency and community-service
+  goals, food-service and facilities functions, retiree-benefit
+  objects; district-entity rows only) from the raw SACS general ledger
+  and refuses to write unless every district-year matches CDE's
+  published per-district figure within $0.05 — in practice, to the
+  cent: **934/934 (FY 2022-23), 933/933 (FY 2023-24), 932/932
+  (FY 2024-25)**. Two further gates: summing the raw ledger must
+  reproduce CDE's own in-database county/state rollups cell-by-cell,
+  and the charter Alternative Form data must reproduce its totals
+  table. Each record stores `cePublished` beside the recomputed
+  figure, so the suite re-asserts the gate on every run and readers
+  can re-check it from the data file.
+- **Scope:** FY 2022-23 through 2024-25 (the pipeline extends the
+  window by adding a year to YEARS; archives exist back to 2003-04).
+  934 school districts (comparable), 58 county offices (records
+  only), 980 separately-filing charter records, 318 dependent-charter
+  pointers. ROPs/SELPAs/JPAs are inside the rollup gates but not
+  records in this version.
+- **Comparison is districts only, per ADA** — the ADA CDE itself
+  publishes beside its per-ADA statistic (identical to the cent).
+  County offices are structurally outside comparison and the page
+  states why before any selection; they carry no per-ADA figure at
+  all. Charters are records only, with the filing mode on each
+  record's face.
+- **Three data-derived daggers, in the contract-city pattern:** basic
+  aid (local tax above LCFF entitlement — the count and share render
+  live from the LCFF data, 127 districts in FY 2024-25); fewer than
+  250 ADA (necessary-small-school funding floors); sponsored charters
+  (fires when separately-reporting charter ADA is at least a quarter
+  of the district's own — New Jerusalem's record states 5,445
+  sponsored against 17.8 own). Districts with charters commingled in
+  Fund 01 (45 districts; 149 charters statewide) state on their face
+  that those charters cannot be separated and that CDE's published
+  figure includes them; dependent-charter pointer rows in the search
+  name the authorizer and never select.
+- **The overlap statement is computed by the pipeline on every run**
+  (`meta.overlap`): FY 2024-25, 50.7% of the $153.3B LEAs reported
+  receiving is state-sourced — against the state layer's $81.6B K-12
+  agency (agreement 0.952; the page says "roughly 1–3.5% and never to
+  the dollar"). Property tax inside LCFF: 19.6%; federal: 7.6%. The
+  named traps render with live values: EPA $13.1B (continuously
+  appropriated outside the Budget Act, inside the GF display), STRS
+  on-behalf $3.6B (object 8590 within resource 7690 only — a bare
+  8590 sum is the whole other-state bucket and wrong), inter-LEA
+  pass-throughs $3.3B, and Prop 98 being K-14. index.html's
+  methodology gained a static pointer note (M-8); the computed
+  statement lives on schools.html. Tests assert the share renders
+  from the data file and appears nowhere in the page source.
+- **Cross-layer rule:** K-12 entities are never compared to or summed
+  with cities, counties, special districts, or the state — stated in
+  methodology and enforced by page structure (the city/county picker
+  has no school layer, test-asserted).
+- **Pipeline dependencies:** mdbtools (mdb-export) and openpyxl —
+  pipeline-only, like pypdf for the state actuals. The SACS archives
+  (~45 MB/yr, extracting to ~470 MB Access databases) cache under
+  pipeline/cache/schools/ (gitignored); CDE's HTML pages are
+  bot-gated but the file URLs download cleanly. school-data.js is
+  1.88 MB, digest-stamped, checked by verify_digest.py defaults.
+- **One correctness catch during the build:** the Charters table's
+  FundUsed values are words, not fund codes ("General" = Fund 01,
+  "CharterSpecRevenue" = 09, "CharterEnterprise" = 62) and SBE's
+  ReportLevel is "StateBoardOfEducation" — the word-based mapping
+  reproduces the finding's counts exactly (149 commingled, 318
+  dependent).
+
+Tests: **429 assertions, all passing** — 374 existing plus 55 for
+this layer (the gate re-asserted for every district-year from the
+shipped data; function rows summing exactly to the gated figure; all
+three daggers rendered with live counts absent from source; the
+commingled limit on an affected record's face; COE exclusion
+structural checks; dependent pointers that never select; the overlap
+statement's live values, named traps, and bounded precision; the
+cross-layer statement; citation/CSV format with the published figure
+re-checkable from exports; authored-copy neutrality scan).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
@@ -1010,6 +1093,11 @@ when a new year appears.
 Counties: same cadence and portal as cities. Run
 `python3 pipeline/fetch_county_data.py --write`; the write fails
 unless every county-year reconciles against `miui-wb29`.
+
+K-12 schools: one new fiscal year per SACS publication (~7 months
+after the June 30 close). Add the year to YEARS in
+`pipeline/fetch_school_data.py` and run with --write; the write fails
+unless every district-year reproduces CDE's published figure.
 
 Special districts: same portal. Run
 `python3 pipeline/fetch_district_data.py --write`; the finding's
