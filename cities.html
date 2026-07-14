@@ -183,7 +183,7 @@
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
       <h1>City spending</h1>
-      <p class="dek">Governmental-activities spending by function from the standardized annual reports all 482 California cities file with the State Controller. Cities appear alphabetically; the Ledger does not rank.</p>
+      <p class="dek" id="dek"></p>
     </div>
     <div class="hero-right">
       <div class="hero-num" id="heroNum">—</div>
@@ -195,7 +195,11 @@
   <div class="controls np">
     <div style="flex:1;min-width:260px">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
-        <span class="picklbl" style="margin-bottom:0">CITIES · SELECT 1–4 · 2–4 COMPARE · <span id="pickCount"></span></span>
+        <div class="pillgroup" role="group" aria-label="Government layer" id="layerGroup">
+          <button data-layer="city">Cities</button>
+          <button data-layer="county">Counties</button>
+        </div>
+        <span class="picklbl" style="margin-bottom:0"><span id="pickLbl">CITIES</span> · SELECT 1–4 · 2–4 COMPARE · <span id="pickCount"></span></span>
         <div class="pillgroup" role="group" aria-label="Picker mode" id="pickerModeGroup">
           <button data-mode="search">Search</button>
           <button data-mode="map">Map</button>
@@ -221,14 +225,14 @@
 
   <div class="map-panel" id="mapPanel" hidden>
     <div class="map-head">
-      <span class="schedlbl">MAP — WHERE CALIFORNIA'S CITIES ARE · POSITION ONLY, NEVER SPENDING</span>
+      <span class="schedlbl" id="mapLbl">MAP — WHERE CALIFORNIA'S CITIES ARE · POSITION ONLY, NEVER SPENDING</span>
       <button class="btn sm np" id="mapReset">Reset to statewide</button>
     </div>
     <div id="mapContainer"></div>
     <div class="empty" id="mapFail" hidden></div>
     <div class="kbd-list" id="mapKeyList" role="group" aria-label="Select a city by keyboard"></div>
     <div class="map-readout" aria-live="polite" id="mapReadout"></div>
-    <div class="map-cap">TRUE INCORPORATED BOUNDARIES (CENSUS, SIMPLIFIED) ON A NEUTRAL BASEMAP · THE MAP SHOWS WHERE, NEVER HOW MUCH</div>
+    <div class="map-cap" id="mapCap">TRUE INCORPORATED BOUNDARIES (CENSUS, SIMPLIFIED) ON A NEUTRAL BASEMAP · THE MAP SHOWS WHERE, NEVER HOW MUCH</div>
   </div>
 
   <div class="cite-panel" id="citePanel" hidden>
@@ -282,7 +286,8 @@
         <div class="mnote"><b>M-3</b><span>Figures are reported actual revenues and expenditures as filed with the State Controller — retrospective figures, not budgets, and not audited by the Ledger. Fiscal years are labeled by ending year ("2023-24" ends June 30, 2024); reports for a fiscal year are published about a year later. Every city-year total is reconciled against the Controller's published per-capita dataset before this page's data file is written.</span></div>
         <div class="mnote"><b>M-4</b><span>Per-resident figures divide by the population reported in the same State Controller filing — never a mixed vintage.</span></div>
         <div class="mnote"><b>M-5</b><span>Service-structure notes (†) record where police or fire service is delivered or financed outside the city budget — for example, a city that contracts police to its county sheriff, or receives fire service from a special district. They derive from the State Controller's services checklist, whose most recent published vintage is <strong>FY 2015-16</strong> — service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
-        <div class="mnote"><b>M-6</b><span>San Francisco is California's only consolidated city and county; its report includes county functions (courts, jails, social services, elections) no other city provides, and it is footnoted wherever it appears.</span></div>
+        <div class="mnote"><b>M-6</b><span>San Francisco is California's only consolidated city and county; its report includes county functions (courts, jails, social services, elections) no other city provides, and it is footnoted wherever it appears. It files as a city and appears only in the Cities layer — never in the county figures, so it is counted exactly once.</span></div>
+        <div class="mnote"><b>M-7</b><span>The Counties layer covers the 57 counties that file with the State Controller, on the same basis and with the same reconciliation gate as cities: every county-year reproduces the Controller's published control total before publication. Counties provide municipal-type services chiefly to <strong>unincorporated areas</strong>, so each county carries a data-derived note showing the share of its residents who live outside any city, computed from the same filings' populations — per-resident differences partly reflect that responsibility share, not spending choices. Cities and counties are never compared to each other: a city and the county containing it spend on overlapping populations with different responsibilities, and the page's selection works within one layer at a time.</span></div>
       </div>
       <div class="mcol">
         <div class="microlbl">SOURCES &amp; RECORD</div>
@@ -306,28 +311,49 @@
 
 <script src="city-data.js"></script>
 <script src="city-geo.js"></script>
+<script src="county-data.js"></script>
+<script src="county-geo.js"></script>
 <script>
 (function(){
   "use strict";
-  const D = window.CA_CITY_DATA;
-  if(!D){ document.getElementById("dataBanner").textContent = "city-data.js failed to load — the page cannot render."; return; }
+  if(!window.CA_CITY_DATA){ document.getElementById("dataBanner").textContent = "city-data.js failed to load — the page cannot render."; return; }
+
+  /* Two layers, one page — NEVER mixed. Cities and counties overlap in
+     population but not responsibility; selection and comparison operate
+     strictly within the active layer, and switching layers clears the
+     selection so a mixed comparison cannot be composed. */
+  const LAYERS = {
+    city:   { data: () => window.CA_CITY_DATA,   geo: () => window.CA_CITY_GEO,
+              noun: "city", nounU: "City", plural: "cities", entsKey: "cities" },
+    county: { data: () => window.CA_COUNTY_DATA, geo: () => window.CA_COUNTY_GEO,
+              noun: "county", nounU: "County", plural: "counties", entsKey: "counties" }
+  };
+  let D, ENTS, FUNCS, ENT_FUNDS, allIds;
+  function bindLayer(){
+    const L = LAYERS[S.layer];
+    D = L.data();
+    ENTS = (D && D[L.entsKey]) || {};
+    FUNCS = (D && D.functions) || [];
+    ENT_FUNDS = (D && D.enterpriseFunds) || [];
+    allIds = Object.keys(ENTS).sort((a,b)=>ENTS[a].name.localeCompare(ENTS[b].name));
+  }
 
   const CITY_RAMP = ["#242424","#6f6c69","#a39f9c","#cfc9c4"];
   const MINUS = "−";
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
-  const FUNCS = D.functions;
-  const ENT_FUNDS = D.enterpriseFunds || [];
-  const allIds = Object.keys(D.cities).sort((a,b)=>D.cities[a].name.localeCompare(D.cities[b].name));
+
   const UNITS = ["perResident","total","percent"];
   const MAX_SEL = 4;
 
   const PICKERS = ["search","map"];
   const CA_BOUNDS = [[-124.6, 32.3], [-113.9, 42.2]];
 
-  const DEFAULTS = { year: D.years[D.years.length-1], unit: "perResident", q: "", picker: "search" };
+  const DEFAULTS = { year: window.CA_CITY_DATA.years[window.CA_CITY_DATA.years.length-1],
+                     unit: "perResident", q: "", picker: "search", layer: "city" };
   const S = { year: DEFAULTS.year, unit: DEFAULTS.unit, sel: [], q: "", openNote: null,
-              picker: DEFAULTS.picker, mView: null };
+              picker: DEFAULTS.picker, mView: null, layer: DEFAULTS.layer };
+  bindLayer();
 
   /* ---------- formats ---------- */
   const fmtM = v => {              // v in millions
@@ -339,7 +365,8 @@
   };
   const fmtCap = v => (v<0?MINUS:"") + "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
   const fmtPop = v => v.toLocaleString("en-US");
-  const cityYear = (id,y) => D.cities[id] && D.cities[id].years[y];
+  const cityYear = (id,y) => ENTS[id] && ENTS[id].years[y];
+  const dispName = id => ENTS[id].name + (S.layer === "county" ? " County" : "");
   const perCap = (vM,pop) => pop ? vM*1e6/pop : null;
   function toUnit(vM, yr){
     if (vM==null) return null;
@@ -358,6 +385,7 @@
   /* ---------- permalink ---------- */
   function hashOf(){
     const p = new URLSearchParams();
+    if (S.layer !== DEFAULTS.layer) p.set("l", S.layer);
     if (S.sel.length) p.set("c", S.sel.slice().sort().join(","));
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
     if (S.year !== DEFAULTS.year) p.set("y", S.year);
@@ -375,7 +403,9 @@
     const raw = location.hash.replace(/^#/,"");
     if (!raw || raw.indexOf("=")<0) return;
     const p = new URLSearchParams(raw);
-    const ids = (p.get("c")||"").split(",").filter(id=>D.cities[id]);
+    S.layer = (p.get("l") === "county" && window.CA_COUNTY_DATA) ? "county" : "city";
+    bindLayer();
+    const ids = (p.get("c")||"").split(",").filter(id=>ENTS[id]);
     S.sel = ids.slice(0, MAX_SEL);
     S.unit = UNITS.includes(p.get("u")) ? p.get("u") : DEFAULTS.unit;
     const y = p.get("y"); S.year = (y && D.years.includes(y)) ? y : DEFAULTS.year;
@@ -387,13 +417,23 @@
 
   /* ---------- neutrality: alphabetical selection order, always ---------- */
   const selCities = () => S.sel.slice()
-    .sort((a,b)=>D.cities[a].name.localeCompare(D.cities[b].name))
+    .sort((a,b)=>ENTS[a].name.localeCompare(ENTS[b].name))
     .filter(id=>cityYear(id,S.year));
 
   /* ---------- comparability notes ---------- */
   function cityNotes(id){
-    const c = D.cities[id], yr = cityYear(id,S.year), notes = [];
+    const c = ENTS[id], yr = cityYear(id,S.year), notes = [];
     if (!yr) return notes;
+    if (S.layer === "county"){
+      if (yr.unincorporated != null)
+        notes.push({key:"uninc", text: Math.round(yr.unincorporated*100) + "% of "
+          + c.name + " County's residents live in unincorporated areas the county "
+          + "serves directly as the local government — per-resident differences "
+          + "partly reflect this responsibility share, not spending choices."});
+      if (yr.notes && yr.notes.includes("bigSwing"))
+        notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
+      return notes;
+    }
     if (c.flags && c.flags.consolidated)
       notes.push({key:"consolidated", text: c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."});
     const vin = D.meta.servicesChecklistVintage;
@@ -419,22 +459,38 @@
       + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
       + "<span>PUBLIC RECORD</span>";
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
+    const LU = LAYERS[S.layer];
+    $("pickLbl").textContent = LU.plural.toUpperCase();
+    $("mapLbl").textContent = "MAP — WHERE CALIFORNIA'S " + LU.plural.toUpperCase()
+      + " ARE · POSITION ONLY, NEVER SPENDING";
+    $("mapCap").textContent = (S.layer === "county"
+      ? "TRUE COUNTY BOUNDARIES (CENSUS, SIMPLIFIED) ON A NEUTRAL BASEMAP"
+      : "TRUE INCORPORATED BOUNDARIES (CENSUS, SIMPLIFIED) ON A NEUTRAL BASEMAP")
+      + " · THE MAP SHOWS WHERE, NEVER HOW MUCH";
+    const searchBox = $("citySearch");
+    searchBox.placeholder = "Search " + allIds.length + " " + LU.plural + "\u2026";
+    searchBox.setAttribute("aria-label", "Search " + LU.plural);
+    $("dek").textContent = S.layer === "city"
+      ? "Governmental-activities spending by function from the standardized annual reports all 482 California cities file with the State Controller. Cities appear alphabetically; the Ledger does not rank."
+      : "Governmental-activities spending by function from the standardized annual reports California's 57 counties file with the State Controller (San Francisco files as a consolidated city and county — see the Cities layer). Counties appear alphabetically; the Ledger does not rank. Cities and counties are never compared to each other: their responsibilities overlap in population but not in kind.";
     const sel = selCities();
     if (sel.length){
       const popSum = sel.reduce((s,id)=>s+cityYear(id,S.year).population,0);
-      $("heroNum").textContent = sel.length===1 ? D.cities[sel[0]].name : sel.length + " CITIES";
+      $("heroNum").textContent = sel.length===1 ? dispName(sel[0]) : sel.length + " " + LU.plural.toUpperCase();
       $("heroSub").textContent = "COMBINED POPULATION " + fmtPop(popSum);
     } else {
-      $("heroNum").textContent = allIds.length + " CITIES";
-      $("heroSub").textContent = "SELECT CITIES TO OPEN THE RECORD";
+      $("heroNum").textContent = allIds.length + " " + LU.plural.toUpperCase();
+      $("heroSub").textContent = "SELECT " + LU.plural.toUpperCase() + " TO OPEN THE RECORD";
     }
     $("revLog").innerHTML = D.years.slice().reverse().map(y=>"FY "+y+" · REPORTED ACTUALS").join("<br>")
       + "<br>GENERATED " + esc(D.meta.generated)
-      + "<br>SERVICES CHECKLIST · FY " + esc(D.meta.servicesChecklistVintage);
+      + (D.meta.servicesChecklistVintage
+         ? "<br>SERVICES CHECKLIST · FY " + esc(D.meta.servicesChecklistVintage) : "");
     const integ = (D.meta.integrity||{});
+    const dataFile = S.layer === "county" ? "county-data.js" : "city-data.js";
     $("integrityDigest").textContent = integ.digest
-      ? "SHA-256 · " + integ.digest + " (city-data.js)"
-      : "No digest recorded — regenerate city-data.js with the pipeline.";
+      ? "SHA-256 · " + integ.digest + " (" + dataFile + ")"
+      : "No digest recorded — regenerate " + dataFile + " with the pipeline.";
     $("pickCount").textContent = S.sel.length + " SELECTED";
   }
 
@@ -443,14 +499,26 @@
     const list = $("cityList"); list.innerHTML = "";
     const q = S.q.toLowerCase();
     if (q){
-      allIds.filter(id => D.cities[id].name.toLowerCase().includes(q)
-                       || D.cities[id].county.toLowerCase().includes(q))
+      if (S.layer === "county" && "san francisco".includes(q.slice(0, 13))){
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.innerHTML = "<span>San Francisco</span><small>FILES AS A CITY — SEE THE CITIES LAYER</small>";
+        b.addEventListener("click", ()=>{
+          S.layer = "city"; bindLayer();
+          S.sel = ["san-francisco"]; S.q = ""; $("citySearch").value = "";
+          syncHash(); render();
+        });
+        li.appendChild(b); list.appendChild(li);
+      }
+      allIds.filter(id => ENTS[id].name.toLowerCase().includes(q)
+                       || (ENTS[id].county||"").toLowerCase().includes(q))
         .slice(0, 30)
         .forEach(id=>{
-          const c = D.cities[id], yr = cityYear(id,S.year);
+          const c = ENTS[id], yr = cityYear(id,S.year);
           const li = document.createElement("li");
           const b = document.createElement("button");
-          b.innerHTML = "<span>"+esc(c.name)+"</span><small>"+esc(c.county)+" CO."
+          b.innerHTML = "<span>"+esc(c.name)+"</span><small>"
+            + (c.county ? esc(c.county)+" CO." : "COUNTY")
             + (yr ? " · POP "+fmtPop(yr.population) : "")+"</small>";
           b.addEventListener("click", ()=>{
             if (!S.sel.includes(id) && S.sel.length < MAX_SEL) S.sel.push(id);
@@ -464,8 +532,8 @@
     selCities().forEach(id=>{
       const b = document.createElement("button");
       b.className = "chip";
-      b.setAttribute("aria-label","Remove "+D.cities[id].name);
-      b.innerHTML = esc(D.cities[id].name) + " <i>✕</i>";
+      b.setAttribute("aria-label","Remove "+dispName(id));
+      b.innerHTML = esc(dispName(id)) + " <i>✕</i>";
       b.addEventListener("click", ()=>{
         S.sel = S.sel.filter(x=>x!==id); syncHash(); render();
       });
@@ -493,7 +561,7 @@
     syncHash(); render();
   }
   function mapDefaultReadout(){
-    $("mapReadout").textContent = allIds.length + " CITIES · CLICK A BOUNDARY TO SELECT · "
+    $("mapReadout").textContent = allIds.length + " " + LAYERS[S.layer].plural.toUpperCase() + " · CLICK A BOUNDARY TO SELECT · "
       + S.sel.length + " SELECTED";
   }
 
@@ -557,10 +625,11 @@
     if (slug) MAP.setFeatureState({ source: "cities", id: slug }, { hover: true });
   }
   function cityReadout(id){
-    const c = D.cities[id], yr = cityYear(id, S.year);
+    const c = ENTS[id], yr = cityYear(id, S.year);
     $("mapReadout").textContent = c.name.toUpperCase()
+      + (S.layer === "county" ? " COUNTY" : "")
       + (yr ? " · POP " + fmtPop(yr.population) : "")
-      + " · " + c.county.toUpperCase() + " COUNTY";
+      + (c.county ? " · " + c.county.toUpperCase() + " COUNTY" : "");
   }
   function mapViewString(){
     const c = MAP.getCenter();
@@ -581,8 +650,8 @@
   }
   function ensureMap(){
     if (MAP || mapLibLoading) { applyMapSelection(); return; }
-    if (!window.CA_CITY_GEO || !window.CA_CITY_GEO.features){
-      mapFail("city-geo.js failed to load, so the boundary map cannot render.");
+    if (!(LAYERS[S.layer].geo() && LAYERS[S.layer].geo().features)){
+      mapFail("The boundary file for this layer failed to load, so the map cannot render.");
       return;
     }
     mapLibLoading = true;
@@ -638,7 +707,8 @@
     map.on("load", () => {
       map.addSource("cities", {
         type: "geojson", promoteId: "slug",
-        data: { type: "FeatureCollection", features: window.CA_CITY_GEO.features }
+        data: { type: "FeatureCollection",
+                features: (LAYERS[S.layer].geo()||{}).features||[] }
       });
       map.addLayer({ id: "cities-fill", type: "fill", source: "cities",
         paint: { "fill-color": selFillExpr(),
@@ -652,6 +722,12 @@
         const f = e.features && e.features[0];
         if (!f) return;
         map.getCanvas().style.cursor = "pointer";
+        if (f.properties.pointer === "city"){
+          setHoverSlug(null);
+          $("mapReadout").textContent = "SAN FRANCISCO — FILES AS A CONSOLIDATED "
+            + "CITY AND COUNTY; SEE THE CITIES LAYER";
+          return;
+        }
         setHoverSlug(f.properties.slug);
         cityReadout(f.properties.slug);
       });
@@ -665,7 +741,13 @@
       });
       map.on("click", "cities-fill", e => {
         const f = e.features && e.features[0];
-        if (f) toggleCity(f.properties.slug);
+        if (!f) return;
+        if (f.properties.pointer === "city"){
+          $("mapReadout").textContent = "SAN FRANCISCO — FILES AS A CONSOLIDATED "
+            + "CITY AND COUNTY; SWITCH TO THE CITIES LAYER TO SELECT IT";
+          return;   // never selectable as a county
+        }
+        toggleCity(f.properties.slug);
       });
       map.on("moveend", () => {
         if (resetPending){           // reset lands on the default view:
@@ -687,19 +769,20 @@
     if (keyListBuilt) return;
     keyListBuilt = true;
     const geoBySlug = {};
-    (window.CA_CITY_GEO && window.CA_CITY_GEO.features || []).forEach(f => {
-      geoBySlug[f.properties.slug] = f.properties;
+    ((LAYERS[S.layer].geo()||{}).features || []).forEach(f => {
+      if (!f.properties.pointer) geoBySlug[f.properties.slug] = f.properties;
     });
     const box = $("mapKeyList");
     allIds.forEach(id => {
       const g = geoBySlug[id];
       if (!g) return;
-      const c = D.cities[id];
+      const c = ENTS[id];
       const b = document.createElement("button");
       b.type = "button";
       b.setAttribute("data-city", id);
-      b.setAttribute("aria-label", c.name + ", " + c.county
-        + " County. Pan the map here; press Enter to select.");
+      b.setAttribute("aria-label", c.name
+        + (c.county ? ", " + c.county + " County" : " County")
+        + ". Pan the map here; press Enter to select.");
       b.textContent = c.name;
       b.addEventListener("focus", () => {
         cityReadout(id);
@@ -717,6 +800,7 @@
   function render(){
     renderChrome(); renderPicker();
     $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
+    $("layerGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.layer===S.layer));
     $("yearSel").value = S.year;
     const sel = selCities();
     if (sel.length === 0) renderEmpty();
@@ -728,7 +812,10 @@
   function renderEmpty(){
     $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + unitLabel();
     $("scheduleNote").textContent = "ALPHABETICAL ORDER · SHARED SCALE";
-    $("recordBody").innerHTML = '<div class="empty">Search above and select one city to open its record, or two to four to compare. The record shows governmental activities by function; ratepayer-funded enterprise activities appear separately.</div>';
+    $("recordBody").innerHTML = '<div class="empty">Search above and select one '
+      + LAYERS[S.layer].noun + ' to open its record, or two to four to compare '
+      + '(within this layer only — cities and counties are never compared to each other). '
+      + 'The record shows governmental activities by function; ratepayer-funded enterprise activities appear separately.</div>';
   }
 
   function daggerHtml(id, fnKey){
@@ -756,14 +843,15 @@
     const [id,key] = S.openNote.split(":");
     const t = noteFor(id,key);
     if (!t) return "";
-    return '<div class="note-row" style="grid-column:1/-1"><span class="mono" style="font-size:11px;color:var(--smoke)">'+esc(D.cities[id].name.toUpperCase())+' · </span>'+esc(t)+' <a href="#methodology">Method note M-5 →</a></div>';
+    return '<div class="note-row" style="grid-column:1/-1"><span class="mono" style="font-size:11px;color:var(--smoke)">'+esc(ENTS[id].name.toUpperCase())+' · </span>'+esc(t)+' <a href="#methodology">Method note M-5 →</a></div>';
   }
 
   /* single-city detail */
   function renderDetail(id){
-    const c = D.cities[id], yr = cityYear(id,S.year);
-    $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + c.name.toUpperCase() + " · " + unitLabel();
-    $("scheduleNote").textContent = c.county.toUpperCase() + " COUNTY · POP " + fmtPop(yr.population) + " · GOVERNMENTAL " + fmtM(yr.expenditures) + " · REVENUES " + fmtM(yr.revenues);
+    const c = ENTS[id], yr = cityYear(id,S.year);
+    $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + dispName(id).toUpperCase() + " · " + unitLabel();
+    $("scheduleNote").textContent = (c.county ? c.county.toUpperCase() + " COUNTY · " : "")
+      + "POP " + fmtPop(yr.population) + " · GOVERNMENTAL " + fmtM(yr.expenditures) + " · REVENUES " + fmtM(yr.revenues);
     const rows = FUNCS.map(f=>({ f, vM: (yr.byFunction||{})[f.key]||0 }));
     const maxU = Math.max(...rows.map(r=>toUnit(r.vM,yr)||0), 0.001);
     let html = '<div class="tblwrap"><div style="min-width:640px">';
@@ -803,9 +891,9 @@
       + '<div class="cmp-head" style="grid-template-columns:'+grid+'">'
       + '<span class="schedlbl">FUNCTION</span>'
       + sel.map(id=>{
-          const c = D.cities[id], yr = cityYear(id,S.year);
+          const c = ENTS[id], yr = cityYear(id,S.year);
           const flagged = cityNotes(id).length ? ' <button class="dagger" data-note="'+id+':consolidated" aria-label="City note">†</button>' : "";
-          return '<div class="cityhead"><div style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:'+colors[id]+'"></span><span class="nm">'+esc(c.name)+'</span>'
+          return '<div class="cityhead"><div style="display:flex;align-items:center;gap:8px"><span class="sw" style="background:'+colors[id]+'"></span><span class="nm">'+esc(dispName(id))+'</span>'
             + (c.flags && c.flags.consolidated ? flagged : "")
             + '</div><div class="sub">POP '+fmtPop(yr.population)+' · GOV '+fmtM(yr.expenditures)+'</div></div>';
         }).join("")
@@ -832,7 +920,7 @@
       + "</div>";
     // city-level comparability notes (consolidated, swings, service structure)
     const noteLines = [];
-    sel.forEach(id=>cityNotes(id).forEach(n=>noteLines.push("<strong>"+esc(D.cities[id].name)+":</strong> "+esc(n.text))));
+    sel.forEach(id=>cityNotes(id).forEach(n=>noteLines.push("<strong>"+esc(dispName(id))+":</strong> "+esc(n.text))));
     if (noteLines.length)
       html += noteLines.map(n=>'<div class="note-row" style="border-bottom:none;background:transparent;padding-left:0">† '+n+'</div>').join("");
     html += '<div class="caps"><span>† SERVICE-STRUCTURE NOTE — SEE METHOD NOTE M-5</span><span>GOVERNMENTAL ACTIVITIES ONLY · BARS SHARE ONE SCALE ACROSS ALL CITIES AND FUNCTIONS</span></div>';
@@ -852,7 +940,7 @@
       const ent = yr.enterprise || {total:0, revenues:0, byFund:{}};
       const funds = ENT_FUNDS.map(f=>({name:f.name, v:(ent.byFund||{})[f.key]||0})).filter(r=>r.v).sort((a,b)=>b.v-a.v);
       if (!funds.length){
-        html = '<div class="empty" style="margin-top:14px">'+esc(D.cities[id].name)+' reports no enterprise-fund activity in FY '+S.year+'.</div>';
+        html = '<div class="empty" style="margin-top:14px">'+esc(ENTS[id].name)+' reports no enterprise-fund activity in FY '+S.year+'.</div>';
       } else {
         html = '<div class="tblwrap"><div style="min-width:560px;margin-top:8px">';
         funds.forEach(r=>{
@@ -874,7 +962,7 @@
       sel.forEach(id=>{
         const yr = cityYear(id,S.year);
         const ent = (yr.enterprise||{});
-        html += '<div class="det-row" style="grid-template-columns:220px 1fr 130px"><span class="fn">'+esc(D.cities[id].name)+'</span>'
+        html += '<div class="det-row" style="grid-template-columns:220px 1fr 130px"><span class="fn">'+esc(ENTS[id].name)+'</span>'
           + '<span class="num dim" style="font-size:12px">'+(ent.total ? "OPERATES ENTERPRISE FUNDS" : "NO ENTERPRISE-FUND ACTIVITY")+'</span>'
           + '<span class="num" style="text-align:right">'+fmtM(ent.total||0)+' · '+fmtCap(perCap(ent.total||0,yr.population))+'/RES</span></div>';
       });
@@ -886,7 +974,7 @@
   /* ---------- citation / CSV ---------- */
   function citationText(){
     const sel = selCities();
-    const names = sel.map(id=>D.cities[id].name);
+    const names = sel.map(id=>dispName(id));
     let figure = "";
     if (sel.length === 1){
       const yr = cityYear(sel[0],S.year);
@@ -897,11 +985,12 @@
     } else if (sel.length){
       figure = sel.map(id=>{
         const yr = cityYear(id,S.year);
-        return D.cities[id].name + " $" + yr.expenditures.toFixed(1) + "M governmental expenditures";
+        return dispName(id) + " $" + yr.expenditures.toFixed(1) + "M governmental expenditures";
       }).join("; ") + ". ";
     }
     const notes = sel.length===1 ? cityNotes(sel[0]).map(n=>n.text).join(" ") : "";
-    return 'The California Ledger, "City Spending — Governmental Activities by Function'
+    const layerTitle = S.layer === "county" ? "County Spending" : "City Spending";
+    return 'The California Ledger, "' + layerTitle + ' — Governmental Activities by Function'
       + (names.length ? ": " + names.join(", ") : "") + ', FY ' + S.year + ' (Reported actuals)." '
       + figure
       + "Reported actual expenditures from standardized city annual financial reports; governmental activities only. "
@@ -922,8 +1011,10 @@
       "# Permalink: " + location.href
     ];
     if (sel.length === 1){
-      const id = sel[0], c = D.cities[id], yr = cityYear(id,S.year);
-      lines.push("# City: " + c.name + " (" + c.county + " County) · FY " + S.year + " · population " + yr.population);
+      const id = sel[0], c = ENTS[id], yr = cityYear(id,S.year);
+      lines.push(S.layer === "county"
+        ? "# County: " + c.name + " County · FY " + S.year + " · population " + yr.population
+        : "# City: " + c.name + " (" + c.county + " County) · FY " + S.year + " · population " + yr.population);
       lines.push("# Units: millions of dollars; Per resident in dollars; Share in percent");
       lines.push("Function,Governmental expenditures ($M),Per resident ($),Share (%)");
       FUNCS.forEach(f=>{
@@ -938,10 +1029,12 @@
           Math.round(perCap(yr.enterprise.total,yr.population)), ""].join(","));
       cityNotes(id).forEach(n=>lines.push("# Note: " + csvEscape(n.text)));
     } else if (sel.length){
-      const names = sel.map(id=>D.cities[id].name);
-      lines.push("# Comparison: " + names.join(" · ") + " · FY " + S.year);
+      const names = sel.map(id=>dispName(id));
+      lines.push("# Comparison: " + names.join(" · ") + " · FY " + S.year + " · "
+        + (S.layer === "county" ? "counties only" : "cities only")
+        + " — cities and counties are never compared to each other");
       lines.push("# " + sel.map(id=>{ const yr=cityYear(id,S.year);
-        return D.cities[id].name + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "));
+        return dispName(id) + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "));
       lines.push("# Units: dollars per resident · governmental activities only");
       lines.push(["Function"].concat(names.map(n=>csvEscape(n+" ($/resident)"))).join(","));
       FUNCS.forEach(f=>{
@@ -955,7 +1048,7 @@
         return Math.round(perCap(yr.expenditures, yr.population));
       })).join(","));
       sel.forEach(id=>cityNotes(id).forEach(n=>
-        lines.push("# Note (" + csvEscape(D.cities[id].name) + "): " + csvEscape(n.text))));
+        lines.push("# Note (" + csvEscape(dispName(id)) + "): " + csvEscape(n.text))));
     } else {
       lines.push("# No cities selected.");
     }
@@ -993,6 +1086,20 @@
   $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
   $("pickerModeGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
     S.picker=b.dataset.mode; syncHash(); renderPicker(); }));
+  $("layerGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    if (S.layer === b.dataset.layer) return;
+    S.layer = b.dataset.layer;
+    bindLayer();
+    S.sel = []; S.q = ""; S.openNote = null;   // the boundary is structural:
+    $("citySearch").value = "";                 // no cross-layer selection survives
+    keyListBuilt = false; $("mapKeyList").innerHTML = "";
+    if (MAP && MAP.getSource("cities")){
+      MAP.getSource("cities").setData({type:"FeatureCollection",
+        features: (LAYERS[S.layer].geo()||{}).features||[]});
+      renderKeyList();
+    }
+    syncHash(); render();
+  }));
   $("mapReset").addEventListener("click", ()=>{
     if (MAP){
       resetPending = true;
@@ -1014,7 +1121,7 @@
   $("savedClose").addEventListener("click", ()=>{ $("savedPanel").hidden=true; });
   $("saveViewBtn").addEventListener("click", ()=>{
     const list = readSaved();
-    const names = selCities().map(id=>D.cities[id].name);
+    const names = selCities().map(id=>ENTS[id].name);
     list.unshift({ page:"cities", h:hashOf(),
       label:(names.length?names.join(" · "):"No cities")+" · FY "+S.year+" · "+unitLabel().toLowerCase(),
       ts:Date.now() });

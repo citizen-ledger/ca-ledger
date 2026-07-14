@@ -13,13 +13,16 @@ basemap tiles — see STATUS.md; everything else stays dependency-free.)
 | `index.html` | The state-budget page on the Ledger design system: record surface with dollar ruler, proportional bar with drill-down, Allocation / Change / Trend / Actuals views, unit switching, cite + saved views. Zero runtime dependencies. |
 | `data.js` | The dataset the state view renders: six years of enacted state budgets (2020-21 through 2025-26), generated from official data. |
 | `pipeline/fetch_state_data.py` | Regenerates `data.js` from the Department of Finance's eBudget API, including prior-year actuals extracted from DOF Schedule 9 (`pipeline/schedule9.py`; needs `pypdf` only when refreshing actuals). |
-| `cities.html` | The V2 city view: city picker with search, governmental expenditures by function with per-resident figures, a separate enterprise-activities block, service-provision footnotes, and a 2-4 city side-by-side comparison. |
+| `cities.html` | The V2 local-government view, with a Cities / Counties layer switch: entity picker with search, governmental expenditures by function with per-resident figures, a separate enterprise-activities block, comparability footnotes, and a 2-4 entity side-by-side comparison (always within one layer — cities and counties are never compared to each other). |
 | `city-data.js` | The city dataset: all 482 reporting cities × 8 fiscal years (2016-17 through 2023-24) of reported actual revenues and expenditures, generated from official SCO data. |
 | `pipeline/fetch_city_data.py` | Regenerates `city-data.js` from the SCO "By the Numbers" Socrata API. Refuses to write unless every city-year total reconciles against the SCO's own published totals. |
+| `county-data.js` | The county dataset: all 57 filing counties × 8 fiscal years (San Francisco files as a consolidated city and county and lives in the city data — counted exactly once). |
+| `pipeline/fetch_county_data.py` | Regenerates `county-data.js` from the same SCO portal, with the same hard gate: refuses to write unless every county-year reconciles against the SCO's published control totals (`miui-wb29`). |
+| `pipeline/make_county_boundaries.py` | Regenerates `county-geo.js` — 57 county boundaries plus a San Francisco polygon that routes to the Cities layer (Census, public domain). |
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
-| `tests/run_tests.py` | Headless test suite — one command, 216 assertions on the real data. |
+| `tests/run_tests.py` | Headless test suite — one command, 244 assertions on the real data. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
@@ -84,13 +87,16 @@ update once a year.
 python3 tests/run_tests.py
 ```
 
-One command, 216 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
+One command, 244 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
 rendering on the Ledger design system, drill-down and view/unit
 controls, permalink hash round-trips, CSV export contents, citation
 output, Change-view arithmetic, a banned-adjective scan, neutrality
 checks (direction always in ink, never judgment colors), the corrected
 city accounting labels (governmental activities — never "general fund
 only"), the city comparability footnotes, the enterprise-fund block,
+the county layer (its reconciliation gate re-asserted per county-year,
+the unincorporated-share footnote, San Francisco's single-counting,
+and the structural city/county layer separation),
 and the RECORD INTEGRITY digests (verified live with
 `pipeline/verify_digest.py`). The suite serves the repo under a
 `/ca-ledger/` subpath (the GitHub Pages layout), so it also proves
@@ -135,3 +141,26 @@ Comparability is handled structurally, not with disclaimers alone:
 - **Reconciliation gate:** the pipeline refuses to write unless every
   city-year (482 × 8 = 3,856) reproduces the SCO's own published
   total-expenditures figure.
+
+### Counties layer
+
+The same page carries California's **57 filing counties** (fiscal years
+2016-17 through 2023-24) as a separate layer, on the same basis, from
+the same SCO portal, behind the same kind of hard gate: every
+county-year (57 × 8 = 456) must reproduce the SCO's independently
+published control total (`miui-wb29`) or nothing is written.
+
+- **San Francisco is counted exactly once.** It files as the state's
+  only consolidated city and county and appears in the Cities layer;
+  it is absent from the county figures, and its polygon on the county
+  map routes to the city record.
+- **The unincorporated-share footnote** is the county equivalent of
+  the contract-city problem: counties act as the direct local
+  government mainly for residents of unincorporated areas, so each
+  county's record carries a data-derived note stating what share of
+  its residents live outside any city — per-resident differences
+  partly reflect that responsibility share, not spending choices.
+- **Cities and counties are never compared to each other.** The layers
+  are structurally separate: switching layers clears the selection,
+  slugs from one layer are invalid in the other, and the comparison
+  view, CSV, and citations operate within a single layer.

@@ -55,6 +55,8 @@ def load_data_js(path):
 STATE = load_data_js(ROOT / "data.js")
 CITY = load_data_js(ROOT / "city-data.js")
 GEO = load_data_js(ROOT / "city-geo.js")
+COUNTY = load_data_js(ROOT / "county-data.js")
+CGEO = load_data_js(ROOT / "county-geo.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -168,12 +170,12 @@ def clipboard_of(page, toggle_sel="#citeToggle", copy_sel="#citeCopy"):
 # ----------------------------------------------------------------------
 def test_integrity():
     for name, payload in (("data.js", STATE), ("city-data.js", CITY),
-                          ("city-geo.js", GEO)):
+                          ("city-geo.js", GEO), ("county-data.js", COUNTY),
+                          ("county-geo.js", CGEO)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
-    r = subprocess.run([sys.executable, "pipeline/verify_digest.py",
-                        "data.js", "city-data.js", "city-geo.js"],
+    r = subprocess.run([sys.executable, "pipeline/verify_digest.py"],
                        cwd=ROOT, capture_output=True, text=True)
     check("integrity: verify_digest.py verifies all data files", r.returncode == 0,
           (r.stdout + r.stderr)[-200:])
@@ -645,6 +647,116 @@ def test_actuals_view(page, base):
     check("actuals: sort emits hash param", "asort=diff" in page.evaluate("location.hash"))
 
 
+def test_county(page, base):
+    # data-level: 57 counties, every county-year gate re-asserted
+    check("county: 57 filers", len(COUNTY["counties"]) == 57,
+          str(len(COUNTY["counties"])))
+    check("county: SF single-counted (absent here, present in cities)",
+          "san-francisco" not in COUNTY["counties"]
+          and "san-francisco" in CITY["cities"])
+    check("county: same fiscal years as cities", COUNTY["years"] == CITY["years"])
+    bad_gate, bad_uninc = [], []
+    for slug, c in COUNTY["counties"].items():
+        for fy, yr in c["years"].items():
+            total = (sum(yr["byFunction"].values()) + yr["enterprise"]["total"]
+                     + yr.get("internalService", 0) + yr.get("conduitFinancing", 0))
+            if abs(total - yr["scoTotal"]) > 0.02:   # $20k on $M rounding
+                bad_gate.append(f"{slug} {fy}")
+            u = yr.get("unincorporated")
+            if u is None or not (0 <= u <= 1) or yr["population"] <= 0:
+                bad_uninc.append(f"{slug} {fy}")
+    check("county: every county-year reconciles to its stored control total",
+          not bad_gate, str(bad_gate[:4]))
+    check("county: unincorporated share present and sane for every county-year",
+          not bad_uninc, str(bad_uninc[:4]))
+    # geometry: 58 features, exactly one SF pointer, no financial fields
+    check("county geo: 58 boundaries", len(CGEO["features"]) == 58)
+    pointers = [f for f in CGEO["features"] if f["properties"].get("pointer")]
+    check("county geo: exactly one pointer (San Francisco -> city layer)",
+          len(pointers) == 1 and pointers[0]["properties"]["slug"] == "san-francisco")
+    bad_props = {k for f in CGEO["features"] for k in f["properties"]} \
+        - {"slug", "name", "clng", "clat", "pointer"}
+    check("county geo neutrality: no financial fields", not bad_props, str(bad_props))
+
+    # layer toggle: explicit boundary, selection never crosses
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordBody .det-row")
+    page.click('#layerGroup [data-layer="county"]')
+    page.wait_for_timeout(300)
+    check("county: switching layers clears the selection",
+          "c=" not in page.evaluate("location.hash")
+          and page.locator("#cityChips .chip").count() == 0)
+    check("county: layer encoded in hash", "l=county" in page.evaluate("location.hash"))
+    check("county: hero shows the layer", "57 COUNTIES" in page.inner_text("#heroNum"))
+    # a CITY slug is meaningless in the county layer
+    page.goto(f"{base}/cities.html#l=county&c=lakewood")
+    page.wait_for_selector("#pickLbl")
+    check("county: city slugs are ignored in the county layer",
+          page.locator("#cityChips .chip").count() == 0)
+
+    # county detail: unincorporated footnote on the face
+    page.goto(f"{base}/cities.html#l=county&c=los-angeles")
+    page.wait_for_selector("#recordBody .det-row")
+    sched = page.inner_text("#scheduleLabel")
+    check("county detail: named as a county", "LOS ANGELES COUNTY" in sched, sched)
+    check("county detail: one row per county function",
+          page.locator("#recordBody .det-row").count() == len(COUNTY["functions"]))
+    body = page.inner_text("#recordBody")
+    la = COUNTY["counties"]["los-angeles"]["years"][COUNTY["years"][-1]]
+    expected_pct = f"{round(la['unincorporated']*100)}%"
+    check("county detail: unincorporated share footnote, data-derived",
+          expected_pct in body and "unincorporated areas the county serves directly" in body,
+          body[-200:])
+    check("county detail: footnote states responsibility-not-choices",
+          "responsibility share, not spending choices" in body)
+
+    # county comparison: alphabetical, within-layer, footnoted
+    page.goto(f"{base}/cities.html#l=county&c=orange,alameda,los-angeles")
+    page.wait_for_selector("#recordBody .cmp-row")
+    heads = page.locator("#recordBody .cityhead .nm").all_inner_texts()
+    check("county cmp: alphabetical county columns",
+          heads == ["Alameda County", "Los Angeles County", "Orange County"], str(heads))
+    notes = page.inner_text("#recordBody")
+    check("county cmp: every county carries its unincorporated note",
+          notes.count("unincorporated areas the county serves directly") == 3)
+
+    # CSV + citation carry the layer explicitly
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("county cmp CSV: layer boundary stated",
+          "counties only" in csv and "never compared to each other" in csv)
+    cite = clipboard_of(page)
+    check("county citation: County Spending title", "County Spending" in cite, cite[:70])
+    check("county citation: names are counties", "Alameda County" in cite)
+
+    # SF routing in the county search
+    page.goto(f"{base}/cities.html#l=county")
+    page.fill("#citySearch", "San Fran")
+    page.wait_for_selector("#cityList button")
+    first = page.locator("#cityList button").first.inner_text()
+    check("county search: SF routes to the Cities layer", "FILES AS A CITY" in first, first)
+    page.locator("#cityList button").first.click()
+    page.wait_for_selector("#recordBody .det-row")
+    h = page.evaluate("location.hash")
+    check("county search: SF click selects the CITY record",
+          "c=san-francisco" in h and "l=county" not in h, h[:70])
+
+    # map: county layer serves county boundaries; SF not keyboard-selectable
+    page.goto(f"{base}/cities.html#l=county&p=map")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
+    check("county map: keyboard list excludes the SF pointer",
+          page.locator("#mapKeyList button").count() == 57)
+    check("county map: chrome names the layer",
+          "COUNTIES" in page.inner_text("#mapLbl")
+          and "57 COUNTIES" in page.inner_text("#mapReadout")
+          and "COUNTY BOUNDARIES" in page.inner_text("#mapCap"))
+    spec = page.evaluate(
+        "JSON.stringify(window._clMap.getPaintProperty('cities-fill','fill-color'))")
+    check("county map neutrality: unselected fill is one ink literal",
+          spec == '"#242424"', spec)
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -822,6 +934,7 @@ def main():
             test_v1(page, base)
             test_actuals_view(page, base)
             test_v2(page, base)
+            test_county(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

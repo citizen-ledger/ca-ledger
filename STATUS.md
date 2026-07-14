@@ -740,6 +740,71 @@ click parity, keyboard parity, m= round-trip, degradation, print) —
 three fewer in count, none weaker in coverage; the map tests now
 require network for basemap tiles.
 
+## 2026-07-13 — V5 build: the Counties layer
+
+Built per the approved V5 finding, option (a) for counties only —
+special districts and school districts were not built (see
+docs/V5_DISTRICTS_FINDING.md for why).
+
+- **Source:** the same SCO "By the Numbers" Socrata portal as cities —
+  County Expenditures (`uctr-c2j8`), County Revenues (`emxv-k8xv`),
+  and the independently published control totals in County
+  Expenditures Per Capita (`miui-wb29`).
+- **Coverage:** all **57 filing counties × 8 fiscal years (2016-17
+  through 2023-24)** — 456 county-years. San Francisco files as a
+  consolidated city and county: it stays in `city-data.js` with its
+  existing footnote, is **absent from `county-data.js`** (asserted),
+  and its polygon in `county-geo.js` carries `"pointer": "city"` so
+  the map routes it to the city record. It is counted exactly once.
+- **Hard gate, same as cities:** `pipeline/fetch_county_data.py`
+  refuses to write unless, for every county-year, governmental +
+  enterprise + internal service + conduit financing reproduces the
+  SCO's published total ($1,000 or 0.1% tolerance on totals that run
+  to tens of billions). Each county-year also stores the control total
+  (`scoTotal`) so the test suite re-asserts the reconciliation on
+  every run.
+- **Governmental/enterprise separation preserved exactly:** county
+  function figures and comparison cover governmental activities only;
+  enterprise funds (county hospitals, airports, utilities…) are the
+  same separate block; ISF and conduit are excluded from both.
+- **The unincorporated-share footnote** (the county equivalent of the
+  Lakewood problem): each county-year carries the share of its
+  residents living in unincorporated areas, surfaced as a data-derived
+  neutral note in the detail view, comparison, CSV, and citations.
+  **Documented deviation:** the instruction suggested DOF report E-1
+  as the source; the share is instead computed as
+  (county population − sum of the county's cities' populations) ÷
+  county population **from the same SCO filings** already in the
+  record. Reason: the populations are then the same vintage and same
+  source as every other number on the page (the SCO figures are
+  themselves DOF estimates as reported in the filings), and the note
+  stays reproducible from the committed pipeline without a second
+  source. Values sanity-checked against known cases (Los Angeles
+  ≈ 10%, Alpine = 100% — no incorporated cities).
+- **Layer separation is structural, not copy:** the page has a
+  Cities / Counties switch; switching clears the selection; slugs from
+  one layer are invalid in the other; comparison, CSV, and citation
+  operate within one layer; the methodology states plainly that
+  cities and counties are never compared to each other (their
+  responsibilities overlap in population but not in kind).
+- **Map:** the county layer swaps the boundary source to
+  `county-geo.js` (58 features: 57 counties + the SF pointer, 172 KB,
+  Census `cb_2023_us_county_500k`, digest-stamped). Same neutrality
+  rule, same assertions: uniform ink fill, selection keyed only by
+  identity, no financial fields in the geometry. The keyboard list
+  excludes the SF pointer; clicking SF's polygon shows a routing
+  notice and never selects a county.
+- **Integrity:** `county-data.js` (219 KB) and `county-geo.js` are
+  SHA-256 digest-stamped; `pipeline/verify_digest.py` now checks all
+  five data files by default, and the page's RECORD INTEGRITY panel
+  shows the digest of whichever layer is active.
+
+Tests: **244 assertions, all passing** — the 216 existing plus 28 new
+county assertions (per-county-year gate re-assertion, unincorporated
+footnote presence and arithmetic, SF single-counting on both sides,
+layer-separation behavior, county map neutrality and pointer routing,
+county CSV/citation wording).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
@@ -750,3 +815,7 @@ Cities: one new fiscal year per SCO filing cycle (reports for a fiscal
 year appear on By the Numbers roughly a year later). Run
 `python3 pipeline/fetch_city_data.py --write`; extend `SOURCE_YEARS`
 when a new year appears.
+
+Counties: same cadence and portal as cities. Run
+`python3 pipeline/fetch_county_data.py --write`; the write fails
+unless every county-year reconciles against `miui-wb29`.
