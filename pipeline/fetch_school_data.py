@@ -78,6 +78,25 @@ ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "schools"
 OUT_PATH = ROOT / "school-data.js"
 
+# NCES LEA ids for the address view's identifier-based matching: the
+# Census geocoder's school-district GEOID equals the NCES LEA id, and
+# CDE's public directory carries NCESDist per district. Five SACS
+# filers are common-administration arrangements (two legal districts
+# filing one report, per CDE's readme); the directory lists their
+# CONSTITUENT districts, so those constituents' NCES ids map to the
+# filer. This constant is the documented administrative structure,
+# verified against the directory — not name matching.
+PUBSCHLS = CACHE / "pubschls.txt"   # CDE directory export (live URL is
+# bot-gated; obtainable via web.archive.org snapshot of
+# https://www.cde.ca.gov/schooldirectory/report?rid=dl1&tp=txt)
+COMMON_ADMIN_NCES = {
+    "0603090": "2376349", "0631230": "2376349",   # Arena Union / Point Arena
+    "0625130": "5040717", "0625150": "5040717",   # Modesto City Elem / High
+    "0630230": "4940246", "0630250": "4940246",   # Petaluma Elem / JUH
+    "0635590": "4440261", "0635600": "4440261",   # Santa Cruz City Elem / High
+    "0635810": "4940253", "0635830": "4940253",   # Santa Rosa Elem / High
+}
+
 YEARS = [("2223", "2022-23"), ("2324", "2023-24"), ("2425", "2024-25")]
 GATE_TOL = 0.05          # per-district vs published EDP 365
 ROLLUP_TOL = 0.05        # per fund×object cell vs CDE's own totals
@@ -442,6 +461,21 @@ def main():
     latest = YEARS[-1][1]
     Y = [fy for _, fy in YEARS]
 
+    # ---- NCES crosswalk (identifier matching for the address view)
+    if not PUBSCHLS.exists():
+        raise SystemExit(f"{PUBSCHLS} missing — download the CDE public "
+                         "schools/districts directory export (see comment "
+                         "at COMMON_ADMIN_NCES) before running")
+    nces_ids = defaultdict(list)
+    with open(PUBSCHLS, encoding="utf-8", errors="replace") as f:
+        for r in csv.DictReader(f, delimiter="\t"):
+            cds = (r.get("CDSCode") or "").strip()
+            nces = (r.get("NCESDist") or "").strip()
+            if len(cds) == 14 and cds.endswith("0000000") and nces and nces != "No Data":
+                target = COMMON_ADMIN_NCES.get(nces, cds[:7])
+                if nces not in nces_ids[target]:
+                    nces_ids[target].append(nces)
+
     # ---- assemble districts (driven by the published CE list)
     districts, slug_taken = {}, {}
     all_keys = sorted({k for fy in Y for k in years[fy]["ce"]},
@@ -455,7 +489,8 @@ def main():
             slug = slugify(newest["name"] + "-" + COUNTIES[int(c) - 1])
         slug_taken[slug] = True
         entry = {"name": newest["name"], "county": COUNTIES[int(c) - 1],
-                 "type": newest["type"], "cds": c + d, "years": {}}
+                 "type": newest["type"], "cds": c + d,
+                 "nces": nces_ids.get(c + d, []), "years": {}}
         for fy in Y:
             yd = years[fy]
             if key not in yd["ce"]:
@@ -476,6 +511,14 @@ def main():
                 "depFundsCharterExp": round(yd["dep_funds_exp"].get(key, 0.0), 2),
             }
         districts[slug] = entry
+
+    no_nces = [f"{e['name']} ({e['cds']})" for e in districts.values()
+               if not e["nces"]]
+    if no_nces:
+        raise SystemExit("NCES ID MISSING for " + str(len(no_nces))
+                         + " district(s) — the address view cannot match "
+                         "them by identifier; nothing written:\n  "
+                         + "\n  ".join(no_nces[:20]))
 
     # ---- county offices (records only)
     coes = {}

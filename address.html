@@ -215,12 +215,14 @@
 <script src="city-geo.js"></script>
 <script src="county-geo.js"></script>
 <script src="district-data.js"></script>
+<script src="school-data.js"></script>
 <script>
 (function(){
   "use strict";
   const ST = window.CA_LEDGER_DATA, CITY = window.CA_CITY_DATA,
         CTY = window.CA_COUNTY_DATA, CGEO = window.CA_CITY_GEO,
-        KGEO = window.CA_COUNTY_GEO, DIST = window.CA_DISTRICT_DATA;
+        KGEO = window.CA_COUNTY_GEO, DIST = window.CA_DISTRICT_DATA,
+        SCH = window.CA_SCHOOL_DATA;
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const fmt = n => n.toLocaleString("en-US");
@@ -230,7 +232,17 @@
   const ST_FY = ST.years[ST.years.length-1];
 
   // resolved state — slugs only; the typed address NEVER enters here
-  const S = { city: null, county: null, cdp: null, via: null };
+  const S = { city: null, county: null, cdp: null, via: null,
+              schools: [], schoolNote: null };
+
+  const SCH_FY = SCH.years[SCH.years.length-1];
+  const SCH_OL = SCH.meta.overlap.years[SCH.meta.overlap.latest];
+  const ncesToSlug = {};
+  Object.entries(SCH.districts).forEach(([slug, d]) =>
+    (d.nces || []).forEach(id => { ncesToSlug[id] = slug; }));
+  const BA_COUNT = Object.values(SCH.districts)
+    .filter(d => (d.years[SCH_FY]||{}).basicAid).length;
+  const SD_COUNT = Object.keys(SCH.districts).length;
 
   const geoidToSlug = {};
   CGEO.features.forEach(f => { geoidToSlug[f.properties.geoid] = f.properties.slug; });
@@ -261,6 +273,7 @@
     const p = new URLSearchParams();
     if (S.city) p.set("c", S.city);
     else if (S.county) p.set("uc", S.county);
+    if (S.schools.length) p.set("sd", S.schools.join(","));
     return p.toString();
   }
   function syncHash(){
@@ -279,11 +292,14 @@
     } else if (uc && CTY.counties[uc]) {
       S.county = uc;
     }
+    S.schools = (p.get("sd")||"").split(",").filter(s => SCH.districts[s]).slice(0,2);
+    S.schoolNote = null;
   }
 
   /* ---------- geocoding (JSONP — the geocoder's CORS blocks fetch) ---------- */
   const GEO_BASE = "https://geocoding.geo.census.gov/geocoder/geographies/";
-  const LAYERS = "Counties,Incorporated Places,Census Designated Places";
+  const LAYERS = "Counties,Incorporated Places,Census Designated Places,"
+    + "Unified School Districts,Elementary School Districts,Secondary School Districts";
   let jsonpCleanup = null;
   function jsonp(url){
     return new Promise((resolve, reject) => {
@@ -341,7 +357,37 @@
       }
       if (countyName === "San Francisco"){ S.city = "san-francisco"; S.county = null; }
     }
+    resolveSchools(g);
     syncHash(); render();
+  }
+
+  // Census school-district GEOID == NCES LEA id; matching is by
+  // identifier only. A unified district stands alone; otherwise an
+  // elementary + secondary pair. Common-administration constituents
+  // dedupe to their single SACS filer.
+  function resolveSchools(g){
+    S.schools = []; S.schoolNote = null;
+    const uni = (g["Unified School Districts"]||[])[0];
+    const elem = (g["Elementary School Districts"]||[])[0];
+    const sec = (g["Secondary School Districts"]||[])[0];
+    const found = uni ? [uni] : [elem, sec].filter(Boolean);
+    if (!found.length){
+      S.schoolNote = "The Census response did not identify a school district for this point.";
+      return;
+    }
+    const unmatched = [];
+    found.forEach(f => {
+      const slug = ncesToSlug[f.GEOID];
+      if (!slug) unmatched.push(f.NAME + " (GEOID " + f.GEOID + ")");
+      else if (!S.schools.includes(slug)) S.schools.push(slug);
+    });
+    if (unmatched.length){
+      S.schools = [];
+      S.schoolNote = "The Census Bureau places this address in "
+        + esc(unmatched.join(" and "))
+        + ", which has no identifier-matched record in the Ledger's school "
+        + "data — nothing is shown rather than a guess.";
+    }
   }
 
   function fail(msgHtml){
@@ -466,6 +512,9 @@
       S.county = ctyF ? ctyF.properties.slug : null;
     }
     lastMatched = null;
+    S.schools = [];
+    S.schoolNote = "School districts are not resolved on this device — the "
+      + "on-device fallback covers city and county boundaries only.";
     syncHash(); render();
   }
   $("pinLocal").addEventListener("click", () => {
@@ -532,6 +581,53 @@
         + "city residents' county services are chiefly countywide functions (courts, jails, "
         + "elections, public health)."),
       link: "cities.html#l=county&c=" + slug, linkLabel: "Open the full county record"
+    });
+  }
+  function schoolNotes(d, v){
+    const notes = [];
+    if (v.basicAid) notes.push("Basic aid: local property tax exceeds this district's "
+      + "LCFF entitlement and it keeps the excess — per-ADA spending partly reflects "
+      + "tax-base geography, not choices (" + BA_COUNT + " of " + SD_COUNT
+      + " districts are in this position).");
+    if (v.smallNSS) notes.push("Fewer than 250 ADA: necessary-small-school funding "
+      + "floors make per-ADA figures structurally high.");
+    if (v.sponsoredCharterADA > 0 && v.sponsoredCharterADA >= 0.25 * v.ada)
+      notes.push("Sponsors " + fmt(Math.round(v.sponsoredCharterADA))
+        + " ADA of separately-reporting charter schools against "
+        + fmt(Math.round(v.ada)) + " of its own — this record describes only the "
+        + "district-run schools.");
+    if (v.commingledCharters)
+      notes.push(v.commingledCharters.count + " charter school"
+        + (v.commingledCharters.count > 1 ? "s" : "") + " report inside this "
+        + "district's books and cannot be separated — this record includes them.");
+    notes.push("This is the school district of residence for this address — "
+      + "charter-school students may attend schools their district of residence "
+      + "does not run.");
+    return notes.join(" ");
+  }
+  function schoolRecord(slug, pairKind){
+    const d = SCH.districts[slug], v = d.years[SCH_FY];
+    if (!v) return "";
+    const kind = pairKind === "single" ? "YOUR SCHOOL DISTRICT"
+      : (d.type.toLowerCase().includes("elementary") ? "YOUR ELEMENTARY SCHOOL DISTRICT"
+        : d.type.toLowerCase().includes("high") ? "YOUR HIGH SCHOOL DISTRICT"
+        : "YOUR SCHOOL DISTRICT");
+    const fns = Object.entries(v.byFunction)
+      .map(([k, x]) => [(SCH.functions.find(f => f.key === k)||{}).name || k, x])
+      .sort((a,b) => b[1]-a[1]).slice(0,5);
+    const max = fns.length ? fns[0][1] : 1;
+    return miniRecord({
+      kicker: kind + " — RESIDENCE",
+      sched: "CURRENT EXPENSE OF EDUCATION · PER ADA · FY " + SCH_FY,
+      name: d.name, sub: d.county + " County · " + d.type + " · ADA " + fmt(Math.round(v.ada)),
+      big: money0(v.currentExpense / v.ada),
+      biglbl: "CURRENT EXPENSE PER ADA · UNAUDITED ACTUALS · RECONCILED TO CDE'S PUBLISHED FIGURE",
+      fns: fns.map(([name, x]) =>
+        '<div class="fn-row"><span>'+esc(name)+'</span>'
+        + '<span class="bar"><i style="width:'+(x/max*100).toFixed(1)+'%"></i></span>'
+        + '<span class="v">'+money0(x / v.ada)+'</span></div>').join(""),
+      note: schoolNotes(d, v),
+      link: "schools.html#c=" + slug, linkLabel: "Open the full school district record"
     });
   }
   function stateRecord(){
@@ -601,6 +697,11 @@
     let html = "";
     if (S.city) html += cityRecord(S.city);
     if (S.county) html += countyRecord(S.county, !S.city);
+    const pairKind = S.schools.length > 1 ? "pair" : "single";
+    S.schools.forEach(slug => { html += schoolRecord(slug, pairKind); });
+    if (!S.schools.length && S.schoolNote)
+      html += '<div class="uninc-note" id="schoolNote"><strong>School district — not '
+        + 'determined.</strong> ' + S.schoolNote + '</div>';
     html += stateRecord();
     $("records").innerHTML = html;
     $("noSum").innerHTML = "<b>THESE RECORDS DO NOT ADD</b>"
@@ -610,7 +711,11 @@
       + "M federal, of $" + fmt(Math.round(IG.governmentalRevenuesM)) + "M) — dollars that also "
       + "appear in those governments' figures. A single total would count them more than once, "
       + "so the Ledger never shows one. Each figure is spending in your name on its own basis — "
-      + "not a bill, and not addable.";
+      + "not a bill, and not addable."
+      + (S.schools.length ? " The school district figures do not add either: about "
+        + (SCH_OL.stateShare*100).toFixed(1) + "% of what school districts report receiving "
+        + "is state money the state record below already contains — the layers agree to "
+        + "roughly 1–3.5% and never to the dollar." : "");
     const dc = distCountByCounty[countyName] || 0;
     $("distPanel").innerHTML =
       '<div class="rec-top"><span class="microlbl">SPECIAL DISTRICTS</span>'
@@ -653,8 +758,13 @@
     const lead = S.city
       ? CITY.cities[S.city].name + (S.city === "san-francisco" ? "" : " and " + CTY.counties[S.county].name + " County")
       : "Unincorporated " + CTY.counties[S.county].name + " County";
+    const schoolPart = S.schools.map(slug => {
+      const d = SCH.districts[slug], v = d.years[SCH_FY];
+      return d.name + " " + money0(v.currentExpense / v.ada)
+        + " per ADA (unaudited actuals, reconciled, FY " + SCH_FY + ", district of residence)";
+    });
     return 'Citizen Ledger, "Your Governments: ' + lead + ', FY ' + CITY_FY + '." '
-      + parts.join("; ") + ". These figures do not add: " + IG_PCT
+      + parts.concat(schoolPart).join("; ") + ". These figures do not add: " + IG_PCT
       + " of county governmental revenues are intergovernmental (FY " + IG.year
       + "), so a total would double-count. Spending in your name, not a tax bill. "
       + "Sources: State Controller (bythenumbers.sco.ca.gov), Dept. of Finance (ebudget.ca.gov). "
@@ -671,6 +781,21 @@
     ];
     layersForExport().forEach(r => lines.push(r.map(x =>
       /[",]/.test(String(x)) ? '"' + String(x).replace(/"/g,'""') + '"' : x).join(",")));
+    if (S.schools.length){
+      lines.push("# School districts (residence): unaudited actuals, reconciled to "
+        + "CDE's published figure; per ADA, never per resident; charter students may "
+        + "attend schools their district of residence does not run. These figures do "
+        + "not add to the state row: about " + (SCH_OL.stateShare*100).toFixed(1)
+        + "% of school revenues are state money it already contains.");
+      lines.push("school_district,county,type,fiscal_year,ada,current_expense_dollars,per_ada_dollars");
+      S.schools.forEach(slug => {
+        const d = SCH.districts[slug], v = d.years[SCH_FY];
+        if (!v) return;
+        lines.push([d.name, d.county, d.type, SCH_FY, v.ada,
+          v.currentExpense.toFixed(2), Math.round(v.currentExpense / v.ada)]
+          .map(x => /[",]/.test(String(x)) ? '"' + String(x).replace(/"/g,'""') + '"' : x).join(","));
+      });
+    }
     return lines.join("\r\n");
   }
 
@@ -679,6 +804,7 @@
   $("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") lookupAddress(); });
   $("clearBtn").addEventListener("click", () => {
     S.city = S.county = S.cdp = null; lastMatched = null;
+    S.schools = []; S.schoolNote = null;
     $("addrInput").value = ""; $("status").textContent = "";
     syncHash(); render();
   });

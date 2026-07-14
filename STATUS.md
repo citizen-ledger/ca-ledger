@@ -1079,6 +1079,60 @@ statement's live values, named traps, and bounded precision; the
 cross-layer statement; citation/CSV format with the published figure
 re-checkable from exports; authored-copy neutrality scan).
 
+## 2026-07-14 — School districts on the address view
+
+The address view now resolves the school district(s) of residence,
+because — unlike special districts — school districts ARE a Census
+TIGER geography.
+
+- **Assignment is the Census Bureau's, by identifier.** The
+  geographies endpoint returns the Unified / Elementary / Secondary
+  School District layers directly (verified live), so no boundary
+  files ship and no point-in-polygon runs. The returned GEOID equals
+  the NCES LEA id; matching to SACS districts uses a crosswalk built
+  by the pipeline from CDE's own directory (NCESDist ↔ CDS code) —
+  never names. All 934 districts carry ids; an unmatched GEOID fails
+  loudly on the face of the panel ("no identifier-matched record …
+  nothing is shown rather than a guess"), test-asserted.
+- **Unified vs. elementary + secondary handled, never assumed:** a
+  unified district renders one record; a pair renders two, labeled
+  YOUR ELEMENTARY / YOUR HIGH SCHOOL DISTRICT (verified live:
+  Lancaster Elementary + Antelope Valley Union High). The five
+  common-administration filers carry both constituents' NCES ids —
+  a documented administrative structure from CDE's readme, encoded
+  as a verified constant, not name matching — so Modesto's two legal
+  districts dedupe to the single Modesto City Schools record.
+- **The record keeps the layer's discipline:** gated Current Expense
+  per ADA ("RECONCILED TO CDE'S PUBLISHED FIGURE"), top functions per
+  ADA, and the daggers carry through (a Palo Alto address shows the
+  basic-aid note with the live count). Every school record states:
+  the district shown is the **district of residence** —
+  charter-school students may attend schools their district does not
+  run.
+- **The does-not-add statement extends to schools** with the live
+  share from school-data.js meta ("about 50.7% of what school
+  districts report receiving is state money the state record already
+  contains — the layers agree to roughly 1–3.5% and never to the
+  dollar"); the share is absent from the page source, test-asserted.
+  CSV exports gain a per-ADA school table (never per-resident) with
+  the residence and no-add notes; citations carry both.
+- **Privacy unchanged:** the same single JSONP request to census.gov
+  now also names the school-district layers — the address goes
+  nowhere new; permalinks carry `sd=` slugs only. The on-device
+  fallback does not resolve schools and says so. Where the geocoder
+  response has no school layers, the panel states "not determined"
+  rather than guessing.
+- address.html now also loads school-data.js (~8.6 MB raw total for
+  the page, ~1.5 MB compressed — the heaviest page on the site,
+  stated here as always).
+
+Tests: **443 assertions, all passing** — 429 existing plus 14
+(identifier coverage incl. the five dual-id filers; unified and
+elem+high mocked flows; common-admin dedupe; unmatched-GEOID loud
+failure; the extended does-not-add with live share absent from
+source; per-ADA CSV and citation; the not-determined strip on
+school-less responses).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

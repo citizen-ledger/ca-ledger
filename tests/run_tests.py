@@ -1013,6 +1013,9 @@ def test_address(page, base):
           and "not a government" in page.inner_text("#unincNote"))
     check("address unincorporated: unincorporated share made concrete",
           "% of Los Angeles County's residents live in unincorporated" in body)
+    check("address schools: absent school layers yield a stated "
+          "not-determined strip, never a guess",
+          "School district — not determined" in body)
 
     # ---- PRIVACY: the address is nowhere but the census request
     h = page.evaluate("location.hash")
@@ -1035,6 +1038,107 @@ def test_address(page, base):
           "do not add" in cite and ig_pct in cite)
     check("address CSV: never exports the address",
           "never exported" in csv and "in residents' name" in csv)
+
+    # ---- school districts: identifier matching, both structures
+    check("address schools: every district carries an NCES identifier",
+          all(d.get("nces") for d in SCHOOL["districts"].values()))
+    check("address schools: common-admin filers carry both constituents' ids",
+          sorted(len(d["nces"]) for d in SCHOOL["districts"].values()
+                 if len(d["nces"]) > 1) == [2, 2, 2, 2, 2])
+    SCH_FY = SCHOOL["years"][-1]
+    sch_share = f"{SCHOOL['meta']['overlap']['years'][SCHOOL['meta']['overlap']['latest']]['stateShare']*100:.1f}%"
+    asrc = (ROOT / "address.html").read_text(encoding="utf-8")
+
+    page.unroute(CENSUS_JSONP_RE)
+    palo = {"Counties": [{"NAME": "Santa Clara County", "GEOID": "06085"}],
+            "Incorporated Places": [{"NAME": "Palo Alto city",
+                                     "GEOID": "0655282", "FUNCSTAT": "A"}],
+            "Unified School Districts": [{"NAME": "Palo Alto Unified School District",
+                                          "GEOID": "0629610"}]}
+    page.route(CENSUS_JSONP_RE, handler_factory(palo, "250 HAMILTON AVE"))
+    page.goto(f"{base}/address.html")
+    page.fill("#addrInput", "250 Hamilton Ave, Palo Alto")
+    page.click("#lookupBtn")
+    page.wait_for_selector("#records .record")
+    body = page.inner_text("body")
+    check("address schools: unified district renders one gated record",
+          "Palo Alto Unified" in body
+          and "RECONCILED TO CDE'S PUBLISHED FIGURE" in body)
+    check("address schools: the basic-aid dagger carries through",
+          "tax-base geography" in body)
+    check("address schools: district-of-residence charter caveat always on",
+          "district of residence" in body.lower()
+          and "charter-school students may attend" in body.lower())
+    check("address schools: hash carries the school slug only",
+          "sd=palo-alto-unified" in page.evaluate("location.hash"))
+    check("address schools: does-not-add extended with the live share",
+          sch_share in page.inner_text("#noSum")
+          and "school district figures do not add" in page.inner_text("#noSum").lower())
+    check("address schools: share not hardcoded in source", sch_share not in asrc)
+    page.click("#citeBtn")
+    cite = page.inner_text("#citeText")
+    check("address schools: citation carries per-ADA and residence caveat",
+          "per ADA" in cite and "district of residence" in cite)
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csvt = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("address schools CSV: per-ADA table with residence and no-add notes",
+          "per_ada_dollars" in csvt and "district of residence" in csvt
+          and "not add to the state row" in csvt)
+
+    # elementary + secondary pair — never assume unified
+    page.unroute(CENSUS_JSONP_RE)
+    pair = {"Counties": [{"NAME": "Los Angeles County", "GEOID": "06037"}],
+            "Elementary School Districts": [{"NAME": "Lancaster Elementary School District",
+                                             "GEOID": "0620880"}],
+            "Secondary School Districts": [{"NAME": "Antelope Valley Union Joint High School District",
+                                            "GEOID": "0602820"}]}
+    page.route(CENSUS_JSONP_RE, handler_factory(pair, "44933 FERN AVE"))
+    page.goto(f"{base}/address.html")
+    page.fill("#addrInput", "44933 Fern Ave, Lancaster")
+    page.click("#lookupBtn")
+    page.wait_for_selector("#records .record")
+    body = page.inner_text("body")
+    check("address schools: elementary + secondary pair renders two records",
+          "YOUR ELEMENTARY SCHOOL DISTRICT" in body
+          and "YOUR HIGH SCHOOL DISTRICT" in body
+          and "Lancaster Elementary" in body
+          and "Antelope Valley Union High" in body)
+
+    # common-administration constituents dedupe to one filer record
+    page.unroute(CENSUS_JSONP_RE)
+    modesto = {"Counties": [{"NAME": "Stanislaus County", "GEOID": "06099"}],
+               "Incorporated Places": [{"NAME": "Modesto city",
+                                        "GEOID": "0648354", "FUNCSTAT": "A"}],
+               "Elementary School Districts": [{"NAME": "Modesto City Elementary School District",
+                                                "GEOID": "0625130"}],
+               "Secondary School Districts": [{"NAME": "Modesto City High School District",
+                                               "GEOID": "0625150"}]}
+    page.route(CENSUS_JSONP_RE, handler_factory(modesto, "1010 10TH ST"))
+    page.goto(f"{base}/address.html")
+    page.fill("#addrInput", "1010 10th St, Modesto")
+    page.click("#lookupBtn")
+    page.wait_for_selector("#records .record")
+    body = page.inner_text("body")
+    check("address schools: common-admin constituents dedupe to one filer",
+          body.count("Modesto City Schools") >= 1
+          and "sd=modesto-city-schools" in page.evaluate("location.hash")
+          and page.evaluate("location.hash").count("sd=") == 1)
+
+    # unknown school GEOID: loud, never a guess
+    page.unroute(CENSUS_JSONP_RE)
+    unk = {"Counties": [{"NAME": "Los Angeles County", "GEOID": "06037"}],
+           "Unified School Districts": [{"NAME": "Mystery Unified School District",
+                                         "GEOID": "0699998"}]}
+    page.route(CENSUS_JSONP_RE, handler_factory(unk, "1 MYSTERY WAY"))
+    page.goto(f"{base}/address.html")
+    page.fill("#addrInput", "1 Mystery Way")
+    page.click("#lookupBtn")
+    page.wait_for_selector("#records .record")
+    check("address schools: unmatched identifier fails loudly, no guess",
+          "no identifier-matched record" in page.inner_text("body")
+          and "Mystery Unified" in page.inner_text("body")
+          and "sd=" not in page.evaluate("location.hash"))
 
     # ---- SF consolidated handling (mocked)
     page.unroute(CENSUS_JSONP_RE)
