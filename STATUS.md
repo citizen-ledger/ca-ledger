@@ -805,6 +805,98 @@ footnote presence and arithmetic, SF single-counting on both sides,
 layer-separation behavior, county map neutrality and pointer routing,
 county CSV/citation wording).
 
+## 2026-07-13 — V5 build, part two: the special districts layer
+
+Built per the V5 finding, option (b), as re-scoped: FINDING FIRST,
+DIRECTORY SECOND, NUMBERS LAST AND HEDGED. This layer is deliberately
+NOT the evidentiary tier of the rest of the Ledger, and the page says
+so on every surface.
+
+- **Sources:** Special Districts Expenditures (`m9u3-wdam`) and
+  Revenues (`nkv3-m73r`), plus the Controller's "filed late or failed
+  to file" list for each year one exists — FY 2018-19 (`uiun-snc7`),
+  2019-20 (`rbwh-942r`), 2020-21 (`fbdc-d5ib`), 2021-22 (`udxr-rcgh`),
+  2022-23 (`en47-vkkk`), 2023-24 (`9whd-sig6`). No list was published
+  for FY 2016-17 or 2017-18; the page prints "no list published" for
+  those years rather than guessing.
+- **The finding is the product, and it is computed, not copied.**
+  Every figure the finding states — expected filers, filed, filed
+  late, did not file (per year), district counts by legal type, the
+  largest activity types, the enterprise share of as-filed dollars —
+  is recomputed from the live API by `pipeline/fetch_district_data.py`
+  on every run and stored in `meta.finding`; districts.html renders
+  those values and hardcodes none of them (test-asserted: the
+  formatted figures appear in the DOM and are absent from the page
+  source). Current run: 4,817 expected filers for FY 2023-24, 785
+  filed late, 51 did not file, 1,572 dependent districts among the
+  4,750 that filed, 76.7% of as-filed expenditure dollars in
+  enterprise funds. The live counts supersede the V5 doc's
+  measurements where methods differ (the doc counted row-entries for
+  dependent districts; the finding counts districts, per year, and
+  states its method).
+- **No reconciliation gate exists for this layer — structurally.**
+  No control-total dataset is published for special districts, so
+  nothing here can be verified against an independent total. The page
+  states this in a persistent tier band, in the finding, in
+  methodology note D-1, and on the face of every record: "As filed
+  with the State Controller. Not reconciled against any published
+  control total. The Ledger cannot verify this figure." The caveat
+  travels into every CSV header and citation (test-asserted).
+- **What IS gated (structurally, in the pipeline):** slug uniqueness;
+  full year coverage; every late/failed list row either matched
+  (normalized prefix + county — SCO's lists truncate names at ~40
+  characters) or carried into the directory exactly as printed, never
+  guessed. Match accounting this run: 5,123 late rows matched, 227
+  did-not-file rows matched, 105 rows with no line items in either
+  dataset shown as printed, 0 ambiguous, 1 re-spelling merged
+  (identical after punctuation normalization + same county +
+  disjoint years — the only merge rule permitted, per the V4
+  entity-resolution finding).
+- **The directory is the union of both datasets** — measured: ~60
+  districts file only revenue line items, ~16 only expenditures.
+  5,239 districts on record. Each row links to the district's own
+  page on the Controller's explorer
+  (`districts.bythenumbers.sco.ca.gov`, deep-link verified from a
+  cold load).
+- **No per-resident figures, no comparison, no totals.** The data
+  file carries no population field at all, so the per-resident
+  ingredient is refused at the source (test-asserted on the records).
+  No comparison UI exists; selection is single-district and a second
+  choice replaces the first. The finding section contains no dollar
+  figure — counts and shares, never a layer total — because dependent
+  districts (and JPAs) mean the same dollars can appear in more than
+  one government's books.
+- **Tier made visible in the design system's vocabulary:** dashed
+  hairlines where gated layers use solid (test-asserted:
+  border-style dashed here, solid on cities.html); an open square
+  (▢) where the gated tier uses a filled mark, with the legend in the
+  tier band; no schedule number ("AS-FILED RECORD — NOT A LEDGER
+  SCHEDULE"); the caveat is part of the record face, not a footnote;
+  the as-filed tables are plain text with no proportional bars.
+- **No map, stated:** special districts are not a Census geography
+  and no statewide boundary file exists on data.ca.gov or
+  gis.data.ca.gov (searched 2026-07-13). The layer ships without a
+  map rather than approximating boundaries.
+- **Payload:** district-data.js is 2.17 MB (the largest data file;
+  reported, not silent). It is loaded only by districts.html — the
+  state, city, and county pages are unaffected.
+- **Neutrality note:** district NAMES from the source legitimately
+  contain words the Ledger bans in its own copy (districts named
+  "…Wastewater Agency", even two "…Delinquent Tax Financing
+  Authority" entities), so the banned-term scan for this page runs on
+  the authored page source, where characterization could actually
+  live; "delinquent" is additionally banned in the page's own copy —
+  the page says "filed late or failed to file," as the Controller's
+  lists do.
+
+Tests: **305 assertions, all passing** — the 244 existing plus 61 for
+this layer (caveat on record/CSV/citation, no per-resident figure
+anywhere, no comparison or aggregate reachable, finding rendered from
+data and absent from source, dashed-tier visuals vs. solid gated
+surfaces, SCO deep links, filing-status table, authored-copy
+neutrality scan, and the city/county picker never growing a district
+layer).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
@@ -819,3 +911,9 @@ when a new year appears.
 Counties: same cadence and portal as cities. Run
 `python3 pipeline/fetch_county_data.py --write`; the write fails
 unless every county-year reconciles against `miui-wb29`.
+
+Special districts: same portal. Run
+`python3 pipeline/fetch_district_data.py --write`; the finding's
+figures recompute from the live data on every run. When SCO publishes
+a new fiscal year, extend the window in YEARS and add the year's
+late/failed list id to DELINQUENCY.

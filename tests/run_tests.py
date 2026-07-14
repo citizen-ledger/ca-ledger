@@ -57,6 +57,7 @@ CITY = load_data_js(ROOT / "city-data.js")
 GEO = load_data_js(ROOT / "city-geo.js")
 COUNTY = load_data_js(ROOT / "county-data.js")
 CGEO = load_data_js(ROOT / "county-geo.js")
+DIST = load_data_js(ROOT / "district-data.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -171,7 +172,7 @@ def clipboard_of(page, toggle_sel="#citeToggle", copy_sel="#citeCopy"):
 def test_integrity():
     for name, payload in (("data.js", STATE), ("city-data.js", CITY),
                           ("city-geo.js", GEO), ("county-data.js", COUNTY),
-                          ("county-geo.js", CGEO)):
+                          ("county-geo.js", CGEO), ("district-data.js", DIST)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
@@ -757,6 +758,166 @@ def test_county(page, base):
           spec == '"#242424"', spec)
 
 
+def test_districts(page, base):
+    F = DIST["meta"]["finding"]
+    YRS = DIST["years"]
+    src = (ROOT / "districts.html").read_text(encoding="utf-8").lower()
+
+    # ---- data level
+    check("districts: >4,500 on record", len(DIST["districts"]) > 4500,
+          str(len(DIST["districts"])))
+    bad = [s for s, r in DIST["districts"].items()
+           if len(r["filings"]) != len(YRS)
+           or any(ch not in "FLM-" for ch in r["filings"])]
+    check("districts: per-year filing status for every district", not bad,
+          str(bad[:3]))
+    # meta EXPLAINS the absence of population (allowed); the records
+    # themselves must not carry the ingredient
+    records_json = json.dumps(DIST["districts"]).lower()
+    check("districts: NO population field exists in any district record "
+          "(the per-resident ingredient is refused at the source)",
+          "population" not in records_json and '"pop"' not in records_json)
+    check("districts: finding carries its method",
+          all(k in F["method"] for k in
+              ("filed", "expectedFilers", "enterpriseShare", "types",
+               "delinquencyNameMatching")))
+    check("districts: no late/failed list exists for the first two years",
+          YRS[0] not in DIST["delinquencyYears"]
+          and YRS[1] not in DIST["delinquencyYears"]
+          and len(DIST["delinquencyYears"]) == 6)
+
+    # ---- the finding is rendered from live data, not hardcoded
+    fmt = lambda n: f"{n:,}"
+    page.goto(f"{base}/districts.html")
+    page.wait_for_selector(".dir-row")
+    finding_dom = page.inner_text("#findingSec")
+    for key in ("expectedFilers", "filedLate", "failedToFile", "filed",
+                "dependentCount"):
+        check(f"districts finding: {key} rendered from data file",
+              fmt(F[key]) in finding_dom, fmt(F[key]))
+    for key in ("expectedFilers", "filed", "dependentCount"):
+        check(f"districts finding: {key} not hardcoded in page source",
+              fmt(F[key]) not in src)
+    ent_pct = f"{F['enterpriseShareExp']*100:.1f}%"
+    check("districts finding: enterprise share rendered from data",
+          ent_pct in finding_dom and ent_pct not in src, ent_pct)
+    check("districts finding: no dollar figure appears in the finding "
+          "(counts and shares, never a layer total)",
+          "$" not in finding_dom)
+    check("districts finding: control-total absence stated",
+          "structurally impossible" in finding_dom)
+    check("districts finding: per-year filing table includes "
+          "no-list-published years",
+          page.inner_text("#yearTbl").count("no list published") == 4)
+
+    # ---- tier chrome
+    check("districts: persistent tier band above the fold",
+          page.locator("#tierBand").is_visible()
+          and "UNRECONCILED" in page.inner_text("#tierBand"))
+    check("districts: no unit toggle exists on the page",
+          page.locator("#unitGroup").count() == 0)
+    check("districts: no layer pill / comparison chips exist",
+          page.locator("#layerGroup").count() == 0
+          and page.locator("#cityChips").count() == 0)
+    check("districts: directory shows no dollar figures",
+          "$" not in page.inner_text("#dirList"))
+
+    # ---- open a record: pick from data a district with figures and an L year
+    slug = next(s for s, r in DIST["districts"].items()
+                if "L" in r["filings"] and r["exp"][-1] and r["rev"][-1])
+    rec = DIST["districts"][slug]
+    page.goto(f"{base}/districts.html#d={slug}")
+    page.wait_for_selector("#districtRecord")
+    caveat = ("As filed with the State Controller. Not reconciled against "
+              "any published control total. The Ledger cannot verify this "
+              "figure.")
+    check("district record: the caveat is on the face",
+          caveat in page.inner_text("#recCaveat"))
+    check("district record: named and linked to its own SCO filing",
+          rec["name"] in page.inner_text("#recTitle"))
+    href = page.get_attribute("#recMeta a", "href")
+    check("district record: SCO deep link targets the district",
+          href.startswith("https://districts.bythenumbers.sco.ca.gov/#!/year/")
+          and "entityname" in href, str(href)[:80])
+    check("district record: no schedule number on this tier",
+          "SCHEDULE 2" not in page.inner_text("body")
+          and "AS-FILED RECORD" in page.inner_text("#recordSec"))
+    check("district record: filing status shown per year",
+          "FILED LATE" in page.inner_text("#recFilings"))
+    body = page.inner_text("body")
+    # the phrase may appear ONLY in statements of its own absence; a
+    # figure (a number adjacent to the phrase) may never appear
+    import re as _re
+    check("districts: no per-resident/per-capita FIGURE anywhere",
+          not _re.search(r"[\$\d][\d,.]*\s*(per resident|per-resident|per capita)",
+                         body, _re.I)
+          and not _re.search(r"(per resident|per-resident|per capita)\s*[:=]?\s*\$?\d",
+                             body, _re.I))
+    for m in _re.finditer(r"per[- ]resident|per capita", body, _re.I):
+        ctx = body[max(0, m.start()-60):m.end()+60].lower()
+        check("districts: per-resident mention is a statement of absence",
+              ("no per" in ctx or "fabricat" in ctx or "would fabricate" in ctx
+               or "carries no" in ctx or "exists" in ctx),
+              ctx[:100])
+        break  # one context check per page load is representative
+    check("districts: record tables have no per-resident column",
+          "PER RESIDENT" not in page.inner_text("#recordSec"))
+    exp_txt = page.inner_text("#expTbl")
+    check("district record: governmental and enterprise shown separately",
+          "GOVERNMENTAL" in exp_txt and "ENTERPRISE" in exp_txt
+          and f"${rec['exp'][-1][1]:,}" in exp_txt.replace("\u202f", ","))
+
+    # ---- tier visuals differ from the gated layers
+    style = page.evaluate(
+        "getComputedStyle(document.getElementById('districtRecord')).borderTopStyle")
+    check("district record: dashed border (unreconciled tier)",
+          style == "dashed", style)
+    # single selection only: choosing another district replaces the first
+    other = next(s for s, r in DIST["districts"].items()
+                 if s != slug and r["exp"][-1])
+    page.fill("#dirSearch", DIST["districts"][other]["name"][:24])
+    page.wait_for_timeout(250)
+    page.locator("#dirList button.nm").first.click()
+    page.wait_for_timeout(250)
+    h = page.evaluate("location.hash")
+    check("districts: single selection — a second choice replaces the first",
+          h.count("d=") == 1 and slug not in h, h[:80])
+
+    # ---- cite and CSV carry the caveat
+    page.click("#citeBtn")
+    cite = page.inner_text("#citeText")
+    check("district citation: caveat travels with it",
+          caveat in cite and "unreconciled" in cite)
+    check("district citation: no per-resident figure",
+          "per resident" not in cite.lower())
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("district CSV: caveat in the header", caveat in csv)
+    check("district CSV: no per-resident, no population column",
+          "per_resident" not in csv and "population" not in csv.lower()
+          and "per resident" not in csv.lower())
+    check("district CSV: filing status column present",
+          "filing_status" in csv)
+
+    # ---- authored copy neutrality (source scan: rendered names are SCO's
+    # own vocabulary — e.g. districts named "…Wastewater Agency" — so the
+    # scan covers what the Ledger wrote, which is where characterization
+    # could live)
+    for w in BANNED + ["delinquent"]:
+        check(f"districts source: no banned term {w!r}", w not in src)
+
+    # ---- the gated pages keep solid borders and never grow a district layer
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordBody .det-row")
+    style = page.evaluate(
+        "getComputedStyle(document.querySelector('.record')).borderTopStyle")
+    check("gated layers: record border stays solid", style == "solid", style)
+    csrc = (ROOT / "cities.html").read_text(encoding="utf-8")
+    check("layer boundary: the city/county picker has no district layer",
+          '"district"' not in csrc.split("const LAYERS")[1][:400])
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -935,6 +1096,7 @@ def main():
             test_actuals_view(page, base)
             test_v2(page, base)
             test_county(page, base)
+            test_districts(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

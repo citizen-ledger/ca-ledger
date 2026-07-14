@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The California Ledger — Special districts</title>
+<meta name="description" content="The measured condition of special district finance in California: a finding, a directory of every filer, and as-filed figures — unreconciled, and labeled so.">
+<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/districts.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The California Ledger">
+<meta property="og:title" content="The California Ledger — Special districts">
+<meta property="og:description" content="The measured condition of special district finance in California: a finding, a directory of every filer, and as-filed figures — unreconciled, and labeled so.">
+<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/districts.html">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Ledger design system — see index.html. This page is the Ledger's
+     one UNRECONCILED layer, and its surfaces say so at a glance:
+     dashed hairlines where the gated layers use solid, an open square
+     (▢) where the gated layers use a filled mark, no schedule number,
+     and a caveat band that is part of the record face, not a footnote. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .btn{font-size:12.5px;border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
+  .btn.sm{padding:6px 14px;font-size:11.5px}
+
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+
+  /* the tier band: persistent, page-level, part of the chrome */
+  .tierband{padding:11px 40px;background:var(--wash);border-bottom:1px dashed var(--graphite);font-family:var(--mono);font-size:11.5px;color:var(--ink);letter-spacing:0.02em;line-height:1.55}
+  .tiermark{display:inline-block;width:9px;height:9px;border:1.5px solid var(--ink);background:transparent;margin-right:8px;vertical-align:baseline}
+
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:0}
+  .dek{font-size:15px;color:var(--graphite);margin-top:12px;max-width:560px;line-height:1.5}
+  .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  .hero-sub{font-family:var(--mono);font-size:12px;color:var(--graphite);margin-top:10px}
+  .hero-lbl{font-family:var(--mono);font-size:10.5px;color:var(--smoke);margin-top:4px}
+  .hero-right{text-align:right}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .num{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+  .dim{color:var(--smoke)}
+  .schedlbl{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  .tblwrap{overflow-x:auto}
+
+  /* PART 1 — the finding: reconciled facts about the filings, on the
+     Ledger's solid record surface (the counts ARE gated: they come from
+     SCO's own lists and are recomputed live by the pipeline). */
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  .statrow{display:flex;gap:44px;flex-wrap:wrap;margin-top:18px}
+  .stat .v{font-family:var(--mono);font-size:38px;font-weight:500;letter-spacing:-0.6px}
+  .stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;color:var(--smoke);margin-top:6px}
+  .finding p{font-size:14.5px;line-height:1.65;color:var(--ink);margin-top:16px;max-width:74ch}
+  .finding .yeartbl{margin-top:22px;border-top:1px solid var(--ink)}
+  .yr-row{display:grid;grid-template-columns:110px 1fr 1fr 1fr;gap:0 18px;padding:9px 0;border-bottom:1px solid var(--hairline);font-family:var(--mono);font-size:12.5px}
+  .yr-row.hd{color:var(--smoke);font-size:10.5px;letter-spacing:0.08em}
+  .methodbox{margin-top:22px;border:1px solid var(--hairline);background:var(--parchment);padding:14px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--graphite)}
+
+  /* PART 2 — the directory: verifiable facts (existence, type, status) */
+  .dir-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
+  input[type="search"]{font-family:var(--mono);font-size:12.5px;padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:280px}
+  input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .dir-count{font-family:var(--mono);font-size:11px;color:var(--smoke)}
+  .dir-legend{font-family:var(--mono);font-size:11px;color:var(--smoke);margin-top:10px;line-height:1.7}
+  .dir-list{list-style:none;margin-top:12px;border-top:1px solid var(--ink)}
+  .dir-row{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(200px,1fr) 120px 70px;gap:0 18px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hairline)}
+  .dir-row:hover{background:var(--wash-in)}
+  .dir-row .nm{border:none;background:transparent;text-align:left;font-size:13.5px;cursor:pointer;color:var(--ink);padding:2px 0}
+  .dir-row .nm:hover{color:var(--blue)}
+  .dir-row .meta{font-family:var(--mono);font-size:10.5px;color:var(--smoke)}
+  .fstrip{font-family:var(--mono);font-size:12px;letter-spacing:0.35em}
+  .dir-row .ext{font-family:var(--mono);font-size:11px;white-space:nowrap}
+
+  /* PART 3 — the as-filed record: the unreconciled tier, visibly.
+     Dashed border, open-square mark, caveat band on the face. */
+  .record.unrec{border:1px dashed var(--graphite);box-shadow:none;background:var(--surface)}
+  .caveat{display:flex;gap:10px;align-items:flex-start;background:var(--wash);border:1px dashed var(--graphite);padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--ink);margin:16px 0 4px}
+  .unrec .u-row{display:grid;grid-template-columns:90px repeat(4,minmax(110px,1fr)) 110px;gap:0 14px;padding:9px 0;border-bottom:1px dashed var(--hairline);font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right}
+  .unrec .u-row .y{text-align:left}
+  .unrec .u-row.hd{color:var(--smoke);font-size:10px;letter-spacing:0.07em;border-bottom:1px dashed var(--graphite)}
+  .unrec h3{font-family:var(--serif);font-size:22px;font-weight:400;margin-top:4px}
+  .recmeta{font-family:var(--mono);font-size:11.5px;color:var(--smoke);margin-top:6px}
+  .cite-panel{border:1px dashed var(--graphite);background:var(--surface);margin-top:16px;padding:16px 22px}
+  .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
+  .empty{margin-top:20px;border:1px dashed var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
+
+  .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
+  .method .lead{font-size:15px;color:var(--graphite);max-width:640px;margin-top:10px}
+  .mgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;margin-top:26px}
+  .mcol{display:flex;flex-direction:column;gap:16px}
+  .mnote{display:flex;gap:12px;font-size:13.5px;line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  .revlog{font-family:var(--mono);font-size:11px;color:var(--smoke);line-height:1.9;border:1px solid var(--hairline);padding:12px 16px}
+  .integrity{border:1px solid var(--hairline);padding:12px 16px}
+  .digest{font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--graphite);margin-top:6px}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .dir-row{grid-template-columns:1fr 90px} .dir-row .meta2{display:none} .unrec .u-row{grid-template-columns:80px repeat(4,minmax(90px,1fr))} .unrec .u-row .st{display:none} }
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,.tierband,footer.ft{padding-left:20px;padding-right:20px} }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <span class="wordmark">The California Ledger</span>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <span class="active">Special districts</span>
+    <a href="#methodology">Methodology</a>
+  </nav>
+</header>
+
+<div class="prov" id="dataBanner"></div>
+
+<div class="tierband" id="tierBand"><span class="tiermark" aria-hidden="true"></span>THIS LAYER IS AS FILED — UNRECONCILED. NO CONTROL-TOTAL DATASET EXISTS FOR SPECIAL DISTRICTS, SO NOTHING ON THIS PAGE CAN PASS THE RECONCILIATION GATE EVERY STATE, CITY, AND COUNTY FIGURE ON THIS SITE PASSES. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.</div>
+
+<main>
+  <div class="po cite-text" id="printCite"></div>
+
+  <div class="hero">
+    <div>
+      <div class="kicker">THE PUBLIC RECORD · THE FINDING IS THE PRODUCT</div>
+      <h1>Special districts</h1>
+      <p class="dek">This page reports the measured condition of special district finance in California — the finding first, then a directory of every district on record, then each district's figures as filed. The order is deliberate: what can be verified leads, and what cannot be verified is labeled.</p>
+    </div>
+    <div class="hero-right">
+      <div class="hero-num" id="heroNum">—</div>
+      <div class="hero-sub" id="heroSub"></div>
+      <div class="hero-lbl">FINANCIAL TRANSACTIONS REPORTS · AS FILED</div>
+    </div>
+  </div>
+
+  <!-- ============ PART 1 — THE FINDING ============ -->
+  <section class="record finding" id="findingSec" aria-labelledby="findingTitle">
+    <div class="schedlbl">THE FINDING — THE CONDITION OF SPECIAL DISTRICT FINANCE, RECOMPUTED FROM THE LIVE DATA ON EVERY PIPELINE RUN</div>
+    <h2 id="findingTitle" style="margin-top:14px">What the filings show</h2>
+    <div class="statrow" id="statRow"></div>
+    <div id="findingBody"></div>
+    <div class="yeartbl" id="yearTbl"></div>
+    <div class="methodbox" id="methodBox"></div>
+  </section>
+
+  <!-- ============ PART 2 — THE DIRECTORY ============ -->
+  <section style="margin-top:44px" aria-labelledby="dirTitle">
+    <div class="schedlbl">THE DIRECTORY — EVERY DISTRICT ON RECORD. EXISTENCE, TYPE, COUNTY, AND FILING STATUS ARE FACTS THAT NEED NO RECONCILIATION.</div>
+    <h2 id="dirTitle" style="margin-top:14px">The directory</h2>
+    <p class="dek" style="max-width:74ch">Each district links to its own filing on the State Controller's site. There is no map for this layer: neither the Census Bureau nor the State of California publishes a statewide special-district boundary file, and the Ledger ships without one rather than approximating boundaries.</p>
+    <div class="dir-controls np">
+      <input type="search" id="dirSearch" placeholder="" aria-label="Search districts">
+      <span class="dir-count" id="dirCount"></span>
+    </div>
+    <div class="dir-legend" id="dirLegend"></div>
+    <ul class="dir-list" id="dirList"></ul>
+  </section>
+
+  <!-- ============ PART 3 — THE AS-FILED RECORD ============ -->
+  <section id="recordSec" style="margin-top:44px" hidden aria-labelledby="recTitle">
+    <div class="schedlbl">AS-FILED RECORD — NOT A LEDGER SCHEDULE. THIS TIER CARRIES NO SCHEDULE NUMBER.</div>
+    <div class="record unrec" id="districtRecord">
+      <div class="caveat" id="recCaveat"><span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span><span>As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.</span></div>
+      <h3 id="recTitle"></h3>
+      <div class="recmeta" id="recMeta"></div>
+      <div class="recmeta" id="recFilings"></div>
+      <div id="recNotes"></div>
+      <div class="tblwrap"><div id="expTbl"></div></div>
+      <div class="tblwrap"><div id="revTbl"></div></div>
+      <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap" class="np">
+        <button class="btn ink" id="citeBtn">Cite</button>
+        <button class="btn blue" id="csvBtn">Download CSV</button>
+        <button class="btn" id="closeRec">Close record</button>
+      </div>
+      <div class="cite-panel" id="citePanel" hidden>
+        <div class="microlbl">CITATION — THE CAVEAT TRAVELS WITH IT</div>
+        <div class="cite-text" id="citeText"></div>
+        <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ METHODOLOGY ============ -->
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <p class="lead">This layer is deliberately not the evidentiary tier of the rest of the Ledger, and every surface of this page says so. The finding and the directory are verifiable; the dollar figures are as filed, and no design choice here is allowed to dress them up.</p>
+    <div class="mgrid">
+      <div class="mcol">
+        <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote"><b>D-1</b><span><strong>The tier, stated.</strong> Every state, city, and county figure on this site passes a hard reconciliation gate against an independently published control total before publication. No control-total dataset exists for special districts, so that gate is structurally impossible here — the one layer of the Ledger where this is true. District figures appear exactly as filed, with the caveat on the face of every record, every CSV, and every citation.</span></div>
+        <div class="mnote"><b>D-2</b><span><strong>No per-resident figures, anywhere on this page.</strong> Special districts have no resident denominator — they serve connections, parcels, students, ratepayers, or service areas, and the filings carry no population field. Dividing district dollars by any population would fabricate a statistic, so the data file for this layer carries no population at all.</span></div>
+        <div class="mnote"><b>D-3</b><span><strong>No comparison, no total.</strong> The two largest district types by count are legal forms (joint powers authorities, county service areas), not functions, so even within-type comparison would assert a likeness the data cannot support — none is offered. Dependent districts' finances also appear within the reporting of the city or county that governs them, so summing this layer would count the same dollars more than once — the Ledger publishes no total for it, and this layer is never compared to or summed with the state, city, or county layers.</span></div>
+        <div class="mnote"><b>D-4</b><span><strong>Enterprise and governmental funds are kept apart</strong>, exactly as on the city and county pages: most as-filed district dollars sit in ratepayer-funded enterprise funds (water, sewer, hospitals, transit), which are not commensurable with tax-funded governmental activity.</span></div>
+        <div class="mnote"><b>D-5</b><span><strong>Filing status is a fact, reported per district and per year.</strong> "Filed" means line items appear in the Controller's published datasets. "Filed late" and "Did not file" come from the Controller's published lists, which exist for fiscal years 2018-19 through 2023-24 — for 2016-17 and 2017-18 no list was published, and this page says "no list published" rather than guessing. The lists print district names cut at about 40 characters; they are matched to filers by normalized prefix and county, ambiguous rows are counted in the finding's method box and attached to nothing, and list entries with no line items in any year appear in the directory exactly as the Controller printed them.</span></div>
+        <div class="mnote"><b>D-6</b><span><strong>The directory is the union of both source datasets.</strong> Some districts file revenue line items and no expenditures, or the reverse (measured in the finding's method box), so a district is "on record" if it appears in either. A few districts are spelled differently across filing years; spellings are merged when they are identical after punctuation normalization, in the same county, and never co-occur in a year — and the variants are kept on the record. Nothing stronger than that is merged.</span></div>
+        <div class="mnote"><b>D-7</b><span><strong>No map.</strong> Special districts are not a Census geography, and no statewide boundary file exists from any state source. Rather than draw approximate territory, the layer ships without a map; each directory row links to the district's own page on the Controller's site instead.</span></div>
+      </div>
+      <div class="mcol">
+        <div class="microlbl">SOURCES &amp; RECORD</div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)" id="srcNote"></div>
+        <div class="revlog" id="revLog"></div>
+        <div class="integrity">
+          <div class="microlbl">RECORD INTEGRITY</div>
+          <div class="digest" id="integrityDigest"></div>
+          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="district-data.js" download>district-data.js</a> and run <span class="mono" style="font-size:11.5px">python3 pipeline/verify_digest.py district-data.js</span> from the repository — it recomputes the SHA-256 of the canonical JSON payload, which must match the digest above. The digest proves the file is the one the pipeline wrote; it does not — and cannot — verify the filed figures themselves. That distinction is this page's point.</div>
+        </div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Figures are stated in as-filed dollars, exactly as they appear in the Controller's datasets. Citations reproduce the exact record and carry the unreconciled caveat.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="ft">
+  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="district-data.js"></script>
+<script>
+(function(){
+  "use strict";
+  const D = window.CA_DISTRICT_DATA;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  const fmtN = n => n.toLocaleString("en-US");
+  const YEARS = D.years;
+  const F = D.meta.finding;
+  const ALL = Object.keys(D.districts);
+  const STATUS_WORD = {F:"filed", L:"filed late", M:"did not file", "-":"no filing on record"};
+  const CAVEAT = "As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.";
+
+  const S = { d: null, q: "" };
+
+  /* ---------- permalink ---------- */
+  function hashOf(){
+    const p = new URLSearchParams();
+    if (S.d) p.set("d", S.d);
+    if (S.q) p.set("q", S.q);
+    return p.toString();
+  }
+  function syncHash(){
+    const h = hashOf();
+    try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
+    catch(e){ location.hash = h; }
+  }
+  function applyHash(){
+    const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    const d = p.get("d");
+    S.d = (d && D.districts[d]) ? d : null;
+    S.q = p.get("q") || "";
+  }
+
+  function scoUrl(rec){
+    // most recent year with any filing mark; the explorer keys years by
+    // their ending calendar year
+    let yyyy = 2024;
+    for (let i = YEARS.length - 1; i >= 0; i--){
+      if (rec.filings[i] !== "-"){ yyyy = 2017 + i; break; }
+    }
+    return "https://districts.bythenumbers.sco.ca.gov/#!/year/" + yyyy
+      + "/operating/0/entityname/" + encodeURIComponent(rec.name)
+      + "/0/districttype2?vis=barChart";
+  }
+
+  /* ---------- chrome ---------- */
+  function renderChrome(){
+    $("dataBanner").innerHTML =
+      "<span>SOURCE: STATE CONTROLLER · BYTHENUMBERS.SCO.CA.GOV</span>"
+      + "<span>BASIS: AS FILED · UNRECONCILED</span>"
+      + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + "<span>PUBLIC RECORD</span>";
+    $("heroNum").textContent = fmtN(ALL.length);
+    $("heroSub").textContent = "DISTRICTS ON RECORD · FY " + YEARS[0] + " TO " + YEARS[YEARS.length-1];
+    const integ = D.meta.integrity || {};
+    $("integrityDigest").textContent = integ.digest
+      ? "SHA-256 · " + integ.digest + " (district-data.js)"
+      : "No digest recorded — regenerate district-data.js with the pipeline.";
+    $("revLog").innerHTML = YEARS.slice().reverse().map(y=>"FY "+y+" · AS FILED").join("<br>")
+      + "<br>GENERATED " + esc(D.meta.generated);
+    $("srcNote").innerHTML = "Primary source: the State Controller's \"By the Numbers\" open-data portal "
+      + "(<span class=\"mono\" style=\"font-size:12px\">bythenumbers.sco.ca.gov</span>) — "
+      + "Special Districts Expenditures (" + esc(D.meta.datasets.expenditures) + "), "
+      + "Special Districts Revenues (" + esc(D.meta.datasets.revenues) + "), and the Controller's "
+      + "\"filed late or failed to file\" list for each year one exists ("
+      + Object.entries(D.meta.datasets.lateOrFailedLists).map(([y,id])=>esc(y)+": "+esc(id)).join(" · ")
+      + "). The <a href=\"cities.html\">city &amp; county page</a> and <a href=\"index.html\">state budget page</a> "
+      + "are reconciled layers — a different evidentiary tier, stated on each page.";
+    $("dirSearch").placeholder = "Search " + fmtN(ALL.length) + " districts…";
+  }
+
+  /* ---------- PART 1: the finding, rendered from data ---------- */
+  function renderFinding(){
+    $("statRow").innerHTML = [
+      [fmtN(F.expectedFilers), "EXPECTED FILERS · FY " + F.year],
+      [fmtN(F.filedLate), "FILED LATE"],
+      [fmtN(F.failedToFile), "DID NOT FILE"],
+      ["NONE", "CONTROL TOTAL PUBLISHED"]
+    ].map(([v,k]) => '<div class="stat"><div class="v">'+v+'</div><div class="k">'+k+'</div></div>').join("");
+
+    const jpa = F.typeCounts["Joint Powers Authority (JPA)"] || 0;
+    const top = F.topActivities;
+    const entPct = (F.enterpriseShareExp*100).toFixed(1);
+    const revPct = (F.enterpriseShareRev*100).toFixed(1);
+    $("findingBody").innerHTML = [
+      "For fiscal year " + F.year + ", " + fmtN(F.expectedFilers) + " special districts were expected to file "
+      + "financial transactions reports with the State Controller. " + fmtN(F.filed) + " filed reports whose line "
+      + "items appear in the published datasets; " + fmtN(F.filedLate) + " of those filings arrived after the "
+      + "deadline, per the Controller's published list; " + fmtN(F.failedToFile) + " did not file. Filing status is "
+      + "reported per district and per year in the directory below, because it is a fact this page can stand behind.",
+
+      "No control-total dataset exists for special districts. Every state, city, and county figure on this site is "
+      + "reconciled against an independently published total before it is allowed onto the page; for this layer no "
+      + "such total exists, so that gate is structurally impossible — the only layer of the Ledger where this is "
+      + "true. The figures in the records below are published as filed and labeled so, on their face.",
+
+      fmtN(F.dependentCount) + " of the districts that filed for FY " + F.year + " are dependent districts, "
+      + "governed by a city or a county; their finances also appear within that government's reporting. A further "
+      + fmtN(jpa) + " are joint powers authorities formed by member governments. Because the same dollars can "
+      + "appear in more than one government's books, this layer cannot be summed — the Ledger publishes no total "
+      + "for it, and no figure on this page adds one district to another.",
+
+      "The two largest district types by count — " + esc(top[0][0]) + " (" + fmtN(top[0][1]) + " districts) and "
+      + esc(top[1][0]) + " (" + fmtN(top[1][1]) + ") — are legal forms, not functions. A joint powers authority "
+      + "may be an insurance pool, a power agency, or a transit operator. Comparison between districts is therefore "
+      + "not offered: not within a type, not across types. The filings also carry no population or service-unit "
+      + "denominator — districts serve connections, parcels, students, or service areas — so no per-resident "
+      + "figure exists anywhere on this page.",
+
+      entPct + "% of as-filed FY " + F.year + " expenditure dollars sit in enterprise funds — ratepayer-funded "
+      + "activity (water, sewer, hospitals, transit) rather than tax-funded government (" + revPct + "% of "
+      + "as-filed revenue dollars). Enterprise and governmental funds are shown separately on every record, as "
+      + "they are on the city and county pages."
+    ].map(t=>"<p>"+t+"</p>").join("");
+
+    let rows = '<div class="yr-row hd"><span>FISCAL YEAR</span><span>DISTRICTS WITH LINE ITEMS</span><span>FILED LATE</span><span>DID NOT FILE</span></div>';
+    YEARS.forEach(y=>{
+      const lst = F.listsByYear[y];
+      rows += '<div class="yr-row"><span>'+y+'</span><span>'+fmtN(F.filersByYear[y])+'</span>'
+        + (lst ? '<span>'+fmtN(lst.late)+'</span><span>'+fmtN(lst.failed)+'</span>'
+               : '<span class="dim">no list published</span><span class="dim">no list published</span>')
+        + '</div>';
+    });
+    $("yearTbl").innerHTML = rows;
+
+    const m = F.matching;
+    $("methodBox").innerHTML = "METHOD — REPRODUCIBLE FROM THE PIPELINE (pipeline/fetch_district_data.py, recomputed on every run; nothing above is hardcoded in this page)."
+      + "<br>· filed: " + esc(F.method.filed)
+      + "<br>· expected filers: " + esc(F.method.expectedFilers)
+      + "<br>· enterprise share: " + esc(F.method.enterpriseShare)
+      + "<br>· district types: " + esc(F.method.types)
+      + "<br>· name matching: " + esc(F.method.delinquencyNameMatching)
+      + " — across all list years: " + fmtN(m.lateMatched) + " late rows matched, " + fmtN(m.failedMatched)
+      + " did-not-file rows matched, " + fmtN(m.lateStandalone + m.failedStandalone)
+      + " rows had no line items in either dataset in any year and appear in the directory as printed, "
+      + fmtN(m.lateAmbiguous) + " ambiguous rows attached to nothing, " + fmtN(m.respellingsMerged)
+      + " re-spelling merged.";
+  }
+
+  /* ---------- PART 2: the directory ---------- */
+  const CAP = 60;
+  function renderDirectory(){
+    const q = S.q.trim().toLowerCase();
+    const hits = [];
+    for (const slug of ALL){
+      const r = D.districts[slug];
+      if (!q || r.name.toLowerCase().includes(q) || r.county.toLowerCase().includes(q)
+          || (r.activity && r.activity.toLowerCase().includes(q))
+          || r.type.toLowerCase().includes(q)) hits.push(slug);
+    }
+    $("dirCount").textContent = q
+      ? fmtN(hits.length) + " OF " + fmtN(ALL.length) + " DISTRICTS MATCH"
+      + (hits.length > CAP ? " · SHOWING FIRST " + CAP : "")
+      : fmtN(ALL.length) + " DISTRICTS ON RECORD · SHOWING FIRST " + CAP + " ALPHABETICALLY — SEARCH TO NARROW";
+    $("dirLegend").textContent = "FILING RECORD, FY " + YEARS[0] + " → " + YEARS[YEARS.length-1]
+      + " · F FILED · L FILED LATE (SCO LIST) · M DID NOT FILE (SCO LIST) · – NO FILING ON RECORD"
+      + " · NO LATE/FAILED LIST WAS PUBLISHED FOR " + YEARS[0] + " OR " + YEARS[1];
+    $("dirList").innerHTML = hits.slice(0, CAP).map(slug=>{
+      const r = D.districts[slug];
+      return '<li class="dir-row">'
+        + '<button class="nm" data-d="'+slug+'">'+esc(r.name)+'</button>'
+        + '<span class="meta meta2">'+esc(r.activity || "—")+' · '+esc(r.county || "—")+' · '+esc(r.type)+'</span>'
+        + '<span class="fstrip" title="'+YEARS.map((y,i)=>y+": "+STATUS_WORD[r.filings[i]]).join(" · ")+'">'
+        + r.filings.replace(/-/g,"–")+'</span>'
+        + '<a class="ext" href="'+scoUrl(r)+'" target="_blank" rel="noopener">SCO ↗</a>'
+        + '</li>';
+    }).join("");
+  }
+
+  /* ---------- PART 3: the as-filed record ---------- */
+  function fmtCell(v){ return v === null || v === undefined ? '<span class="dim">—</span>' : "$" + fmtN(v); }
+  function tbl(label){
+    let h = '<div class="schedlbl" style="margin-top:22px">' + label + ' — AS-FILED DOLLARS</div>';
+    h += '<div class="u-row hd"><span class="y">FY</span><span>GOVERNMENTAL</span><span>ENTERPRISE</span><span>INTERNAL SERVICE</span><span>CONDUIT FINANCING</span><span class="st">STATUS</span></div>';
+    return h;
+  }
+  function renderRecord(){
+    const sec = $("recordSec");
+    if (!S.d){ sec.hidden = true; return; }
+    const r = D.districts[S.d];
+    sec.hidden = false;
+    $("recTitle").textContent = r.name;
+    $("recMeta").textContent = (r.activity ? r.activity + " · " : "") + (r.county ? r.county + " County · " : "")
+      + r.type + " · ";
+    $("recMeta").insertAdjacentHTML("beforeend",
+      '<a href="'+scoUrl(r)+'" target="_blank" rel="noopener">This district’s filing at the State Controller ↗</a>');
+    $("recFilings").textContent = "FILING RECORD: " + YEARS.map((y,i)=>y+" "+STATUS_WORD[r.filings[i]].toUpperCase()).join(" · ");
+    let notes = "";
+    if (r.nameVariants) notes += '<div class="recmeta">Spelled in earlier filings as: ' + r.nameVariants.map(esc).join("; ") + '.</div>';
+    if (r.listOnly) notes += '<div class="recmeta">This entry comes from the Controller’s late/failed-to-file lists; no line items for it appear in the published datasets in any year shown, and its name appears exactly as the Controller printed it (the lists cut names at about 40 characters).</div>';
+    $("recNotes").innerHTML = notes;
+    const row = (y, i, vals) => '<div class="u-row"><span class="y">'+y+'</span>'
+      + (vals ? vals.map(v=>'<span>'+fmtCell(v)+'</span>').join("")
+              : '<span class="dim">—</span><span class="dim">—</span><span class="dim">—</span><span class="dim">—</span>')
+      + '<span class="st dim">'+STATUS_WORD[r.filings[i]].toUpperCase()+'</span></div>';
+    $("expTbl").innerHTML = tbl("EXPENDITURES") + YEARS.map((y,i)=>row(y,i,r.exp[i])).join("");
+    $("revTbl").innerHTML = tbl("REVENUES") + YEARS.map((y,i)=>row(y,i,r.rev[i])).join("");
+    $("citePanel").hidden = true;
+  }
+
+  /* ---------- cite + CSV: the caveat travels ---------- */
+  function latestFiledIdx(r){
+    for (let i = YEARS.length-1; i>=0; i--) if (r.exp[i] || r.rev[i]) return i;
+    return -1;
+  }
+  function citationText(){
+    const r = D.districts[S.d];
+    const i = latestFiledIdx(r);
+    let figure;
+    if (i >= 0){
+      const e = r.exp[i] || [0,0,0,0];
+      figure = "FY " + YEARS[i] + " expenditures as filed: governmental $" + fmtN(e[0])
+        + ", enterprise $" + fmtN(e[1]) + ". ";
+    } else {
+      figure = "No line items on record in the published datasets. ";
+    }
+    return "The California Ledger — Special Districts (as filed, unreconciled). "
+      + r.name + (r.county ? " (" + r.county + " County)" : "") + ", " + r.type
+      + (r.activity ? ", " + r.activity : "") + ". " + figure
+      + CAVEAT + " Source: California State Controller, bythenumbers.sco.ca.gov ("
+      + D.meta.datasets.expenditures + " / " + D.meta.datasets.revenues + "). Generated "
+      + D.meta.generated + ". Permalink: " + location.href;
+  }
+  function csvText(){
+    const r = D.districts[S.d];
+    const lines = [
+      "# The California Ledger — Special districts, as filed",
+      "# District: " + r.name + (r.county ? " (" + r.county + " County)" : "")
+        + " · " + r.type + (r.activity ? " · " + r.activity : ""),
+      "# " + CAVEAT,
+      "# No per-resident figures exist for this layer: special districts have no resident denominator.",
+      "# Units: as-filed dollars. Source: bythenumbers.sco.ca.gov ("
+        + D.meta.datasets.expenditures + ", " + D.meta.datasets.revenues + ") · Generated: "
+        + D.meta.generated,
+      "# Permalink: " + location.href,
+      "fiscal_year,filing_status,expenditures_governmental,expenditures_enterprise,"
+        + "expenditures_internal_service,expenditures_conduit_financing,"
+        + "revenues_governmental,revenues_enterprise,revenues_internal_service,"
+        + "revenues_conduit_financing"
+    ];
+    YEARS.forEach((y,i)=>{
+      const e = r.exp[i], v = r.rev[i];
+      lines.push([y, STATUS_WORD[r.filings[i]],
+        ...(e ? e : ["","","",""]), ...(v ? v : ["","","",""])].join(","));
+    });
+    return lines.join("\r\n");
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", e=>{
+    const b = e.target.closest("button[data-d]");
+    if (b){ S.d = b.dataset.d; syncHash(); renderRecord();
+      $("recordSec").scrollIntoView({behavior:"smooth", block:"start"}); }
+  });
+  $("closeRec").addEventListener("click", ()=>{ S.d = null; syncHash(); renderRecord(); });
+  $("dirSearch").addEventListener("input", e=>{ S.q = e.target.value; syncHash(); renderDirectory(); });
+  $("citeBtn").addEventListener("click", ()=>{
+    const p = $("citePanel"); p.hidden = !p.hidden;
+    if (!p.hidden) $("citeText").textContent = citationText();
+  });
+  $("citeCopy").addEventListener("click", ()=>{
+    const t = $("citeText").textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+  });
+  $("csvBtn").addEventListener("click", ()=>{
+    const r = D.districts[S.d];
+    const blob = new Blob([csvText()], {type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ca-ledger-district-" + S.d + ".csv";
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  window.addEventListener("hashchange", ()=>{ applyHash();
+    $("dirSearch").value = S.q; renderDirectory(); renderRecord(); });
+
+  /* ---------- boot ---------- */
+  applyHash();
+  renderChrome();
+  renderFinding();
+  $("dirSearch").value = S.q;
+  renderDirectory();
+  renderRecord();
+  $("printCite").textContent = "The California Ledger — Special districts, as filed (unreconciled). "
+    + CAVEAT + " Source: bythenumbers.sco.ca.gov. Generated " + D.meta.generated + ".";
+})();
+</script>
+</body>
+</html>
