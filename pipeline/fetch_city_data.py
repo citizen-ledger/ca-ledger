@@ -238,15 +238,17 @@ def classify_expenditure(category, sub1, sub2):
     misclassified functions (see STATUS.md, 2026-07-14)."""
     cat = norm(category)
     if cat in ENTERPRISE_BY_CATEGORY:
-        return "ent", ENTERPRISE_BY_CATEGORY[cat]
+        return "ent", ENTERPRISE_BY_CATEGORY[cat], None
     if cat == "Internal Service Fund":
-        return "isf", None
+        return "isf", None, None
     if cat == "Conduit Financing":
-        return "conduit", None
+        return "conduit", None, None
     if norm(sub1) in GOV_GROUPS:                # 2017-18+ shape
         g, line = norm(sub1), norm(sub2)
     elif cat in GOV_GROUPS:                     # 2016-17 shape
         g, line = cat, norm(sub1)
+        if not line or line in GOV_GROUPS:      # FY2017 debt/capital split
+            line = norm(sub2)
     else:
         raise SystemExit(
             "UNRECOGNIZED EXPENDITURE SHAPE — refusing to classify: "
@@ -255,20 +257,20 @@ def classify_expenditure(category, sub1, sub2):
             "classify_expenditure deliberately.")
     if g == "Public Safety":
         if line.startswith("Police"):
-            return "gov", "police"
+            return "gov", "police", line
         if line.startswith("Fire"):
-            return "gov", "fire"
-        return "gov", "safetyOther"
+            return "gov", "fire", line
+        return "gov", "safetyOther", line
     if g == "Health":
         if line.startswith("Sewers") or line.startswith("Solid Waste"):
-            return "gov", "sanitation"
-        return "gov", "health"
+            return "gov", "sanitation", line
+        return "gov", "health", line
     if g == "Culture and Leisure":
         if line.startswith("Parks and Recreation"):
-            return "gov", "parks"
+            return "gov", "parks", line
         if line.startswith("Libraries"):
-            return "gov", "library"
-        return "gov", "cultureOther"
+            return "gov", "library", line
+        return "gov", "cultureOther", line
     return "gov", {
         "General Government": "admin",
         "Transportation": "streets",
@@ -277,7 +279,7 @@ def classify_expenditure(category, sub1, sub2):
         "Other Expenditures": "other",
         "Debt Service": "debt",
         "Capital Outlay": "capital",
-    }[g]   # g is guaranteed to be a known group; KeyError here is a bug
+    }[g], line   # g is guaranteed known; KeyError here is a bug
 
 
 def classify_revenue(category):
@@ -311,6 +313,7 @@ def fetch_year(source_year: str):
     cities = defaultdict(lambda: {
         "pop": 0, "county": "",
         "byFunction": defaultdict(float),
+        "lines": defaultdict(lambda: defaultdict(float)),
         "enterprise": defaultdict(float),
         "isf": 0.0, "conduit": 0.0,
         "revenues": 0.0, "revenuesEnterprise": 0.0,
@@ -321,10 +324,13 @@ def fetch_year(source_year: str):
         c["county"] = norm(r.get("county")) or c["county"]
         c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
         v = float(r.get("v") or 0)
-        kind, key = classify_expenditure(
+        kind, key, line = classify_expenditure(
             r.get("category"), r.get("subcategory_1"), r.get("subcategory_2"))
         if kind == "gov":
             c["byFunction"][key] += v
+            if v != 0:
+                label = re.sub(r"_Current Expenditures?$", "", line or "").strip()
+                c["lines"][key][label or "(unlabeled)"] += v
         elif kind == "ent":
             c["enterprise"][key] += v
         elif kind == "isf":
@@ -463,6 +469,21 @@ def m(v):  # dollars -> millions, 3 decimals
 
 
 def build_payload(years_data, services, gaz):
+    # V8 line dictionary + PARENT-SUM GATE: per city-year-function, the
+    # line rows must sum to the UNROUNDED function total exactly
+    line_labels = sorted({lbl for cities in years_data.values()
+                          for c in cities.values()
+                          for fam in c["lines"].values() for lbl in fam})
+    line_idx = {lbl: i for i, lbl in enumerate(line_labels)}
+    for sy, cities in years_data.items():
+        for cname, c in cities.items():
+            for k, total in c["byFunction"].items():
+                lsum = sum(c["lines"].get(k, {}).values())
+                if abs(lsum - total) > 1:
+                    sys.exit(f"V8 GATE {cname} FY {fy_label(sy)} {k}: lines "
+                             f"sum ${lsum:,.0f} vs function ${total:,.0f} — "
+                             "nothing written")
+
     year_labels = [fy_label(y) for y in SOURCE_YEARS]
     all_names = sorted({n for cities in years_data.values() for n in cities})
     slugs = {}
@@ -502,6 +523,12 @@ def build_payload(years_data, services, gaz):
                 "expenditures": m(gov),
                 "byFunction": {k: m(v) for k, v in c["byFunction"].items()
                                if round(v / 1e6, 3) != 0},
+                "lines": {k: sorted(
+                              ([line_idx[lbl], int(round(v))]
+                               for lbl, v in fam.items() if round(v) != 0),
+                              key=lambda x: -abs(x[1]))
+                          for k, fam in c["lines"].items()
+                          if any(round(v) != 0 for v in fam.values())},
                 "enterprise": {
                     "total": m(ent),
                     "revenues": m(c["revenuesEnterprise"]),
@@ -536,6 +563,13 @@ def build_payload(years_data, services, gaz):
                            "(bythenumbers.sco.ca.gov) — reported actual "
                            "expenditures and revenues",
             "generated": date.today().isoformat(),
+            "lineLabels": line_labels,
+            "linesNote": "V8 depth: per city-year, lines = "
+                         "{function: [[lineLabelIdx, whole dollars]]} — "
+                         "governmental activities only, official FTR form "
+                         "line names, children sum to the unrounded "
+                         "function totals exactly (gated). 'Other …' lines "
+                         "are not itemized in the state form.",
             "units": "millions of dollars",
             "basis": "Reported actual revenues and expenditures from each "
                      "city's annual financial report to the State Controller. "

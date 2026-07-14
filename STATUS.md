@@ -1260,6 +1260,82 @@ function presence per layer-year, the other-share bound, the LA
 2016-17 regression lock, the material-sandwich rule, ADA-implies-
 instruction, and district bucket liveness).
 
+## 2026-07-14 — V8 build: the approved depth layers
+
+Built per docs/V8_DEPTH_FINDING.md with the owner's approvals and
+refusals, under all six cross-cutting rules.
+
+**Shipped depths, each behind a hard parent-sum gate (pipeline: no
+write on failure; suite: re-asserted from the shipped files):**
+
+- **State fund drill** (index.html, department rows in the Allocation
+  drill): every department's fund rows — legal fund titles, class
+  G/S/B/F, integer thousands — sum exactly to the gated gf/sp/bd/fed
+  parents, all 6 years. The data was already being fetched to compute
+  the federal toggle and thrown away; now it ships.
+- **State programs as a LABELED ALL-FUNDS VIEW with the explicit
+  bridge**: programs render under "ALL FUNDS · A DIFFERENT SCOPE
+  FROM THE DEPARTMENT FIGURE ABOVE," followed by the exact bridge —
+  state funds + federal + nongovernmental-cost funds + reimbursements
+  − capital outlay not allocated to programs = programs total, in
+  real numbers, ending "nothing is missing and nothing is
+  double-counted… Both totals are correct — they answer different
+  questions." The gate anchors on the API's own program totals rows;
+  the build surfaced one more source subtlety: departments vary in
+  whether capital outlay is allocated to programs, so the unallocated
+  remainder is computed per department (Corrections 2020-21: $471M
+  unallocated; Wildlife Conservation Board: $0 — and WCB's own "All
+  Expenditures" API row double-counts, which our identity ignores).
+  A department whose displays cannot be reconciled would ship
+  fund-detail-only with a programsOmitted marker — measured result:
+  **zero departments need it**; every program view reconciles
+  exactly. Program prior-year columns are NOT carried (refused — they
+  undercount the gated actuals).
+- **Schools function × object-family + restricted/unrestricted**
+  (schools.html, expandable function rows): both partitions sum to
+  the gated Current Expense **to the cent for every district-year**
+  (pipeline gate + suite). LAUSD's negative General-administration
+  object cell renders with its minus sign and the cost-transfer
+  explanation; the restricted/unrestricted line sits under the
+  headline and "sums exactly" is stated on the face. Full 4-digit
+  object depth refused (payload).
+- **City and county line-level state forms** (cities.html, expandable
+  function rows, governmental activities only): official FTR line
+  names from a shipped dictionary, whole dollars, children gated to
+  the unrounded function totals (±$1) for every entity-year-function.
+  County lines split activity from fund type (District Attorney ·
+  GENERAL); "Other …" slots are marked "not itemized in the state
+  form"; Santa Clara County's Auditor-Controller line renders
+  negative every year with the netted-cost-allocation note — shown,
+  not hidden. Special-district depth refused (the record keeps its
+  SCO deep link as the drill).
+
+**Payload, measured (the double-click budget):**
+
+| File | before | after |
+|---|---|---|
+| data.js | 355 KB (indent-2) | **580 KB** (compact, incl. funds + programs + bridge + fund-name dictionary) |
+| school-data.js | 1.90 MB | **4.05 MB** |
+| city-data.js | 1.48 MB | **2.85 MB** |
+| county-data.js | 220 KB | **743 KB** |
+
+All digests restamped; verify_digest checks all files. The six
+cross-cutting rules hold by construction: unrounded-parent gates
+everywhere; integer source units (thousands for state, dollars for
+SCO lines, cents-exact for SACS); honest negatives with one-line
+explanations; exclusions preserved (ISF/conduit and EDP deductions
+stay out; N/R appear only as labeled bridge rows); the
+classification-shape gates run unchanged; and every label at every
+depth is an official source name — no crosswalk was invented.
+
+Tests: **509 assertions, all passing** — 489 existing plus 20 depth
+assertions (fund children vs every department parent; the program/
+bridge identity from the shipped integer fund rows; cent-exact school
+partitions; line children vs every city/county function; refusals
+locked — no program prior-year columns, object families only, no
+district lines; and the rendered bridge, negative lines, and
+restricted split verified in the UI).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

@@ -110,6 +110,11 @@
   .det-row .bar i{display:block;height:6px;background:var(--ink)}
   .det-row .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
   .det-foot{display:grid;grid-template-columns:240px 1fr 130px;gap:0 16px;padding:12px 0;border-bottom:1px solid var(--ink);font-weight:600}
+  .obj-panel{background:var(--parchment);border:1px solid var(--hairline);border-left:3px solid var(--ink);padding:8px 16px;margin:2px 0 8px}
+  .obj-row{display:flex;justify-content:space-between;gap:14px;padding:5px 0;border-bottom:1px solid var(--hairline);font-size:12.5px}
+  .obj-foot{display:flex;justify-content:space-between;gap:14px;padding:7px 0;font-weight:600;font-size:12.5px;border-bottom:1px solid var(--ink)}
+  .obj-note{font-size:12px;color:var(--graphite);margin-top:8px;line-height:1.5}
+  .det-row.click{cursor:pointer}
   .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:12.5px;color:var(--graphite);line-height:1.5}
   .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
 
@@ -292,7 +297,7 @@
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
   const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
-  const S = {...DEFAULTS, sel: []};
+  const S = {...DEFAULTS, sel: [], openFn: null};
 
   /* ---------- permalink ---------- */
   function hashOf(){
@@ -454,22 +459,51 @@
       + " · ADA " + fmt(Math.round(v.ada));
     $("gateLine").textContent = "GATED · RECOMPUTED FROM THE SACS GENERAL LEDGER = CDE'S PUBLISHED FIGURE: "
       + moneyExact(v.cePublished) + " · DIFFERENCE $" + Math.abs(v.currentExpense - v.cePublished).toFixed(2);
-    const rows = FN.map(f => [f.name, v.byFunction[f.key]||0]).filter(r => r[1] !== 0)
+    const rows = FN.map(f => [f.name, v.byFunction[f.key]||0, f.key]).filter(r => r[1] !== 0)
       .sort((a,b) => b[1]-a[1]);
     const max = rows.length ? Math.max(...rows.map(r => Math.abs(r[1]))) : 1;
     const notes = districtNotes(id, S.year);
+    const objRows = fnKey => {
+      const fam = (v.byFunctionObject||{})[fnKey] || {};
+      const items = OBJ.map(o => [o.name, fam[o.key]||0]).filter(r => r[1] !== 0)
+        .sort((a,b) => b[1]-a[1]);
+      const sum = items.reduce((s,r) => s+r[1], 0);
+      const hasNeg = items.some(r => r[1] < 0);
+      return '<div class="obj-panel">'
+        + items.map(([name, x]) =>
+          '<div class="obj-row"><span>'+esc(name)+'</span><span class="v num">'
+          + (x<0?"\u2212":"")+fmtVal(Math.abs(x), v.ada).replace("$","$")+'</span></div>').join("")
+        + '<div class="obj-foot"><span>Function total — sums exactly to the row above</span>'
+        + '<span class="v num">'+fmtVal(sum, v.ada)+'</span></div>'
+        + (hasNeg ? '<div class="obj-note">Negative amounts are cost transfers as filed '
+          + '(direct/indirect cost transfer objects) — money allocated between programs '
+          + 'and funds, not errors.</div>' : '')
+        + '</div>';
+    };
     $("recordBody").innerHTML =
       '<div class="rec-big num">' + fmtVal(v.currentExpense, v.ada) + '</div>'
       + '<div class="rec-biglbl">CURRENT EXPENSE OF EDUCATION'
       + (S.unit==="perAda" ? " PER ADA" : "") + ' · UNAUDITED ACTUALS · RECONCILED</div>'
+      + '<div class="rec-meta">RESTRICTED (CATEGORICAL PROGRAMS): ' + fmtVal(v.restricted||0, v.ada)
+      + ' · UNRESTRICTED: ' + fmtVal(v.unrestricted||0, v.ada)
+      + ' · THE TWO SUM EXACTLY TO THE FIGURE ABOVE</div>'
       + '<div style="margin-top:16px">'
-      + rows.map(([name, x]) =>
-        '<div class="det-row"><span class="fn">'+esc(name)+'</span>'
+      + rows.map(([name, x, key]) =>
+        '<div class="det-row click" role="button" tabindex="0" data-fn="'+key+'" '
+        + 'aria-label="Show object detail for '+esc(name)+'"><span class="fn">'+esc(name)
+        + ' <i class="dim" style="font-style:normal;font-size:11px">'
+        + (S.openFn===key ? "▾" : "▸") + '</i></span>'
         + '<span class="bar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%"></i></span>'
-        + '<span class="v">'+fmtVal(x, v.ada)+'</span></div>').join("")
+        + '<span class="v">'+fmtVal(x, v.ada)+'</span></div>'
+        + (S.openFn===key ? objRows(key) : "")).join("")
       + '<div class="det-foot"><span>Current expense of education</span><span></span>'
       + '<span class="v">'+fmtVal(v.currentExpense, v.ada)+'</span></div></div>'
       + notes.map(n => '<div class="note-row">† '+esc(n.text)+'</div>').join("");
+    document.querySelectorAll('#recordBody .det-row[data-fn]').forEach(row => {
+      const open = () => { S.openFn = S.openFn === row.dataset.fn ? null : row.dataset.fn; render(); };
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } });
+    });
     $("recordCaps").innerHTML = "<span>FUNCTION ROWS SUM EXACTLY TO THE GATED FIGURE</span>"
       + "<span>FOOD SERVICES, FACILITIES CONSTRUCTION &amp; OTHER FUNDS EXCLUDED PER CDE'S FORMULA</span>";
   }

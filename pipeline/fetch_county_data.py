@@ -138,9 +138,11 @@ def classify(category, sub1):
 def fetch_year(source_year):
     exp = soda(DS_EXPEND,
                **{"$select": "entity_name,category,subcategory_1,"
+                             "line_description,"
                              "sum(values) as v,max(estimated_population) as pop",
                   "$where": f"fiscal_year='{source_year}'",
-                  "$group": "entity_name,category,subcategory_1"})
+                  "$group": "entity_name,category,subcategory_1,"
+                            "line_description"})
     rev = soda(DS_REVEN,
                **{"$select": "entity_name,category,sum(values) as v",
                   "$where": f"fiscal_year='{source_year}'",
@@ -150,6 +152,7 @@ def fetch_year(source_year):
         name = norm(r["entity_name"])
         c = out.setdefault(name, {
             "pop": 0, "byFunction": {}, "enterprise": {},
+            "lines": {},
             "isf": 0.0, "conduit": 0.0, "revenues": 0.0,
             "revenuesEnterprise": 0.0})
         c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
@@ -157,6 +160,10 @@ def fetch_year(source_year):
         kind, key = classify(r.get("category"), r.get("subcategory_1"))
         if kind == "gov":
             c["byFunction"][key] = c["byFunction"].get(key, 0.0) + v
+            if v != 0:
+                lbl = norm(r.get("line_description")) or "(unlabeled)"
+                fam = c["lines"].setdefault(key, {})
+                fam[lbl] = fam.get(lbl, 0.0) + v
         elif kind == "ent":
             c["enterprise"][key] = c["enterprise"].get(key, 0.0) + v
         elif kind == "isf":
@@ -259,6 +266,20 @@ def main():
     def m(v):
         return round(v / 1e6, 3)
 
+    # V8 line dictionary + PARENT-SUM GATE (per county-year-function)
+    line_labels = sorted({lbl for cs in years_data.values()
+                          for c in cs.values()
+                          for fam in c["lines"].values() for lbl in fam})
+    line_idx = {lbl: i for i, lbl in enumerate(line_labels)}
+    for sy, cs in years_data.items():
+        for cname, c in cs.items():
+            for k, total in c["byFunction"].items():
+                lsum = sum(c["lines"].get(k, {}).values())
+                if abs(lsum - total) > 1:
+                    sys.exit(f"V8 GATE {cname} FY {fy_label(sy)} {k}: lines "
+                             f"${lsum:,.0f} vs function ${total:,.0f} — "
+                             "nothing written")
+
     counties_out = {}
     all_names = sorted({n for cs in years_data.values() for n in cs})
     for name in all_names:
@@ -281,6 +302,12 @@ def main():
                 "expenditures": m(gov),
                 "byFunction": {k: m(v) for k, v in c["byFunction"].items()
                                if round(v / 1e6, 3) != 0},
+                "lines": {k: sorted(
+                              ([line_idx[lbl], int(round(v))]
+                               for lbl, v in fam.items() if round(v) != 0),
+                              key=lambda x: -abs(x[1]))
+                          for k, fam in c["lines"].items()
+                          if any(round(v) != 0 for v in fam.values())},
                 "enterprise": {"total": m(ent),
                                "revenues": m(c["revenuesEnterprise"]),
                                "byFund": {k: m(v) for k, v in c["enterprise"].items()
@@ -351,6 +378,12 @@ def main():
                                   "cities); counties serve these residents "
                                   "directly as the local government.",
             "intergovernmental": intergovernmental,
+            "lineLabels": line_labels,
+            "linesNote": "V8 depth: per county-year, lines = {function: "
+                         "[[lineLabelIdx, whole dollars]]} — governmental "
+                         "activities, official FTR activity_fundtype line "
+                         "names, children sum to the unrounded function "
+                         "totals exactly (gated).",
             "datasets": {"expenditures": DS_EXPEND, "revenues": DS_REVEN,
                          "perCapita": DS_PERCAP},
         },

@@ -134,15 +134,62 @@ def latest_enacted_years(n: int):
     return sorted(years)
 
 
-def dept_federal(year: str, org_cd: str) -> float:
-    """Federal-fund dollars (thousands) for one department:
-    F-class rows of the support + capital-outlay fund tables."""
-    fed = 0.0
+def dept_depth(year: str, org_cd: str):
+    """Everything below the department that the V8 finding approved:
+    fund rows (the drill whose children sum exactly to the gated
+    parents), the N/R totals (the bridge), and programs (the labeled
+    all-funds view). All dollars in THOUSANDS, kept as integers —
+    integer source units per the V8 cross-cutting rules."""
+    funds = {}          # fundCd -> [class, thousands]
+    fund_names = {}
+    nr = {"N": 0, "R": 0}
+    fed = 0
+    infra = 0           # capital outlay, ALL classes — programs exclude it
     for ep in ("rwaCntl/support", "rwaCntl/capOutlay"):
         rows = get_json(f"{year}/{ep}/{org_cd}", ok_404=True) or []
-        fed += sum((r.get("byTotDols") or 0)
-                   for r in rows if r.get("fundClassCd") == "F")
-    return fed
+        for r in rows:
+            if ep == "rwaCntl/capOutlay":
+                infra += int(round(r.get("byTotDols") or 0))
+            cls = r.get("fundClassCd")
+            v = int(round(r.get("byTotDols") or 0))
+            if cls == "F":
+                fed += v
+            if cls in ("N", "R"):
+                nr[cls] += v
+            if cls in ("G", "S", "B", "F"):
+                cd = r.get("fundCd") or "?"
+                if cd in funds:
+                    funds[cd][1] += v
+                else:
+                    funds[cd] = [cls, v]
+                fund_names[cd] = (r.get("fundLglTitl") or cd).strip()
+    prog = get_json(f"{year}/orgProgram/{org_cd}", ok_404=True) or {}
+    prog_rows = prog.get("lines") or []
+    programs = [[(r.get("programCode") or "").strip(),
+                 (r.get("programTitl") or "").strip(),
+                 int(round(r.get("byDols") or 0))]
+                for r in prog_rows]
+    # the API's own totals rows anchor the program gate
+    tot = {"excl": None, "infra": 0, "all": None}
+    for tr in prog.get("totals") or []:
+        ti = (tr.get("programTitl") or "")
+        v = int(round(tr.get("byDols") or 0))
+        if "excluding Infrastructure" in ti:
+            tot["excl"] = v
+        elif "Infrastructure" in ti:
+            tot["infra"] = v
+        elif "All Expenditures" in ti:
+            tot["all"] = v
+    return {
+        "fed": fed,
+        "progTotals": tot,
+        "infra": infra,
+        "funds": sorted(([cd, cl, v] for cd, (cl, v) in funds.items()),
+                        key=lambda x: -abs(x[2])),
+        "nr": [nr["N"], nr["R"]],
+        "programs": sorted(programs, key=lambda x: -abs(x[2])),
+        "fundNames": fund_names,
+    }
 
 
 def fetch_year(year: str):
@@ -174,15 +221,63 @@ def fetch_year(year: str):
             depts.append(d)
 
         with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
-            feds = list(pool.map(lambda d: dept_federal(year, d["orgCd"]), depts))
+            depths = list(pool.map(lambda d: dept_depth(year, d["orgCd"]), depts))
 
         dept_nodes = {}
-        for d, fed in zip(depts, feds):
-            dept_nodes[d["legalTitl"].strip()] = {
+        for d, depth in zip(depts, depths):
+            node = {
                 "code": d["orgCd"],
                 "gf": d["generalFundTotal"] or 0, "sp": d["specialFundTotal"] or 0,
-                "bd": d["bondFundTotal"] or 0, "fed": fed or 0,
+                "bd": d["bondFundTotal"] or 0, "fed": depth["fed"] or 0,
+                "funds": depth["funds"], "nr": depth["nr"],
+                "programs": depth["programs"],
+                "fundNames": depth["fundNames"],
             }
+            # V8 PARENT-SUM GATES (hard). Children sum to the UNROUNDED
+            # parent, in thousands:
+            #  - fund rows by class == the statistics parents (G/S/B);
+            #    F is identical by construction;
+            #  - programs (all funds) == gf+sp+bd+fed+N+R.
+            by_cls = {}
+            for _cd, cl, v in depth["funds"]:
+                by_cls[cl] = by_cls.get(cl, 0) + v
+            for cls, key in (("G", "gf"), ("S", "sp"), ("B", "bd")):
+                parent = node[key] or 0
+                if abs(by_cls.get(cls, 0) - parent) > 1:
+                    raise SystemExit(
+                        f"V8 GATE {year} {d['legalTitl'].strip()!r}: fund "
+                        f"class {cls} sums to {by_cls.get(cls, 0):,} vs "
+                        f"parent {parent:,} (thousands) — nothing written")
+            if depth["programs"]:
+                # HARD GATE: program lines must equal the API's own
+                # "excluding Infrastructure" total — a mismatch is source
+                # corruption, never shippable.
+                psum = sum(x[2] for x in depth["programs"])
+                excl = depth["progTotals"]["excl"]
+                if excl is not None and abs(psum - excl) > 1:
+                    raise SystemExit(
+                        f"V8 GATE {year} {d['legalTitl'].strip()!r}: program "
+                        f"lines {psum:,} vs the API's own total {excl:,} — "
+                        "nothing written")
+                # THE BRIDGE: ship programs only when the program display
+                # reconciles EXACTLY to the fund display —
+                # programs + infrastructure == gf+sp+bd+fed+N+R. Where the
+                # Budget's two displays disagree (e.g. Wildlife
+                # Conservation Board 2020-21, whose "All Expenditures"
+                # double-counts its capital outlay), the department ships
+                # its fund drill only, marked programsOmitted — a reader
+                # must never be able to conclude the gated totals are
+                # wrong, so an unclear bridge means no program view.
+                all_funds = ((node["gf"] or 0) + (node["sp"] or 0)
+                             + (node["bd"] or 0) + node["fed"]
+                             + depth["nr"][0] + depth["nr"][1])
+                infra_unalloc = all_funds - psum
+                if -1 <= infra_unalloc <= depth["infra"] + 1:
+                    node["infraUnalloc"] = max(0, infra_unalloc)
+                else:
+                    node["programs"] = []
+                    node["programsOmitted"] = True
+            dept_nodes[d["legalTitl"].strip()] = node
         node = {
             "gf": a["generalFundTotal"] or 0, "sp": a["specialFundTotal"] or 0,
             "bd": a["bondFundTotal"] or 0,
@@ -195,6 +290,13 @@ def fetch_year(year: str):
               f"fed ${node['fed'] / THOUSANDS_PER_BILLION:8.3f}B  "
               f"({len(dept_nodes)} depts)", file=sys.stderr)
 
+    omitted = [dn for n in out.values()
+               for dn, dv in n["departments"].items()
+               if dv.get("programsOmitted")]
+    if omitted:
+        print(f"  programs omitted (fund/program displays disagree): "
+              f"{len(omitted)} dept(s): {', '.join(omitted[:6])}"
+              + (" …" if len(omitted) > 6 else ""), file=sys.stderr)
     total = sum(n["gf"] + n["sp"] + n["bd"] for n in out.values())
     if grand_check:
         drift = abs(total - grand_check)
@@ -313,20 +415,35 @@ def attach_actuals(payload, cached, refresh=False):
 def build_payload(cached):
     years_sorted = sorted(cached.keys())
     budgets, trend = {}, {}
+    fund_names = {}
     for year in years_sorted:
         agencies = []
         for name, node in sorted(
             cached[year].items(),
             key=lambda kv: -(kv[1]["gf"] + kv[1]["sp"] + kv[1]["bd"] + kv[1]["fed"]),
         ):
-            depts = [
-                {"name": dn,
-                 **({"code": dv["code"]} if dv.get("code") else {}),
-                 **{k: round(dv[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS}}
-                for dn, dv in sorted(
+            depts = []
+            for dn, dv in sorted(
                     node["departments"].items(),
-                    key=lambda kv: -sum(kv[1][k] for k in FUND_KEYS))
-            ]
+                    key=lambda kv: -sum(kv[1][k] for k in FUND_KEYS)):
+                dd = {"name": dn,
+                      **({"code": dv["code"]} if dv.get("code") else {}),
+                      **{k: round(dv[k] / THOUSANDS_PER_BILLION, 3)
+                         for k in FUND_KEYS}}
+                # V8 depth: children in integer thousands (source units)
+                if dv.get("funds"):
+                    dd["funds"] = dv["funds"]
+                    for cd, nm in (dv.get("fundNames") or {}).items():
+                        fund_names[cd] = nm
+                if dv.get("nr") and any(dv["nr"]):
+                    dd["nr"] = dv["nr"]
+                if dv.get("programsOmitted"):
+                    dd["programsOmitted"] = True
+                elif dv.get("programs"):
+                    dd["infraUnalloc"] = dv.get("infraUnalloc", 0)
+                if dv.get("programs"):
+                    dd["programs"] = dv["programs"]
+                depts.append(dd)
             agencies.append({
                 "id": slugify(name), "name": name,
                 **{k: round(node[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS},
@@ -344,6 +461,17 @@ def build_payload(cached):
                            "(California Department of Finance, ebudget.ca.gov)",
             "generated": date.today().isoformat(),
             "population": POPULATION,
+            "fundNames": fund_names,
+            "depth": "Per department: funds = [[fundCd, class, thousands]] "
+                     "(G/S/B/F only — children of the gated parents, exact); "
+                     "nr = [nongovernmental-cost, reimbursements] thousands "
+                     "(the bridge); programs = [[code, title, thousands]] "
+                     "on an ALL-FUNDS scope: programs + infraUnalloc = "
+                     "gf+sp+bd+fed+nr, exact — departments whose program "
+                     "display does not reconcile to their fund display "
+                     "carry programsOmitted instead of a misleading view. Program "
+                     "prior-year columns are deliberately not carried: they "
+                     "undercount the gated actuals (V8 finding).",
         },
         "years": years_sorted,
         "trend": trend,
@@ -357,7 +485,7 @@ def write_data_js(payload):
               f"{date.today().isoformat()} — do not edit by hand. */\n")
     OUT_PATH.write_text(
         header + "window.CA_LEDGER_DATA = "
-        + json.dumps(payload, indent=2) + ";\n",
+        + json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + ";\n",
         encoding="utf-8",
     )
     print(f"Wrote {OUT_PATH} "

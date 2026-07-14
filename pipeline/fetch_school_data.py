@@ -256,6 +256,8 @@ def process_year(yy, fy):
     # ---- stream the general ledger once
     edp = defaultdict(float)                 # (c,d) -> EDP365
     edp_fn = defaultdict(lambda: defaultdict(float))
+    edp_fn_obj = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    edp_restr = defaultdict(lambda: [0.0, 0.0])   # [unrestricted, restricted]
     coe_fn = defaultdict(lambda: defaultdict(float))
     coe_tot = defaultdict(float)
     charter_gl = defaultdict(lambda: defaultdict(float))   # (c,d,s) -> family
@@ -298,7 +300,15 @@ def process_year(yy, fy):
         if fund == "01":
             if edp_in_scope(obj, r["Goal"], r["Function"]):
                 edp[(c, d)] += v
-                edp_fn[(c, d)][fn_group(r["Function"])] += v
+                g = fn_group(r["Function"])
+                edp_fn[(c, d)][g] += v
+                # V8 depth: object family within the gated scope, and the
+                # restricted/unrestricted split (resource >= 2000 is
+                # restricted, SACS's own definition)
+                edp_fn_obj[(c, d)][g][obj_family(obj)] += v
+                res = r["Resource"]
+                restricted = res.isdigit() and int(res) >= 2000
+                edp_restr[(c, d)][1 if restricted else 0] += v
             if is_coe and 1000 <= obj <= 7999:
                 coe_fn[(c, d)][fn_group(r["Function"])] += v
                 coe_tot[(c, d)] += v
@@ -452,9 +462,25 @@ def process_year(yy, fy):
             commingled[(c, d)][0] += 1
             commingled[(c, d)][1] += ch["ada"]
 
+    # V8 PARENT-SUM GATES (hard): the depth partitions must equal the
+    # gated Current Expense figure to the cent, district by district
+    depth_fail = []
+    for key, pub in ce.items():
+        total = edp[key]
+        fo = sum(v for fam in edp_fn_obj[key].values() for v in fam.values())
+        ru = sum(edp_restr[key])
+        if abs(fo - total) > 0.005 or abs(ru - total) > 0.005:
+            depth_fail.append(f"{pub['name']}: fn×obj {fo:,.2f} / "
+                              f"restr-split {ru:,.2f} vs {total:,.2f}")
+    if depth_fail:
+        for s in depth_fail[:8]:
+            print("  V8 GATE FAIL:", s, file=sys.stderr)
+        raise SystemExit(f"FY {fy}: {len(depth_fail)} depth partition(s) "
+                         "do not sum to the gated figure — nothing written")
+
     return {
         "leas": leas, "charters": charters, "ce": ce, "edp": edp,
-        "edp_fn": edp_fn, "coe_fn": coe_fn, "coe_tot": coe_tot,
+        "edp_fn": edp_fn, "edp_fn_obj": edp_fn_obj, "edp_restr": edp_restr, "coe_fn": coe_fn, "coe_tot": coe_tot,
         "coe_ada": coe_ada, "charter_gl": charter_gl,
         "charter_gl_tot": charter_gl_tot, "alt_data": alt_data,
         "alt_tot": alt_tot, "dep_funds_exp": dep_funds_exp,
@@ -525,6 +551,10 @@ def main():
                 "currentExpense": round(yd["edp"][key], 2),
                 "cePublished": round(pub["edp"], 2),
                 "byFunction": fn,
+                "byFunctionObject": {g: {o: round(v, 2) for o, v in fam.items()}
+                                     for g, fam in yd["edp_fn_obj"][key].items()},
+                "unrestricted": round(yd["edp_restr"][key][0], 2),
+                "restricted": round(yd["edp_restr"][key][1], 2),
                 "basicAid": bool(yd["basic_aid"].get(key, False)),
                 "smallNSS": pub["ada"] < 250,
                 "sponsoredCharterADA": round(yd["sponsored"].get(key, 0.0), 2),

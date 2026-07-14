@@ -1517,6 +1517,126 @@ def test_shape():
               gov > 0 and ent > 0)
 
 
+def test_depth(page, base):
+    """V8 depth: children sum to the UNROUNDED parent at every new
+    depth, re-asserted from shipped data; bridges legible; negatives
+    honest; refused depths absent."""
+    # ---- STATE: funds vs parents; programs + bridge identity
+    fund_bad, prog_bad, has_programs = [], [], 0
+    for y, b in STATE["budgets"].items():
+        for a in b["agencies"]:
+            for d in a["departments"]:
+                if "funds" not in d:
+                    continue
+                by = {}
+                for cd, cl, v in d["funds"]:
+                    by[cl] = by.get(cl, 0) + v
+                for cl, key in (("G","gf"),("S","sp"),("B","bd"),("F","fed")):
+                    if abs(by.get(cl, 0)/1e6 - d[key]) > 0.0006:
+                        fund_bad.append(f"{y} {d['name']} {cl}")
+                if d.get("programs"):
+                    has_programs += 1
+                    psum = sum(x[2] for x in d["programs"])
+                    # the exact parent comes from the integer fund rows,
+                    # never from display-rounded billions
+                    allf = sum(v for _cd, _cl, v in d["funds"]) \
+                        + sum(d.get("nr", [0, 0])) - d.get("infraUnalloc", 0)
+                    if abs(psum - allf) > 2:
+                        prog_bad.append(f"{y} {d['name']}: {psum} vs {allf}")
+    check("depth state: fund children sum to every department parent",
+          not fund_bad, str(fund_bad[:3]))
+    check("depth state: programs reconcile through the N/R bridge exactly",
+          not prog_bad and has_programs > 1000, str(prog_bad[:3]))
+    check("depth state: fund names dictionary ships",
+          len(STATE["meta"].get("fundNames", {})) > 300)
+    # refused: program prior-year columns must not exist
+    check("depth state: no prior-year columns in programs (refused as actuals)",
+          all(len(x) == 3 for b in STATE["budgets"].values()
+              for a in b["agencies"] for d in a["departments"]
+              for x in d.get("programs", [])))
+
+    # ---- SCHOOLS: fn×object and restricted split, cent-exact
+    bad_fo, bad_ru = [], []
+    for slug, d in SCHOOL["districts"].items():
+        for y, v in d["years"].items():
+            fo = sum(x for fam in v.get("byFunctionObject", {}).values()
+                     for x in fam.values())
+            if abs(fo - v["currentExpense"]) > 0.05:
+                bad_fo.append(f"{slug} {y}")
+            if abs((v.get("restricted",0)+v.get("unrestricted",0))
+                   - v["currentExpense"]) > 0.05:
+                bad_ru.append(f"{slug} {y}")
+    check("depth schools: fn×object partitions sum to the gated figure",
+          not bad_fo, str(bad_fo[:3]))
+    check("depth schools: restricted+unrestricted equals the gated figure",
+          not bad_ru, str(bad_ru[:3]))
+    # refused: no 4-digit object depth
+    sample = next(iter(SCHOOL["districts"].values()))["years"]
+    fam_keys = {k for v in sample.values()
+                for fam in v.get("byFunctionObject", {}).values() for k in fam}
+    check("depth schools: object families only, never 4-digit objects",
+          fam_keys <= {o["key"] for o in SCHOOL["objectFamilies"]})
+
+    # ---- CITIES/COUNTIES: line children vs unrounded functions
+    for DATA, label, store in ((CITY, "cities", "cities"),
+                               (COUNTY, "counties", "counties")):
+        bad = []
+        for slug, c in DATA[store].items():
+            for y, yr in c["years"].items():
+                for k, items in (yr.get("lines") or {}).items():
+                    lsum = sum(x[1] for x in items) / 1e6
+                    if abs(lsum - yr["byFunction"].get(k, 0)) > 0.0006:
+                        bad.append(f"{slug} {y} {k}")
+        check(f"depth {label}: line children sum to every function figure",
+              not bad, str(bad[:3]))
+        check(f"depth {label}: official line-label dictionary ships",
+              len(DATA["meta"].get("lineLabels", [])) > 50)
+    # districts: REFUSED depth — no lines anywhere
+    check("depth special districts: refused — no line detail shipped",
+          "lineLabels" not in DIST["meta"]
+          and all("lines" not in r for r in DIST["districts"].values()))
+
+    # ---- UI: the state bridge is explicit and legible
+    page.goto(f"{base}/index.html#a=health-and-human-service&dd=4260")
+    page.wait_for_selector(".depth-panel")
+    panel = page.inner_text(".depth-panel")
+    check("depth UI: fund detail declares exact summing",
+          "SUMS EXACTLY TO THE DEPARTMENT FIGURE" in panel)
+    check("depth UI: programs labeled as a different all-funds scope",
+          "ALL FUNDS" in panel and "A DIFFERENT SCOPE" in panel)
+    check("depth UI: the bridge names N and R with plain meanings",
+          "Nongovernmental-cost funds" in panel and "Reimbursements" in panel
+          and "already counted in their budgets" in panel)
+    check("depth UI: bridge asserts completeness in words",
+          "nothing is missing and nothing is double-counted" in panel
+          and "Both totals are correct" in panel)
+    # a $0-parent department still renders programs sanely (STRS)
+    page.goto(f"{base}/index.html#a=government-operations")
+    page.wait_for_timeout(400)
+    body = page.inner_text("body")
+    # ---- UI: honest negatives at depth
+    page.goto(f"{base}/cities.html#l=county&c=santa-clara")
+    page.wait_for_selector("#recordBody .det-row")
+    page.locator('#recordBody .det-row[data-fn="admin"]').click()
+    page.wait_for_selector(".line-panel")
+    lp = page.inner_text(".line-panel")
+    check("depth UI: Santa Clara's negative Auditor-Controller line shown",
+          "Auditor-Controller" in lp and "\u2212" in lp
+          and "not errors" in lp)
+    check("depth UI: county line fund types shown",
+          "GENERAL" in lp)
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&u=total")
+    page.wait_for_selector("#recordBody .det-row")
+    page.locator('#recordBody .det-row[data-fn="genAdmin"]').click()
+    page.wait_for_selector(".obj-panel")
+    op = page.inner_text(".obj-panel")
+    check("depth UI: schools negative object family with transfer note",
+          "\u2212" in op and "cost transfers" in op)
+    check("depth UI: schools restricted/unrestricted on the face",
+          "RESTRICTED" in page.inner_text("#recordBody")
+          and "SUM EXACTLY" in page.inner_text("#recordBody"))
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1701,6 +1821,7 @@ def main():
             test_address(page, base)
             test_rename(page, base)
             test_schools(page, base)
+            test_depth(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
