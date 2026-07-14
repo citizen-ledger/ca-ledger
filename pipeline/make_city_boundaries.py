@@ -25,7 +25,7 @@ a boundary by the same normalization + alias rules proven for the
 gazetteer, or this script exits with a named report and writes
 nothing. No guesses, no silent drops.
 
-Feature properties are ONLY {slug, name, clng, clat} — deliberately no
+Feature properties are ONLY {slug, name, clng, clat, geoid} — no
 financial fields, so the map style has no spending data to encode even
 by accident (the test suite asserts this).
 
@@ -189,6 +189,10 @@ def main():
     for r, s in zip(rows, shapes):
         if r.get("LSAD") not in ("25", "43"):
             continue
+        # Census GEOID (state+place FIPS) rides along so the address
+        # view can match the Census geocoder's place assignment by
+        # identifier instead of re-doing name matching at runtime.
+        s = {"shape": s, "geoid": (r.get("GEOID") or "").strip()}
         base = r["NAME"].strip()
         try:   # the .dbf is UTF-8 (per its .cpg); the shared reader
                # decodes latin-1 — repair the round-trip (e.g. La Cañada)
@@ -206,11 +210,14 @@ def main():
     unmatched, features, total_pts = [], [], 0
     for name, slug in sorted(name_to_slug.items()):
         k = _norm_place(name)
-        s = lookup.get(GAZETTEER_ALIASES.get(k, k))
-        if s is None:
+        ent = lookup.get(GAZETTEER_ALIASES.get(k, k))
+        if ent is None:
             unmatched.append(name)
             continue
-        polys, clng, clat = simplify_city(s, args.tolerance)
+        if not ent["geoid"]:
+            unmatched.append(name + " (no GEOID in source)")
+            continue
+        polys, clng, clat = simplify_city(ent["shape"], args.tolerance)
         total_pts += sum(len(ring) - 1 for poly in polys for ring in poly)
         geometry = ({"type": "Polygon", "coordinates": polys[0]}
                     if len(polys) == 1 else
@@ -218,7 +225,8 @@ def main():
         features.append({
             "type": "Feature",
             "properties": {"slug": slug, "name": name,
-                           "clng": clng, "clat": clat},
+                           "clng": clng, "clat": clat,
+                           "geoid": ent["geoid"]},
             "geometry": geometry,
         })
 

@@ -897,6 +897,72 @@ surfaces, SCO deep links, filing-status table, authored-copy
 neutrality scan, and the city/county picker never growing a district
 layer).
 
+## 2026-07-14 — V6 build: the address view (address.html)
+
+Built per docs/V6_ADDRESS_FINDING.md, option (b) SHIP NARROWED.
+
+- **Geocoding:** U.S. Census Bureau geocoder via its supported JSONP
+  interface (its CORS allow-list blocks browser fetch(), as the
+  finding verified). The geographies endpoint assigns county,
+  incorporated place, and CDP from full-resolution TIGER — the
+  Ledger's simplified map shapes are never used for assignment. City
+  matching is by Census GEOID: `pipeline/make_city_boundaries.py` now
+  carries `geoid` on every feature (regenerated, 418 KB, digest
+  restamped), so no name matching happens at runtime.
+- **No sum, structurally:** the three records (city or
+  unincorporated-county, county, state) stack with per-record basis
+  labels; a bordered does-not-add statement carries the live
+  intergovernmental figures, which now ship in county-data.js as
+  `meta.intergovernmental` — computed by the county pipeline from
+  the Controller's revenue data on every run (FY 2023-24: 53.8% of
+  county governmental revenues intergovernmental; $37.6B state,
+  $17.8B federal of $104.5B). Tests assert the arithmetic sum of the
+  three rendered per-resident figures appears nowhere in the DOM and
+  that the share is absent from the page source.
+- **No district assignment:** the districts panel states the county's
+  filer count from district-data.js and that the Ledger cannot
+  determine which districts serve an address, linking to the
+  county-filtered directory. The TRA path stays retired per the
+  finding.
+- **Unincorporated addresses are first-class:** no incorporated place
+  → the county renders as THE local government, with the
+  unincorporated share made concrete and any CDP labeled "a
+  statistical designation, not a government." Verified live against
+  the real geocoder for East Los Angeles. San Francisco resolves to
+  one consolidated record, counted once.
+- **Comparability survives the synthesis:** city mini-records carry
+  the same service-provision notes as the full record (a Lakewood
+  lookup shows the county-contract note beside its low per-resident
+  figure), and the county record on incorporated addresses explains
+  the countywide-vs-unincorporated split.
+- **Privacy, as guaranteed in the finding:** the address goes only to
+  census.gov (disclosed on the page, including the load-balancer
+  cookie); permalinks are resolved slugs only (`c=` / `uc=`);
+  citations and CSVs are generated from slugs and say so; nothing is
+  persisted. Tests inject a distinctive address through a mocked
+  geocoder and assert it appears in neither hash, citation, CSV, nor
+  localStorage.
+- **Degradation:** geocoder unreachable → plain failure message plus
+  direct links to the search pickers (test-asserted, via aborted
+  requests); no-match → stated, never guessed. Pin-drop (coordinates
+  endpoint, no address) and an on-device point-in-polygon fallback
+  against the shipped simplified boundaries (its city-limit accuracy
+  caveat printed with every result) cover the rural and
+  maximum-privacy cases.
+- **Page weight:** address.html loads all five data files plus
+  city/county geometry (~4.8 MB raw, ~1 MB compressed on Pages) —
+  the heaviest page on the site, stated here rather than silent; the
+  record pages are unaffected.
+
+Tests: **338 assertions, all passing** — 305 existing (one adapted:
+city-geo properties now include `geoid`) plus 33 for this page (no
+summed figure in the DOM; live intergovernmental share rendered from
+data and absent from source; the in-your-name copy rule with its
+banned phrasings; East-LA-class unincorporated correctness through a
+mocked geocoder; SF consolidation; address absent from
+hash/citation/CSV/localStorage; failure degradation; district-count
+substitute).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

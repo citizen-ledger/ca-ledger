@@ -19,13 +19,14 @@ basemap tiles — see STATUS.md; everything else stays dependency-free.)
 | `county-data.js` | The county dataset: all 57 filing counties × 8 fiscal years (San Francisco files as a consolidated city and county and lives in the city data — counted exactly once). |
 | `pipeline/fetch_county_data.py` | Regenerates `county-data.js` from the same SCO portal, with the same hard gate: refuses to write unless every county-year reconciles against the SCO's published control totals (`miui-wb29`). |
 | `pipeline/make_county_boundaries.py` | Regenerates `county-geo.js` — 57 county boundaries plus a San Francisco polygon that routes to the Cities layer (Census, public domain). |
+| `address.html` | The address view: enter a California address (or drop a pin) and see the governments that spend in your name — city or unincorporated county, county, state — as stacked records that are never summed, plus the county's special-district count. Census-geocoded via JSONP; the address never leaves the browser except to census.gov and never enters permalinks, citations, or CSVs. |
 | `districts.html` | The special districts layer, deliberately a different evidentiary tier: the finding first (the measured condition of the layer, recomputed live), the directory second (every district on record, with per-year filing status and a link to its own SCO filing), the as-filed numbers last — caveat on the face, no per-resident figures, no comparison, no totals. |
 | `district-data.js` | ~5,200 districts × 8 years of as-filed figures, filing statuses, and the computed finding (2.2 MB — the largest data file, loaded only by districts.html). |
 | `pipeline/fetch_district_data.py` | Regenerates `district-data.js` from the SCO portal. There is no reconciliation gate for this layer because no control-total dataset exists — that absence is the finding, and the pipeline computes every figure the finding states. |
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
-| `tests/run_tests.py` | Headless test suite — one command, 305 assertions on the real data. |
+| `tests/run_tests.py` | Headless test suite — one command, 338 assertions on the real data. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
@@ -90,7 +91,7 @@ update once a year.
 python3 tests/run_tests.py
 ```
 
-One command, 305 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
+One command, 338 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
 rendering on the Ledger design system, drill-down and view/unit
 controls, permalink hash round-trips, CSV export contents, citation
 output, Change-view arithmetic, a banned-adjective scan, neutrality

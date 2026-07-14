@@ -918,6 +918,160 @@ def test_districts(page, base):
           '"district"' not in csrc.split("const LAYERS")[1][:400])
 
 
+CENSUS_JSONP_RE = "**geocoding.geo.census.gov/**"
+
+def census_jsonp_body(url, geographies, matched="MATCHED ADDR"):
+    import urllib.parse as _up
+    cb = _up.parse_qs(_up.urlsplit(url).query)["callback"][0]
+    if "/coordinates" in url:
+        payload = {"result": {"geographies": geographies}}
+    else:
+        payload = {"result": {"addressMatches": [
+            {"matchedAddress": matched, "geographies": geographies}]}}
+    return cb + "(" + json.dumps(payload) + ")"
+
+def test_address(page, base):
+    IG = COUNTY["meta"]["intergovernmental"]
+    ig_pct = f"{IG['share']*100:.1f}%"
+    src = (ROOT / "address.html").read_text(encoding="utf-8")
+
+    # ---- permalink render (no network): city case
+    page.goto(f"{base}/address.html#c=lakewood")
+    page.wait_for_selector("#records .record")
+    check("address: three stacked records for a city address",
+          page.locator("#records .record").count() == 3)
+    body = page.inner_text("body")
+    check("address: contract-city comparability note carried onto the mini record",
+          "contract with the county" in body)
+    check("address: state record labeled as a plan",
+          "A PLAN, NOT ACTUALS" in body)
+
+    # ---- NO SUMMED FIGURE anywhere in the DOM
+    import re as _re
+    per_res = [int(_re.sub(r"[^0-9]", "", el))
+               for el in page.locator(".rec-big").all_inner_texts()]
+    check("address: three per-resident figures rendered", len(per_res) == 3,
+          str(per_res))
+    total = sum(per_res)
+    for rendering in (f"${total:,}", f"{total:,}"):
+        check(f"address: the layers' sum {rendering!r} appears nowhere",
+              rendering not in body)
+    check("address: the does-not-add statement is structural and carries "
+          "the live intergovernmental share",
+          "DO NOT ADD" in page.inner_text("#noSum")
+          and ig_pct in page.inner_text("#noSum"))
+    check("address: intergovernmental share not hardcoded in page source",
+          ig_pct not in src and "53.8" not in src)
+
+    # ---- copy rule: in your name, never what you pay
+    low = body.lower() + src.lower()
+    for banned in ("what you pay", "your tax bill", "tax burden", "you pay",
+                   "costs you", "your share of taxes"):
+        check(f"address copy: {banned!r} absent", banned not in low)
+    check("address copy: 'in your name' present", "in your name" in low)
+
+    # ---- district substitute: county count, no assignment
+    dp = page.inner_text("#distPanel")
+    la_count = sum(1 for d in DIST["districts"].values()
+                   if d["county"] == "Los Angeles")
+    check("address: district panel states the county count from data",
+          f"{la_count:,}" in dp and "cannot determine" in dp, dp[:80])
+    check("address: district panel links to county-filtered directory",
+          "districts.html#q=Los%20Angeles" in
+          (page.get_attribute("#distPanel a", "href") or ""))
+
+    # ---- mocked geocoder: East-LA-class unincorporated correctness
+    east_la = {"Counties": [{"NAME": "Los Angeles County", "GEOID": "06037"}],
+               "Census Designated Places": [
+                   {"NAME": "East Los Angeles CDP", "GEOID": "0620802",
+                    "FUNCSTAT": "S"}]}
+    def handler_factory(geo, matched):
+        def handler(route):
+            route.fulfill(status=200, content_type="text/javascript",
+                          body=census_jsonp_body(route.request.url, geo, matched))
+        return handler
+    page.goto(f"{base}/address.html")
+    page.route(CENSUS_JSONP_RE, handler_factory(east_la,
+        "4801 E 3RD ST, LOS ANGELES, CA, 90022"))
+    ADDR = "4801 E 3rd St, Los Angeles, CA 90022"
+    page.fill("#addrInput", ADDR)
+    page.click("#lookupBtn")
+    page.wait_for_selector("#records .record")
+    body = page.inner_text("body")
+    check("address unincorporated: county shown as THE local government",
+          "UNINCORPORATED LOS ANGELES COUNTY" in page.inner_text("#foundLine")
+          and "the county is the local government" in
+              page.inner_text("#unincNote").lower())
+    check("address unincorporated: no city record rendered",
+          page.locator("#records .record").count() == 2
+          and "YOUR CITY" not in body)
+    check("address unincorporated: CDP labeled a statistical designation, "
+          "not a government",
+          "East Los Angeles" in page.inner_text("#unincNote")
+          and "not a government" in page.inner_text("#unincNote"))
+    check("address unincorporated: unincorporated share made concrete",
+          "% of Los Angeles County's residents live in unincorporated" in body)
+
+    # ---- PRIVACY: the address is nowhere but the census request
+    h = page.evaluate("location.hash")
+    check("address privacy: hash carries the county slug only",
+          h == "#uc=los-angeles", h)
+    page.click("#citeBtn")
+    cite = page.inner_text("#citeText")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    stored = page.evaluate("JSON.stringify(localStorage)")
+    for label, blob in [("hash", h), ("citation", cite), ("CSV", csv),
+                        ("localStorage", stored)]:
+        check(f"address privacy: address absent from {label}",
+              "4801" not in blob and "3rd St" not in blob
+              and "90022" not in blob)
+    check("address privacy: disclosure states census.gov sees the address",
+          "census.gov" in page.inner_text("#privacyNote"))
+    check("address citation: does-not-add travels with it",
+          "do not add" in cite and ig_pct in cite)
+    check("address CSV: never exports the address",
+          "never exported" in csv and "in residents' name" in csv)
+
+    # ---- SF consolidated handling (mocked)
+    page.unroute(CENSUS_JSONP_RE)
+    sf = {"Counties": [{"NAME": "San Francisco County", "GEOID": "06075"}],
+          "Incorporated Places": [{"NAME": "San Francisco city",
+                                   "GEOID": "0667000", "FUNCSTAT": "A"}]}
+    page.route(CENSUS_JSONP_RE, handler_factory(sf, "1 DR CARLTON B GOODLETT PL"))
+    page.fill("#addrInput", "1 Dr Carlton B Goodlett Pl, San Francisco")
+    page.click("#lookupBtn")
+    page.wait_for_timeout(400)
+    check("address SF: one consolidated record, counted once",
+          page.locator("#records .record").count() == 2  # city + state
+          and "counted once" in page.inner_text("#records"))
+
+    # ---- geocoder-failure degradation (aborted requests)
+    page.unroute(CENSUS_JSONP_RE)
+    page.route(CENSUS_JSONP_RE, lambda route: route.abort())
+    page.goto(f"{base}/address.html")
+    page.fill("#addrInput", "915 I St, Sacramento")
+    page.click("#lookupBtn")
+    page.wait_for_selector("#status.err", timeout=20000)
+    st = page.inner_text("#status")
+    check("address degradation: clear failure message, no guess",
+          "could not be reached" in st)
+    check("address degradation: browse links still offered",
+          page.locator('#status a[href="cities.html"]').count() == 1)
+    page.unroute(CENSUS_JSONP_RE)
+
+    # ---- on-device fallback correctness (no network at all)
+    page.goto(f"{base}/address.html")
+    res = page.evaluate("""(() => {
+      // Sacramento City Hall — inside the city boundary
+      const f = window.CA_CITY_GEO.features.find(x => x.properties.slug === 'sacramento');
+      return f ? 'have-geo' : 'missing';
+    })()""")
+    check("address on-device: shipped geometry available for local resolution",
+          res == "have-geo")
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -928,9 +1082,10 @@ def test_map(page, base):
           f"{len(GEO['features'])} vs {len(CITY['cities'])}")
     # HARD NEUTRALITY, part 1: the geometry file carries NO financial
     # data — a choropleth has nothing to encode. Properties are exactly
-    # {slug, name, clng, clat}.
+    # {slug, name, clng, clat, geoid} — geoid is an identifier for the
+    # address view's Census crosswalk, not a financial field.
     bad_props = {k for f in GEO["features"] for k in f["properties"]} \
-        - {"slug", "name", "clng", "clat"}
+        - {"slug", "name", "clng", "clat", "geoid"}
     check("map neutrality: no financial fields in geo properties",
           not bad_props, str(bad_props))
     bad_geom = [f["properties"]["slug"] for f in GEO["features"]
@@ -1097,6 +1252,7 @@ def main():
             test_v2(page, base)
             test_county(page, base)
             test_districts(page, base)
+            test_address(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

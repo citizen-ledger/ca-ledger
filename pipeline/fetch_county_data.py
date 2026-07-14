@@ -168,6 +168,10 @@ def fetch_year(source_year):
             out[name]["revenuesEnterprise"] += v
         elif cat not in ("Internal Service Fund", "Conduit Financing"):
             out[name]["revenues"] += v
+            if cat.startswith("Intergovernmental"):
+                key = ("igState" if "State" in cat else
+                       "igFederal" if "Federal" in cat else "igOther")
+                out[name][key] = out[name].get(key, 0.0) + v
     print(f"  FY {fy_label(source_year)}: {len(out)} counties, "
           f"{len(exp):,} expenditure lines", file=sys.stderr)
     return out
@@ -279,6 +283,29 @@ def main():
             prev_gov = gov
         counties_out[slugify(name)] = entry
 
+    latest_sy = SOURCE_YEARS[-1]
+    ig = {"state": 0.0, "federal": 0.0, "other": 0.0, "governmental": 0.0}
+    for c in years_data[latest_sy].values():
+        ig["state"] += c.get("igState", 0.0)
+        ig["federal"] += c.get("igFederal", 0.0)
+        ig["other"] += c.get("igOther", 0.0)
+        ig["governmental"] += c["revenues"]
+    ig_total = ig["state"] + ig["federal"] + ig["other"]
+    intergovernmental = {
+        "year": fy_label(latest_sy),
+        "stateM": m(ig["state"]),
+        "federalM": m(ig["federal"]),
+        "otherM": m(ig["other"]),
+        "governmentalRevenuesM": m(ig["governmental"]),
+        "share": round(ig_total / ig["governmental"], 4),
+        "stateShare": round(ig["state"] / ig["governmental"], 4),
+        "method": "sum of Intergovernmental – State/Federal/Other revenue "
+                  "categories across all 57 counties' governmental funds "
+                  f"(enterprise, ISF, conduit excluded), {DS_REVEN}, most "
+                  "recent fiscal year. The address view's figures-do-not-add "
+                  "statement renders these values; it hardcodes none of them.",
+    }
+
     payload = {
         "meta": {
             "source": "bythenumbers.sco.ca.gov",
@@ -305,6 +332,7 @@ def main():
                                   "populations (county minus the sum of its "
                                   "cities); counties serve these residents "
                                   "directly as the local government.",
+            "intergovernmental": intergovernmental,
             "datasets": {"expenditures": DS_EXPEND, "revenues": DS_REVEN,
                          "perCapita": DS_PERCAP},
         },

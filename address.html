@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The California Ledger — Your governments</title>
+<meta name="description" content="Enter a California address and see the governments that spend in your name — city or unincorporated county, county, and state — as separate records that are never summed.">
+<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/address.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The California Ledger">
+<meta property="og:title" content="The California Ledger — Your governments">
+<meta property="og:description" content="Enter a California address and see the governments that spend in your name — as separate records that are never summed.">
+<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/address.html">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Ledger design system — see index.html. This page synthesizes the
+     reconciled layers for one location. Its one hard rule is visible
+     in its structure: the records STACK and never SUM. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .btn{font-size:12.5px;border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
+  .btn.sm{padding:6px 14px;font-size:11.5px}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
+  .hero{margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  .dek{font-size:15px;color:var(--graphite);margin-top:12px;max-width:640px;line-height:1.5}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .schedlbl{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .dim{color:var(--smoke)}
+
+  /* entry */
+  .entry{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:24px 32px 26px}
+  .entryrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type="text"]{flex:1;min-width:280px;font-family:var(--mono);font-size:13px;padding:11px 18px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink)}
+  input[type="text"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .privacy{margin-top:14px;padding:12px 16px;background:var(--parchment);border:1px solid var(--hairline);font-size:12.5px;color:var(--graphite);line-height:1.6}
+  .status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--graphite)}
+  .status.err{color:var(--ink)}
+
+  /* pin map */
+  .pinmap{height:340px;border:1px solid var(--ash);margin-top:14px;position:relative;background:var(--parchment)}
+  .pinmap .maplibregl-canvas{cursor:crosshair}
+
+  /* stacked records */
+  .stack{margin-top:30px}
+  .found{font-family:var(--mono);font-size:12px;color:var(--graphite);padding:10px 0;border-bottom:1px solid var(--ink)}
+  .uninc-note{margin-top:14px;border:1px solid var(--ink);background:var(--surface);padding:14px 18px;font-size:14px;line-height:1.6}
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:18px;padding:22px 28px 24px}
+  .rec-top{display:flex;justify-content:space-between;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .rec-name{font-family:var(--serif);font-size:24px;margin-top:8px}
+  .rec-meta{font-family:var(--mono);font-size:11.5px;color:var(--smoke);margin-top:6px}
+  .rec-big{font-family:var(--mono);font-size:34px;font-weight:500;letter-spacing:-0.5px;margin-top:14px}
+  .rec-biglbl{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;color:var(--smoke);margin-top:4px}
+  .fn-row{display:grid;grid-template-columns:230px 1fr 110px;gap:0 16px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+  .fn-row .bar{height:6px;background:var(--track);border-radius:1px;overflow:hidden}
+  .fn-row .bar i{display:block;height:6px;background:var(--ink)}
+  .fn-row .v{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .rec-note{font-size:12.5px;color:var(--graphite);margin-top:12px;line-height:1.55}
+  .rec-link{margin-top:12px;font-size:13px}
+
+  /* the does-not-add statement — part of the structure, not a footnote */
+  .nosum{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:14px;line-height:1.65}
+  .nosum b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
+
+  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:16px;padding:16px 22px}
+  .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
+  .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
+  .method .lead{font-size:15px;color:var(--graphite);max-width:640px;margin-top:10px}
+  .mgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;margin-top:26px}
+  .mcol{display:flex;flex-direction:column;gap:16px}
+  .mnote{display:flex;gap:12px;font-size:13.5px;line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .fn-row{grid-template-columns:1fr 90px} .fn-row .bar{display:none} }
+  @media(max-width:720px){ h1{font-size:40px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <span class="wordmark">The California Ledger</span>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="districts.html">Special districts</a>
+    <span class="active">Your governments</span>
+    <a href="#methodology">Methodology</a>
+  </nav>
+</header>
+
+<div class="prov" id="dataBanner"></div>
+
+<main>
+  <div class="po cite-text" id="printCite"></div>
+
+  <div class="hero">
+    <div class="kicker">THE PUBLIC RECORD · ONE LOCATION, EVERY LAYER</div>
+    <h1>Your governments</h1>
+    <p class="dek">Enter a California address and the Ledger shows the governments that spend <strong>in your name</strong> — your city (or, outside any city, your county), your county, and the state — as separate records. They are different accounting bases, and money moves between them, so this page never adds them into a total. It describes spending on residents' behalf, not anyone's tax bill.</p>
+  </div>
+
+  <div class="entry np" id="entryCard">
+    <div class="entryrow">
+      <input type="text" id="addrInput" placeholder="Street address, city — e.g. 915 I St, Sacramento" aria-label="California street address" autocomplete="off">
+      <button class="btn blue" id="lookupBtn">Look up</button>
+      <button class="btn" id="pinBtn">Drop a pin instead</button>
+    </div>
+    <div class="privacy" id="privacyNote">
+      <strong>Where the address goes:</strong> to locate it, the address is sent to the U.S. Census Bureau's public geocoder (census.gov) — they receive the address and your network address, as with any federal website, and set a load-balancer cookie. It is sent nowhere else, is never stored by this page, and never appears in permalinks, citations, or CSV files — those carry only the resolved city and county, facts shared with everyone who lives there. Prefer not to type an address? The pin option sends only map coordinates; after a lookup failure you can also resolve entirely on this device.
+    </div>
+    <div class="pinmap" id="pinMap" hidden></div>
+    <div class="entryrow" id="pinActions" hidden style="margin-top:10px">
+      <span class="status" id="pinStatus">Click the map to place a point.</span>
+      <button class="btn ink" id="pinResolve" disabled>Use this point</button>
+      <button class="btn" id="pinLocal" disabled>Resolve on this device</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+  </div>
+
+  <!-- stacked records -->
+  <section class="stack" id="stack" hidden aria-labelledby="foundLine">
+    <div class="found" id="foundLine"></div>
+    <div id="unincNote"></div>
+    <div id="records"></div>
+    <div class="nosum" id="noSum"></div>
+    <div class="record" id="distPanel"></div>
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap" class="np">
+      <button class="btn ink" id="citeBtn">Cite</button>
+      <button class="btn blue" id="csvBtn">Download CSV</button>
+      <button class="btn" id="clearBtn">Clear</button>
+    </div>
+    <div class="cite-panel" id="citePanel" hidden>
+      <div class="microlbl">CITATION — SLUGS ONLY, NEVER THE ADDRESS</div>
+      <div class="cite-text" id="citeText"></div>
+      <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
+    </div>
+  </section>
+
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <p class="lead">This page joins the Ledger's reconciled layers for one location. Its rules exist because the easy version — one big total — would be wrong by construction.</p>
+    <div class="mgrid">
+      <div class="mcol">
+        <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote"><b>A-1</b><span><strong>The figures do not add, and this page never adds them.</strong> Money moves between the layers: in the most recent fiscal year, <span id="mIgShare"></span> of California counties' governmental revenues came from the state and federal governments — dollars that also appear in those governments' own figures (<span id="mIgDetail"></span>). The state's enacted budget likewise includes money sent to local governments. A single stacked total would count the same dollars more than once, so no total exists anywhere on this page. The shares above are computed by the county pipeline from the Controller's revenue data on every run — this page hardcodes none of them.</span></div>
+        <div class="mnote"><b>A-2</b><span><strong>"In your name" — never a bill.</strong> Per-resident figures divide a government's spending by the population it reports serving. They are not a tax bill: renters, commuters, visitors, and businesses all contribute to these budgets, and no honest per-address cost exists. This page describes spending on residents' behalf and refuses the other framing.</span></div>
+        <div class="mnote"><b>A-3</b><span><strong>Where the address goes.</strong> The address (or pin coordinates) is sent to the U.S. Census Bureau's public geocoder over HTTPS via its supported JSONP interface, and nowhere else — this site has no server. Census.gov receives the query and your network address and sets a load-balancer cookie. Nothing is stored on this page; permalinks, citations, and CSV files carry only resolved city/county identifiers. The "resolve on this device" option sends nothing anywhere and matches the point against the simplified boundaries this site already ships — near a city limit that simplification can be wrong, which is why it is the fallback, not the default.</span></div>
+        <div class="mnote"><b>A-4</b><span><strong>Jurisdiction assignment is the Census Bureau's, not ours.</strong> City and county come from the geocoder's full-resolution TIGER geography (county, incorporated place, and Census-designated place), not from this site's simplified map shapes. An address outside every incorporated city is shown for what it is: the county is its local government. A Census-designated place, when present, is shown as community context only — a statistical area, not a government.</span></div>
+        <div class="mnote"><b>A-5</b><span><strong>Special districts are not assigned to addresses.</strong> No statewide special-district boundary file exists, and the property-tax system's district lists cannot be joined honestly to the Controller's filings (see docs/V6_ADDRESS_FINDING.md). This page states how many districts file from the county and links to their records; it never claims to know which serve a specific address.</span></div>
+        <div class="mnote"><b>A-6</b><span><strong>Bases and vintages are labeled per record.</strong> City and county figures are reported actuals, reconciled against the Controller's published control totals. The state figure is the enacted budget — a plan, on the Budgetary-Legal basis (the state page's Actuals view shows how enacted years compared with published actuals). Rural address matching in the Census benchmark is imperfect; when the geocoder finds no match, this page says so and offers the pin, the on-device option, and the regular search pickers — it never guesses.</span></div>
+      </div>
+      <div class="mcol">
+        <div class="microlbl">SOURCES &amp; RECORD</div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Geocoding: U.S. Census Bureau Geocoder (geocoding.geo.census.gov, Public_AR_Current benchmark, Current vintage). Figures: the same data files as the rest of the Ledger — <span class="mono" style="font-size:12px">data.js, city-data.js, county-data.js, district-data.js</span> — each SHA-256 digest-stamped and verifiable with <span class="mono" style="font-size:12px">pipeline/verify_digest.py</span>. This page computes nothing new; it re-presents the layers side by side for one location.</div>
+        <div class="revlog" id="revLog" style="font-family:var(--mono);font-size:11px;color:var(--smoke);line-height:1.9;border:1px solid var(--hairline);padding:12px 16px"></div>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Full records: <a href="cities.html">cities &amp; counties</a> · <a href="districts.html">special districts</a> · <a href="index.html">state budget</a>.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="ft">
+  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="data.js"></script>
+<script src="city-data.js"></script>
+<script src="county-data.js"></script>
+<script src="city-geo.js"></script>
+<script src="county-geo.js"></script>
+<script src="district-data.js"></script>
+<script>
+(function(){
+  "use strict";
+  const ST = window.CA_LEDGER_DATA, CITY = window.CA_CITY_DATA,
+        CTY = window.CA_COUNTY_DATA, CGEO = window.CA_CITY_GEO,
+        KGEO = window.CA_COUNTY_GEO, DIST = window.CA_DISTRICT_DATA;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  const fmt = n => n.toLocaleString("en-US");
+  const IG = CTY.meta.intergovernmental;
+  const IG_PCT = (IG.share*100).toFixed(1) + "%";
+  const CITY_FY = CITY.years[CITY.years.length-1];
+  const ST_FY = ST.years[ST.years.length-1];
+
+  // resolved state — slugs only; the typed address NEVER enters here
+  const S = { city: null, county: null, cdp: null, via: null };
+
+  const geoidToSlug = {};
+  CGEO.features.forEach(f => { geoidToSlug[f.properties.geoid] = f.properties.slug; });
+  const countyByName = {};
+  Object.entries(CTY.counties).forEach(([slug, c]) => { countyByName[c.name] = slug; });
+
+  const distCountByCounty = {};
+  Object.values(DIST.districts).forEach(d => {
+    if (d.county) distCountByCounty[d.county] = (distCountByCounty[d.county]||0) + 1;
+  });
+
+  /* ---------- chrome ---------- */
+  $("dataBanner").innerHTML =
+    "<span>GEOCODING: U.S. CENSUS BUREAU · FIGURES: STATE CONTROLLER + DEPT. OF FINANCE</span>"
+    + "<span>RECORDS STACK · NEVER SUM</span>"
+    + "<span>GENERATED: " + esc(CITY.meta.generated) + "</span>"
+    + "<span>PUBLIC RECORD</span>";
+  $("mIgShare").textContent = IG_PCT;
+  $("mIgDetail").textContent = "$" + fmt(Math.round(IG.stateM)) + "M from the state, $"
+    + fmt(Math.round(IG.federalM)) + "M federal, of $"
+    + fmt(Math.round(IG.governmentalRevenuesM)) + "M, FY " + IG.year;
+  $("revLog").innerHTML = "CITY & COUNTY · FY " + CITY_FY + " · REPORTED ACTUALS · RECONCILED<br>"
+    + "STATE · FY " + ST_FY + " · ENACTED (PLAN)<br>"
+    + "DISTRICT COUNTS · AS FILED<br>GENERATED " + esc(CITY.meta.generated);
+
+  /* ---------- permalink: resolved slugs ONLY ---------- */
+  function hashOf(){
+    const p = new URLSearchParams();
+    if (S.city) p.set("c", S.city);
+    else if (S.county) p.set("uc", S.county);
+    return p.toString();
+  }
+  function syncHash(){
+    const h = hashOf();
+    try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
+    catch(e){ location.hash = h; }
+  }
+  function applyHash(){
+    const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    const c = p.get("c"), uc = p.get("uc");
+    S.city = (c && CITY.cities[c]) ? c : null;
+    S.county = null; S.cdp = null; S.via = "permalink";
+    if (S.city){
+      const cname = CITY.cities[S.city].county;
+      S.county = countyByName[cname] || null;
+    } else if (uc && CTY.counties[uc]) {
+      S.county = uc;
+    }
+  }
+
+  /* ---------- geocoding (JSONP — the geocoder's CORS blocks fetch) ---------- */
+  const GEO_BASE = "https://geocoding.geo.census.gov/geocoder/geographies/";
+  const LAYERS = "Counties,Incorporated Places,Census Designated Places";
+  let jsonpCleanup = null;
+  function jsonp(url){
+    return new Promise((resolve, reject) => {
+      if (jsonpCleanup) jsonpCleanup();
+      const t = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 12000);
+      function cleanup(){
+        clearTimeout(t); delete window.__CL_GEO;
+        if (s.parentNode) s.parentNode.removeChild(s);
+        jsonpCleanup = null;
+      }
+      jsonpCleanup = cleanup;
+      window.__CL_GEO = data => { cleanup(); resolve(data); };
+      const s = document.createElement("script");
+      s.src = url + "&format=jsonp&callback=__CL_GEO";
+      s.onerror = () => { cleanup(); reject(new Error("load")); };
+      document.head.appendChild(s);
+    });
+  }
+  function geoUrlForAddress(addr){
+    return GEO_BASE + "onelineaddress?" + new URLSearchParams({
+      address: addr, benchmark: "Public_AR_Current",
+      vintage: "Current_Current", layers: LAYERS}).toString();
+  }
+  function geoUrlForPoint(lng, lat){
+    return GEO_BASE + "coordinates?" + new URLSearchParams({
+      x: lng, y: lat, benchmark: "Public_AR_Current",
+      vintage: "Current_Current", layers: LAYERS}).toString();
+  }
+
+  function resolveGeographies(g, label){
+    const inc = (g["Incorporated Places"]||[])[0];
+    const cdp = (g["Census Designated Places"]||[])[0];
+    const cty = (g["Counties"]||[])[0];
+    if (!cty || !/^06/.test(cty.GEOID||"")){
+      fail("That point is not in California."); return;
+    }
+    const countyName = cty.NAME.replace(/ County$/,"");
+    S.cdp = cdp ? cdp.NAME.replace(/ CDP$/,"") : null;
+    S.via = label;
+    if (inc){
+      const slug = geoidToSlug[inc.GEOID];
+      if (!slug){
+        fail("The Census Bureau places this address in " + esc(inc.NAME)
+          + ", which has no record in the Ledger's city data — nothing is shown rather than a guess.");
+        return;
+      }
+      S.city = slug;
+      S.county = countyByName[CITY.cities[slug].county] || countyByName[countyName] || null;
+    } else {
+      S.city = null;
+      S.county = countyByName[countyName] || null;
+      if (!S.county && countyName !== "San Francisco"){
+        fail("County “" + esc(countyName) + "” has no record in the county data — nothing is shown rather than a guess.");
+        return;
+      }
+      if (countyName === "San Francisco"){ S.city = "san-francisco"; S.county = null; }
+    }
+    syncHash(); render();
+  }
+
+  function fail(msgHtml){
+    const st = $("status");
+    st.className = "status err";
+    st.innerHTML = msgHtml + " You can try the pin instead, or browse directly: "
+      + '<a href="cities.html">city &amp; county records</a> · <a href="index.html">state budget</a>.';
+    $("pinLocal").disabled = !lastPin;
+  }
+
+  async function lookupAddress(){
+    const addr = $("addrInput").value.trim();
+    if (!addr){ $("status").textContent = "Enter a street address."; return; }
+    $("status").className = "status";
+    $("status").textContent = "Locating via census.gov…";
+    try {
+      const data = await jsonp(geoUrlForAddress(addr));
+      const m = (((data||{}).result)||{}).addressMatches || [];
+      if (!m.length){
+        fail("The Census geocoder found no match for that address (rural coverage is imperfect).");
+        return;
+      }
+      $("status").textContent = "";
+      lastMatched = m[0].matchedAddress || null;
+      resolveGeographies(m[0].geographies || {}, "geocoder");
+    } catch(e){
+      fail("The Census geocoder could not be reached.");
+    }
+  }
+
+  /* ---------- pin mode + on-device fallback ---------- */
+  let pinMap = null, lastPin = null, lastMatched = null, marker = null;
+  function initPinMap(){
+    if (pinMap) return;
+    if (!window.maplibregl){
+      const s = document.createElement("script");
+      s.src = "vendor/maplibre-gl.js";
+      s.onload = buildPinMap;
+      s.onerror = () => { $("pinStatus").textContent =
+        "The map library could not load — the pin is unavailable, but the address lookup above still works."; };
+      document.head.appendChild(s);
+      const l = document.createElement("link");
+      l.rel = "stylesheet"; l.href = "vendor/maplibre-gl.css";
+      document.head.appendChild(l);
+    } else buildPinMap();
+  }
+  function buildPinMap(){
+    pinMap = new maplibregl.Map({
+      container: "pinMap",
+      style: { version: 8, sources: {}, layers: [
+        { id: "bg", type: "background", paint: {"background-color": "#f6f3f1"} } ] },
+      center: [-119.3, 37.2], zoom: 4.6, attributionControl: false,
+      dragRotate: false, pitchWithRotate: false, touchPitch: false });
+    pinMap.on("load", () => {
+      pinMap.addSource("counties", {type: "geojson", data: KGEO, promoteId: "slug"});
+      pinMap.addLayer({id: "cty-fill", type: "fill", source: "counties",
+        paint: {"fill-color": "#242424", "fill-opacity": 0.08}});
+      pinMap.addLayer({id: "cty-line", type: "line", source: "counties",
+        paint: {"line-color": "#cecac8", "line-width": 0.8}});
+    });
+    pinMap.on("click", e => {
+      lastPin = [e.lngLat.lng, e.lngLat.lat];
+      if (marker) marker.remove();
+      marker = new maplibregl.Marker({color: "#2b59d1"}).setLngLat(lastPin).addTo(pinMap);
+      $("pinStatus").textContent = "Point placed.";
+      $("pinResolve").disabled = false;
+      $("pinLocal").disabled = false;
+    });
+  }
+  $("pinBtn").addEventListener("click", () => {
+    const el = $("pinMap");
+    el.hidden = !el.hidden;
+    $("pinActions").hidden = el.hidden;
+    if (!el.hidden) initPinMap();
+  });
+  $("pinResolve").addEventListener("click", async () => {
+    if (!lastPin) return;
+    $("status").className = "status";
+    $("status").textContent = "Locating point via census.gov…";
+    try {
+      const data = await jsonp(geoUrlForPoint(lastPin[0], lastPin[1]));
+      $("status").textContent = "";
+      lastMatched = null;
+      resolveGeographies((((data||{}).result)||{}).geographies || {}, "pin");
+    } catch(e){
+      fail("The Census geocoder could not be reached. “Resolve on this device” works without any network.");
+    }
+  });
+
+  // on-device point-in-polygon against the simplified shipped boundaries —
+  // the zero-disclosure fallback; near a city limit it can be wrong,
+  // and the result says so
+  function pointInRing(lng, lat, ring){
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++){
+      const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if ((yi > lat) !== (yj > lat) &&
+          lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function pointInFeature(lng, lat, f){
+    const polys = f.geometry.type === "Polygon"
+      ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const poly of polys){
+      if (!pointInRing(lng, lat, poly[0])) continue;
+      let inHole = false;
+      for (let r = 1; r < poly.length; r++)
+        if (pointInRing(lng, lat, poly[r])) { inHole = true; break; }
+      if (!inHole) return true;
+    }
+    return false;
+  }
+  function localResolve(lng, lat){
+    const cityF = CGEO.features.find(f => pointInFeature(lng, lat, f));
+    const ctyF = KGEO.features.find(f => pointInFeature(lng, lat, f));
+    if (!cityF && !ctyF){ fail("That point is outside every boundary this site ships."); return; }
+    S.cdp = null; S.via = "device";
+    if (ctyF && ctyF.properties.pointer === "city"){ S.city = "san-francisco"; S.county = null; }
+    else {
+      S.city = cityF ? cityF.properties.slug : null;
+      S.county = ctyF ? ctyF.properties.slug : null;
+    }
+    lastMatched = null;
+    syncHash(); render();
+  }
+  $("pinLocal").addEventListener("click", () => {
+    if (lastPin) localResolve(lastPin[0], lastPin[1]);
+  });
+
+  /* ---------- the stacked records ---------- */
+  const perRes = (millions, pop) => millions * 1e6 / pop;
+  const money0 = v => "$" + fmt(Math.round(v));
+
+  function cityServiceNotes(c, yr){
+    const notes = [];
+    const vin = CITY.meta.servicesChecklistVintage;
+    [["police","Police"],["fire","Fire"]].forEach(([k,label])=>{
+      const svc = c.services && c.services[k];
+      if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
+        notes.push(label + " service " + svc.label + " (FY " + vin
+          + " services checklist, the most recent published — arrangements may have changed).");
+      else if (yr.notes && yr.notes.includes(k === "police" ? "lowPolice" : "lowFire"))
+        notes.push("Reports under $5 per resident of municipal " + k
+          + " expenditure; the service may be provided or financed outside the city budget "
+          + "(heuristic flag, not a survey).");
+    });
+    if (yr.notes && yr.notes.includes("bigSwing"))
+      notes.push("Governmental expenditures changed by more than 40% from the prior year — "
+        + "single-year capital or debt events can do this.");
+    if (notes.length)
+      notes.push("Per-resident differences partly reflect which services a city provides "
+        + "directly — see the full record's comparability notes before comparing.");
+    return notes.join(" ");
+  }
+  function cityRecord(slug){
+    const c = CITY.cities[slug], yr = c.years[CITY_FY];
+    return miniRecord({
+      kicker: "YOUR CITY" + (slug === "san-francisco" ? " AND COUNTY" : ""),
+      sched: "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · PER RESIDENT · FY " + CITY_FY,
+      name: c.name, sub: c.county + " County · population " + fmt(yr.population),
+      big: money0(perRes(yr.expenditures, yr.population)),
+      biglbl: "GOVERNMENTAL SPENDING PER RESIDENT · REPORTED ACTUALS · RECONCILED",
+      fns: topFunctions(yr.byFunction, CITY.functions, yr.population),
+      note: slug === "san-francisco"
+        ? "San Francisco is California's only consolidated city and county — this one record is both of its layers, counted once. Its report includes county functions no other city provides."
+        : (cityServiceNotes(c, yr) || null),
+      link: "cities.html#c=" + slug, linkLabel: "Open the full city record"
+    });
+  }
+  function countyRecord(slug, asLocal){
+    const c = CTY.counties[slug], yr = c.years[CITY_FY];
+    const unincPct = Math.round((yr.unincorporated||0)*100);
+    return miniRecord({
+      kicker: asLocal ? "YOUR LOCAL GOVERNMENT — THE COUNTY" : "YOUR COUNTY",
+      sched: "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · PER RESIDENT · FY " + CITY_FY,
+      name: c.name + " County", sub: "population " + fmt(yr.population),
+      big: money0(perRes(yr.expenditures, yr.population)),
+      biglbl: "GOVERNMENTAL SPENDING PER RESIDENT · REPORTED ACTUALS · RECONCILED",
+      fns: topFunctions(yr.byFunction, CTY.functions, yr.population),
+      note: (asLocal
+        ? "This address is outside every incorporated city, so the county is its local government. "
+        : "")
+        + unincPct + "% of " + c.name + " County's residents live in unincorporated areas the "
+        + "county serves directly as the local government — per-resident differences partly "
+        + "reflect this responsibility share, not spending choices."
+        + (asLocal ? "" : " Part of this county record is spending on unincorporated areas; "
+        + "city residents' county services are chiefly countywide functions (courts, jails, "
+        + "elections, public health)."),
+      link: "cities.html#l=county&c=" + slug, linkLabel: "Open the full county record"
+    });
+  }
+  function stateRecord(){
+    const b = ST.budgets[ST_FY];
+    let total = 0;
+    b.agencies.forEach(a => { total += a.gf + a.sp + a.bd; });
+    const pop = ST.meta.population[ST_FY] * 1e6;
+    return miniRecord({
+      kicker: "YOUR STATE",
+      sched: "ENACTED BUDGET · STATE FUNDS (GENERAL + SPECIAL + BOND) · PER RESIDENT · FY " + ST_FY,
+      name: "State of California", sub: "population " + fmt(Math.round(pop)),
+      big: money0(total * 1e9 / pop),
+      biglbl: "ENACTED SPENDING PER RESIDENT · A PLAN, NOT ACTUALS · BUDGETARY-LEGAL BASIS",
+      fns: null,
+      note: "The enacted budget includes money the state sends to local governments — "
+        + "some dollars in the county record above are the same dollars, which is one "
+        + "reason these records are never added. Federal pass-through is excluded here "
+        + "(it is a toggle on the state page). The state page's Actuals view shows how "
+        + "enacted years compared with published actual spending.",
+      link: "index.html", linkLabel: "Open the full state record"
+    });
+  }
+  function topFunctions(byFn, fnList, pop){
+    const label = Object.fromEntries(fnList.map(f => [f.key, f.name]));
+    const rows = Object.entries(byFn).map(([k,v]) => [label[k]||k, v])
+      .sort((a,b) => b[1]-a[1]).slice(0,5);
+    const max = rows.length ? rows[0][1] : 1;
+    return rows.map(([name,v]) =>
+      '<div class="fn-row"><span>'+esc(name)+'</span>'
+      + '<span class="bar"><i style="width:'+(v/max*100).toFixed(1)+'%"></i></span>'
+      + '<span class="v">'+money0(perRes(v,pop))+'</span></div>').join("");
+  }
+  function miniRecord(o){
+    return '<div class="record">'
+      + '<div class="rec-top"><span class="microlbl">'+o.kicker+'</span>'
+      + '<span class="schedlbl">'+o.sched+'</span></div>'
+      + '<div class="rec-name">'+esc(o.name)+'</div>'
+      + '<div class="rec-meta">'+esc(o.sub)+'</div>'
+      + '<div class="rec-big num">'+o.big+'</div>'
+      + '<div class="rec-biglbl">'+o.biglbl+'</div>'
+      + (o.fns ? '<div style="margin-top:14px">'+o.fns+'</div>' : '')
+      + (o.note ? '<div class="rec-note">'+o.note+'</div>' : '')
+      + '<div class="rec-link"><a href="'+o.link+'">'+o.linkLabel+' →</a></div>'
+      + '</div>';
+  }
+
+  function render(){
+    const has = S.city || S.county;
+    $("stack").hidden = !has;
+    if (!has) return;
+    const cityName = S.city ? CITY.cities[S.city].name : null;
+    const countyName = S.county ? CTY.counties[S.county].name : (S.city ? CITY.cities[S.city].county : null);
+    $("foundLine").textContent = ("RESOLVED · "
+      + (S.city ? (cityName + (S.city === "san-francisco" ? " (CONSOLIDATED CITY AND COUNTY)" : " · " + countyName + " COUNTY"))
+                : ("UNINCORPORATED " + countyName.toUpperCase() + " COUNTY"))
+      + (S.via === "device" ? " · RESOLVED ON THIS DEVICE AGAINST SIMPLIFIED BOUNDARIES — NEAR A CITY LIMIT THIS CAN BE WRONG" : "")).toUpperCase();
+    $("unincNote").innerHTML = "";
+    if (!S.city && S.county){
+      $("unincNote").innerHTML = '<div class="uninc-note"><strong>This address is in '
+        + 'unincorporated ' + esc(countyName) + ' County.</strong> No city government exists here: '
+        + 'the county is the local government'
+        + (S.cdp ? ' — the Census Bureau labels the community “' + esc(S.cdp)
+          + '”, a statistical designation, not a government' : '') + '.</div>';
+    } else if (S.city && S.cdp){
+      $("unincNote").innerHTML = "";
+    }
+    let html = "";
+    if (S.city) html += cityRecord(S.city);
+    if (S.county) html += countyRecord(S.county, !S.city);
+    html += stateRecord();
+    $("records").innerHTML = html;
+    $("noSum").innerHTML = "<b>THESE RECORDS DO NOT ADD</b>"
+      + "They are different accounting bases, and money moves between them: in FY " + IG.year + ", "
+      + IG_PCT + " of California counties' governmental revenues came from the state and federal "
+      + "governments ($" + fmt(Math.round(IG.stateM)) + "M state, $" + fmt(Math.round(IG.federalM))
+      + "M federal, of $" + fmt(Math.round(IG.governmentalRevenuesM)) + "M) — dollars that also "
+      + "appear in those governments' figures. A single total would count them more than once, "
+      + "so the Ledger never shows one. Each figure is spending in your name on its own basis — "
+      + "not a bill, and not addable.";
+    const dc = distCountByCounty[countyName] || 0;
+    $("distPanel").innerHTML =
+      '<div class="rec-top"><span class="microlbl">SPECIAL DISTRICTS</span>'
+      + '<span class="schedlbl">AS FILED · UNRECONCILED TIER · NOT ASSIGNED TO ADDRESSES</span></div>'
+      + '<div class="rec-name">' + fmt(dc) + ' special districts</div>'
+      + '<div class="rec-note">' + fmt(dc) + " special districts on record file from "
+      + esc(countyName) + " County. No statewide boundary file exists for special districts, "
+      + "so <strong>the Ledger cannot determine from an address which of them serve it</strong> "
+      + "— and does not guess. Their as-filed records are in the directory."
+      + '</div><div class="rec-link"><a href="districts.html#q=' + encodeURIComponent(countyName)
+      + '">Search the ' + esc(countyName) + ' County districts →</a></div>';
+    $("citePanel").hidden = true;
+  }
+
+  /* ---------- cite + CSV: slugs only ---------- */
+  function layersForExport(){
+    const rows = [];
+    if (S.city){
+      const c = CITY.cities[S.city], yr = c.years[CITY_FY];
+      rows.push(["city", c.name, CITY_FY, "reported actuals, reconciled",
+        yr.population, yr.expenditures, Math.round(perRes(yr.expenditures, yr.population))]);
+    }
+    if (S.county){
+      const c = CTY.counties[S.county], yr = c.years[CITY_FY];
+      rows.push([S.city ? "county" : "county (local government — unincorporated)",
+        c.name + " County", CITY_FY, "reported actuals, reconciled",
+        yr.population, yr.expenditures, Math.round(perRes(yr.expenditures, yr.population))]);
+    }
+    const b = ST.budgets[ST_FY]; let t = 0;
+    b.agencies.forEach(a => { t += a.gf + a.sp + a.bd; });
+    const pop = ST.meta.population[ST_FY] * 1e6;
+    rows.push(["state", "State of California", ST_FY,
+      "enacted budget (plan), Budgetary-Legal basis, state funds",
+      Math.round(pop), t * 1000, Math.round(t * 1e9 / pop)]);
+    return rows;
+  }
+  function citationText(){
+    const rows = layersForExport();
+    const parts = rows.map(r => r[1] + " " + money0(r[6]) + " per resident (" + r[3] + ", FY " + r[2] + ")");
+    return "The California Ledger — Your governments (" + hashOf() + "). "
+      + parts.join("; ") + ". These figures do not add: " + IG_PCT
+      + " of county governmental revenues are intergovernmental (FY " + IG.year
+      + "), so a total would double-count. Spending in your name, not a tax bill. "
+      + "Sources: State Controller (bythenumbers.sco.ca.gov), Dept. of Finance (ebudget.ca.gov). "
+      + "Generated " + CITY.meta.generated + ". Permalink: " + location.href;
+  }
+  function csvText(){
+    const lines = [
+      "# The California Ledger — Your governments (resolved jurisdictions only; the address is never exported)",
+      "# These records do not add: " + IG_PCT + " of county governmental revenues are intergovernmental (FY "
+        + IG.year + ") — a total would count the same dollars more than once.",
+      "# Figures are spending in residents' name on each government's own basis — not a tax bill.",
+      "# Permalink: " + location.href,
+      "layer,government,fiscal_year,basis,population,governmental_expenditures_millions,per_resident_dollars"
+    ];
+    layersForExport().forEach(r => lines.push(r.map(x =>
+      /[",]/.test(String(x)) ? '"' + String(x).replace(/"/g,'""') + '"' : x).join(",")));
+    return lines.join("\r\n");
+  }
+
+  /* ---------- events ---------- */
+  $("lookupBtn").addEventListener("click", lookupAddress);
+  $("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") lookupAddress(); });
+  $("clearBtn").addEventListener("click", () => {
+    S.city = S.county = S.cdp = null; lastMatched = null;
+    $("addrInput").value = ""; $("status").textContent = "";
+    syncHash(); render();
+  });
+  $("citeBtn").addEventListener("click", () => {
+    const p = $("citePanel"); p.hidden = !p.hidden;
+    if (!p.hidden) $("citeText").textContent = citationText();
+  });
+  $("citeCopy").addEventListener("click", () => {
+    if (navigator.clipboard) navigator.clipboard.writeText($("citeText").textContent);
+  });
+  $("csvBtn").addEventListener("click", () => {
+    const blob = new Blob([csvText()], {type: "text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ca-ledger-your-governments-" + (S.city || "uninc-" + S.county) + ".csv";
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  window.addEventListener("hashchange", () => { applyHash(); render(); });
+
+  /* ---------- boot ---------- */
+  applyHash(); render();
+  $("printCite").textContent = "The California Ledger — Your governments. Records stack and never sum. "
+    + "Generated " + CITY.meta.generated + ".";
+})();
+</script>
+</body>
+</html>
