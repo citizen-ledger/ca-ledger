@@ -646,15 +646,29 @@ def test_actuals_view(page, base):
 
 
 def test_map(page, base):
-    # data-level: boundary coverage — every city has a polygon, 482/482
-    missing = [slug for slug in CITY["cities"] if slug not in GEO["cities"]]
+    # data-level: boundary coverage — every city has a GeoJSON feature
+    slugs = {f["properties"]["slug"] for f in GEO["features"]}
+    missing = [s for s in CITY["cities"] if s not in slugs]
     check("map: boundary coverage 482/482", not missing, str(missing[:5]))
-    check("map: boundary count matches city count",
-          len(GEO["cities"]) == len(CITY["cities"]),
-          f"{len(GEO['cities'])} vs {len(CITY['cities'])}")
-    bad = [s for s, g in GEO["cities"].items()
-           if not g.get("d", "").startswith("M") or "cx" not in g or "r" not in g]
-    check("map: every boundary has a path + hit anchor", not bad, str(bad[:5]))
+    check("map: feature count matches city count",
+          len(GEO["features"]) == len(CITY["cities"]),
+          f"{len(GEO['features'])} vs {len(CITY['cities'])}")
+    # HARD NEUTRALITY, part 1: the geometry file carries NO financial
+    # data — a choropleth has nothing to encode. Properties are exactly
+    # {slug, name, clng, clat}.
+    bad_props = {k for f in GEO["features"] for k in f["properties"]} \
+        - {"slug", "name", "clng", "clat"}
+    check("map neutrality: no financial fields in geo properties",
+          not bad_props, str(bad_props))
+    bad_geom = [f["properties"]["slug"] for f in GEO["features"]
+                if f["geometry"]["type"] not in ("Polygon", "MultiPolygon")]
+    check("map: all geometries are polygons", not bad_geom, str(bad_geom[:5]))
+
+    # print: the map hides in print; the record prints instead
+    html = (ROOT / "cities.html").read_text(encoding="utf-8")
+    check("map: hidden in print CSS",
+          re.search(r"@media print\s*{[^}]*\.map-panel\s*{\s*display\s*:\s*none", html)
+          is not None)
 
     # map view renders behind the toggle; search picker unchanged
     page.goto(f"{base}/cities.html")
@@ -662,102 +676,128 @@ def test_map(page, base):
     check("map: hidden by default", page.is_hidden("#mapPanel"))
     check("map: search picker visible by default", page.is_visible("#citySearch"))
     page.click('#pickerModeGroup [data-mode="map"]')
-    page.wait_for_selector("#mapShapes path")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
     check("map: panel shown, search hidden",
           page.is_visible("#mapPanel") and page.is_hidden("#citySearch"))
-    check("map: one boundary polygon per city",
-          page.locator("#mapShapes path").count() == len(CITY["cities"]))
-    check("map: one hit-target per city",
-          page.locator("#mapHits circle").count() == len(CITY["cities"]))
-    check("map: outline present", page.locator("#mapSvg path.outline").count() == 1)
     check("map: hash encodes view", "p=map" in page.evaluate("location.hash"))
+    check("map: overlay source carries every city", page.evaluate(
+        "window.CA_CITY_GEO.features.length") == len(CITY["cities"]))
 
-    # HARD NEUTRALITY: boundaries are never filled by spending — with
-    # nothing selected, all 482 shapes share one computed fill (ink) and
-    # one fill-opacity
-    fills = page.evaluate(
-        "[...new Set([...document.querySelectorAll('#mapShapes path')]"
-        ".map(d=>getComputedStyle(d).fill))]")
-    check("map neutrality: single uniform boundary fill", len(fills) == 1, str(fills))
-    check("map neutrality: fill is ink", fills[0] == "rgb(36, 36, 36)", fills[0])
-    ops = page.evaluate(
-        "[...new Set([...document.querySelectorAll('#mapShapes path')]"
-        ".map(d=>getComputedStyle(d).fillOpacity))]")
-    check("map neutrality: single uniform fill-opacity", len(ops) == 1, str(ops))
+    # HARD NEUTRALITY, part 2: with nothing selected the fill paint is a
+    # single ink literal for all 482 shapes (WebGL has no per-shape DOM;
+    # the style expression IS the uniform-fill guarantee). Any
+    # data-driven fill would change this JSON and fail here.
+    spec = page.evaluate(
+        "JSON.stringify(window._clMap.getPaintProperty('cities-fill','fill-color'))")
+    check("map neutrality: unselected fill is one ink literal",
+          spec == '"#242424"', spec)
 
-    # minimum hit-target size: smallest target must render at a forgiving
-    # screen size at statewide zoom
-    min_px = page.evaluate(
+    # selected boundaries take the comparison swatches, alphabetical
+    page.goto(f"{base}/cities.html#p=map&c=santa-monica,lakewood,san-francisco")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
+    spec = page.evaluate(
+        "JSON.stringify(window._clMap.getPaintProperty('cities-fill','fill-color'))")
+    check("map selected swatches: alphabetical ramp order in paint spec",
+          spec == '["match",["get","slug"],"lakewood","#242424",'
+                  '"san-francisco","#6f6c69","santa-monica","#a39f9c","#242424"]',
+          spec)
+    check("map neutrality: selection keyed by slug only, ink default",
+          '"get","slug"' in spec and spec.endswith('"#242424"]'))
+
+    # canvas click on a boundary selects it (parity semantics) — start
+    # clean; find a pixel that queryRenderedFeatures confirms is Lakewood
+    # (a centroid can sit inside a boundary hole)
+    page.goto(f"{base}/cities.html#p=map")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
+    page.evaluate("window._clMap.jumpTo({center:[-118.14,33.85], zoom:10.5})")
+    page.wait_for_function(
+        "window._clMap.loaded() && window._clMap.areTilesLoaded()", timeout=45000)
+    page.locator("#mapContainer").scroll_into_view_if_needed()
+    page.wait_for_timeout(200)
+    pt = page.evaluate(
         """(() => {
-          const svg = document.getElementById('mapSvg');
-          const scale = svg.getBoundingClientRect().width /
-                        svg.viewBox.baseVal.width;
-          return Math.min(...[...document.querySelectorAll('#mapHits circle')]
-            .map(c => parseFloat(c.getAttribute('r')) * scale));
-        })()""")
-    check("map: minimum hit-target radius ≥ 6px on screen", min_px >= 6.0,
-          f"{min_px:.2f}px")
+          const m = window._clMap;
+          const c = m.project([-118.123, 33.8468]);
+          for (let dx = 0; dx < 60; dx += 6) for (const sx of [1, -1])
+            for (let dy = 0; dy < 60; dy += 6) for (const sy of [1, -1]) {
+              const x = c.x + dx * sx, y = c.y + dy * sy;
+              const f = m.queryRenderedFeatures([x, y], {layers: ['cities-fill']});
+              if (f.length && f[0].properties.slug === 'lakewood') {
+                const r = document.getElementById('mapContainer').getBoundingClientRect();
+                return {x: x + r.x, y: y + r.y};
+              }
+            }
+          return null; })()""")
+    check("map click: a rendered Lakewood pixel exists", pt is not None)
+    if pt:
+        page.mouse.click(pt["x"], pt["y"])
+        page.wait_for_timeout(500)
+        h = page.evaluate("location.hash")
+        check("map click: boundary click selects the city", "c=lakewood" in h, h[:90])
+        map_sched = page.inner_text("#scheduleLabel")
+        check("map click: opens the same record as search",
+              "LAKEWOOD" in map_sched, map_sched)
 
-    # a11y: hit-targets are the keyboard buttons
-    lk_pop = CITY["cities"]["lakewood"]["years"][CITY["years"][-1]]["population"]
-    lk_dot = page.locator('#mapHits circle[aria-label^="Lakewood,"]')
-    aria = lk_dot.get_attribute("aria-label")
-    check("map a11y: aria-label carries population", f"{lk_pop:,}" in aria, aria)
-    check("map a11y: hit-target is a tabbable button",
-          lk_dot.get_attribute("role") == "button" and lk_dot.get_attribute("tabindex") == "0")
-
-    # keyboard selection produces identical state to the search picker
-    page.click('#regionGroup [data-region="la"]')
-    lk_dot.focus()
-    check("map readout: name + population on focus",
-          "LAKEWOOD" in page.inner_text("#mapReadout")
-          and f"{lk_pop:,}" in page.inner_text("#mapReadout"),
+    # keyboard path: focusable per-city buttons pan + select (additive)
+    page.focus('#mapKeyList button[data-city="santa-monica"]')
+    page.wait_for_timeout(400)
+    check("map keyboard: focus announces the city",
+          "SANTA MONICA" in page.inner_text("#mapReadout"),
           page.inner_text("#mapReadout"))
-    check("map hover affordance: boundary highlights on focus",
-          page.evaluate("document.querySelectorAll('#mapShapes path.hot').length") == 1)
     page.keyboard.press("Enter")
-    page.wait_for_selector("#recordBody .det-row")
-    map_hash = page.evaluate("location.hash")
-    map_sched = page.inner_text("#scheduleLabel")
-    check("map selection: city selected via keyboard", "c=lakewood" in map_hash, map_hash)
-    check("map selection: region encoded", "r=la" in map_hash)
-    # same selection through the search picker, for parity
+    page.wait_for_timeout(400)
+    map_hash = page.evaluate("decodeURIComponent(location.hash)")
+    check("map keyboard: Enter adds to the selection",
+          "santa-monica" in map_hash, map_hash[:90])
+    # identical record state as a search selection
     page.goto(f"{base}/cities.html")
     page.fill("#citySearch", "Lakewood")
     page.wait_for_selector("#cityList button")
     page.click("#cityList button >> nth=0")
     page.wait_for_selector("#recordBody .det-row")
-    search_hash = page.evaluate("location.hash")
-    check("map selection: identical record state as search selection",
-          page.inner_text("#scheduleLabel") == map_sched,
-          page.inner_text("#scheduleLabel"))
-    check("map selection: identical c= param as search selection",
-          "c=lakewood" in search_hash and "p=map" not in search_hash, search_hash)
+    check("map selection parity: same c= param as search selection",
+          "c=lakewood" in page.evaluate("location.hash"))
 
-    # selected boundaries reuse the comparison swatches in alphabetical
-    # order (shapes render in alphabetical DOM order by construction)
-    page.goto(f"{base}/cities.html#p=map&c=santa-monica,lakewood,san-francisco")
-    page.wait_for_selector("#mapShapes path.sel")
-    fills = page.evaluate(
-        "[...document.querySelectorAll('#mapShapes path.sel')]"
-        ".map(d=>d.getAttribute('fill'))")
-    check("map selected swatches: alphabetical ramp order",
-          fills == ["#242424", "#6f6c69", "#a39f9c"], str(fills))
+    # permalink: continuous view state m=z/lat/lng, restored on load
+    page.goto(f"{base}/cities.html#p=map&m=9.0/36.50/-119.50")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
+    view = page.evaluate(
+        "(() => { const m=window._clMap; const c=m.getCenter();"
+        " return {z:m.getZoom(), lat:c.lat, lng:c.lng}; })()")
+    check("map permalink: zoom restored", abs(view["z"] - 9.0) <= 0.11, str(view))
+    check("map permalink: center restored",
+          abs(view["lat"] - 36.50) <= 0.02 and abs(view["lng"] + 119.50) <= 0.02,
+          str(view))
+    page.evaluate("window._clMap.jumpTo({center:[-121.0,38.0], zoom:7.3})")
+    page.wait_for_timeout(400)
+    check("map permalink: moves update the hash",
+          "m=7.3" in page.evaluate("decodeURIComponent(location.hash)"),
+          page.evaluate("location.hash")[:90])
+    page.click("#mapReset")
+    page.wait_for_timeout(800)
+    check("map reset: statewide + m cleared",
+          "m=" not in page.evaluate("location.hash"))
 
-    # permalink round-trip with view + region params
-    page.goto(f"{base}/cities.html#p=map&r=bay&c=lakewood")
-    page.wait_for_selector("#mapShapes path")
-    check("map hash restore: map view active",
-          "on" in (page.get_attribute('#pickerModeGroup [data-mode="map"]', "class") or ""))
-    check("map hash restore: region pill",
-          "on" in (page.get_attribute('#regionGroup [data-region="bay"]', "class") or ""))
-    check("map hash restore: zoomed viewBox",
-          page.get_attribute("#mapSvg", "viewBox") != "0.0 0.0 600.0 695.6",
-          page.get_attribute("#mapSvg", "viewBox"))
-    page.click('#pickerModeGroup [data-mode="search"]')
-    check("map -> search removes view param",
-          "p=map" not in page.evaluate("location.hash"))
-    check("map -> search keeps selection", "c=lakewood" in page.evaluate("location.hash"))
+    # graceful degradation: block the vendored library — map explains
+    # itself and the search picker keeps working
+    ctx = page.context
+    ctx.route("**/vendor/maplibre-gl.js", lambda route: route.abort())
+    page2 = ctx.new_page()
+    page2.goto(f"{base}/cities.html#p=map")
+    page2.wait_for_selector("#mapFail:not([hidden])", timeout=15000)
+    check("map degradation: clear message when the library is unavailable",
+          "could not be loaded" in page2.inner_text("#mapFail"),
+          page2.inner_text("#mapFail")[:80])
+    page2.click('#pickerModeGroup [data-mode="search"]')
+    page2.fill("#citySearch", "Lakewood")
+    page2.wait_for_selector("#cityList button")
+    page2.click("#cityList button >> nth=0")
+    page2.wait_for_selector("#recordBody .det-row")
+    check("map degradation: search picker still selects",
+          "c=lakewood" in page2.evaluate("location.hash"),
+          page2.evaluate("location.hash")[:60])
+    page2.close()
+    ctx.unroute("**/vendor/maplibre-gl.js")
 
 
 # ----------------------------------------------------------------------

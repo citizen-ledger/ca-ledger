@@ -1,8 +1,10 @@
 # The California Ledger — V1 (state level)
 
 A nonpartisan, static, interactive record of California state spending.
-No frameworks, no build step, no server. Open `index.html` in a browser
-and it works — including offline.
+No frameworks, no build step, no server for the record: open `index.html`
+in a browser and it works, including offline. (One scoped exception: the
+city page's optional Map view uses vendored MapLibre GL JS and networked
+basemap tiles — see STATUS.md; everything else stays dependency-free.)
 
 ## What's in the box
 
@@ -17,7 +19,7 @@ and it works — including offline.
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
-| `tests/run_tests.py` | Headless test suite — one command, 219 assertions on the real data. |
+| `tests/run_tests.py` | Headless test suite — one command, 216 assertions on the real data. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
 ## Run it
@@ -40,7 +42,7 @@ python3 -m http.server 8000     # then open http://localhost:8000
 - **Cite + Download CSV** — a plain-text citation to the clipboard, and a CSV whose header names the source, basis, generation date, and permalink.
 - **Saved views** — stored in localStorage on the reader's device only.
 - **Record integrity** — each data file carries a SHA-256 digest, displayed on the page with instructions to verify it independently.
-- **Map view (city page)** — a Search/Map toggle beside the search picker: California outline plus every city's real incorporated boundary as plain inline SVG (no tile services, no libraries; Census cartographic boundaries, Douglas-Peucker-simplified to a 202 KB payload). Real polygons at every zoom; neutral regional zooms make small cities workable; invisible minimum hit-targets keep them clickable; keyboard-accessible buttons; selection identical to the search picker. Boundaries are uniform ink — the map shows where, never how much.
+- **Map view (city page)** — a Search/Map toggle beside the search picker: every city's real incorporated boundary (Census, 410 KB GeoJSON) over a neutral Ledger-styled basemap — MapLibre GL JS (vendored, BSD) with OpenFreeMap vector tiles (keyless, swappable). Continuous zoom/pan with a Reset-to-statewide control and `m=` view permalinks; keyboard-accessible city buttons; selection identical to the search picker; graceful degradation (no library → message + search still works; no tiles → boundaries on parchment). Boundaries are uniform ink, selection keyed only by identity — the map shows where, never how much. The map is the ONE permitted dependency; the record pages remain dependency-free and work from a file double-click.
 - **Neutrality by construction** — direction is ▲▼ in ink, never red/green; the single blue is reserved for interactive controls; cities are always alphabetical; map dots never encode spending.
 - Keyboard-navigable, print-ready (a citation header prints with the page).
 
@@ -82,7 +84,7 @@ update once a year.
 python3 tests/run_tests.py
 ```
 
-One command, 219 assertions against the real data files: the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
+One command, 216 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
 rendering on the Ledger design system, drill-down and view/unit
 controls, permalink hash round-trips, CSV export contents, citation
 output, Change-view arithmetic, a banned-adjective scan, neutrality
