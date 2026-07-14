@@ -75,6 +75,11 @@
   input[type="text"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
   .privacy{margin-top:14px;padding:12px 16px;background:var(--parchment);border:1px solid var(--hairline);font-size:12.5px;color:var(--graphite);line-height:1.6}
   .status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--graphite)}
+  .pick-results{list-style:none;margin-top:6px;max-height:220px;overflow-y:auto;border:1px solid var(--ash);background:var(--surface);border-radius:2px}
+  .pick-results:empty{display:none}
+  .pick-results .cap{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--smoke);padding:7px 14px;border-bottom:1px solid var(--hairline)}
+  .pick-results button{display:block;width:100%;border:none;background:transparent;padding:8px 14px;cursor:pointer;font-size:13px;text-align:left;border-bottom:1px solid var(--hairline);font-family:var(--mono)}
+  .pick-results button:hover,.pick-results button:focus{background:var(--wash-in)}
   .status.err{color:var(--ink)}
 
   /* pin map */
@@ -146,12 +151,13 @@
 
   <div class="entry np" id="entryCard">
     <div class="entryrow">
-      <input type="text" id="addrInput" placeholder="Street address, city — e.g. 915 I St, Sacramento" aria-label="California street address" autocomplete="off">
+      <input type="text" id="addrInput" name="address" placeholder="Street address, city — e.g. 915 I St, Sacramento" aria-label="California street address" autocomplete="street-address">
       <button class="btn blue" id="lookupBtn">Look up</button>
       <button class="btn" id="pinBtn">Drop a pin instead</button>
     </div>
+    <ul class="pick-results" id="addrSuggest" style="max-width:640px" aria-label="Address candidates from the Census Bureau"></ul>
     <div class="privacy" id="privacyNote">
-      <strong>Where the address goes:</strong> to locate it, the address is sent to the U.S. Census Bureau's public geocoder (census.gov) — they receive the address and your network address, as with any federal website, and set a load-balancer cookie. It is sent nowhere else, is never stored by this page, and never appears in permalinks, citations, or CSV files — those carry only the resolved city and county, facts shared with everyone who lives there. Prefer not to type an address? The pin option sends only map coordinates; after a lookup failure you can also resolve entirely on this device.
+      <strong>Where the address goes:</strong> to locate it, the address — including as-you-type candidate lookups once you have typed a house number — is sent to the U.S. Census Bureau's public geocoder (census.gov) — they receive the address and your network address, as with any federal website, and set a load-balancer cookie. It is sent nowhere else, is never stored by this page, and never appears in permalinks, citations, or CSV files — those carry only the resolved city and county, facts shared with everyone who lives there. Prefer not to type an address? The pin option sends only map coordinates; after a lookup failure you can also resolve entirely on this device.
     </div>
     <div class="pinmap" id="pinMap" hidden></div>
     <div class="entryrow" id="pinActions" hidden style="margin-top:10px">
@@ -300,20 +306,21 @@
   const GEO_BASE = "https://geocoding.geo.census.gov/geocoder/geographies/";
   const LAYERS = "Counties,Incorporated Places,Census Designated Places,"
     + "Unified School Districts,Elementary School Districts,Secondary School Districts";
-  let jsonpCleanup = null;
-  function jsonp(url){
+  const jsonpCleanups = {};
+  function jsonp(url, cb){
+    cb = cb || "__CL_GEO";
     return new Promise((resolve, reject) => {
-      if (jsonpCleanup) jsonpCleanup();
+      if (jsonpCleanups[cb]) jsonpCleanups[cb]();
       const t = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 12000);
       function cleanup(){
-        clearTimeout(t); delete window.__CL_GEO;
+        clearTimeout(t); delete window[cb];
         if (s.parentNode) s.parentNode.removeChild(s);
-        jsonpCleanup = null;
+        jsonpCleanups[cb] = null;
       }
-      jsonpCleanup = cleanup;
-      window.__CL_GEO = data => { cleanup(); resolve(data); };
+      jsonpCleanups[cb] = cleanup;
+      window[cb] = data => { cleanup(); resolve(data); };
       const s = document.createElement("script");
-      s.src = url + "&format=jsonp&callback=__CL_GEO";
+      s.src = url + "&format=jsonp&callback=" + cb;
       s.onerror = () => { cleanup(); reject(new Error("load")); };
       document.head.appendChild(s);
     });
@@ -322,6 +329,13 @@
     return GEO_BASE + "onelineaddress?" + new URLSearchParams({
       address: addr, benchmark: "Public_AR_Current",
       vintage: "Current_Current", layers: LAYERS}).toString();
+  }
+  function suggestUrl(addr){
+    // suggestions come from the Census address database ONLY (see
+    // docs/SCOPE.md — no keyed or paid service, and never a dataset of
+    // where people live); candidates are TIGER-matched addresses
+    return "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?"
+      + new URLSearchParams({address: addr, benchmark: "Public_AR_Current"}).toString();
   }
   function geoUrlForPoint(lng, lat){
     return GEO_BASE + "coordinates?" + new URLSearchParams({
@@ -437,10 +451,32 @@
   function buildPinMap(){
     pinMap = new maplibregl.Map({
       container: "pinMap",
-      style: { version: 8, sources: {}, layers: [
-        { id: "bg", type: "background", paint: {"background-color": "#f6f3f1"} } ] },
+      // the Ledger basemap: parchment, muted water, ash boundaries, and
+      // smoke place labels so a person dropping a pin can see where they
+      // are — labels are geography, never a data encoding
+      style: {
+        version: 8,
+        glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+        sources: { omt: { type: "vector", url: "https://tiles.openfreemap.org/planet" } },
+        layers: [
+          { id: "bg", type: "background", paint: { "background-color": "#f6f3f1" } },
+          { id: "water", type: "fill", source: "omt", "source-layer": "water",
+            paint: { "fill-color": "#e6e3dd" } },
+          { id: "state", type: "line", source: "omt", "source-layer": "boundary",
+            filter: ["all", ["==", ["get", "admin_level"], 4], ["!=", ["get", "maritime"], 1]],
+            paint: { "line-color": "#b3aeaa", "line-width": 1.1 } },
+          { id: "place", type: "symbol", source: "omt", "source-layer": "place",
+            filter: ["match", ["get", "class"], ["city", "town", "village"], true, false],
+            layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]],
+                      "text-font": ["Noto Sans Regular"], "text-size": 11 },
+            paint: { "text-color": "#797776", "text-halo-color": "#f6f3f1",
+                     "text-halo-width": 1.2 } }
+        ]
+      },
       center: [-119.3, 37.2], zoom: 4.6, attributionControl: false,
       dragRotate: false, pitchWithRotate: false, touchPitch: false });
+    window._clPinMap = pinMap;
+    pinMap.on("error", () => {});   // tile failures degrade to boundaries on parchment
     pinMap.on("load", () => {
       pinMap.addSource("counties", {type: "geojson", data: KGEO, promoteId: "slug"});
       pinMap.addLayer({id: "cty-fill", type: "fill", source: "counties",
@@ -800,8 +836,46 @@
   }
 
   /* ---------- events ---------- */
-  $("lookupBtn").addEventListener("click", lookupAddress);
-  $("addrInput").addEventListener("keydown", e => { if (e.key === "Enter") lookupAddress(); });
+  let sugTimer = null, sugPicked = "";
+  function hideSuggest(){ $("addrSuggest").innerHTML = ""; }
+  async function showSuggest(){
+    const v = $("addrInput").value.trim();
+    if (v === sugPicked || v.length < 6 || !/\d/.test(v)){ hideSuggest(); return; }
+    const q = /\bca\b/i.test(v) ? v : v + ", CA";
+    try {
+      const data = await jsonp(suggestUrl(q), "__CL_SUG");
+      const m = ((((data||{}).result)||{}).addressMatches || []).slice(0, 6);
+      if ($("addrInput").value.trim() !== v){ return; }   // stale
+      if (!m.length){ hideSuggest(); return; }
+      $("addrSuggest").innerHTML =
+        '<li class="cap">CANDIDATES FROM THE CENSUS BUREAU\u2019S ADDRESS DATABASE — PICK ONE OR KEEP TYPING</li>'
+        + m.map(x => '<li><button type="button">' + esc(x.matchedAddress) + '</button></li>').join("");
+    } catch(e){ hideSuggest(); }   // suggestions are an enhancement only
+  }
+  $("addrInput").addEventListener("input", () => {
+    clearTimeout(sugTimer);
+    sugTimer = setTimeout(showSuggest, 450);
+  });
+  $("addrInput").addEventListener("keydown", e => {
+    if (e.key === "ArrowDown"){
+      const first = $("addrSuggest").querySelector("button");
+      if (first){ first.focus(); e.preventDefault(); }
+    }
+  });
+  $("addrSuggest").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    sugPicked = b.textContent;
+    $("addrInput").value = sugPicked;
+    hideSuggest();
+    lookupAddress();
+  });
+  $("lookupBtn").addEventListener("click", () => { hideSuggest(); lookupAddress(); });
+  $("addrInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.activeElement === $("addrInput")){
+      hideSuggest(); lookupAddress();
+    }
+  });
   $("clearBtn").addEventListener("click", () => {
     S.city = S.county = S.cdp = null; lastMatched = null;
     S.schools = []; S.schoolNote = null;

@@ -1149,6 +1149,48 @@ runtime enhancements (map tiles, Census geocoder) relate to the rule.
 A repo-wide search confirmed no reference to the feature existed
 anywhere before this decision — the record exists to keep it that way.
 
+## 2026-07-14 — Address autocomplete, native autofill, pin-map labels, explicit actuals empty state
+
+- **Autocomplete against the Census address database only.** The
+  geocoder returns up to 50 TIGER-matched candidates for ambiguous
+  input and corrects misspelled cities (verified empirically), so the
+  address input now offers debounced as-you-type candidates (house
+  number required, 450 ms debounce, top 6 shown) with the disclosure
+  caption "candidates from the Census Bureau's address database" on
+  the list itself. No property records, voter files, residency
+  datasets, or keyed services — per docs/SCOPE.md. Privacy model
+  unchanged and re-tested: partial addresses reach census.gov only
+  (request-level test asserts the typed string appears in no other
+  host's requests), nothing persists, permalinks stay slugs-only. The
+  privacy note now says as-you-type lookups happen. Honest limit: the
+  known rural gaps are TIGER coverage, not format — suggestions fix
+  format-guessing; pin-drop remains the answer where no range exists.
+- **Native browser autofill enabled** (`autocomplete="street-address"`)
+  — the browser may offer the user's own saved address; the page never
+  auto-populates or geolocates on load.
+- **Pin-drop map now carries the Ledger basemap with place labels**
+  (parchment, muted water, state line, smoke city/town labels from
+  OpenFreeMap — the same style vocabulary as the cities map), so a
+  person placing a pin can see where they are. Labels are geography,
+  never a data encoding: label color is a single neutral literal and
+  the county overlay stays uniform ink (both test-asserted). Tile
+  failure degrades to boundaries on parchment, as elsewhere.
+- **The state Actuals view's current-year empty state is explicit:**
+  "No actuals exist yet for FY 2025-26. Actual expenditures for a
+  fiscal year are published roughly six and a half months after it
+  ends, in the following January's Governor's Budget — for FY
+  2025-26, the January 2027 edition." Year and edition are computed,
+  not hardcoded; the FY 2020-21 extraction-gate explanation keeps its
+  own distinct copy.
+
+Tests: **454 assertions, all passing** — 443 existing (one adapted to
+the new empty-state copy) plus 11 new (autofill attribute; candidates
+render with the disclosure caption; the typed address reaches
+census.gov only; pick-resolves flow with slugs-only hash; nothing
+persisted; pin-map label layer present with neutral literal color and
+uniform county fill; current-year empty state names the year and the
+January edition).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

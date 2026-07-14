@@ -631,8 +631,8 @@ def test_actuals_view(page, base):
     page.goto(f"{base}/index.html#v=actuals&y=2025-26")
     page.wait_for_selector("#actEmpty:not([hidden])")
     check("actuals: future year explains itself",
-          "not yet been published" in page.inner_text("#actEmpty").lower()
-          or "first published" in page.inner_text("#actEmpty").lower(),
+          "no actuals exist yet" in page.inner_text("#actEmpty").lower()
+          and "governor's budget" in page.inner_text("#actEmpty").lower(),
           page.inner_text("#actEmpty")[:80])
     page.goto(f"{base}/index.html#v=actuals&y=2020-21")
     page.wait_for_selector("#actEmpty:not([hidden])")
@@ -648,6 +648,16 @@ def test_actuals_view(page, base):
     check("actuals: asort round-trip", alpha_first in first, first[:60])
     page.click("#ahDiff")
     check("actuals: sort emits hash param", "asort=diff" in page.evaluate("location.hash"))
+
+
+    # current-year empty state: explicit, year named, edition named
+    page.goto(f"{base}/index.html#v=actuals&y=2025-26")
+    page.wait_for_selector("#actEmpty:not([hidden])")
+    empty = page.inner_text("#actEmpty")
+    check("actuals empty state: current year named plainly",
+          "No actuals exist yet for FY 2025-26" in empty, empty[:80])
+    check("actuals empty state: names the January edition",
+          "January 2027" in empty and "six and a half months" in empty)
 
 
 def test_county(page, base):
@@ -1140,6 +1150,35 @@ def test_address(page, base):
           and "Mystery Unified" in page.inner_text("body")
           and "sd=" not in page.evaluate("location.hash"))
 
+    # ---- autocomplete: Census-only suggestions, no leaks
+    check("address autocomplete: native autofill enabled",
+          page.get_attribute("#addrInput", "autocomplete") == "street-address")
+    page.unroute(CENSUS_JSONP_RE)
+    page.route(CENSUS_JSONP_RE, handler_factory(east_la,
+        "4801 E 3RD ST, LOS ANGELES, CA, 90022"))
+    page.goto(f"{base}/address.html")
+    seen_urls = []
+    page.on("request", lambda r: seen_urls.append(r.url))
+    page.type("#addrInput", "4801 East Third Street, Los Angeles", delay=15)
+    page.wait_for_selector("#addrSuggest button", timeout=10000)
+    check("address autocomplete: candidates render from the geocoder",
+          "4801 E 3RD ST" in page.locator("#addrSuggest button").first.inner_text())
+    check("address autocomplete: disclosure caption on the list",
+          "CENSUS BUREAU" in page.inner_text("#addrSuggest .cap"))
+    leaks = [u for u in seen_urls
+             if ("4801" in u or "Third" in u)
+             and "geocoding.geo.census.gov" not in u]
+    check("address autocomplete: typed address reaches census.gov ONLY",
+          not leaks, str(leaks[:2]))
+    page.locator("#addrSuggest button").first.click()
+    page.wait_for_selector("#records .record")
+    h = page.evaluate("location.hash")
+    check("address autocomplete: pick resolves; hash still slugs only",
+          "uc=los-angeles" in h and "4801" not in h and "Third" not in h, h[:60])
+    stored = page.evaluate("JSON.stringify(localStorage)")
+    check("address autocomplete: typed address never persisted",
+          "4801" not in stored and "Third" not in stored)
+
     # ---- SF consolidated handling (mocked)
     page.unroute(CENSUS_JSONP_RE)
     sf = {"Counties": [{"NAME": "San Francisco County", "GEOID": "06075"}],
@@ -1166,6 +1205,25 @@ def test_address(page, base):
     check("address degradation: browse links still offered",
           page.locator('#status a[href="cities.html"]').count() == 1)
     page.unroute(CENSUS_JSONP_RE)
+
+    # ---- pin map: place labels are geography, never a data encoding
+    page.unroute(CENSUS_JSONP_RE)
+    page.goto(f"{base}/address.html")
+    page.click("#pinBtn")
+    page.wait_for_function(
+        "(() => { try { return !!window._clPinMap && "
+        "window._clPinMap.isStyleLoaded() } catch(e){ return false } })()",
+        timeout=30000)
+    place = page.evaluate(
+        "JSON.stringify((window._clPinMap.getStyle().layers.find(l=>l.id==='place')||{}).type)")
+    check("pin map: place-label symbol layer present", place == '"symbol"', place)
+    tc = page.evaluate(
+        "JSON.stringify(window._clPinMap.getPaintProperty('place','text-color'))")
+    check("pin map: label color is one neutral literal, not data-driven",
+          tc == '"#797776"', tc)
+    cf = page.evaluate(
+        "JSON.stringify(window._clPinMap.getPaintProperty('cty-fill','fill-color'))")
+    check("pin map: county fill stays uniform ink", cf == '"#242424"', cf)
 
     # ---- on-device fallback correctness (no network at all)
     page.goto(f"{base}/address.html")

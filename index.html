@@ -849,10 +849,17 @@
       $("actTitle").textContent = "Enacted vs. actual expenditures, FY " + S.year;
       $("actVintage").textContent = "";
       $("actNote").textContent = "";
-      $("actEmpty").textContent = (info ? info.unavailable + " " : "")
-        + "Actual expenditures for a fiscal year are first published by the Department of "
-        + "Finance about six and a half months after it closes, in the following January's "
-        + "Governor's Budget. Step to another year to view the comparison.";
+      const pending = info && /not yet been published/.test(info.unavailable || "");
+      const janYear = 2000 + parseInt(S.year.split("-")[1], 10) + 1;
+      $("actEmpty").textContent = pending
+        ? "No actuals exist yet for FY " + S.year + ". Actual expenditures for a fiscal "
+          + "year are published roughly six and a half months after it ends, in the "
+          + "following January's Governor's Budget — for FY " + S.year + ", the January "
+          + janYear + " edition. Step to an earlier year to view the comparison."
+        : (info ? info.unavailable + " " : "")
+          + "Actual expenditures for a fiscal year are first published by the Department of "
+          + "Finance about six and a half months after it closes, in the following January's "
+          + "Governor's Budget. Step to another year to view the comparison.";
       return;
     }
     $("actTitle").textContent = "Enacted vs. actual expenditures, FY " + S.year
