@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The California Ledger — data pipeline (V1, state level)
+Citizen Ledger — data pipeline (V1, state level)
 =======================================================
 
 Rewrites ../data.js with official California ENACTED BUDGET data, in

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate district-data.js — the special districts layer of the
-California Ledger, built per the V5 finding, option (b): a finding, a
+Generate district-data.js — the special districts layer of
+Citizen Ledger, built per the V5 finding, option (b): a finding, a
 directory, and as-filed figures that are deliberately NOT the same
 evidentiary tier as the state, city, and county layers.
 

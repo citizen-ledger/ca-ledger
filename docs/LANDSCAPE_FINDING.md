@@ -1,4 +1,4 @@
-# Landscape finding: does anything like The California Ledger already exist?
+# Landscape finding: does anything like Citizen Ledger already exist?
 
 _Investigated 2026-07-13. Six research sweeps (official/state-run,
 nonprofit/think-tank, academic/expert, journalistic/civic-tech,

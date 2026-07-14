@@ -1,4 +1,6 @@
-# The California Ledger — V1 (state level)
+# Citizen Ledger
+
+_A nonpartisan record of California government spending._
 
 A nonpartisan, static, interactive record of California state spending.
 No frameworks, no build step, no server for the record: open `index.html`

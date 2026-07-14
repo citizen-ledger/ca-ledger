@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The California Ledger — county data pipeline (V5, option (a)).
+Citizen Ledger — county data pipeline (V5, option (a)).
 
 Rewrites ../county-data.js from the State Controller's "By the
 Numbers" portal, in the same schema pattern as city-data.js.

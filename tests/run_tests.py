@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The California Ledger — headless test suite
+Citizen Ledger — headless test suite
 ===========================================
 
 Single command:
@@ -1072,6 +1072,68 @@ def test_address(page, base):
           res == "have-geo")
 
 
+def test_rename(page, base):
+    TAG = "A nonpartisan record of California government spending"
+    PAGES = {"index.html": "State budget", "cities.html": "City spending",
+             "districts.html": "Special districts",
+             "address.html": "Your governments"}
+    for f, title in PAGES.items():
+        src = (ROOT / f).read_text(encoding="utf-8")
+        check(f"rename {f}: title tag",
+              f"<title>Citizen Ledger — {title}</title>" in src)
+        check(f"rename {f}: og:site_name", 'content="Citizen Ledger"' in src)
+        check(f"rename {f}: tagline in metadata/source", TAG in src)
+        check(f"rename {f}: old name absent from source",
+              "california ledger" not in src.lower())
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector(".wordmark")
+        check(f"rename {f}: wordmark reads Citizen Ledger",
+              page.inner_text(".wordmark") == "Citizen Ledger")
+        check(f"rename {f}: tagline appears with the wordmark",
+              TAG in page.inner_text(".brand"))
+        body = page.inner_text("body")
+        check(f"rename {f}: footer renamed, old name never rendered",
+              "CITIZEN LEDGER · PUBLIC RECORD" in body
+              and "California Ledger" not in body)
+    # the canonical/OG URLs stay on the CURRENT repo URL until the user
+    # decides otherwise — the rename must NOT touch them
+    for f in PAGES:
+        src = (ROOT / f).read_text(encoding="utf-8")
+        expected = ("https://pkkjassistant-commits.github.io/ca-ledger/"
+                    + ("" if f == "index.html" else f))
+        check(f"rename {f}: canonical URL unchanged",
+              f'rel="canonical" href="{expected}"' in src)
+    # citation format on every page: Citizen Ledger, "Title…, FY …"
+    page.goto(f"{base}/index.html")
+    page.click("#citeToggle")
+    cite = page.inner_text("#citeText")
+    check("rename citation (state): name, comma, quoted title, FY inside",
+          cite.startswith('Citizen Ledger, "State Budget — ')
+          and ", FY 20" in cite.split('."')[0], cite[:80])
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordBody .det-row")
+    page.click("#citeToggle")
+    cite = page.inner_text("#citeText")
+    check("rename citation (cities): format",
+          cite.startswith('Citizen Ledger, "City Spending — ')
+          and ", FY 20" in cite.split('."')[0], cite[:80])
+    slug = next(s for s, r in DIST["districts"].items() if r["exp"][-1])
+    page.goto(f"{base}/districts.html#d={slug}")
+    page.wait_for_selector("#districtRecord")
+    page.click("#citeBtn")
+    cite = page.inner_text("#citeText")
+    check("rename citation (districts): format keeps the tier in the title",
+          cite.startswith('Citizen Ledger, "Special Districts — As Filed: ')
+          and "(unreconciled)" in cite.split('."')[0], cite[:90])
+    page.goto(f"{base}/address.html#c=lakewood")
+    page.wait_for_selector("#records .record")
+    page.click("#citeBtn")
+    cite = page.inner_text("#citeText")
+    check("rename citation (address): format",
+          cite.startswith('Citizen Ledger, "Your Governments: Lakewood and Los Angeles County, FY ')
+          , cite[:90])
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1253,6 +1315,7 @@ def main():
             test_county(page, base)
             test_districts(page, base)
             test_address(page, base)
+            test_rename(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

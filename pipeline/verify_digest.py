@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Verify the RECORD INTEGRITY digest of a California Ledger data file.
+Verify the RECORD INTEGRITY digest of a Citizen Ledger data file.
 
     python3 pipeline/verify_digest.py data.js city-data.js
 

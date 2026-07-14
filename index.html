@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The California Ledger — State budget</title>
-<meta name="description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
+<title>Citizen Ledger — State budget</title>
+<meta name="description" content="A nonpartisan record of California government spending. The state budget: enacted appropriations and published actuals, by agency and department.">
 <link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="The California Ledger">
-<meta property="og:title" content="The California Ledger — State budget">
-<meta property="og:description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — State budget">
+<meta property="og:description" content="A nonpartisan record of California government spending. The state budget: enacted appropriations and published actuals, by agency and department.">
 <meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="The California Ledger — State budget">
+<meta name="twitter:title" content="Citizen Ledger — State budget">
 <meta name="twitter:description" content="A nonpartisan public record of California's enacted state budget, by agency, department, and fund source.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,6 +50,8 @@
   .brand{display:flex;align-items:center;gap:12px}
   .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
   .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
   nav.pn{display:flex;gap:6px}
   nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
   nav.pn a:hover{background:var(--wash);color:var(--graphite)}
@@ -220,7 +222,7 @@
 <header class="hd">
   <div class="brand">
     <span class="roundel" aria-hidden="true">CL</span>
-    <span class="wordmark">The California Ledger</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">A nonpartisan record of California government spending</div></div>
   </div>
   <nav class="pn np" aria-label="Primary">
     <span class="active">State budget</span>
@@ -444,7 +446,7 @@
 </main>
 
 <footer class="ft">
-  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
@@ -982,7 +984,7 @@
           + " billion, actual $" + (actTotalOf(a)==null?"—":actTotalOf(a).toFixed(3)) + " billion in " + scope + ". "
         : "FY " + S.year + ": enacted $" + C.total.toFixed(3) + " billion, actual $"
           + actTot.toFixed(3) + " billion in " + scope + ". ";
-      return 'The California Ledger, "State Budget — Enacted vs. Actual by '
+      return 'Citizen Ledger, "State Budget — Enacted vs. Actual by '
         + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + '." '
         + figure
         + "Both figures under California's Budgetary-Legal basis of accounting; actual expenditures as published in the "
@@ -995,7 +997,7 @@
     const figure = a
       ? a.name + ", FY " + S.year + ": $" + itemTotal(a,S.fed).toFixed(3) + " billion in " + scope + ". "
       : "FY " + S.year + " total: $" + C.total.toFixed(3) + " billion in " + scope + ". ";
-    return 'The California Ledger, "State Budget — Appropriations by '
+    return 'Citizen Ledger, "State Budget — Appropriations by '
       + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + ' (Enacted)." '
       + figure
       + "Enacted appropriations under California's Budgetary-Legal basis of accounting, not actual expenditures. "
@@ -1011,7 +1013,7 @@
       const items = levelItems(S.year) || [];
       const byName = {}; items.forEach(it=>{ byName[it.name]=it; });
       const lines = [
-        "# The California Ledger — enacted vs. actual, " + (S.drill ? "departments of " + drillAgency().name : "by agency") + ", FY " + S.year,
+        "# Citizen Ledger — enacted vs. actual, " + (S.drill ? "departments of " + drillAgency().name : "by agency") + ", FY " + S.year,
         "# Source dataset: " + D.meta.sourceLabel,
         "# Accounting basis: BOTH columns Budgetary-Legal — enacted appropriations at Budget Act signing; actual expenditures as published in the " + info.vintage + " (DOF Schedule 9), unaudited",
         "# The difference reflects mid-year legislation, re-appropriations, carryover, reversions, and fund reclassifications between publications; it is not a judgment of any kind",
@@ -1038,7 +1040,7 @@
     const items = levelItems(S.year) || [];
     const byName = {}; items.forEach(it=>{ byName[it.name]=it; });
     const lines = [
-      "# The California Ledger — " + (S.drill ? "departments of " + drillAgency().name : "agency table") + ", FY " + S.year,
+      "# Citizen Ledger — " + (S.drill ? "departments of " + drillAgency().name : "agency table") + ", FY " + S.year,
       "# Source dataset: " + D.meta.sourceLabel,
       "# Accounting basis: enacted appropriations, Budgetary-Legal basis (not actual expenditures)",
       "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),

@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The California Ledger — City spending</title>
-<meta name="description" content="A nonpartisan public record of California city spending: governmental activities by function, from State Controller filings, side by side.">
+<title>Citizen Ledger — City spending</title>
+<meta name="description" content="A nonpartisan record of California government spending. City and county spending by function from State Controller filings, side by side.">
 <link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/cities.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="The California Ledger">
-<meta property="og:title" content="The California Ledger — City spending">
-<meta property="og:description" content="A nonpartisan public record of California city spending: governmental activities by function, from State Controller filings, side by side.">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — City spending">
+<meta property="og:description" content="A nonpartisan record of California government spending. City and county spending by function from State Controller filings, side by side.">
 <meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/cities.html">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,6 +41,8 @@
   .brand{display:flex;align-items:center;gap:12px}
   .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
   .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
   nav.pn{display:flex;gap:6px}
   nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
   nav.pn a:hover{background:var(--wash);color:var(--graphite)}
@@ -160,7 +162,7 @@
 <header class="hd">
   <div class="brand">
     <span class="roundel" aria-hidden="true">CL</span>
-    <span class="wordmark">The California Ledger</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">A nonpartisan record of California government spending</div></div>
   </div>
   <nav class="pn np" aria-label="Primary">
     <a href="index.html">State budget</a>
@@ -307,7 +309,7 @@
 </main>
 
 <footer class="ft">
-  <span>THE CALIFORNIA LEDGER · PUBLIC RECORD</span>
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
@@ -992,7 +994,7 @@
     }
     const notes = sel.length===1 ? cityNotes(sel[0]).map(n=>n.text).join(" ") : "";
     const layerTitle = S.layer === "county" ? "County Spending" : "City Spending";
-    return 'The California Ledger, "' + layerTitle + ' — Governmental Activities by Function'
+    return 'Citizen Ledger, "' + layerTitle + ' — Governmental Activities by Function'
       + (names.length ? ": " + names.join(", ") : "") + ', FY ' + S.year + ' (Reported actuals)." '
       + figure
       + "Reported actual expenditures from standardized city annual financial reports; governmental activities only. "
@@ -1005,7 +1007,7 @@
   function buildCSV(){
     const sel = selCities();
     const lines = [
-      "# The California Ledger — cities",
+      "# Citizen Ledger — cities",
       "# Source dataset: " + D.meta.sourceLabel,
       "# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports",
       "# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures",

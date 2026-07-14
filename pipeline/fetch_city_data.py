@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The California Ledger — city data pipeline (V2)
+Citizen Ledger — city data pipeline (V2)
 ===============================================
 
 Rewrites ../city-data.js with official city financial data from the

@@ -1,5 +1,5 @@
 """
-Schedule 9 actuals extraction for The California Ledger (V3).
+Schedule 9 actuals extraction for Citizen Ledger (V3).
 
 Extracts prior-year ACTUAL expenditures (Budgetary-Legal basis) from
 the Department of Finance's Schedule 9 — "Comparative Statement of

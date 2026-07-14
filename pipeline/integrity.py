@@ -1,4 +1,4 @@
-"""Shared record-integrity helper for the California Ledger pipelines.
+"""Shared record-integrity helper for the Citizen Ledger pipelines.
 
 The digest is the SHA-256 of the JSON payload in canonical form
 (sorted keys, compact separators, UTF-8, ensure_ascii=False) with the

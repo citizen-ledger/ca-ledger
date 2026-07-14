@@ -963,6 +963,39 @@ mocked geocoder; SF consolidation; address absent from
 hash/citation/CSV/localStorage; failure degradation; district-count
 substitute).
 
+## 2026-07-14 — Renamed: The California Ledger → Citizen Ledger
+
+Full rename across every user-facing and maintainer-facing surface:
+page titles, wordmarks, OG/Twitter metadata, citation lead-ins, CSV
+headers, print citations, README, the landscape finding, all seven
+pipeline docstrings, the favicon comment, and the test-suite
+docstring. The tagline — "A nonpartisan record of California
+government spending" — now carries the state, appearing under the
+wordmark on every page and leading every meta description, since the
+name no longer says California.
+
+Citations across all four pages now share one format, and the site's
+name travels in every one of them:
+`Citizen Ledger, "[view title], FY 20XX-XX." …figures… Source… Permalink…`
+(the districts view keeps its tier in the title: "Special Districts —
+As Filed: …, FY … (unreconciled)").
+
+Deliberately unchanged, per the project owner: the repository name,
+the GitHub Pages URL, and every canonical/OG URL — they keep pointing
+at the current address until that decision is made separately
+(test-asserted so the rename cannot drift them).
+
+VISION.md and FOUNDATIONS.md were listed for updating but do not
+exist in this repository; nothing was invented to fill them.
+
+Tests: **374 assertions, all passing** — 338 existing plus 36 rename
+locks (per-page title/site-name/tagline/wordmark/footer, old name
+absent from source AND rendered DOM on every page, canonical URLs
+unchanged, and the citation format verified rendered on all four
+pages). An independent three-auditor verification pass (residual
+scan, rendered surfaces, citation/CSV format conformance) ran on top
+of the suite.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
