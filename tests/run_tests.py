@@ -1670,6 +1670,65 @@ def test_year_coverage(page, base):
           set(DIST["years"]) <= set(fys))
 
 
+def test_legibility(page, base):
+    """State-page legibility: collapsed fund tail sums correctly,
+    department-actuals note renders, no direction glyph on 0.0%."""
+    import re as _re
+    def fmtk(v):  # mirror of the page's fmtK (thousands -> $M, 1 decimal)
+        s = f"{abs(v)/1e3:,.1f}".rstrip("0").rstrip(".")
+        if "." not in f"{abs(v)/1e3:,.1f}" or f"{abs(v)/1e3:,.1f}".endswith("0"):
+            s = f"{abs(v)/1e3:,.1f}" if abs(v) % 1000 else f"{abs(v)/1e3:,.0f}"
+        return ("\u2212" if v < 0 else "") + "$" + s + "M"
+    # pick DHCS from the data: expected tail and footer figures
+    dept = None
+    for a in STATE["budgets"]["2025-26"]["agencies"]:
+        for d in a["departments"]:
+            if d.get("code") == "4260":
+                dept = d
+    state_funds = [f for f in dept["funds"] if f[1] != "F"]
+    tail = [f for f in state_funds if abs(f[2]) < 500]
+    combined = sum(f[2] for f in tail)
+    total = sum(f[2] for f in state_funds)
+    page.goto(f"{base}/index.html#a=health-and-human-service&dd=4260")
+    page.wait_for_selector(".depth-panel")
+    panel = page.inner_text(".depth-panel")
+    check("legibility: fund tail collapsed with count",
+          f"{len(tail)} funds under $0.5M" in panel, str(len(tail)))
+    check("legibility: collapsed tail carries the exact combined figure",
+          fmtk(combined) in panel, fmtk(combined))
+    check("legibility: footer still sums ALL funds including the tail",
+          fmtk(total) in panel, fmtk(total))
+    page.locator('[data-tail="state"]').click()
+    page.wait_for_timeout(200)
+    expanded = page.inner_text(".depth-panel")
+    check("legibility: tail expands to every member fund",
+          all((STATE["meta"]["fundNames"].get(f[0], f[0]) in expanded)
+              for f in tail))
+
+    # department-actuals note, with the agency relationship explicit
+    page.goto(f"{base}/index.html#v=actuals&y=2023-24&a=health-and-human-service")
+    page.wait_for_selector("#actDeptNote")
+    note = page.inner_text("#actDeptNote")
+    check("legibility: dept-actuals dashes explained inline",
+          "no department figure exists, not zero" in note
+          and "agency level only" in note)
+    check("legibility: the note names the agency's own actual",
+          "Health and Human Services" in note and "against" in note
+          and "enacted" in note)
+
+    # 0.0% never carries a direction glyph, anywhere rendered
+    src = (ROOT / "index.html").read_text(encoding="utf-8")
+    check("legibility: formatter suppresses glyph at 0.0%",
+          's==="0.0" ? ""' in src)
+    for h in ("#y=2023-24", "#a=health-and-human-service",
+              "#v=actuals&y=2023-24"):
+        page.goto(f"{base}/index.html{h}")
+        page.wait_for_timeout(300)
+        body = page.inner_text("body")
+        check(f"legibility: no arrow beside 0.0% ({h})",
+              not _re.search(r"[\u25b2\u25bc]\s*0\.0%", body))
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1856,6 +1915,7 @@ def main():
             test_schools(page, base)
             test_depth(page, base)
             test_year_coverage(page, base)
+            test_legibility(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

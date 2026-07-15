@@ -1361,6 +1361,30 @@ selector regression cannot ship silently.
 
 Tests: **515 assertions, all passing** (509 + 6 year-coverage).
 
+## 2026-07-15 — Three state-page legibility fixes (presentation only)
+
+Each confirmed cosmetic before touching (no figure changed, no data
+regenerated, digests untouched):
+
+- **Sub-$0.5M fund tail collapsed** in the fund-detail drill: long
+  lists no longer end in $0M rows; a single expandable line ("7 funds
+  under $0.5M · combined") carries the exact combined figure, expands
+  to every member fund at whole-dollar precision, and the footer
+  still sums all funds including the tail (test-asserted against the
+  data file). Every fund remains in data.js.
+- **Department-actuals dashes explained inline**: the drilled Actuals
+  view now states that — means no department figure exists, not zero
+  (DOF publishes Schedule 9 actuals at agency level only), and names
+  the agency's own actual beside its enacted figure so the
+  relationship is explicit. (Verified first: department nodes carry
+  no actual field — the dashes are the record, not a bug.)
+- **No direction glyph at 0.0%**: a ▲/▼ beside a change that rounds
+  to 0.0% was contradictory; the formatter now suppresses the glyph
+  exactly when the rounded value is 0.0%, and tests scan rendered
+  views for any arrow-adjacent 0.0%.
+
+Tests: **525 assertions, all passing** (515 + 10).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

@@ -476,7 +476,7 @@
   const VIEWS = ["allocation","change","trend","actuals"];
   const UNITS = ["dollars","perResident","percent"];
   const DEFAULTS = { year: YEARS[YEARS.length-1], view:"allocation", unit:"dollars",
-                     fed:false, drill:null, dept:null, sortKey:"value", sortDir:-1,
+                     fed:false, drill:null, dept:null, fundTailOpen:null, sortKey:"value", sortDir:-1,
                      aSortKey:"enacted", aSortDir:-1, q:"" };
   const S = Object.assign({}, DEFAULTS, { openNote:null, hoverKey:null });
 
@@ -517,7 +517,11 @@
     if (S.unit==="percent") return totalB ? ((vB/totalB*100).toFixed(1)+"%") : "—";
     return fmtB(vB);
   }
-  const fmtDeltaPct = p => p==null ? "—" : (p>=0?"▲ ":"▼ ") + Math.abs(p).toFixed(1) + "%";
+  const fmtDeltaPct = p => {
+    if (p==null) return "—";
+    const s = Math.abs(p).toFixed(1);
+    return (s==="0.0" ? "" : (p>=0?"▲ ":"▼ ")) + s + "%";
+  };
 
   /* ---------- permalink ---------- */
   function hashOf(){
@@ -758,6 +762,7 @@
         const toggleDept = e=>{
           if (e.target.classList.contains("dagger")) return;
           S.dept = S.dept === r.it.code ? null : r.it.code;
+          S.fundTailOpen = null;
           syncHash(); render();
         };
         row.addEventListener("click", toggleDept);
@@ -766,8 +771,15 @@
       row.addEventListener("mouseenter", ()=>setHover(r.name,C));
       row.addEventListener("mouseleave", ()=>setHover(null,C));
       body.appendChild(row);
-      if (S.drill && S.dept && r.it && r.it.code === S.dept)
-        body.appendChild(depthPanel(r.it));
+      if (S.drill && S.dept && r.it && r.it.code === S.dept){
+        const panel = depthPanel(r.it);
+        panel.querySelectorAll("[data-tail]").forEach(el=>{
+          const toggle = ()=>{ S.fundTailOpen = S.fundTailOpen===el.dataset.tail ? null : el.dataset.tail; render(); };
+          el.addEventListener("click", toggle);
+          el.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();} });
+        });
+        body.appendChild(panel);
+      }
       if (S.openNote === r.name){
         const n = document.createElement("div");
         n.className = "note-row";
@@ -942,6 +954,20 @@
       body.appendChild(row);
     });
 
+    if (S.drill && rows.some(r=>r.actual==null)){
+      const ag = drillAgency();
+      const agAct = actTotalOf(ag);
+      const n = document.createElement("div");
+      n.className = "note-row";
+      n.id = "actDeptNote";
+      n.textContent = "— means no department figure exists, not zero: the Department of "
+        + "Finance publishes actuals at the agency level only (Schedule 9), so the state "
+        + "record has no department-level actuals. The actual for " + ag.name + " as a whole"
+        + (agAct!=null ? " — " + fmtUnit(agAct, null) + " against " + fmtUnit(itemTotal(ag,S.fed), null)
+          + " enacted — " : " ")
+        + "is on the agency table (step back to see it beside its enacted figure).";
+      body.appendChild(n);
+    }
     const withAct = rows.filter(r=>r.actual!=null);
     const enSub = withAct.reduce((s,r)=>s+r.enacted,0);
     const actSubTotal = withAct.reduce((s,r)=>s+r.actual,0);
@@ -1139,18 +1165,40 @@
     let h = '<div class="schedlbl">FUND DETAIL — THE MONEY BEHIND THIS ROW · SUMS EXACTLY TO THE DEPARTMENT FIGURE · $ MILLIONS</div>';
     const stateFunds = dept.funds.filter(f=>f[1]!=="F");
     const fedFunds = dept.funds.filter(f=>f[1]==="F");
-    const fundRow = f =>
+    const fundRow = (f, exact) =>
       '<div class="depth-row"><span>'+esc((D.meta.fundNames||{})[f[0]]||f[0])
       + '</span><span class="dim">'+CLASS_LABEL[f[1]]+'</span>'
-      + '<span class="num">'+fmtK(f[2])+'</span></div>';
-    h += stateFunds.map(fundRow).join("");
-    h += '<div class="depth-foot"><span>State funds (General + Special + Bond)</span><span></span>'
-      + '<span class="num">'+fmtK(stateFunds.reduce((s,f)=>s+f[2],0))+'</span></div>';
-    if (fedFunds.length){
-      h += fedFunds.map(fundRow).join("");
-      h += '<div class="depth-foot"><span>Federal funds (shown separately, as on this page)</span><span></span>'
-        + '<span class="num">'+fmtK(fedFunds.reduce((s,f)=>s+f[2],0))+'</span></div>';
-    }
+      + '<span class="num">'+(exact
+          ? (f[2]<0?MINUS:"")+"$"+Math.abs(f[2]*1000).toLocaleString("en-US")
+          : fmtK(f[2]))+'</span></div>';
+    // display-only tail collapse: funds under $0.5M read as $0M rows in a
+    // long list; every fund stays in the data, and the combined line sums
+    // exactly into the footer with the visible rows
+    const TAIL = 500;   // thousands
+    const section = (funds, footLabel, tailKey) => {
+      const main = funds.filter(f => Math.abs(f[2]) >= TAIL);
+      const tail = funds.filter(f => Math.abs(f[2]) < TAIL);
+      let s = main.map(f => fundRow(f)).join("");
+      if (tail.length === 1){
+        s += fundRow(tail[0]);                 // a tail of one is just a row
+      } else if (tail.length){
+        const combined = tail.reduce((x,f)=>x+f[2],0);
+        const open = S.fundTailOpen === tailKey;
+        s += '<div class="depth-row click" role="button" tabindex="0" data-tail="'+tailKey+'"'
+          + ' aria-label="Show the individual funds under $0.5M">'
+          + '<span>'+tail.length+' funds under $0.5M '
+          + '<i class="dim" style="font-style:normal;font-size:11px">'+(open?"▾":"▸")+'</i></span>'
+          + '<span class="dim">COMBINED</span>'
+          + '<span class="num">'+fmtK(combined)+'</span></div>';
+        if (open) s += tail.map(f => fundRow(f, true)).join("");
+      }
+      s += '<div class="depth-foot"><span>'+footLabel+'</span><span></span>'
+        + '<span class="num">'+fmtK(funds.reduce((x,f)=>x+f[2],0))+'</span></div>';
+      return s;
+    };
+    h += section(stateFunds, "State funds (General + Special + Bond)", "state");
+    if (fedFunds.length)
+      h += section(fedFunds, "Federal funds (shown separately, as on this page)", "fed");
     // PROGRAMS — a labeled ALL-FUNDS view with the explicit bridge
     if (dept.programsOmitted){
       h += '<div class="depth-note">The Budget\u2019s program display for this '
