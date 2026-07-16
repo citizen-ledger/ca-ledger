@@ -340,20 +340,20 @@ data tasks remain pending. Exact findings:
   stated rule: if these cannot be resolved from the data plus a
   maintained flag list, ship city detail only and keep the comparison
   feature off real data. The V2 page remains on labeled sample data.
-- **GitHub Pages: workflow verified, deployment awaiting a settings
-  change.** Both runs of "Deploy to GitHub Pages" failed in
+- **GitHub Pages: workflow verified, deployment then awaiting a
+  settings change.** Both runs of "Deploy to GitHub Pages" failed in
   `actions/configure-pages` with "Get Pages site failed … Not Found",
-  which means Pages is not yet enabled for the repository. The
+  which meant Pages was not yet enabled for the repository. The
   workflow itself checked out and ran correctly up to that step. Two
-  settings facts matter: (1) Settings → Pages → Build and deployment
-  → Source must be set to "GitHub Actions"; (2) the repository is
-  currently **private** — GitHub Pages on a private repository
+  settings facts mattered: (1) Settings → Pages → Build and deployment
+  → Source must be set to "GitHub Actions"; (2) the repository was
+  at the time **private** — GitHub Pages on a private repository
   requires a paid plan (and the published site is public regardless),
-  so the repo may need to be made public first. Once enabled, re-run
-  the workflow from the Actions tab; permalinks and citations already
-  derive their URLs from `window.location`, verified earlier under a
-  simulated `/ca-ledger/` subpath, so they will emit the public URL
-  as soon as the page is served from it.
+  so the repo needed to be made public first. Permalinks and citations
+  already derive their URLs from `window.location`, verified earlier
+  under a simulated `/ca-ledger/` subpath, so they emit the public URL
+  as soon as the page is served from it. _(Resolved 2026-07-16: the
+  repository is public and the site is live on GitHub Pages.)_
 
 ## Reproducibility verified from an unrestricted network (2026-07-13)
 
@@ -457,10 +457,11 @@ wherever its codes appear.
   deploy together. Permalinks and citations derive from
   `window.location`; the test suite serves the site under a
   `/ca-ledger/` subpath — the GitHub Pages layout — and asserts that
-  citations emit that served URL, so they will emit the public URL in
-  production. Deployment itself still awaits the repository settings
-  change documented earlier (repo is private; Pages must be enabled
-  with Source = GitHub Actions).
+  citations emit that served URL, so they emit the public URL in
+  production. Deployment at the time still awaited the repository
+  settings change documented earlier (the repo was then private;
+  Pages had to be enabled with Source = GitHub Actions). _(Resolved
+  2026-07-16: the repository is public and the site is live.)_
 
 ## Redesign: the Ledger design system (2026-07-13)
 
@@ -1350,8 +1351,9 @@ year only, linking through to the full multi-year records.
 
 Likely causes of the report: a stale cached page (identical symptom
 seen during the county build) or the GitHub Pages deployment, which
-has been unavailable while the repository is private (noted at Pages
-setup; the owner's settings decision).
+was unavailable while the repository was private (noted at Pages
+setup; the owner's settings decision, since made — the repository
+went public and Pages went live on 2026-07-16).
 
 The guard requested was added regardless: the suite now asserts, per
 layer, that the year set offered in the UI exactly equals the year
@@ -1502,6 +1504,37 @@ No data or pipeline code changed.
 Tests: **602 assertions, all passing** (597 + 5: authenticity and
 licensing statements on the about page, LICENSE/NOTICE contents,
 SECURITY.md's honest-limits language, workflow SHA pinning).
+
+## 2026-07-16 — The repository is public and the site is live
+
+Four settings milestones, all the owner's, landed: the repository
+moved to the `citizen-ledger` organization
+(github.com/citizen-ledger/ca-ledger — every hardcoded reference
+retargeted in PR #1, merged), branch protection went active on
+`main` (all changes by pull request now), the repository was made
+**public**, and the site deployed to GitHub Pages at
+https://citizen-ledger.github.io/ca-ledger/.
+
+Wording followed the facts, in both directions. When the repo was
+still private, the about page's claim was softened to "one
+repository, which will be public" rather than overstate; now that it
+is public, the same discipline restores present tense: "all in one
+public repository" (about.html, with its test assertion updated to
+match). The three status-log passages above that described the repo
+as private in present tense were corrected to past tense with dated
+resolution notes — the history stands, but no sentence in this
+repository now asserts the repo is private or that publication is
+pending. A full sweep (literal phrases plus an agent pass over every
+page, doc, and code comment for anything *implying* private status
+or an undeployed site) caught one more: the test suite's docstring
+said permalinks "will emit the public URL when deployed" — now "in
+production they emit the public URL." Two forward-looking notes in
+docs/LANDSCAPE_FINDING.md ("seek [Coleman's] review … before wide
+release"; "re-run this investigation before any public launch") were
+left as written: they are dated investigation guidance about
+promotion and shelf-life, not claims about the repository's status.
+
+No data, pipeline, or figure changed.
 
 ## Update cadence
 
