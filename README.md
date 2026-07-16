@@ -120,6 +120,22 @@ permalinks and citations emit the served public URL. Requires Python
 3.9+, `pip install playwright`, and system Chrome (or `playwright
 install chromium`).
 
+## Licensing: open code, public-domain data, protected name
+
+- **Code:** Apache License 2.0 (see [LICENSE](LICENSE)). Fork it,
+  adapt it, build another state's ledger on it.
+- **Data:** the generated data files are **CC0 1.0** — public domain.
+  Cite freely; no permission needed.
+- **Name:** "Citizen Ledger" is **not licensed for reuse** — the
+  Apache license's trademark exclusion (Section 6), restated in
+  [NOTICE](NOTICE). A fork may use the code and the data but may not
+  present itself as Citizen Ledger or imply its figures are this
+  project's verified record. Authentic figures are the ones whose
+  SHA-256 digests match those published here (the Chromium/Chrome
+  model: open code, protected name).
+
+Security posture and how to report a problem: [docs/SECURITY.md](docs/SECURITY.md).
+
 ## Neutrality choices, on purpose
 
 - No adjectives attached to numbers. No "only," no "ballooning."

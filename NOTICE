@@ -1,0 +1,19 @@
+Citizen Ledger
+https://github.com/pkkjassistant-commits/ca-ledger
+
+Copyright 2026 The Citizen Ledger Project
+
+The CODE in this repository is licensed under the Apache License,
+Version 2.0 (see LICENSE). The generated DATA files (data.js,
+city-data.js, county-data.js, district-data.js, school-data.js,
+city-geo.js, county-geo.js) are dedicated to the public domain under
+CC0 1.0 Universal.
+
+THE NAME IS NOT LICENSED. "Citizen Ledger", its wordmark, and its
+tagline are not licensed for reuse, under the Apache License's
+trademark exclusion (Section 6) or otherwise. A fork may use the code
+and the data freely, but may not present itself as Citizen Ledger,
+and must not imply that its figures are this project's verified
+record. Authentic figures are those whose SHA-256 integrity digests
+match the ones this project publishes and that reproduce from the
+official state sources via the pipelines in this repository.

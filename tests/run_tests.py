@@ -1860,6 +1860,23 @@ def test_frontdoor_about(page, base):
           "Actuals lag." in body and "Layers never sum." in body)
     check("about: open and reproducible stated",
           "CC0" in body and "public repository" in body)
+    check("about: authenticity — digests distinguish the real record",
+          "authentic figures are the ones whose sha-256 digests match"
+          in body.lower() and "is not the authentic record" in body)
+    check("about: licensing split — open code, CC0 data, protected name",
+          "Apache License 2.0" in body
+          and '"Citizen Ledger" is not licensed for reuse' in body)
+    check("repo: LICENSE is Apache-2.0 and NOTICE protects the name",
+          "Apache License" in (ROOT / "LICENSE").read_text()
+          and "may not present itself as Citizen Ledger"
+              in (ROOT / "NOTICE").read_text())
+    check("repo: SECURITY.md is honest about digest limits and 2FA",
+          all(s in (ROOT / "docs" / "SECURITY.md").read_text() for s in
+              ("hard requirement", "could alter both together",
+               "policy, not\nenforcement", "fidelity", "pinned to full commit SHAs")))
+    check("repo: workflow actions pinned to commit SHAs",
+          "@v4\n" not in (ROOT / ".github" / "workflows" / "deploy-pages.yml").read_text()
+          .replace("# v4", "").replace("# v5", "").replace("# v3", ""))
     check("about: update cadences per layer",
           "late June" in body and "six and a half months" in body
           and "roughly a year" in body and "seven months" in body)

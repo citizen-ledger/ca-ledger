@@ -1464,6 +1464,45 @@ states the as-filed exception, the SHA-256 check, all five refusals
 with the V4 link, the architectural rule, limits, cadences; and an
 archive-voice scan bans marketing language on both new surfaces).
 
+## 2026-07-15 — Licensing, authenticity, and the documented security posture
+
+No data or pipeline code changed.
+
+- **License:** Apache-2.0 for the code (chosen over MIT because its
+  Section 6 explicitly excludes trademark rights — the Chromium/Chrome
+  model in the license text itself), full text in LICENSE. The
+  generated data files are CC0, as the about page already stated. The
+  NOTICE file — which Apache 4(d) obliges redistributors to carry —
+  states the name restriction: a fork may use the code and data but
+  may not present itself as Citizen Ledger. README and about.html
+  state the three-way split plainly.
+- **Authenticity:** about.html gains "Verifying authenticity" — the
+  authentic figures are the ones whose SHA-256 digests match those
+  published here and reproduce from the official sources; a copy that
+  cannot reproduce them is not the authentic record.
+- **docs/SECURITY.md:** an honest threat model. What the static
+  architecture eliminates by construction (no server, database,
+  auth, secrets, or collected user data — the surfaces do not
+  exist); the residual risks named without inflation: the GitHub
+  account as the crown jewel (2FA a hard requirement), push/merge
+  integrity (branch protection + signed commits — stated as policy,
+  not enforcement, until the owner enables them), the deploy
+  pipeline (actions now **pinned to full commit SHAs**; permissions
+  already minimal; no build step), the three keyless runtime
+  services (tiles, geocoder, fonts — fonts added honestly as the
+  third), post-deploy tampering with the digest defense's honest
+  limit stated (an attacker controlling the whole site could alter
+  digests and data together; the digests defend copies/forks and
+  data-file tampering, and full verification is re-running the
+  pipelines), the vendored-library and pipeline-dependency supply
+  chain, and the stated boundary that gates verify fidelity TO the
+  official sources, not the sources themselves. Plus how to report a
+  data error or a security issue.
+
+Tests: **602 assertions, all passing** (597 + 5: authenticity and
+licensing statements on the about page, LICENSE/NOTICE contents,
+SECURITY.md's honest-limits language, workflow SHA pinning).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
