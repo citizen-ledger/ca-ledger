@@ -1244,11 +1244,13 @@ def test_rename(page, base):
     TAG = "A nonpartisan record of California government spending"
     PAGES = {"index.html": "State budget", "cities.html": "City spending",
              "districts.html": "Special districts",
-             "address.html": "Your governments"}
+             "address.html": "Your governments",
+             "about.html": "About & method"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
+        esc_title = title.replace("&", "&amp;")
         check(f"rename {f}: title tag",
-              f"<title>Citizen Ledger — {title}</title>" in src)
+              f"<title>Citizen Ledger — {esc_title}</title>" in src)
         check(f"rename {f}: og:site_name", 'content="Citizen Ledger"' in src)
         check(f"rename {f}: tagline in metadata/source", TAG in src)
         check(f"rename {f}: old name absent from source",
@@ -1797,6 +1799,89 @@ def test_zero_service(page, base):
           page.locator(".depth-panel .depth-row").count() > 0)
 
 
+def test_frontdoor_about(page, base):
+    """The front door reaches every layer; the method page states the
+    bases and names the gate; both hold the archive voice."""
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#frontDoor")
+    fd = page.inner_text("#frontDoor")
+    check("front door: the tagline is the statement",
+          "A nonpartisan record of California government spending." in fd)
+    check("front door: says what the data is, with reconciliation",
+          "enacted budget" in fd and "reconciled against those sources" in fd)
+    doors = dict(page.eval_on_selector_all(".fd-doors a",
+        "els => els.map(e => [e.textContent.trim(), e.getAttribute('href')])"))
+    check("front door: five doors reach every layer",
+          doors.get("Look up your address") == "address.html"
+          and doors.get("The state budget") == "#stateRecord"
+          and doors.get("Your city or county") == "cities.html"
+          and doors.get("Schools") == "schools.html"
+          and doors.get("Special districts") == "districts.html", str(doors))
+    check("front door: discipline line links the method page",
+          "never ranks, never characterizes, and never concludes" in fd
+          and page.locator('.fd-discipline a[href="about.html"]').count() == 1)
+    # every door actually lands on a rendering page
+    for href in ("address.html", "cities.html", "schools.html", "districts.html"):
+        page.goto(f"{base}/{href}")
+        page.wait_for_selector(".wordmark")
+    # the state door scrolls within the page
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#fdState")
+    page.click("#fdState")
+    page.wait_for_timeout(600)
+    check("front door: state door scrolls to the record",
+          page.evaluate("window.scrollY") > 100)
+
+    # the method page: bases, cadence, the gate, verification, refusals
+    page.goto(f"{base}/about.html")
+    page.wait_for_selector("h1")
+    body = page.inner_text("body")
+    for basis in ("Budgetary-Legal", "Reported actual revenues and expenditures",
+                  "Unaudited actual expenditures", "As filed"):
+        check(f"about: accounting basis stated — {basis[:28]!r}", basis in body)
+    check("about: the reconciliation gate is named and concrete",
+          "the reconciliation gate" in body
+          and "the pipeline refuses to write" in body
+          and "Current Expense of Education" in body)
+    check("about: the as-filed exception is stated, not hidden",
+          "no published control total exists for special districts" in body)
+    check("about: SHA-256 verification anyone can run",
+          "SHA-256" in body and "verify_digest.py" in body)
+    check("about: refusals — rank/characterize/conclude/vendor/sum",
+          "No ranking." in body and "No characterizing." in body
+          and "No conclusions." in body and "No vendor data." in body
+          and "No sums across layers." in body)
+    check("about: vendor refusal links the V4 finding",
+          page.locator('a[href="docs/V4_VENDOR_FINDING.md"]').count() >= 1)
+    check("about: the standing architectural rule",
+          "no server" in body.lower() and "per-use cost" in body.lower()
+          and page.locator('a[href="docs/SCOPE.md"]').count() == 1)
+    check("about: known limits include lag and never-sum",
+          "Actuals lag." in body and "Layers never sum." in body)
+    check("about: open and reproducible stated",
+          "CC0" in body and "public repository" in body)
+    check("about: update cadences per layer",
+          "late June" in body and "six and a half months" in body
+          and "roughly a year" in body and "seven months" in body)
+    # the archive voice: banned terms and marketing phrases absent
+    for f in ("about.html",):
+        src = (ROOT / f).read_text(encoding="utf-8").lower()
+        for w in BANNED + ["empowering", "empower", "unlock", "revolution",
+                           "game-chang", "call to action", "join us",
+                           "sign up", "our mission"]:
+            check(f"about voice: {w!r} absent", w not in src)
+    fd_src_seg = (ROOT / "index.html").read_text(encoding="utf-8")
+    seg = fd_src_seg[fd_src_seg.index("frontDoor"):fd_src_seg.index("stateRecord")]
+    for w in ["empower", "unlock", "revolution"]:
+        check(f"front-door voice: {w!r} absent", w not in seg.lower())
+    # nav: About & method on every page
+    for f in ("index.html", "cities.html", "schools.html", "districts.html",
+              "address.html"):
+        src = (ROOT / f).read_text(encoding="utf-8")
+        check(f"nav {f}: About & method present",
+              'href="about.html">About &amp; method</a>' in src)
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1985,6 +2070,7 @@ def main():
             test_year_coverage(page, base)
             test_legibility(page, base)
             test_zero_service(page, base)
+            test_frontdoor_about(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

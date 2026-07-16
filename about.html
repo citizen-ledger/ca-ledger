@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — About &amp; method</title>
+<meta name="description" content="A nonpartisan record of California government spending. What the Ledger is, where every figure comes from, how each one is verified, and what the site refuses to do.">
+<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/about.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — About &amp; method">
+<meta property="og:description" content="A nonpartisan record of California government spending. What the Ledger is, where every figure comes from, how each one is verified, and what the site refuses to do.">
+<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/about.html">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Ledger design system — see index.html. This page is prose in the
+     same voice as the record: plain, precise, no persuasion. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  @media print{ body{background:#fff} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:840px;margin:0 auto;padding:0 40px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:50px;font-weight:400;letter-spacing:-1px;margin-top:10px;line-height:1.08}
+  h2{font-family:var(--serif);font-size:26px;font-weight:400;margin-top:44px;padding-top:22px;border-top:1px solid var(--ink)}
+  .lead{font-size:16px;color:var(--graphite);margin-top:14px;line-height:1.6;max-width:64ch}
+  p{margin-top:14px;line-height:1.65;max-width:70ch}
+  .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
+  .hero{margin-top:44px}
+
+  .srctbl{margin-top:18px;border-top:1px solid var(--ink);overflow-x:auto}
+  .src-row{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr;gap:0 18px;padding:12px 0;border-bottom:1px solid var(--hairline);font-size:13.5px;line-height:1.5}
+  .src-row.hd{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--smoke);padding:8px 0}
+  .src-row .layer{font-weight:600}
+  .src-row .mono-sm{font-family:var(--mono);font-size:11.5px;color:var(--graphite)}
+  @media(max-width:720px){ .src-row{grid-template-columns:1fr} h1{font-size:38px} main{padding:0 20px} header.hd,.prov{padding-left:20px;padding-right:20px} }
+
+  .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:14px;line-height:1.65}
+  .gatebox b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
+  ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
+  ul.plain li{padding:10px 0 10px 0;border-bottom:1px solid var(--hairline);line-height:1.6;font-size:14px}
+  ul.plain li b{font-weight:600}
+  .codebit{font-family:var(--mono);font-size:12px;background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">A nonpartisan record of California government spending</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <span class="active">About &amp; method</span>
+  </nav>
+</header>
+
+<div class="prov">
+  <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
+  <span>RECONCILED BEFORE PUBLICATION</span>
+  <span>DATA CC0 · CITE FREELY</span>
+  <span>PUBLIC RECORD</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="kicker">THE PUBLIC RECORD · ABOUT &amp; METHOD</div>
+    <h1>What this is, and how it is checked</h1>
+    <p class="lead">Citizen Ledger is a nonpartisan record of California government spending: the state's enacted budget and actual expenditures, and the reported finances of its cities, counties, special districts, and K-12 schools — in one place, on one set of rules. It is built for anyone who needs the numbers: residents, journalists, researchers, and officials use the same pages, the same figures, and the same tools. Nothing here is behind an account, and nothing is tailored to an audience.</p>
+  </div>
+
+  <h2 id="sources">The record, layer by layer</h2>
+  <p>Every figure on this site comes from an official state source, named below with its accounting basis — what kind of number it is — and how often it updates. The bases differ across layers, each page says which basis it is on, and figures on different bases are never mixed or added.</p>
+  <div class="srctbl">
+    <div class="src-row hd"><span>LAYER</span><span>SOURCE</span><span>ACCOUNTING BASIS</span><span>UPDATES</span></div>
+    <div class="src-row">
+      <span class="layer">State budget</span>
+      <span>The Department of Finance's eBudget publication (<span class="mono-sm">ebudget.ca.gov</span>) — the data behind the state's own Enacted Budget pages, to the department, fund, and program.</span>
+      <span>Enacted appropriations under California's Budgetary-Legal basis — a spending plan, fixed when each year's Budget Act is signed.</span>
+      <span>One new fiscal year per Budget Act, typically late June.</span>
+    </div>
+    <div class="src-row">
+      <span class="layer">State actuals</span>
+      <span>The Department of Finance's Schedule 9 — the state's own comparative statement of what was actually spent, extracted from the Governor's Budget publications.</span>
+      <span>Actual expenditures, Budgetary-Legal basis — the same basis as the enacted figures they sit beside, unaudited by the Ledger.</span>
+      <span>Actuals for a fiscal year first appear about six and a half months after it ends, in the following January's Governor's Budget.</span>
+    </div>
+    <div class="src-row">
+      <span class="layer">Cities &amp; counties</span>
+      <span>The State Controller's "By the Numbers" portal (<span class="mono-sm">bythenumbers.sco.ca.gov</span>) — the standardized annual financial reports all 482 cities and 57 counties file, to the state form line.</span>
+      <span>Reported actual revenues and expenditures — retrospective figures as filed, not budgets.</span>
+      <span>Annually; a fiscal year's reports publish roughly a year after it closes.</span>
+    </div>
+    <div class="src-row">
+      <span class="layer">K-12 schools</span>
+      <span>The California Department of Education's SACS unaudited actuals — the general ledgers of every school district, county office, and charter school, plus CDE's published Current Expense of Education figures.</span>
+      <span>Unaudited actual expenditures as filed under the Standardized Account Code Structure; district comparison is per ADA, education's standard denominator.</span>
+      <span>Annually, about seven months after the school fiscal year ends.</span>
+    </div>
+    <div class="src-row">
+      <span class="layer">Special districts</span>
+      <span>The State Controller's special-district filings and its published lists of late and missing filers.</span>
+      <span>As filed — this is the one layer with no published control total to reconcile against, and every record, export, and citation says so on its face.</span>
+      <span>Annually, with the Controller's filing cycle.</span>
+    </div>
+  </div>
+
+  <h2 id="method">How every figure is verified</h2>
+  <p>The Ledger's central discipline is a rule we call <b>the reconciliation gate</b>: before anything is published, every figure is recomputed from the raw source data, and the result must reproduce a total the source itself published. If any entity, in any year, fails that check, the pipeline refuses to write — the site keeps its previous data rather than publish a number that cannot be verified.</p>
+  <div class="gatebox"><b>THE RECONCILIATION GATE, CONCRETELY</b>
+    Every state budget year must reproduce the Department of Finance's published summary total. Every extracted year of actuals must reproduce Schedule 6's statewide control totals. Every city-year and county-year must reproduce the Controller's own published total for that government. Every school district, every year, must reproduce CDE's published Current Expense of Education figure — in practice, to the cent. Where the site drills below those figures — funds, programs, form lines, object detail — the children must sum exactly to the gated parent. And because a total can be right while its parts are mislabeled, a second family of checks (shape gates) verifies that the classification is sane: a real police department cannot vanish for a year, a catch-all bucket cannot silently absorb a city's spending.
+  </div>
+  <p>One layer is the stated exception: no published control total exists for special districts — the state does not publish one — so that layer cannot pass a reconciliation gate. It is published <i>as filed</i>, at a visibly different tier, with the caveat on every record rather than in a footnote.</p>
+  <p>You can check the record yourself. Every data file carries a SHA-256 integrity digest, displayed on its page. Download the file, run <span class="codebit">python3 pipeline/verify_digest.py &lt;file&gt;</span> from the repository, and the recomputed digest must match the displayed one. The pipelines that build each file are in the same repository, so any figure can be traced from the page back to the official source that produced it. A test suite re-runs the gates against the shipped files on every change.</p>
+
+  <h2 id="refusals">What this site refuses to do</h2>
+  <ul class="plain">
+    <li><b>No ranking.</b> Governments appear alphabetically, always. A per-resident figure is context, not a score; differences often reflect structure — which services a government provides, what its tax base looks like — rather than choices, and the notes on each record say when that is so.</li>
+    <li><b>No characterizing.</b> The Ledger does not attach adjectives to numbers. There are no efficiency scores, no grades, no colors that pass judgment; direction is shown in ink, and a difference column is never described as good or bad. The test suite scans every page for characterizing language and fails if it appears.</li>
+    <li><b>No conclusions.</b> The record answers what was budgeted, what was spent, and by whom — not whether it was wise. That question belongs to the reader.</li>
+    <li><b>No vendor data.</b> We investigated publishing who the state pays and found that California does not publish vendor payment data that can be honestly reconciled to its budget — the state's own vendor files cover roughly a tenth of recorded spending, with no stable identifiers. Rather than publish precise-looking figures with unknowable gaps, we published the finding: <a href="docs/V4_VENDOR_FINDING.md">the vendor-data investigation</a>.</li>
+    <li><b>No sums across layers.</b> State, county, city, school, and district figures overlap — about half of what counties and school districts report receiving is money the state budget already shows. Wherever layers meet on this site, the page says the figures do not add, with the measured overlap, and never shows a combined total.</li>
+  </ul>
+
+  <h2 id="architecture">Built to outlast its maker</h2>
+  <p>Citizen Ledger is static files. There is no server, no database, no API key, no account, and no per-use cost anywhere in the system — a standing rule of the project, recorded in <a href="docs/SCOPE.md">its scope document</a>: any feature that would require one is out of scope by default. The exceptions are two keyless, free public services — map tiles and the Census Bureau's geocoder — and when either is unreachable, the record still works.</p>
+  <p>The rule is not a technical preference. When we surveyed <a href="docs/LANDSCAPE_FINDING.md">every prior attempt at this work</a>, the pattern was not competition but abandonment: the most serious California fiscal-transparency projects died when their builder's attention, funding, or staffing moved on. A site that is only files, rebuilt by pipelines anyone can run, has nothing that expires.</p>
+
+  <h2 id="limits">Known limits, stated openly</h2>
+  <ul class="plain">
+    <li><b>Special districts are as-filed, not reconciled.</b> The state publishes no control total for them; the layer is labeled accordingly, everywhere.</li>
+    <li><b>Accounting bases differ by layer.</b> Enacted appropriations are plans; Controller filings are retrospective actuals; SACS figures are unaudited. Each page states its basis, and the Ledger never compares figures across bases as if they were the same kind of number.</li>
+    <li><b>Actuals lag.</b> State actuals for a fiscal year appear the following January; local filings take roughly a year. The current state fiscal year has enacted figures only, and its Actuals view says so rather than showing a blank.</li>
+    <li><b>Layers never sum.</b> The same dollar can appear in the state budget, a county's revenues, and a school district's books. Every page where the layers meet carries the measured statement of that overlap.</li>
+    <li><b>Some context data is dated.</b> The Controller's services checklist — which tells us when a city's police or fire service is provided by another government — was last published for FY 2015-16; arrangements may have changed, and every note that uses it says so.</li>
+    <li><b>Map boundaries are simplified for display</b> and are never used to assign an address to a jurisdiction — that assignment comes from the Census Bureau's full-resolution geography.</li>
+  </ul>
+
+  <h2 id="open">Open and reproducible</h2>
+  <p>The data files, the pipelines that build them, the pages, the verification tools, and the investigation documents that decided what to publish and what to refuse are all in one public repository. The data is CC0 — cite freely, no permission needed. Every citation the site produces carries its source, its accounting basis, its generation date, and a permalink that reproduces the exact view. The method documents — including the findings on <a href="docs/V4_VENDOR_FINDING.md">vendor data</a>, <a href="docs/V5_DISTRICTS_FINDING.md">special districts and schools</a>, <a href="docs/V6_ADDRESS_FINDING.md">address lookup</a>, and <a href="docs/V8_DEPTH_FINDING.md">drill-down depth</a> — record not just what the site does but why, so the reasoning can be checked along with the arithmetic.</p>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+</body>
+</html>

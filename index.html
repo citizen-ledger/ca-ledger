@@ -68,6 +68,13 @@
   .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
 
   main{max-width:1160px;margin:0 auto;padding:0 40px}
+  .frontdoor{margin-top:40px;padding-bottom:34px;border-bottom:1px solid var(--ink)}
+  .fd-statement{font-family:var(--serif);font-size:34px;letter-spacing:-0.5px;line-height:1.2;max-width:26ch}
+  .fd-what{font-size:15px;color:var(--graphite);margin-top:14px;max-width:74ch;line-height:1.6}
+  .fd-doors{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+  .fd-doors a{font-size:13px;padding:9px 20px;border:1px solid var(--ink);border-radius:9999px;text-decoration:none;color:var(--ink)}
+  .fd-doors a:hover{background:var(--ink);color:var(--parchment)}
+  .fd-discipline{font-family:var(--mono);font-size:11.5px;color:var(--graphite);margin-top:18px;line-height:1.7}
 
   /* hero */
   .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
@@ -237,6 +244,7 @@
     <a href="schools.html">K-12 schools</a>
     <a href="districts.html">Special districts</a>
     <a href="address.html">Your governments</a>
+    <a href="about.html">About &amp; method</a>
     <a href="#methodology">Methodology</a>
   </nav>
   <div class="hd-actions np">
@@ -251,7 +259,25 @@
 <main>
   <div class="po cite-text" id="printCite"></div>
 
-  <div class="hero">
+  <section class="frontdoor np" id="frontDoor" aria-label="Citizen Ledger front door">
+    <div class="fd-statement">A nonpartisan record of California government spending.</div>
+    <p class="fd-what">Citizen Ledger publishes the State of California's enacted budget and actual
+      expenditures, and the reported finances of its cities, counties, special districts, and
+      K-12 schools — drawn from official state sources and reconciled against those sources'
+      own published totals before anything appears here.</p>
+    <nav class="fd-doors" aria-label="The record">
+      <a href="address.html">Look up your address</a>
+      <a href="#stateRecord" id="fdState">The state budget</a>
+      <a href="cities.html">Your city or county</a>
+      <a href="schools.html">Schools</a>
+      <a href="districts.html">Special districts</a>
+    </nav>
+    <p class="fd-discipline">The Ledger publishes the record and the tools to read it.
+      It never ranks, never characterizes, and never concludes.
+      <a href="about.html">How every figure is verified →</a></p>
+  </section>
+
+  <div class="hero" id="stateRecord">
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
       <h1>State budget</h1>
@@ -1150,6 +1176,10 @@
   }
 
   /* ---------- wiring ---------- */
+  $("fdState").addEventListener("click", e => {
+    e.preventDefault();
+    $("stateRecord").scrollIntoView({behavior: "smooth", block: "start"});
+  });
   /* ---------- V8 depth panel: fund drill + labeled all-funds programs.
      Children ship in integer THOUSANDS (source units); every block's
      footer is the exact sum; negatives render honestly. ---------- */

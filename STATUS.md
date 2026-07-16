@@ -1422,6 +1422,48 @@ now reads the readout at rest.
 
 Tests: **534 assertions, all passing** (525 + 9).
 
+## 2026-07-15 — The front door and the About & method page
+
+- **Front door:** a masthead above the state view on index.html — not
+  a separate landing, because moving the state page would break every
+  citation permalink already pointing at index.html, and the citation
+  contract outranks a splash. Under one screen: the tagline as the
+  statement, one sentence saying what the data is and that it is
+  reconciled to the sources' own published totals, five plain doors
+  (address lookup, state budget, city/county, schools, special
+  districts), and the discipline line — "It never ranks, never
+  characterizes, and never concludes" — linking to the method page.
+  No imagery, no slogans.
+- **about.html — About & method**, drawn from SCOPE.md, the finding
+  docs, and STATUS, in public-facing language: what the Ledger is and
+  who it is for; the sources named per layer with accounting basis
+  and update cadence; **the reconciliation gate** stated plainly and
+  concretely (recompute from the raw source, reproduce the source's
+  own published total, or nothing is written — with the schools
+  to-the-cent case named, plus the depth parent-sum gates and the
+  shape gates), and the special-districts as-filed exception stated
+  where the claim is made; SHA-256 verification anyone can run; the
+  refusals (no ranking, no characterizing, no conclusions, no vendor
+  data — linking the V4 finding — no sums across layers); the
+  standing no-server/no-keys/no-per-use-cost rule and why the site is
+  built to outlast its maker (linking SCOPE.md and the landscape
+  finding); the known limits (as-filed tier, basis differences,
+  actuals lag, never-sum, checklist vintage, display-only map
+  boundaries); and the open/reproducible statement. Every factual
+  claim checked against the current build; the as-filed carve-out is
+  attached directly to the verification claim so nothing overstates.
+- Navs on all pages gain "About & method"; per-page Methodology
+  anchors remain. (FOUNDATIONS.md was cited as source material but
+  does not exist in this repository — noted before, still true;
+  SCOPE.md and the findings supplied the substance.)
+
+Tests: **597 assertions, all passing** (534 + 63: the five doors
+reach every layer and the state door scrolls; the method page states
+all four accounting bases, names the gate with its refusal-to-write,
+states the as-filed exception, the SHA-256 check, all five refusals
+with the V4 link, the architectural rule, limits, cadences; and an
+archive-voice scan bans marketing language on both new surfaces).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
