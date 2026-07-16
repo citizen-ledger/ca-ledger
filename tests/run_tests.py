@@ -1899,6 +1899,68 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_mobile(browser, base):
+    """Phone-width guard (360px): no page-level horizontal scroll on any
+    page, and every figure in a drill-down or record row sits inside the
+    viewport — an amount that must be panned to is an amount nobody sees.
+    Content inside an overflow-x container (the comparison, the district
+    year tables) is exempt only when the page body itself does not pan."""
+    ctx = browser.new_context(viewport={"width": 360, "height": 780})
+    p = ctx.new_page()
+    for name in ("index.html", "cities.html", "schools.html",
+                 "districts.html", "address.html", "about.html"):
+        p.goto(f"{base}/{name}")
+        p.wait_for_load_state("networkidle")
+        sw = p.evaluate("Math.max(document.documentElement.scrollWidth,"
+                        " document.body.scrollWidth)")
+        check(f"mobile 360: {name} does not scroll horizontally",
+              sw <= 361, f"scrollWidth {sw}")
+
+    offscreen_js = """(sel) => {
+      let n = 0;
+      document.querySelectorAll(sel).forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.width && (r.right > innerWidth + 1 || r.left < -1)) n++;
+      });
+      return n;
+    }"""
+    # state fund/program drill: name and figure both on screen
+    p.goto(f"{base}/index.html#a=health-and-human-service&dd=4260")
+    p.wait_for_selector(".depth-panel .depth-row")
+    bad = p.evaluate(offscreen_js, ".depth-panel .num")
+    check("mobile 360: every state fund-drill figure inside the viewport",
+          bad == 0, f"{bad} offscreen")
+    # city record and its line-level drill
+    p.goto(f"{base}/cities.html#c=los-angeles")
+    p.wait_for_selector("#recordBody .det-row")
+    p.locator('#recordBody .det-row[data-fn="police"]').dispatch_event("click")
+    p.wait_for_selector(".line-panel")
+    bad = p.evaluate(offscreen_js,
+                     "#recordBody .det-row .num, #recordBody .det-foot .num,"
+                     " .line-panel .num")
+    check("mobile 360: every city record and line figure inside the viewport",
+          bad == 0, f"{bad} offscreen")
+    # school record: object-family drill and an aligned gated total
+    p.goto(f"{base}/schools.html#c=los-angeles-unified")
+    p.wait_for_selector("#recordBody .det-row")
+    p.locator('#recordBody .det-row[data-fn="genAdmin"]').dispatch_event("click")
+    p.wait_for_selector(".obj-panel")
+    bad = p.evaluate(offscreen_js,
+                     "#recordBody .det-row .v, #recordBody .det-foot .v,"
+                     " .obj-panel .num")
+    check("mobile 360: every school record figure inside the viewport",
+          bad == 0, f"{bad} offscreen")
+    aligned = p.evaluate("""() => {
+      const f = document.querySelector('#recordBody .det-foot .v');
+      const r = document.querySelector('#recordBody .det-row .v');
+      return Math.abs(f.getBoundingClientRect().right
+                    - r.getBoundingClientRect().right) <= 2;
+    }""")
+    check("mobile 360: school gated total aligns with the amount column",
+          aligned)
+    ctx.close()
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -2089,6 +2151,7 @@ def main():
             test_zero_service(page, base)
             test_frontdoor_about(page, base)
             test_map(page, base)
+            test_mobile(browser, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

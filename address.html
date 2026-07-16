@@ -118,7 +118,14 @@
   h2{font-family:var(--serif);font-size:28px;font-weight:400}
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
   @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .fn-row{grid-template-columns:1fr 90px} .fn-row .bar{display:none} }
-  @media(max-width:720px){ h1{font-size:40px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
+  @media(max-width:720px){
+    h1{font-size:40px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    .record{padding:20px 16px 24px}
+    /* the address input yields to the entry card's width so it and its
+       suggestion list stay aligned inside the card */
+    input[type="text"]{min-width:0}
+  }
 </style>
 </head>
 <body>

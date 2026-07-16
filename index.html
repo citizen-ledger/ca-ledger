@@ -52,7 +52,7 @@
   .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
   .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
   @media(max-width:880px){.tagline{display:none}}
-  nav.pn{display:flex;gap:6px}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
   nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
   nav.pn a:hover{background:var(--wash);color:var(--graphite)}
   nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
@@ -176,6 +176,7 @@
 
   /* change view */
   .chg{min-width:760px;margin-top:14px}
+  .actmin{min-width:820px;margin-top:14px}
   .chg-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
   .chg-axishead{display:grid;grid-template-columns:1fr 1fr;margin:16px 118px 0 204px;padding:6px 0;border-bottom:1px solid var(--ink);font-family:var(--mono);font-size:11px;color:var(--smoke)}
   .chg-row{display:grid;grid-template-columns:190px 1fr 104px;gap:0 14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--hairline)}
@@ -228,7 +229,39 @@
   .revlog{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--smoke)}
 
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
-  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
+  @media(max-width:720px){
+    h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    .record{padding:20px 16px 24px}
+    /* Phone widths: tables reflow instead of scrolling sideways. A row
+       is name on its own line with every figure inside the viewport —
+       an amount that must be panned to is an amount nobody sees. */
+    .alloc,.chg,.actmin{min-width:0}
+    /* the readout keeps one fixed height on phones — a hover that grew
+       it shifted the table under an incoming tap, so taps missed rows */
+    .readout{min-height:64px;align-content:flex-start}
+    .readout .ro-name{flex:1 0 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .arow{grid-template-columns:14px minmax(0,1fr) auto;gap:1px 10px}
+    .arow:not(.act-grid)>*:nth-child(4){grid-column:2;text-align:left}
+    .arow:not(.act-grid)>*:nth-child(5){grid-column:3}
+    .ahead.act-grid{display:flex;flex-wrap:wrap;gap:6px 18px}
+    .act-grid>.num{grid-column:2/4;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .act-grid>.num::before{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;color:var(--smoke)}
+    .act-grid>.num:nth-child(3)::before{content:"ENACTED"}
+    .act-grid>.num:nth-child(4)::before{content:"ACTUAL"}
+    .act-grid>.num:nth-child(5)::before{content:"DIFFERENCE"}
+    .depth-panel{padding:12px}
+    .depth-row,.depth-foot{grid-template-columns:1fr auto;gap:2px 12px}
+    .depth-row>span:first-child,.depth-foot>span:first-child{grid-column:1/-1}
+    .depth-row>.dim{grid-row:2;text-align:left}
+    .depth-row>.num,.depth-foot>.num{grid-column:2;grid-row:2}
+    .depth-foot>span:empty{display:none}
+    .fund{grid-template-columns:minmax(0,1fr) auto auto;gap:2px 12px}
+    .fund .fn{grid-column:1/-1}
+    .chg-row{grid-template-columns:1fr 118px;gap:2px 10px}
+    .chg-row>span:first-child{grid-column:1/-1}
+    .chg-axishead{margin:16px 128px 0 0}
+  }
 </style>
 </head>
 <body>
@@ -411,7 +444,7 @@
     </div>
 
     <div class="tblwrap" id="actualsView" hidden>
-      <div style="min-width:820px;margin-top:14px">
+      <div class="actmin">
         <div class="chg-head">
           <span class="trend-note" id="actTitle"></span>
           <span class="schedlbl" id="actVintage"></span>

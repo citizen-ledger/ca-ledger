@@ -43,7 +43,7 @@
   .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
   .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
   @media(max-width:880px){.tagline{display:none}}
-  nav.pn{display:flex;gap:6px}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
   nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:13px;text-decoration:none;color:var(--graphite)}
   nav.pn a:hover{background:var(--wash);color:var(--graphite)}
   nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
@@ -115,10 +115,15 @@
   .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:12.5px;color:var(--graphite);line-height:1.5}
   .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
   .tblwrap{overflow-x:auto}
+  .tblmin{min-width:640px}
+  .cmpmin{min-width:720px}
+  .entmin{min-width:560px;margin-top:8px}
+  .det-row.tri{grid-template-columns:220px 1fr 130px}
   .empty{margin-top:20px;border:1px solid var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
 
   /* comparison grid */
   .cmp-head{display:grid;gap:0 20px;align-items:end;margin-top:22px;padding-bottom:12px;border-bottom:1px solid var(--ink)}
+  .cmp-head,.cmp-row,.cmp-foot{grid-template-columns:220px repeat(var(--nc,2),1fr)}
   .cmp-row{display:grid;gap:0 20px;align-items:center;padding:12px 0;border-bottom:1px solid var(--hairline)}
   .cmp-row:hover{background:var(--wash-in)}
   .cmp-foot{display:grid;gap:0 20px;align-items:center;padding:13px 0;border-bottom:1px solid var(--ink);font-weight:600}
@@ -160,7 +165,34 @@
   .digest{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-top:8px;word-break:break-all}
   .revlog{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--smoke)}
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
-  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} .det-row,.det-foot{grid-template-columns:1fr 90px} }
+  @media(max-width:720px){
+    h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    .record{padding:20px 16px 24px}
+    /* Phone widths: the record reflows to the viewport instead of
+       scrolling sideways — a function name and its figure are always
+       on screen together. */
+    .tblmin,.entmin{min-width:0}
+    .det-row,.det-foot{grid-template-columns:1fr 92px;gap:2px 12px}
+    .det-row .cellbar{display:none}
+    .det-row>.num.dim{grid-column:2}
+    .det-foot>span:empty{display:none}
+    .det-row.tri{grid-template-columns:1fr auto}
+    .det-row.tri>span:first-child{grid-column:1/-1}
+    .det-row.tri>.num.dim{grid-column:1;grid-row:2;text-align:left}
+    .det-row.tri>.num:not(.dim){grid-column:2;grid-row:2}
+    .line-panel{padding:10px 12px}
+    .line-row .num,.line-foot .num{white-space:nowrap}
+    /* The comparison keeps its columns and scrolls within its own
+       container, with the function column pinned so a figure is never
+       separated from its row label. */
+    /* the scroll canvas spans the grid exactly, so the sticky label
+       column can travel the full scroll range without over-running
+       its containing block */
+    .cmpmin{min-width:0;width:calc(110px + var(--nc,2)*132px)}
+    .cmp-head,.cmp-row,.cmp-foot{grid-template-columns:110px repeat(var(--nc,2),minmax(120px,1fr));gap:0 12px}
+    .cmp-head>*:first-child,.cmp-row>*:first-child,.cmp-foot>*:first-child{position:sticky;left:0;background:var(--surface);z-index:2;padding-right:8px}
+  }
 </style>
 </head>
 <body>
@@ -881,7 +913,7 @@
       + "POP " + fmtPop(yr.population) + " · GOVERNMENTAL " + fmtM(yr.expenditures) + " · REVENUES " + fmtM(yr.revenues);
     const rows = FUNCS.map(f=>({ f, vM: (yr.byFunction||{})[f.key]||0 }));
     const maxU = Math.max(...rows.map(r=>toUnit(r.vM,yr)||0), 0.001);
-    let html = '<div class="tblwrap"><div style="min-width:640px">';
+    let html = '<div class="tblwrap"><div class="tblmin">';
     const LBL = D.meta.lineLabels || [];
     const lineBlock = fnKey => {
       const items = (yr.lines||{})[fnKey] || [];
@@ -911,7 +943,7 @@
       html += '<div class="det-row'+(expandable?' click':'')+'"'
         + (expandable ? ' role="button" tabindex="0" data-fn="'+r.f.key+'" aria-label="Show state-form lines for '+esc(r.f.name)+'"' : "")
         + '><span class="fn">'+esc(r.f.name)
-        + (expandable ? ' <i class="dim" style="font-style:normal;font-size:11px">'+(open?"▾":"▸")+'</i>' : "")
+        + (expandable ? '&nbsp;<i class="dim" style="font-style:normal;font-size:11px">'+(open?"▾":"▸")+'</i>' : "")
         + daggerHtml(id,r.f.key)+'</span>'
         + '<span class="cellbar" style="margin-top:0"><i style="width:'+w.toFixed(1)+'%;background:#242424"></i></span>'
         + '<span class="num" style="text-align:right">'+fmtUnit(u)+'</span>'
@@ -946,7 +978,7 @@
   function renderCompare(sel){
     $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + unitLabel();
     $("scheduleNote").textContent = "ALPHABETICAL ORDER · SHARED SCALE";
-    const grid = "220px repeat(" + sel.length + ",1fr)";
+    const grid = "--nc:" + sel.length;   // column count only; the grid template lives in CSS so phone widths can restyle it
     const colors = {}; sel.forEach((id,i)=>colors[id]=CITY_RAMP[Math.min(i,3)]);
     let maxU = 0.001;
     FUNCS.forEach(f=>sel.forEach(id=>{
@@ -954,8 +986,8 @@
       const u = toUnit((yr.byFunction||{})[f.key]||0, yr);
       if (u!=null && u>maxU) maxU = u;
     }));
-    let html = '<div class="tblwrap"><div style="min-width:720px">'
-      + '<div class="cmp-head" style="grid-template-columns:'+grid+'">'
+    let html = '<div class="tblwrap"><div class="tblmin cmpmin" style="'+grid+'">'
+      + '<div class="cmp-head" style="'+grid+'">'
       + '<span class="schedlbl">FUNCTION</span>'
       + sel.map(id=>{
           const c = ENTS[id], yr = cityYear(id,S.year);
@@ -966,7 +998,7 @@
         }).join("")
       + "</div>";
     FUNCS.forEach(f=>{
-      html += '<div class="cmp-row" style="grid-template-columns:'+grid+'">'
+      html += '<div class="cmp-row" style="'+grid+'">'
         + '<span style="font-size:14px">'+esc(f.name)+'</span>'
         + sel.map(id=>{
             const yr = cityYear(id,S.year);
@@ -978,7 +1010,7 @@
       if (S.openNote && S.openNote.split(":")[1]===f.key && sel.includes(S.openNote.split(":")[0]))
         html += noteRowHtml();
     });
-    html += '<div class="cmp-foot" style="grid-template-columns:'+grid+'">'
+    html += '<div class="cmp-foot" style="'+grid+'">'
       + '<span style="font-size:14px">Total governmental</span>'
       + sel.map(id=>{
           const yr = cityYear(id,S.year);
@@ -1009,14 +1041,14 @@
       if (!funds.length){
         html = '<div class="empty" style="margin-top:14px">'+esc(ENTS[id].name)+' reports no enterprise-fund activity in FY '+S.year+'.</div>';
       } else {
-        html = '<div class="tblwrap"><div style="min-width:560px;margin-top:8px">';
+        html = '<div class="tblwrap"><div class="entmin">';
         funds.forEach(r=>{
-          html += '<div class="det-row" style="grid-template-columns:250px 1fr 110px 80px"><span class="fn">'+esc(r.name)+'</span>'
+          html += '<div class="det-row"><span class="fn">'+esc(r.name)+'</span>'
             + '<span class="cellbar" style="margin-top:0"><i style="width:'+(r.v/funds[0].v*100).toFixed(1)+'%;background:#6f6c69"></i></span>'
             + '<span class="num" style="text-align:right">'+fmtM(r.v)+'</span>'
             + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(r.v,yr.population))+'</span></div>';
         });
-        html += '<div class="det-foot" style="grid-template-columns:250px 1fr 110px 80px"><span style="font-size:14px">All enterprise funds</span><span></span>'
+        html += '<div class="det-foot"><span style="font-size:14px">All enterprise funds</span><span></span>'
           + '<span class="num" style="text-align:right">'+fmtM(ent.total)+'</span>'
           + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(ent.total,yr.population))+'</span></div>'
           + '<div class="caps"><span>ENTERPRISE REVENUES '+fmtM(ent.revenues||0)
@@ -1025,11 +1057,11 @@
           + '</span><span>PER-RESIDENT COLUMN AT RIGHT</span></div></div></div>';
       }
     } else {
-      html = '<div class="tblwrap"><div style="min-width:560px;margin-top:8px">';
+      html = '<div class="tblwrap"><div class="entmin">';
       sel.forEach(id=>{
         const yr = cityYear(id,S.year);
         const ent = (yr.enterprise||{});
-        html += '<div class="det-row" style="grid-template-columns:220px 1fr 130px"><span class="fn">'+esc(ENTS[id].name)+'</span>'
+        html += '<div class="det-row tri"><span class="fn">'+esc(ENTS[id].name)+'</span>'
           + '<span class="num dim" style="font-size:12px">'+(ent.total ? "OPERATES ENTERPRISE FUNDS" : "NO ENTERPRISE-FUND ACTIVITY")+'</span>'
           + '<span class="num" style="text-align:right">'+fmtM(ent.total||0)+' · '+fmtCap(perCap(ent.total||0,yr.population))+'/RES</span></div>';
       });

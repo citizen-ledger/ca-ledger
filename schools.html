@@ -146,8 +146,8 @@
   .integrity{border:1px solid var(--hairline);padding:12px 16px}
   .digest{font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--graphite);margin-top:6px}
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
-  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .det-row,.det-foot{grid-template-columns:1fr 110px} .det-row .bar{display:none} }
-  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} }
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .det-row,.det-foot{grid-template-columns:1fr 110px} .det-row .bar{display:none} .det-foot>span:empty{display:none} .det-foot .v{text-align:right} }
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} .record{padding:20px 16px 24px} .obj-panel{padding:8px 12px} }
 </style>
 </head>
 <body>
@@ -492,7 +492,7 @@
       + rows.map(([name, x, key]) =>
         '<div class="det-row click" role="button" tabindex="0" data-fn="'+key+'" '
         + 'aria-label="Show object detail for '+esc(name)+'"><span class="fn">'+esc(name)
-        + ' <i class="dim" style="font-style:normal;font-size:11px">'
+        + '&nbsp;<i class="dim" style="font-style:normal;font-size:11px">'
         + (S.openFn===key ? "▾" : "▸") + '</i></span>'
         + '<span class="bar"><i style="width:'+(Math.abs(x)/max*100).toFixed(1)+'%"></i></span>'
         + '<span class="v">'+fmtVal(x, v.ada)+'</span></div>'

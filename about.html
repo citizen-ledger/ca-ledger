@@ -62,8 +62,6 @@
   .src-row.hd{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;color:var(--smoke);padding:8px 0}
   .src-row .layer{font-weight:600}
   .src-row .mono-sm{font-family:var(--mono);font-size:11.5px;color:var(--graphite)}
-  @media(max-width:720px){ .src-row{grid-template-columns:1fr} h1{font-size:38px} main{padding:0 20px} header.hd,.prov{padding-left:20px;padding-right:20px} }
-
   .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:14px;line-height:1.65}
   .gatebox b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
   ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
@@ -71,6 +69,19 @@
   ul.plain li b{font-weight:600}
   .codebit{font-family:var(--mono);font-size:12px;background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
+
+  /* last in the sheet so phone-width rules win over the base rules above */
+  @media(max-width:720px){
+    .src-row{grid-template-columns:1fr;gap:8px 0} h1{font-size:38px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    /* single-column source table: the column headers vanish and each
+       cell carries its own label instead */
+    .src-row.hd{display:none}
+    .src-row>span:not(.layer)::before{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--smoke);margin-bottom:2px}
+    .src-row>span:nth-child(2)::before{content:"SOURCE"}
+    .src-row>span:nth-child(3)::before{content:"ACCOUNTING BASIS"}
+    .src-row>span:nth-child(4)::before{content:"UPDATES"}
+  }
 </style>
 </head>
 <body>
