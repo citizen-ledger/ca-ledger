@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Citizen Ledger — About &amp; method</title>
 <meta name="description" content="A nonpartisan record of California government spending. What the Ledger is, where every figure comes from, how each one is verified, and what the site refuses to do.">
-<link rel="canonical" href="https://pkkjassistant-commits.github.io/ca-ledger/about.html">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/about.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Citizen Ledger">
 <meta property="og:title" content="Citizen Ledger — About &amp; method">
 <meta property="og:description" content="A nonpartisan record of California government spending. What the Ledger is, where every figure comes from, how each one is verified, and what the site refuses to do.">
-<meta property="og:url" content="https://pkkjassistant-commits.github.io/ca-ledger/about.html">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/about.html">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -175,7 +175,7 @@
   <p>This site's authentic figures are the ones whose SHA-256 digests match those published here and reproduce from the official sources via the pipelines in the repository. That is how a reader tells the real Ledger from an altered copy: a fork or mirror whose data files cannot reproduce these digests — checked with <span class="codebit">python3 pipeline/verify_digest.py &lt;file&gt;</span> — is not the authentic record, whatever it calls itself. The code and data below are free to reuse; the name is not: a fork may use both, but may not present itself as Citizen Ledger.</p>
 
   <h2 id="open">Open and reproducible</h2>
-  <p>The data files, the pipelines that build them, the pages, the verification tools, and the investigation documents that decided what to publish and what to refuse are all in one public repository. The split is deliberate: the <b>code</b> is open source under the Apache License 2.0 — fork it, adapt it, build another state's ledger with it; the <b>data</b> is CC0, public domain — cite freely, no permission needed; the <b>name</b> is neither — "Citizen Ledger" is not licensed for reuse, so a fork cannot present its own figures as this record (the Apache license's trademark exclusion, stated again in the repository's NOTICE file). Every citation the site produces carries its source, its accounting basis, its generation date, and a permalink that reproduces the exact view. The method documents — including the findings on <a href="docs/V4_VENDOR_FINDING.md">vendor data</a>, <a href="docs/V5_DISTRICTS_FINDING.md">special districts and schools</a>, <a href="docs/V6_ADDRESS_FINDING.md">address lookup</a>, and <a href="docs/V8_DEPTH_FINDING.md">drill-down depth</a> — record not just what the site does but why, so the reasoning can be checked along with the arithmetic. The security posture — what the static architecture eliminates, what risks remain, and how to report a problem — is documented in <a href="docs/SECURITY.md">docs/SECURITY.md</a>.</p>
+  <p>The data files, the pipelines that build them, the pages, the verification tools, and the investigation documents that decided what to publish and what to refuse are all in one repository, which will be public. The split is deliberate: the <b>code</b> is open source under the Apache License 2.0 — fork it, adapt it, build another state's ledger with it; the <b>data</b> is CC0, public domain — cite freely, no permission needed; the <b>name</b> is neither — "Citizen Ledger" is not licensed for reuse, so a fork cannot present its own figures as this record (the Apache license's trademark exclusion, stated again in the repository's NOTICE file). Every citation the site produces carries its source, its accounting basis, its generation date, and a permalink that reproduces the exact view. The method documents — including the findings on <a href="docs/V4_VENDOR_FINDING.md">vendor data</a>, <a href="docs/V5_DISTRICTS_FINDING.md">special districts and schools</a>, <a href="docs/V6_ADDRESS_FINDING.md">address lookup</a>, and <a href="docs/V8_DEPTH_FINDING.md">drill-down depth</a> — record not just what the site does but why, so the reasoning can be checked along with the arithmetic. The security posture — what the static architecture eliminates, what risks remain, and how to report a problem — is documented in <a href="docs/SECURITY.md">docs/SECURITY.md</a>.</p>
 </main>
 
 <footer class="ft">

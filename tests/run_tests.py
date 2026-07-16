@@ -1269,7 +1269,7 @@ def test_rename(page, base):
     # decides otherwise — the rename must NOT touch them
     for f in PAGES:
         src = (ROOT / f).read_text(encoding="utf-8")
-        expected = ("https://pkkjassistant-commits.github.io/ca-ledger/"
+        expected = ("https://citizen-ledger.github.io/ca-ledger/"
                     + ("" if f == "index.html" else f))
         check(f"rename {f}: canonical URL unchanged",
               f'rel="canonical" href="{expected}"' in src)
@@ -1859,7 +1859,7 @@ def test_frontdoor_about(page, base):
     check("about: known limits include lag and never-sum",
           "Actuals lag." in body and "Layers never sum." in body)
     check("about: open and reproducible stated",
-          "CC0" in body and "public repository" in body)
+          "CC0" in body and "repository, which will be public" in body)
     check("about: authenticity — digests distinguish the real record",
           "authentic figures are the ones whose sha-256 digests match"
           in body.lower() and "is not the authentic record" in body)
