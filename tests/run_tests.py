@@ -15,7 +15,7 @@ What it does
 - Serves the repository over HTTP under a **/ca-ledger/ subpath** (a
   temp dir with a symlink), mirroring the GitHub Pages layout, so the
   permalink/citation assertions prove URLs are derived from the served
-  location — i.e. they will emit the public URL when deployed.
+  location — i.e. in production they emit the public URL.
 - Loads data.js and city-data.js in Python and recomputes every
   expected number independently; assertions never trust the page's own
   arithmetic.
@@ -1859,7 +1859,7 @@ def test_frontdoor_about(page, base):
     check("about: known limits include lag and never-sum",
           "Actuals lag." in body and "Layers never sum." in body)
     check("about: open and reproducible stated",
-          "CC0" in body and "repository, which will be public" in body)
+          "CC0" in body and "all in one public repository" in body)
     check("about: authenticity — digests distinguish the real record",
           "authentic figures are the ones whose sha-256 digests match"
           in body.lower() and "is not the authentic record" in body)
