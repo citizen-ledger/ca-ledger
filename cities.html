@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Citizen Ledger — City spending</title>
+<title>Citizen Ledger — City &amp; county spending</title>
 <meta name="description" content="A nonpartisan record of California government spending. City and county spending by function from State Controller filings, side by side.">
 <link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/cities.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Citizen Ledger">
-<meta property="og:title" content="Citizen Ledger — City spending">
+<meta property="og:title" content="Citizen Ledger — City &amp; county spending">
 <meta property="og:description" content="A nonpartisan record of California government spending. City and county spending by function from State Controller filings, side by side.">
 <meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/cities.html">
 <meta name="twitter:card" content="summary">
@@ -226,7 +226,7 @@
   <div class="hero">
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
-      <h1>City spending</h1>
+      <h1 id="pageTitle">City spending</h1>
       <p class="dek" id="dek"></p>
     </div>
     <div class="hero-right">
@@ -340,7 +340,7 @@
         <div class="integrity">
           <div class="microlbl">RECORD INTEGRITY</div>
           <div class="digest" id="integrityDigest"></div>
-          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="city-data.js" download>city-data.js</a> and run <span class="mono" style="font-size:11.5px">python3 pipeline/verify_digest.py city-data.js</span> from the repository — it recomputes the SHA-256 of the canonical JSON payload, which must match the digest above. A record you can check is a record you can trust.</div>
+          <div style="font-size:12.5px;line-height:1.55;color:var(--graphite);margin-top:8px">Verify independently: download <a href="city-data.js" download id="verifyFile">city-data.js</a> and run <span class="mono" style="font-size:11.5px" id="verifyCmd">python3 pipeline/verify_digest.py city-data.js</span> from the repository — it recomputes the SHA-256 of the canonical JSON payload, which must match the digest above. A record you can check is a record you can trust.</div>
         </div>
         <div style="font-size:13.5px;line-height:1.55;color:var(--graphite)">Citation links reproduce the exact view — cities, fiscal year, and unit — of the person citing. Values are stated in millions of dollars.</div>
       </div>
@@ -528,6 +528,9 @@
     const searchBox = $("citySearch");
     searchBox.placeholder = "Search " + allIds.length + " " + LU.plural + "\u2026";
     searchBox.setAttribute("aria-label", "Search " + LU.plural);
+    const layerTitle = S.layer === "county" ? "County spending" : "City spending";
+    $("pageTitle").textContent = layerTitle;
+    document.title = "Citizen Ledger — " + layerTitle;
     $("dek").textContent = S.layer === "city"
       ? "Governmental-activities spending by function from the standardized annual reports all 482 California cities file with the State Controller. Cities appear alphabetically; the Ledger does not rank."
       : "Governmental-activities spending by function from the standardized annual reports California's 57 counties file with the State Controller (San Francisco files as a consolidated city and county — see the Cities layer). Counties appear alphabetically; the Ledger does not rank. Cities and counties are never compared to each other: their responsibilities overlap in population but not in kind.";
@@ -535,7 +538,7 @@
     if (sel.length){
       const popSum = sel.reduce((s,id)=>s+cityYear(id,S.year).population,0);
       $("heroNum").textContent = sel.length===1 ? dispName(sel[0]) : sel.length + " " + LU.plural.toUpperCase();
-      $("heroSub").textContent = "COMBINED POPULATION " + fmtPop(popSum);
+      $("heroSub").textContent = (sel.length === 1 ? "POPULATION " : "COMBINED POPULATION ") + fmtPop(popSum);
     } else {
       $("heroNum").textContent = allIds.length + " " + LU.plural.toUpperCase();
       $("heroSub").textContent = "SELECT " + LU.plural.toUpperCase() + " TO OPEN THE RECORD";
@@ -549,6 +552,12 @@
     $("integrityDigest").textContent = integ.digest
       ? "SHA-256 · " + integ.digest + " (" + dataFile + ")"
       : "No digest recorded — regenerate " + dataFile + " with the pipeline.";
+    // the verify recipe must name the same file whose digest is shown —
+    // on the county layer a reader following it would otherwise verify
+    // the wrong record and conclude the check fails
+    $("verifyFile").setAttribute("href", dataFile);
+    $("verifyFile").textContent = dataFile;
+    $("verifyCmd").textContent = "python3 pipeline/verify_digest.py " + dataFile;
     $("pickCount").textContent = S.sel.length + " SELECTED";
   }
 
@@ -959,7 +968,8 @@
       + '<span class="num" style="text-align:right">'+(S.unit==="percent"?"100.0%":fmtUnit(totU))+'</span><span></span></div>';
     const generalNotes = cityNotes(id).filter(n=>!["police","fire"].includes(n.key));
     generalNotes.forEach(n=>{ html += '<div class="note-row" style="border-bottom:none;background:transparent;padding-left:0">† '+esc(n.text)+'</div>'; });
-    html += '<div class="caps"><span>† SERVICE-STRUCTURE NOTE — CLICK TO EXPAND · SEE METHOD NOTE M-5</span><span>GOVERNMENTAL ACTIVITIES ONLY — ENTERPRISE FUNDS SHOWN BELOW</span></div>';
+    const hasDagger = html.indexOf('class="dagger"') !== -1 || html.indexOf('>† ') !== -1;
+    html += '<div class="caps"><span>' + (hasDagger ? '† SERVICE-STRUCTURE NOTE — CLICK TO EXPAND · SEE METHOD NOTE M-5' : '') + '</span><span>GOVERNMENTAL ACTIVITIES ONLY — ENTERPRISE FUNDS SHOWN BELOW</span></div>';
     html += "</div></div>";
     $("recordBody").innerHTML = html;
     wireDaggers($("recordBody"));
@@ -1022,7 +1032,8 @@
     sel.forEach(id=>cityNotes(id).forEach(n=>noteLines.push("<strong>"+esc(dispName(id))+":</strong> "+esc(n.text))));
     if (noteLines.length)
       html += noteLines.map(n=>'<div class="note-row" style="border-bottom:none;background:transparent;padding-left:0">† '+n+'</div>').join("");
-    html += '<div class="caps"><span>† SERVICE-STRUCTURE NOTE — SEE METHOD NOTE M-5</span><span>GOVERNMENTAL ACTIVITIES ONLY · BARS SHARE ONE SCALE ACROSS ALL CITIES AND FUNCTIONS</span></div>';
+    const cmpHasDagger = html.indexOf('class="dagger"') !== -1 || html.indexOf('>† ') !== -1;
+    html += '<div class="caps"><span>' + (cmpHasDagger ? '† SERVICE-STRUCTURE NOTE — SEE METHOD NOTE M-5' : '') + '</span><span>GOVERNMENTAL ACTIVITIES ONLY · BARS SHARE ONE SCALE ACROSS ALL CITIES AND FUNCTIONS</span></div>';
     html += "</div></div>";
     $("recordBody").innerHTML = html;
     wireDaggers($("recordBody"));

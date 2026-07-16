@@ -1,0 +1,355 @@
+{
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "cls": "btn",
+      "txt": "Saved views",
+      "id": "savedToggle"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn ink",
+      "txt": "Cite",
+      "id": "citeToggle"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn blue",
+      "txt": "Download CSV",
+      "id": "csvBtn"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "\u25c2",
+      "id": "yearPrev"
+    },
+    {
+      "tag": "SELECT",
+      "cls": "",
+      "txt": "FY 2020-21\nFY 2021-22\nFY 2022-23\nFY 2023-24\nFY 2024-25\nFY 20",
+      "id": "yearSel"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "\u25b8",
+      "id": "yearNext"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "on",
+      "txt": "Allocation",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "Change",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "Trend",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "Actuals",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "on",
+      "txt": "Dollars",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "Per resident",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "% of total",
+      "id": ""
+    },
+    {
+      "tag": "LABEL",
+      "cls": "switch",
+      "txt": "Federal funds: excluded",
+      "id": ""
+    },
+    {
+      "tag": "INPUT",
+      "cls": "",
+      "txt": "on",
+      "id": "fedToggle"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn ink",
+      "txt": "Copy",
+      "id": "citeCopy"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "xbtn",
+      "txt": "\u2715",
+      "id": "citeClose"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn ink",
+      "txt": "Save current view",
+      "id": "saveViewBtn"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "xbtn",
+      "txt": "\u2715",
+      "id": "savedClose"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "All agencies",
+      "id": "crumbRoot"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "Health and Human Services\n$133B",
+      "id": ""
+    },
+    {
+      "tag": "SPAN",
+      "cls": "seg-name",
+      "txt": "Health and Human Services",
+      "id": ""
+    },
+    {
+      "tag": "SPAN",
+      "cls": "seg-val",
+      "txt": "$133B",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "K thru 12 Education\n$82.2B",
+      "id": ""
+    },
+    {
+      "tag": "SPAN",
+      "cls": "seg-name",
+      "txt": "K thru 12 Education",
+      "id": ""
+    },
+    {
+      "tag": "SPAN",
+      "cls": "seg-val",
+      "txt": "$82.2B",
+      "id": ""
+    },
+    {
+      "tag": "DIV",
+      "cls": "viewrule",
+      "txt": "",
+      "id": ""
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "l",
+      "txt": "AGENCY",
+      "id": "hName"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "FY 2025-26 \u2193",
+      "id": "hValue"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "",
+      "txt": "\u0394 PRIOR YR",
+      "id": "hDelta"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "l",
+      "txt": "",
+      "id": "ahName"
+    }
+  ],
+  "facts": {
+    "h1": {
+      "selector": "h1",
+      "fontFamily": "Georgia, \"Times New Roman\", serif",
+      "fontSize": "58px",
+      "fontWeight": "400",
+      "letterSpacing": "-1.16px",
+      "textTransform": "none",
+      "color": "rgb(36, 36, 36)",
+      "sample": "State budget"
+    },
+    "h2": {
+      "selector": "h2",
+      "fontFamily": "Georgia, \"Times New Roman\", serif",
+      "fontSize": "30px",
+      "fontWeight": "400",
+      "letterSpacing": "-0.6px",
+      "textTransform": "none",
+      "color": "rgb(36, 36, 36)",
+      "sample": "Methodology"
+    },
+    "kicker": {
+      "selector": ".kicker",
+      "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+      "fontSize": "11px",
+      "fontWeight": "400",
+      "letterSpacing": "0.88px",
+      "textTransform": "none",
+      "color": "rgb(121, 119, 118)",
+      "sample": "THE PUBLIC RECORD \u00b7 FY 2025-26"
+    },
+    "schedlbl": {
+      "selector": ".schedlbl",
+      "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+      "fontSize": "11px",
+      "fontWeight": "400",
+      "letterSpacing": "0.88px",
+      "textTransform": "none",
+      "color": "rgb(121, 119, 118)",
+      "sample": "SCHEDULE 1 \u2014 APPROPRIATIONS BY AGENCY"
+    },
+    "microlbl": {
+      "selector": ".microlbl",
+      "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+      "fontSize": "10px",
+      "fontWeight": "400",
+      "letterSpacing": "1px",
+      "textTransform": "none",
+      "color": "rgb(121, 119, 118)",
+      "sample": "CITATION \u00b7 REPRODUCES THIS EXACT VIEW"
+    },
+    "body": {
+      "selector": "p",
+      "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+      "fontSize": "15px",
+      "fontWeight": "400",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "color": "rgb(78, 77, 77)",
+      "sample": "Citizen Ledger publishes the State of California's enacted budget and actual exp"
+    },
+    "num": {
+      "selector": ".num",
+      "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+      "fontSize": "13.5px",
+      "fontWeight": "400",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "color": "rgb(36, 36, 36)",
+      "sample": "$133B"
+    },
+    "mainMaxWidth": "1160px",
+    "mainSelector": "MAIN",
+    "heroMarginTop": "44px",
+    "heroClass": "hero",
+    "recordPadding": "26px 32px 32px",
+    "headerHeight": 179.75,
+    "footerText": "CITIZEN LEDGER \u00b7 PUBLIC RECORD\nDATA CC0 \u00b7 CITE FREELY",
+    "distinctFontSizes": [
+      "9.5px",
+      "10px",
+      "10.5px",
+      "11px",
+      "11.5px",
+      "12px",
+      "12.5px",
+      "13px",
+      "13.3333px",
+      "13.5px",
+      "14px",
+      "14.5px",
+      "15px",
+      "16px",
+      "20px",
+      "30px",
+      "34px",
+      "46px",
+      "58px"
+    ],
+    "distinctFontSizeCount": 19
+  },
+  "extra": {
+    "heroNum": {
+      "cls": "hero-num",
+      "fontFamily": "IBM Plex Mono",
+      "fontSize": "46px",
+      "fontWeight": "500"
+    },
+    "readout": {
+      "fontFamily": "IBM Plex Mono",
+      "fontSize": "12.5px",
+      "text": "TOTAL $321B 100.0% OF TOTAL $8,109 /RESIDENT \u25b2 7.8% VS PRIOR"
+    },
+    "ghostCap": {
+      "cls": "ghost-cap",
+      "fontSize": "9.5px",
+      "text": "\u25ad PRIOR-YEAR SHARE \u00b7 FY 2024-25"
+    },
+    "blueTextUsage": {
+      "count": 4,
+      "all_anchors": true,
+      "samples": [
+        "How every figure is verified \u2192",
+        "K-12 schools page",
+        "city view",
+        "data.js"
+      ]
+    },
+    "viewSegmentedControl": {
+      "fontFamily": "Helvetica Neue",
+      "fontSize": "12.5px",
+      "container": "pill",
+      "activeFill": "rgb(36,36,36)"
+    },
+    "filterInput": {
+      "fontFamily": "IBM Plex Mono",
+      "fontSize": "12.5px",
+      "borderRadius": "9999px",
+      "width": 199
+    },
+    "yearSelect": {
+      "appearance": "none",
+      "styled": true,
+      "fontFamily": "IBM Plex Mono"
+    },
+    "mobile390": {
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "drillPageHeightCSSpx": 10674
+    },
+    "fontSize13.3333px_owners": "unstyled BUTTON/INPUT defaults whose visible children are restyled (bar segment buttons, checkbox)",
+    "methodNoteDisplayOrder": [
+      "M-1",
+      "M-2",
+      "M-3",
+      "M-4",
+      "M-8",
+      "M-5",
+      "M-6"
+    ],
+    "schedule2InDrill": {
+      "caption": "SHARES OF THE DISPLAYED TOTAL",
+      "generalFund": "$228B \u00b7 71.1% (statewide) while displayed/hero total is $133B (HHS)"
+    }
+  }
+}
