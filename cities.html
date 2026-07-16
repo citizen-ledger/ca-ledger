@@ -451,10 +451,24 @@
     [["police","Police","lowPolice"],["fire","Fire","lowFire"]].forEach(([k,label,lowKey])=>{
       const svc = c.services && c.services[k];
       const low = yr.notes && yr.notes.includes(lowKey);
-      if (svc && svc.code && svc.code!=="A" && svc.code!=="B" && svc.label)
-        notes.push({key:k, text: label + " service " + svc.label + " (as reported to the State Controller for FY " + vin + ", the most recent services checklist published — arrangements may have changed since)."});
-      else if (low)
+      const zero = ((yr.byFunction||{})[k] || 0) === 0;
+      if (svc && svc.code && svc.code!=="A" && svc.code!=="B" && svc.label){
+        // a zero or near-zero figure is not "no spending" — the spending
+        // sits in the provider's record; say so on the face, county named
+        // where the checklist names the county
+        const dest = svc.code === "D"
+          ? "in " + (c.county || "the county") + " County's record, not the city's"
+          : "in the provider's record, not the city's";
+        notes.push({key:k, pinned: zero, text: label + " service is " + svc.label
+          + (zero || low ? " — that spending appears " + dest : "")
+          + " (FY " + vin + " services checklist, the most recent published — arrangements may have changed since)."});
+      } else if (zero){
+        notes.push({key:k, pinned: true, text: label + " expenditure is not reported in this "
+          + "city's filing for FY " + S.year + " — the Ledger cannot confirm from the services "
+          + "checklist how the service is provided, only that no spending appears here."});
+      } else if (low){
         notes.push({key:k, text:"Reports under $5 per resident of municipal " + k + " expenditure in FY " + S.year + "; the service may be provided or financed outside the city budget. This flag is a heuristic, not a survey."});
+      }
     });
     if (yr.notes && yr.notes.includes("bigSwing"))
       notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
@@ -902,7 +916,10 @@
         + '<span class="num" style="text-align:right">'+fmtUnit(u)+'</span>'
         + '<span class="num dim" style="text-align:right;font-size:12.5px">'+(yr.expenditures?(r.vM/yr.expenditures*100).toFixed(1):"0.0")+'%</span></div>';
       if (open && expandable) html += lineBlock(r.f.key);
-      if (S.openNote === id+":"+r.f.key) html += noteRowHtml();
+      const pinnedNote = cityNotes(id).find(n=>n.key===r.f.key && n.pinned);
+      if (pinnedNote)
+        html += '<div class="note-row">† '+esc(pinnedNote.text)+'</div>';
+      else if (S.openNote === id+":"+r.f.key) html += noteRowHtml();
     });
     const totU = S.unit==="percent" ? 100 : toUnit(yr.expenditures,yr);
     html += '<div class="det-foot"><span style="font-size:14px">Total governmental</span><span></span>'

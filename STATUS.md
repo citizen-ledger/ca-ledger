@@ -1385,6 +1385,43 @@ regenerated, digests untouched):
 
 Tests: **525 assertions, all passing** (515 + 10).
 
+## 2026-07-15 — Contract-service zeros explained on the face; near-zero fund sections collapse
+
+Both presentation/notes only — no figure changed, no data regenerated.
+
+- **Every zero police/fire cell now explains itself, pinned open.**
+  Audited first: 1,162 city-year cells show $0 police or fire in a
+  nonzero filing — 1,102 of them checklist-confirmed as externally
+  provided (fire: 675 special-district/other-agency, 325 code I, 64
+  county-contract; police: 5 county-contract), and 60 where the
+  FY 2015-16 checklist claims city provision yet the filing shows
+  zero. The dagger note previously existed but sat behind a click —
+  a $0 read as "spends nothing." Now: the note renders open under
+  the zero row (detail view), travels into comparison footnotes and
+  the address-view mini-record, and says where the money actually
+  is — county contracts name the county ("that spending appears in
+  Los Angeles County's record, not the city's"); other providers get
+  "the provider's record"; and the 60 checklist-contradicted zeros
+  get the honest fallback: "not reported in this city's filing — the
+  Ledger cannot confirm from the services checklist how the service
+  is provided," never implying zero spending. Boundary: the checklist
+  covers police and fire only; zeros in other functions (library,
+  parks) carry no provider data and stay unannotated rather than
+  guessed at.
+- **All-near-zero fund sections collapse to one line**: a department
+  whose whole state-funds side rounds under $0.5M (e.g. Community
+  Services & Development, essentially all-federal) now shows "State
+  funds: under $0.5M combined — this department is almost entirely
+  federally funded" instead of a $0M row list — still expandable to
+  the exact whole-dollar rows, still summing into the panel.
+
+One test-infrastructure fix while verifying: the V1 drill-readout
+assertion read a hover-driven readout while Chromium synthesized a
+hover over the re-rendered bar under the stationary pointer; the test
+now reads the readout at rest.
+
+Tests: **534 assertions, all passing** (525 + 9).
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run

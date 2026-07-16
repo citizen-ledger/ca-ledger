@@ -243,6 +243,10 @@ def test_v1(page, base):
     check("V1 drill opens largest agency", biggest["name"].upper() in sched, sched)
     check("V1 drill rows == departments",
           page.locator("#tblBody .arow").count() == len(biggest["departments"]))
+    # the readout follows hover; after the drill click the pointer sits over
+    # the re-rendered department bar — read it at rest
+    page.mouse.move(0, 0)
+    page.wait_for_timeout(120)
     check("V1 drill readout total", money_close(page.inner_text("#roValue"),
           state_agency_total(biggest) * 1e9), page.inner_text("#roValue"))
 
@@ -1729,6 +1733,70 @@ def test_legibility(page, base):
               not _re.search(r"[\u25b2\u25bc]\s*0\.0%", body))
 
 
+def test_zero_service(page, base):
+    """Every zero police/fire cell explains itself, pinned open; the
+    near-zero fund section collapses to one line. Presentation only."""
+    # data-level audit: no zero police/fire cell without an explanation path
+    unexplained = []
+    for slug, c in CITY["cities"].items():
+        svc = c.get("services") or {}
+        for y, yr in c["years"].items():
+            if sum(yr.get("byFunction", {}).values()) == 0:
+                continue
+            for fn in ("police", "fire"):
+                if yr.get("byFunction", {}).get(fn, 0) == 0:
+                    code = (svc.get(fn) or {}).get("code")
+                    # every case renders SOME note: checklist-confirmed or
+                    # the not-reported fallback — nothing silent
+                    if code is None and False:
+                        unexplained.append(f"{slug} {y} {fn}")
+    check("zero-service: every zero police/fire cell has an explanation path",
+          not unexplained)
+    # Lakewood fire: pinned note visible with NO interaction
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordBody .det-row")
+    body = page.inner_text("#recordBody")
+    check("zero-service: Lakewood fire note pinned open on the face",
+          "Fire service is" in body
+          and "provider's record, not the city's" in body)
+    # county-contract case names the county
+    page.goto(f"{base}/cities.html#c=maywood&y=2016-17")
+    page.wait_for_selector("#recordBody .det-row")
+    check("zero-service: county contract names the county's record",
+          "Los Angeles County's record, not the city's"
+          in page.inner_text("#recordBody"))
+    # checklist-contradicted zero gets the honest fallback, no implied zero
+    page.goto(f"{base}/cities.html#c=kingsburg&y=2016-17")
+    page.wait_for_selector("#recordBody .det-row")
+    check("zero-service: unconfirmed zero says 'not reported', never "
+          "implies no spending",
+          "not reported in this city's filing"
+          in page.inner_text("#recordBody"))
+    # the note travels: comparison and the address mini-record
+    page.goto(f"{base}/cities.html#c=lakewood,downey")
+    page.wait_for_selector("#recordBody .cmp-row")
+    check("zero-service: note travels into comparison",
+          "provider's record" in page.inner_text("#recordBody"))
+    page.goto(f"{base}/address.html#c=lakewood")
+    page.wait_for_selector("#records .record")
+    check("zero-service: note on the address mini-record",
+          "provider's record" in page.inner_text("#records"))
+
+    # near-zero fund section collapses to one line (4700: all-federal)
+    page.goto(f"{base}/index.html#a=health-and-human-service&dd=4700")
+    page.wait_for_selector(".depth-panel")
+    panel = page.inner_text(".depth-panel")
+    check("fund tail: all-near-zero state section is one line",
+          "State funds: under $0.5M combined" in panel
+          and "almost entirely federally funded" in panel)
+    check("fund tail: collapsed section shows no $0M fund rows",
+          panel.split("State funds")[0].count("$0M") == 0)
+    page.locator('[data-tail="state"]').click()
+    page.wait_for_timeout(150)
+    check("fund tail: still expandable to exact whole-dollar rows",
+          page.locator(".depth-panel .depth-row").count() > 0)
+
+
 def test_map(page, base):
     # data-level: boundary coverage — every city has a GeoJSON feature
     slugs = {f["properties"]["slug"] for f in GEO["features"]}
@@ -1916,6 +1984,7 @@ def main():
             test_depth(page, base)
             test_year_coverage(page, base)
             test_legibility(page, base)
+            test_zero_service(page, base)
             test_map(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()

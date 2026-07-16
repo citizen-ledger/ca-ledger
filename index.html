@@ -1178,6 +1178,19 @@
     const section = (funds, footLabel, tailKey) => {
       const main = funds.filter(f => Math.abs(f[2]) >= TAIL);
       const tail = funds.filter(f => Math.abs(f[2]) < TAIL);
+      // whole-section near-zero: one line, not a list of $0M rows
+      if (!main.length && Math.abs(funds.reduce((x,f)=>x+f[2],0)) < TAIL){
+        const combined = funds.reduce((x,f)=>x+f[2],0);
+        const open = S.fundTailOpen === tailKey;
+        const fedDominant = tailKey === "state" && fedK > 100 * Math.abs(combined) && fedK > 100000;
+        return '<div class="depth-foot click" role="button" tabindex="0" data-tail="'+tailKey+'"'
+          + ' aria-label="Show the individual funds">'
+          + '<span>'+footLabel.split(" (")[0]+': under $0.5M combined'
+          + (fedDominant ? ' — this department is almost entirely federally funded' : '')
+          + ' <i class="dim" style="font-style:normal;font-size:11px;font-weight:400">'+(open?"▾":"▸")+'</i></span>'
+          + '<span></span><span class="num">'+fmtK(combined)+'</span></div>'
+          + (open ? funds.map(f => fundRow(f, true)).join("") : "");
+      }
       let s = main.map(f => fundRow(f)).join("");
       if (tail.length === 1){
         s += fundRow(tail[0]);                 // a tail of one is just a row

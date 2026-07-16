@@ -566,9 +566,16 @@
     const vin = CITY.meta.servicesChecklistVintage;
     [["police","Police"],["fire","Fire"]].forEach(([k,label])=>{
       const svc = c.services && c.services[k];
+      const zero = ((yr.byFunction||{})[k] || 0) === 0;
       if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
-        notes.push(label + " service " + svc.label + " (FY " + vin
-          + " services checklist, the most recent published — arrangements may have changed).");
+        notes.push(label + " service is " + svc.label
+          + (zero ? (svc.code === "D"
+              ? " — that spending appears in " + c.county + " County's record below, not the city's"
+              : " — that spending appears in the provider's record, not the city's") : "")
+          + " (FY " + vin + " services checklist, the most recent published — arrangements may have changed).");
+      else if (zero)
+        notes.push(label + " expenditure is not reported in this city's filing — the Ledger "
+          + "cannot confirm from the services checklist how the service is provided.");
       else if (yr.notes && yr.notes.includes(k === "police" ? "lowPolice" : "lowFire"))
         notes.push("Reports under $5 per resident of municipal " + k
           + " expenditure; the service may be provided or financed outside the city budget "
