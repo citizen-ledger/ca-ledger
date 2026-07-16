@@ -1231,6 +1231,9 @@ def test_address(page, base):
     cf = page.evaluate(
         "JSON.stringify(window._clPinMap.getPaintProperty('cty-fill','fill-color'))")
     check("pin map: county fill stays uniform ink", cf == '"#242424"', cf)
+    check("pin map: OSM attribution control rendered (ODbL requires it)",
+          page.locator(".maplibregl-ctrl-attrib").count() >= 1
+          and "OpenStreetMap" in page.inner_text(".maplibregl-ctrl-attrib"))
 
     # ---- on-device fallback correctness (no network at all)
     page.goto(f"{base}/address.html")
@@ -1902,6 +1905,76 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_shell(page, base):
+    """The institutional shell: a 404 in the Ledger's own voice, a
+    steward line in every footer, system-colored identity assets, a
+    share card, and print styles that keep the figures."""
+    PAGES = ["index.html", "cities.html", "schools.html",
+             "districts.html", "address.html", "about.html"]
+    # ---- 404 page: served, on-voice, absolute links (GitHub Pages
+    # serves it at ANY missing depth, so relative links would break)
+    src404 = (ROOT / "404.html").read_text(encoding="utf-8")
+    check("shell 404: file exists at the publishing root", bool(src404))
+    page.goto(f"{base}/404.html")
+    body = page.inner_text("body")
+    check("shell 404: speaks in the record's voice",
+          "This page is not part of the record." in body)
+    check("shell 404: noindex", 'name="robots" content="noindex"' in src404)
+    doors = page.locator(".doors a")
+    check("shell 404: five doors offered", doors.count() == 5)
+    hrefs = [doors.nth(i).get_attribute("href") for i in range(doors.count())]
+    check("shell 404: every internal link absolute to /ca-ledger/",
+          all(h.startswith("/ca-ledger/") for h in hrefs), str(hrefs))
+    check("shell 404: no relative internal links anywhere",
+          'href="index.html' not in src404 and 'href="about.html' not in src404)
+    check("shell 404: wordmark and discipline line present",
+          page.inner_text(".wordmark") == "Citizen Ledger"
+          and "never concludes" in body)
+
+    # ---- footer steward line on every page
+    for f in PAGES:
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector("footer.ft")
+        ft = page.inner_text("footer.ft")
+        check(f"shell footer {f}: names the repository",
+              "GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER" in ft)
+        check(f"shell footer {f}: report-a-problem goes to issues",
+              page.locator('footer.ft a[href="https://github.com/citizen-ledger/ca-ledger/issues"]').count() == 1)
+        check(f"shell footer {f}: links About & method",
+              page.locator('footer.ft a[href="about.html"]').count() == 1)
+
+    # ---- identity assets in the system's own colors
+    fav = (ROOT / "favicon.svg").read_text(encoding="utf-8")
+    check("shell favicon: ink on parchment, abandoned palette gone",
+          "#242424" in fav and "#f6f3f1" in fav
+          and "#1B6B52" not in fav and "#A8842B" not in fav)
+    for asset in ("favicon.ico", "apple-touch-icon.png",
+                  "favicon-192.png", "favicon-512.png", "og-card.png"):
+        check(f"shell asset exists: {asset}",
+              (ROOT / asset).exists() and (ROOT / asset).stat().st_size > 1000)
+    with open(ROOT / "og-card.png", "rb") as fh:
+        fh.read(16)
+        import struct as _struct
+        w, h = _struct.unpack(">II", fh.read(8))
+    check("shell og-card: 1200x630", (w, h) == (1200, 630), f"{w}x{h}")
+
+    # ---- head wiring + print fidelity on every page
+    for f in PAGES:
+        src = (ROOT / f).read_text(encoding="utf-8")
+        check(f"shell head {f}: ico and apple-touch linked",
+              'href="favicon.ico"' in src and 'href="apple-touch-icon.png"' in src)
+        check(f"shell head {f}: og:image share card",
+              "og-card.png" in src and 'content="summary_large_image"' in src)
+        check(f"shell print {f}: figures survive printing",
+              "print-color-adjust:exact" in src)
+    # the pin map must attribute its data (ODbL); asserted at runtime in
+    # the map test — here, the source must never disable attribution
+    asrc = (ROOT / "address.html").read_text(encoding="utf-8")
+    check("shell attribution: pin map never disables attribution",
+          "attributionControl: false" not in asrc
+          and "OpenStreetMap contributors" in asrc)
+
+
 def test_precision(page, base):
     """Precision defects: the record must never contradict itself.
     Layer-aware titles; a verify recipe naming the file whose digest is
@@ -2276,6 +2349,7 @@ def main():
             test_map(page, base)
             test_mobile(browser, base)
             test_precision(page, base)
+            test_shell(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()
