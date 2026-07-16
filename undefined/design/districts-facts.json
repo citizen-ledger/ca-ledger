@@ -1,0 +1,308 @@
+{
+  "exe": "/Users/clawd/Library/Caches/ms-playwright/chromium_headless_shell-1217/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+  "url": "https://citizen-ledger.github.io/ca-ledger/districts.html",
+  "desktop_1280": {
+    "top": {
+      "h1": {
+        "fontFamily": "Georgia, \"Times New Roman\", serif",
+        "fontSize": "58px",
+        "fontWeight": "400",
+        "letterSpacing": "-1.16px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "h2": {
+        "fontFamily": "Georgia, \"Times New Roman\", serif",
+        "fontSize": "28px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "kicker": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "0.88px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "schedlbl": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "0.88px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "microlbl": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "10px",
+        "fontWeight": "400",
+        "letterSpacing": "1px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "body": {
+        "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+        "fontSize": "15px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "stat_v": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "38px",
+        "fontWeight": "500",
+        "letterSpacing": "-0.6px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "yr_row": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "12.5px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "dir_row_name": {
+        "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+        "fontSize": "13.5px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "fstrip": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "letterSpacing": "4.2px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "tierband": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11.5px",
+        "fontWeight": "400",
+        "letterSpacing": "0.23px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "caveat": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "mainMaxWidth": "1160px",
+      "heroMarginTop": "44px",
+      "recordPadding": "26px 32px 32px",
+      "headerHeight": 130.75,
+      "tierbandHeight": 58.625,
+      "footerText": "CITIZEN LEDGER \u00b7 PUBLIC RECORD\nDATA CC0 \u00b7 CITE FREELY",
+      "tierbandText": "THIS LAYER IS AS FILED \u2014 UNRECONCILED. NO CONTROL-TOTAL DATASET EXISTS FOR SPECIAL DISTRICTS, SO NOTHING ON THIS PAGE CAN PASS THE RECONCILIATION GATE EVERY STATE, CITY, AND COUNTY FIGURE ON THIS SITE PASSES. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.",
+      "provText": "SOURCE: STATE CONTROLLER \u00b7 BYTHENUMBERS.SCO.CA.GOV\nBASIS: AS FILED \u00b7 UNRECONCILED\nGENERATED: 2026-07-13\nPUBLIC RECORD",
+      "heroNum": "5,239",
+      "heroSub": "DISTRICTS ON RECORD \u00b7 FY 2016-17 TO 2023-24",
+      "dirCount": "5,239 DISTRICTS ON RECORD \u00b7 SHOWING FIRST 60 ALPHABETICALLY \u2014 SEARCH TO NARROW",
+      "dirLegend": "FILING RECORD, FY 2016-17 \u2192 2023-24 \u00b7 F FILED \u00b7 L FILED LATE (SCO LIST) \u00b7 M DID NOT FILE (SCO LIST) \u00b7 \u2013 NO FILING ON RECORD \u00b7 NO LATE/FAILED LIST WAS PUBLISHED FOR 2016-17 OR 2017-18",
+      "searchPlaceholder": "Search 5,239 districts\u2026",
+      "distinctFontSizes": [
+        "9.5px",
+        "10px",
+        "10.5px",
+        "11px",
+        "11.5px",
+        "12px",
+        "12.5px",
+        "13px",
+        "13.5px",
+        "14.5px",
+        "15px",
+        "20px",
+        "28px",
+        "38px",
+        "46px",
+        "58px"
+      ],
+      "distinctFontSizeCount": 16,
+      "docHeight": 6335,
+      "docScrollWidth": 1280,
+      "innerWidth": 1280
+    },
+    "directory": {
+      "dirCount": "717 OF 5,239 DISTRICTS MATCH \u00b7 SHOWING FIRST 60",
+      "rowCount": 60,
+      "firstRowText": "4-E Water District\nCalifornia Water \u00b7 Glenn \u00b7 Independent\nFFFF\u2013\u2013\u2013L\nSCO \u2197",
+      "rowHeight": 41
+    },
+    "record": {
+      "recTitle": "Adelanto Public Financing Authority",
+      "recMeta": "Joint Powers Authority (JPA) \u00b7 San Bernardino County \u00b7 Joint Powers Authority (JPA) \u00b7 This district\u2019s filing at the State Controller \u2197",
+      "recFilings": "FILING RECORD: 2016-17 FILED \u00b7 2017-18 FILED \u00b7 2018-19 FILED LATE \u00b7 2019-20 FILED LATE \u00b7 2020-21 FILED LATE \u00b7 2021-22 FILED LATE \u00b7 2022-23 FILED LATE \u00b7 2023-24 FILED LATE",
+      "caveatText": "As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.",
+      "citeText": "Citizen Ledger, \"Special Districts \u2014 As Filed: Adelanto Public Financing Authority, FY 2023-24 (unreconciled).\" Adelanto Public Financing Authority (San Bernardino County), Joint Powers Authority (JPA), Joint Powers Authority (JPA). FY 2023-24 expenditures as filed: governmental $3,195,950, enterprise $0. As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure. Source: California State Controller, bythenumbers.sco.ca.gov (m9u3-wdam / nkv3-m73r). Generated 2026-07-13. Permalink: https://citizen-ledger.github.io/ca-ledger/districts.html#d=adelanto-public-financing-authority",
+      "recordBorder": "1px dashed rgb(78, 77, 77)",
+      "recordPadding": "26px 32px 32px",
+      "uRowCount": 18,
+      "expTblFirstRows": [
+        "EXPENDITURES \u2014 AS-FILED DOLLARS",
+        "FY",
+        "GOVERNMENTAL",
+        "ENTERPRISE",
+        "INTERNAL SERVICE",
+        "CONDUIT FINANCING",
+        "STATUS",
+        "2016-17"
+      ],
+      "recVisibleTop": 5224.203125,
+      "scrollWidth": 1280,
+      "innerWidth": 1280
+    }
+  },
+  "mobile_390": {
+    "top": {
+      "h1": {
+        "fontFamily": "Georgia, \"Times New Roman\", serif",
+        "fontSize": "40px",
+        "fontWeight": "400",
+        "letterSpacing": "-1.16px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "h2": {
+        "fontFamily": "Georgia, \"Times New Roman\", serif",
+        "fontSize": "28px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "kicker": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "0.88px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "schedlbl": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "0.88px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "microlbl": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "10px",
+        "fontWeight": "400",
+        "letterSpacing": "1px",
+        "color": "rgb(121, 119, 118)"
+      },
+      "body": {
+        "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+        "fontSize": "15px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "stat_v": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "38px",
+        "fontWeight": "500",
+        "letterSpacing": "-0.6px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "yr_row": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "dir_row_name": {
+        "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+        "fontSize": "13.5px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "fstrip": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11px",
+        "fontWeight": "400",
+        "letterSpacing": "2.86px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "tierband": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "11.5px",
+        "fontWeight": "400",
+        "letterSpacing": "0.23px",
+        "color": "rgb(36, 36, 36)"
+      },
+      "caveat": {
+        "fontFamily": "\"IBM Plex Mono\", ui-monospace, Menlo, monospace",
+        "fontSize": "12px",
+        "fontWeight": "400",
+        "letterSpacing": "normal",
+        "color": "rgb(36, 36, 36)"
+      },
+      "mainMaxWidth": "1160px",
+      "heroMarginTop": "44px",
+      "recordPadding": "20px 16px 24px",
+      "headerHeight": 245,
+      "tierbandHeight": 147.6875,
+      "footerText": "CITIZEN LEDGER \u00b7 PUBLIC RECORD\nDATA CC0 \u00b7 CITE FREELY",
+      "tierbandText": "THIS LAYER IS AS FILED \u2014 UNRECONCILED. NO CONTROL-TOTAL DATASET EXISTS FOR SPECIAL DISTRICTS, SO NOTHING ON THIS PAGE CAN PASS THE RECONCILIATION GATE EVERY STATE, CITY, AND COUNTY FIGURE ON THIS SITE PASSES. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.",
+      "provText": "SOURCE: STATE CONTROLLER \u00b7 BYTHENUMBERS.SCO.CA.GOV\nBASIS: AS FILED \u00b7 UNRECONCILED\nGENERATED: 2026-07-13\nPUBLIC RECORD",
+      "heroNum": "5,239",
+      "heroSub": "DISTRICTS ON RECORD \u00b7 FY 2016-17 TO 2023-24",
+      "dirCount": "5,239 DISTRICTS ON RECORD \u00b7 SHOWING FIRST 60 ALPHABETICALLY \u2014 SEARCH TO NARROW",
+      "dirLegend": "FILING RECORD, FY 2016-17 \u2192 2023-24 \u00b7 F FILED \u00b7 L FILED LATE (SCO LIST) \u00b7 M DID NOT FILE (SCO LIST) \u00b7 \u2013 NO FILING ON RECORD \u00b7 NO LATE/FAILED LIST WAS PUBLISHED FOR 2016-17 OR 2017-18",
+      "searchPlaceholder": "Search 5,239 districts\u2026",
+      "distinctFontSizes": [
+        "9.5px",
+        "10px",
+        "10.5px",
+        "11px",
+        "11.5px",
+        "12px",
+        "12.5px",
+        "13px",
+        "13.5px",
+        "14.5px",
+        "15px",
+        "20px",
+        "28px",
+        "34px",
+        "38px",
+        "40px"
+      ],
+      "distinctFontSizeCount": 16,
+      "docHeight": 10701,
+      "docScrollWidth": 390,
+      "innerWidth": 390
+    },
+    "directory": {
+      "dirCount": "717 OF 5,239 DISTRICTS MATCH \u00b7 SHOWING FIRST 60",
+      "rowCount": 60,
+      "firstRowText": "4-E Water District\nFFFF\u2013\u2013\u2013L\nSCO \u2197",
+      "rowHeight": 57.5
+    },
+    "record": {
+      "recTitle": "Adelanto Public Financing Authority",
+      "recMeta": "Joint Powers Authority (JPA) \u00b7 San Bernardino County \u00b7 Joint Powers Authority (JPA) \u00b7 This district\u2019s filing at the State Controller \u2197",
+      "recFilings": "FILING RECORD: 2016-17 FILED \u00b7 2017-18 FILED \u00b7 2018-19 FILED LATE \u00b7 2019-20 FILED LATE \u00b7 2020-21 FILED LATE \u00b7 2021-22 FILED LATE \u00b7 2022-23 FILED LATE \u00b7 2023-24 FILED LATE",
+      "caveatText": "As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.",
+      "citeText": "Citizen Ledger, \"Special Districts \u2014 As Filed: Adelanto Public Financing Authority, FY 2023-24 (unreconciled).\" Adelanto Public Financing Authority (San Bernardino County), Joint Powers Authority (JPA), Joint Powers Authority (JPA). FY 2023-24 expenditures as filed: governmental $3,195,950, enterprise $0. As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure. Source: California State Controller, bythenumbers.sco.ca.gov (m9u3-wdam / nkv3-m73r). Generated 2026-07-13. Permalink: https://citizen-ledger.github.io/ca-ledger/districts.html#d=adelanto-public-financing-authority",
+      "recordBorder": "1px dashed rgb(78, 77, 77)",
+      "recordPadding": "20px 16px 24px",
+      "uRowCount": 18,
+      "expTblFirstRows": [
+        "EXPENDITURES \u2014 AS-FILED DOLLARS",
+        "FY",
+        "GOVERNMENTAL",
+        "ENTERPRISE",
+        "INTERNAL SERVICE",
+        "CONDUIT FINANCING",
+        "2016-17",
+        "$3,863,398"
+      ],
+      "recVisibleTop": 8096.734375,
+      "scrollWidth": 390,
+      "innerWidth": 390
+    }
+  }
+}

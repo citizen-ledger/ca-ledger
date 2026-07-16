@@ -186,7 +186,7 @@
     <div class="hero-right">
       <div class="hero-num" id="heroNum">—</div>
       <div class="hero-sub" id="heroSub"></div>
-      <div class="hero-lbl">SACS UNAUDITED ACTUALS · GATED TO CDE'S PUBLISHED FIGURES</div>
+      <div class="hero-lbl" id="heroLbl">SACS UNAUDITED ACTUALS · GATED TO CDE'S PUBLISHED FIGURES</div>
     </div>
   </div>
 
@@ -383,6 +383,14 @@
       + " " + T.label.toLowerCase() + "…";
     $("coeStatement").hidden = S.type !== "coes";
     $("charterStatement").hidden = S.type !== "charters";
+    // the hero subline must state each tier's own gate, matching the
+    // record card — only districts are gated to a published per-entity
+    // figure; the other tiers reconcile through rollups and totals
+    $("heroLbl").textContent = S.type === "districts"
+      ? "SACS UNAUDITED ACTUALS · GATED TO CDE'S PUBLISHED FIGURES"
+      : S.type === "coes"
+        ? "SACS UNAUDITED ACTUALS · RECONCILES THROUGH CDE'S PUBLISHED ROLLUPS"
+        : "SACS & ALTERNATIVE-FORM ACTUALS · RECONCILES THROUGH PUBLISHED ROLLUPS AND TOTALS";
     $("revLog").innerHTML = YEARS.slice().reverse().map(y=>"FY "+y+" · UNAUDITED ACTUALS · GATED").join("<br>")
       + "<br>GENERATED " + esc(D.meta.generated);
     const integ = D.meta.integrity || {};

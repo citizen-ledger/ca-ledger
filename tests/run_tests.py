@@ -1088,6 +1088,9 @@ def test_address(page, base):
     check("address schools: does-not-add extended with the live share",
           sch_share in page.inner_text("#noSum")
           and "school district figures do not add" in page.inner_text("#noSum").lower())
+    check("address schools: overlap points at the state record ABOVE it",
+          "state record above" in page.inner_text("#noSum")
+          and "state record below" not in page.inner_text("#noSum"))
     check("address schools: share not hardcoded in source", sch_share not in asrc)
     page.click("#citeBtn")
     cite = page.inner_text("#citeText")
@@ -1242,7 +1245,7 @@ def test_address(page, base):
 
 def test_rename(page, base):
     TAG = "A nonpartisan record of California government spending"
-    PAGES = {"index.html": "State budget", "cities.html": "City spending",
+    PAGES = {"index.html": "State budget", "cities.html": "City & county spending",
              "districts.html": "Special districts",
              "address.html": "Your governments",
              "about.html": "About & method"}
@@ -1899,6 +1902,126 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_precision(page, base):
+    """Precision defects: the record must never contradict itself.
+    Layer-aware titles; a verify recipe naming the file whose digest is
+    shown; tier-true schools sublines; a qualified about strip; singular
+    population labels; the dagger legend only where a dagger exists;
+    citation permalinks landing on the record; no duplicated
+    activity/type strings."""
+    # ---- cities.html, city layer: chrome + verify recipe
+    page.goto(f"{base}/cities.html")
+    page.wait_for_selector("#pageTitle")
+    check("precision: city layer h1 reads City spending",
+          page.inner_text("#pageTitle") == "City spending")
+    check("precision: city layer document.title is layer-aware",
+          page.evaluate("document.title") == "Citizen Ledger — City spending")
+    check("precision: city layer verify recipe names city-data.js",
+          page.inner_text("#verifyCmd").strip().endswith("city-data.js")
+          and page.get_attribute("#verifyFile", "href") == "city-data.js"
+          and page.inner_text("#verifyFile") == "city-data.js")
+    # ---- county layer (full navigation via another page, not a hash hop)
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#l=county")
+    page.wait_for_selector("#pageTitle")
+    check("precision: county layer h1 reads County spending",
+          page.inner_text("#pageTitle") == "County spending")
+    check("precision: county layer document.title is layer-aware",
+          page.evaluate("document.title") == "Citizen Ledger — County spending")
+    check("precision: county layer verify recipe names county-data.js",
+          page.inner_text("#verifyCmd").strip().endswith("county-data.js")
+          and page.get_attribute("#verifyFile", "href") == "county-data.js"
+          and page.inner_text("#verifyFile") == "county-data.js")
+    check("precision: county digest and verify recipe agree on the file",
+          "county-data.js" in page.inner_text("#integrityDigest"))
+    # switching layers in-page must retarget the recipe too
+    page.click('#layerGroup [data-layer="city"]')
+    page.wait_for_timeout(300)
+    check("precision: layer toggle retargets title and recipe",
+          page.inner_text("#pageTitle") == "City spending"
+          and page.inner_text("#verifyFile") == "city-data.js")
+
+    # ---- population label: singular vs combined
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#c=los-angeles")
+    page.wait_for_selector("#recordBody .det-row")
+    check("precision: one city is POPULATION, not COMBINED",
+          page.inner_text("#heroSub").startswith("POPULATION ")
+          and "COMBINED" not in page.inner_text("#heroSub"))
+    # dagger legend agrees with dagger presence (LA record)
+    legend_ok = page.evaluate("""() => {
+      const caps = document.querySelector('#recordBody .caps span');
+      const legend = caps.textContent.includes('SERVICE-STRUCTURE');
+      const body = document.querySelector('#recordBody');
+      const symbol = !!body.querySelector('.dagger')
+        || body.innerHTML.includes('>\\u2020 ');
+      return legend === symbol;
+    }""")
+    check("precision: dagger legend only when a dagger exists (LA)", legend_ok)
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordBody .det-row")
+    both = page.evaluate("""() => {
+      const caps = document.querySelector('#recordBody .caps span');
+      const body = document.querySelector('#recordBody');
+      return caps.textContent.includes('SERVICE-STRUCTURE')
+        && (!!body.querySelector('.dagger') || body.innerHTML.includes('>\\u2020 '));
+    }""")
+    check("precision: Lakewood keeps both its daggers and the legend", both)
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#c=lakewood,san-francisco,santa-monica")
+    page.wait_for_selector("#recordBody .cmp-row")
+    check("precision: multiple cities keep COMBINED POPULATION",
+          page.inner_text("#heroSub").startswith("COMBINED POPULATION "))
+
+    # ---- schools: tier-aware hero subline
+    page.goto(f"{base}/schools.html")
+    page.wait_for_selector("#heroLbl")
+    check("precision: districts subline states the per-entity gate",
+          "GATED TO CDE'S PUBLISHED FIGURES" in page.inner_text("#heroLbl"))
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/schools.html#t=coes&c=alameda-county-office-of-education")
+    page.wait_for_selector("#heroLbl")
+    check("precision: COE subline claims rollups, not a per-entity gate",
+          "ROLLUPS" in page.inner_text("#heroLbl")
+          and "GATED TO CDE'S PUBLISHED FIGURES" not in page.inner_text("#heroLbl"))
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/schools.html#t=charters&c=able-charter")
+    page.wait_for_selector("#heroLbl")
+    check("precision: charter subline claims rollups and totals",
+          "ROLLUPS AND TOTALS" in page.inner_text("#heroLbl")
+          and "GATED TO CDE'S PUBLISHED FIGURES" not in page.inner_text("#heroLbl"))
+
+    # ---- about strip: no blanket reconciliation claim
+    page.goto(f"{base}/about.html")
+    strip = page.inner_text(".prov")
+    check("precision: about strip qualifies the as-filed layer",
+          "SPECIAL DISTRICTS AS FILED" in strip)
+
+    # ---- districts: permalink lands on the record; no activity/type echo
+    page.goto(f"{base}/districts.html#d=adelanto-public-financing-authority")
+    page.wait_for_selector("#recMeta")
+    page.wait_for_timeout(300)
+    check("precision: citation permalink scrolls to the cited record",
+          page.evaluate("window.scrollY") > 1000,
+          f"scrollY {page.evaluate('window.scrollY')}")
+    dup = next((slug for slug, r in DIST["districts"].items()
+                if r.get("activity") and r.get("activity") == r.get("type")), None)
+    check("precision: a district with activity == type exists to test", bool(dup))
+    if dup:
+        page.goto(f"{base}/about.html")
+        page.goto(f"{base}/districts.html#d={dup}")
+        page.wait_for_selector("#recMeta")
+        rec = DIST["districts"][dup]
+        meta = page.inner_text("#recMeta")
+        check("precision: record meta prints activity/type once",
+              meta.count(rec["type"]) == 1, meta)
+        page.click("#citeBtn")
+        cite = page.inner_text("#citeText")
+        check("precision: citation prints activity/type once",
+              cite.count(rec["type"]) == 1, cite)
+
+
 def test_mobile(browser, base):
     """Phone-width guard (360px): no page-level horizontal scroll on any
     page, and every figure in a drill-down or record row sits inside the
@@ -2152,6 +2275,7 @@ def main():
             test_frontdoor_about(page, base)
             test_map(page, base)
             test_mobile(browser, base)
+            test_precision(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

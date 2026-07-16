@@ -426,7 +426,7 @@
       const r = D.districts[slug];
       return '<li class="dir-row">'
         + '<button class="nm" data-d="'+slug+'">'+esc(r.name)+'</button>'
-        + '<span class="meta meta2">'+esc(r.activity || "—")+' · '+esc(r.county || "—")+' · '+esc(r.type)+'</span>'
+        + '<span class="meta meta2">'+(r.activity === r.type ? '' : esc(r.activity || "—")+' · ')+esc(r.county || "—")+' · '+esc(r.type)+'</span>'
         + '<span class="fstrip" title="'+YEARS.map((y,i)=>y+": "+STATUS_WORD[r.filings[i]]).join(" · ")+'">'
         + r.filings.replace(/-/g,"–")+'</span>'
         + '<a class="ext" href="'+scoUrl(r)+'" target="_blank" rel="noopener">SCO ↗</a>'
@@ -447,7 +447,7 @@
     const r = D.districts[S.d];
     sec.hidden = false;
     $("recTitle").textContent = r.name;
-    $("recMeta").textContent = (r.activity ? r.activity + " · " : "") + (r.county ? r.county + " County · " : "")
+    $("recMeta").textContent = (r.activity && r.activity !== r.type ? r.activity + " · " : "") + (r.county ? r.county + " County · " : "")
       + r.type + " · ";
     $("recMeta").insertAdjacentHTML("beforeend",
       '<a href="'+scoUrl(r)+'" target="_blank" rel="noopener">This district’s filing at the State Controller ↗</a>');
@@ -485,7 +485,7 @@
       + ', FY ' + (i >= 0 ? YEARS[i] : YEARS[0] + " to " + YEARS[YEARS.length-1])
       + ' (unreconciled)." '
       + r.name + (r.county ? " (" + r.county + " County)" : "") + ", " + r.type
-      + (r.activity ? ", " + r.activity : "") + ". " + figure
+      + (r.activity && r.activity !== r.type ? ", " + r.activity : "") + ". " + figure
       + CAVEAT + " Source: California State Controller, bythenumbers.sco.ca.gov ("
       + D.meta.datasets.expenditures + " / " + D.meta.datasets.revenues + "). Generated "
       + D.meta.generated + ". Permalink: " + location.href;
@@ -495,7 +495,7 @@
     const lines = [
       "# Citizen Ledger — Special districts, as filed",
       "# District: " + r.name + (r.county ? " (" + r.county + " County)" : "")
-        + " · " + r.type + (r.activity ? " · " + r.activity : ""),
+        + " · " + r.type + (r.activity && r.activity !== r.type ? " · " + r.activity : ""),
       "# " + CAVEAT,
       "# No per-resident figures exist for this layer: special districts have no resident denominator.",
       "# Units: as-filed dollars. Source: bythenumbers.sco.ca.gov ("
@@ -549,6 +549,9 @@
   $("dirSearch").value = S.q;
   renderDirectory();
   renderRecord();
+  // a citation permalink must land ON the cited record, exactly as a
+  // click does — instant, like an anchor, not smooth
+  if (S.d) $("recordSec").scrollIntoView({block:"start"});
   $("printCite").textContent = "Citizen Ledger — Special districts, as filed (unreconciled). "
     + CAVEAT + " Source: bythenumbers.sco.ca.gov. Generated " + D.meta.generated + ".";
 })();
