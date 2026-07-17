@@ -1268,8 +1268,9 @@ def test_rename(page, base):
         page.wait_for_selector(".wordmark")
         check(f"rename {f}: wordmark reads Citizen Ledger",
               page.inner_text(".wordmark") == "Citizen Ledger")
-        check(f"rename {f}: tagline appears with the wordmark",
-              TAG in page.inner_text(".brand"))
+        check(f"rename {f}: scope line appears with the wordmark",
+              "State budget · cities & counties · K-12 schools · special districts"
+              in page.inner_text(".brand"))
         body = page.inner_text("body")
         check(f"rename {f}: footer renamed, old name never rendered",
               "CITIZEN LEDGER · PUBLIC RECORD" in body
@@ -1909,6 +1910,83 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_polish(page, base):
+    """Design polish: the phone front door orients within ~250px, the
+    header is one component on every page, the masthead statement owns
+    its band, Download CSV wears the outline vocabulary, and the type
+    scale is declared tokens rather than half-pixel drift."""
+    PAGES = ["index.html", "cities.html", "schools.html",
+             "districts.html", "address.html", "about.html"]
+    # phone front door: statement within the first screen's ~250px
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector(".fd-statement")
+    top = page.evaluate(
+        "document.querySelector('.fd-statement').getBoundingClientRect().top")
+    check("polish: masthead statement within ~250px at 390",
+          top <= 260, f"top {top}")
+    cols = page.evaluate(
+        "getComputedStyle(document.querySelector('nav.pn'))"
+        ".gridTemplateColumns.split(' ').length")
+    check("polish: phone nav is a two-column grid", cols == 2, str(cols))
+    prov_h = page.evaluate(
+        "document.querySelector('.prov').getBoundingClientRect().height")
+    check("polish: phone provenance strip is one line",
+          prov_h < 40, f"h {prov_h}")
+    page.set_viewport_size({"width": 1280, "height": 720})
+
+    # one header everywhere: identical nav on all six pages
+    navs = set()
+    for f in PAGES:
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector("nav.pn")
+        navs.add(page.inner_text("nav.pn").strip())
+    check("polish: the nav reads identically on every page",
+          len(navs) == 1, str([n.replace(chr(10), ' | ') for n in navs])[:200])
+
+    # masthead hierarchy: the statement owns its band; no header echo
+    page.goto(f"{base}/index.html")
+    st = page.evaluate(
+        "getComputedStyle(document.querySelector('.fd-statement')).fontSize")
+    check("polish: statement at display size", st == "52px", st)
+    check("polish: tagline and statement say different things",
+          page.inner_text(".tagline").strip()
+          != page.inner_text(".fd-statement").strip().rstrip("."))
+
+    # blue is disciplined: no solid-blue Download CSV anywhere
+    for f, sel_state in (("index.html", None),
+                         ("cities.html#c=los-angeles", "#recordBody .det-row"),
+                         ("schools.html#c=los-angeles-unified", "#recordBody .det-row"),
+                         ("districts.html#d=adelanto-public-financing-authority", "#recMeta"),
+                         ("address.html#c=sacramento", "#records .record")):
+        page.goto(f"{base}/about.html")
+        page.goto(f"{base}/{f}")
+        if sel_state:
+            page.wait_for_selector(sel_state)
+        bg = page.evaluate(
+            "getComputedStyle(document.querySelector('#csvBtn')).backgroundColor")
+        check(f"polish: Download CSV outlined on {f.split('#')[0]}",
+              "43, 89, 209" not in bg, bg)
+
+    # declared type scale: tokens exist and diversity is bounded
+    for f in PAGES:
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector("footer.ft")
+        toks = page.evaluate(
+            "getComputedStyle(document.documentElement)"
+            ".getPropertyValue('--fs-label').trim()")
+        check(f"polish: type tokens declared on {f}", toks == "11.5px", toks)
+        n = page.evaluate("""(() => {
+          const s = new Set();
+          document.querySelectorAll('body *').forEach(el => {
+            if (el.offsetParent !== null || el.tagName === 'BODY')
+              s.add(getComputedStyle(el).fontSize);
+          });
+          return s.size;
+        })()""")
+        check(f"polish: bounded type diversity on {f}", n <= 13, f"{n} sizes")
+
+
 def test_cite(page, base):
     """The Cite control must never look dead: the panel scrolls into
     view when opened (it lives far below the header button), the copy
@@ -1927,6 +2005,7 @@ def test_cite(page, base):
         check(f"cite {f}: the citation control is a dialog",
               page.evaluate("document.getElementById('citePanel').tagName")
               == "DIALOG")
+        page.locator(toggle).scroll_into_view_if_needed()
         y0 = page.evaluate("scrollY")
         page.click(toggle)
         page.wait_for_selector("#citePanel[open]")
@@ -2473,6 +2552,7 @@ def main():
             test_precision(page, base)
             test_shell(page, base)
             test_cite(page, base)
+            test_polish(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()
