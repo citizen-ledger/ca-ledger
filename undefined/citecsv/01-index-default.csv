@@ -1,0 +1,21 @@
+# Citizen Ledger — agency table, FY 2025-26
+# Source dataset: Enacted state budgets, Budgetary-Legal basis (California Department of Finance, ebudget.ca.gov)
+# Accounting basis: enacted appropriations, Budgetary-Legal basis (not actual expenditures)
+# Data generated: 2026-07-14 · exported: 2026-07-17
+# View: state funds (General + special + bond)
+# Permalink: https://citizen-ledger.github.io/ca-ledger/index.html
+# Units: billions of dollars, except Share (percent) and Per resident (dollars)
+Agency,General Fund ($B),Special Funds ($B),Bond Funds ($B),Total ($B),Share of total (%),Per resident ($)
+Health and Human Services,87.402,45.024,0.450,132.876,41.4,3356
+K thru 12 Education,80.529,0.105,1.517,82.151,25.6,2075
+Higher Education,22.729,0.176,0.551,23.456,7.3,592
+Transportation,2.199,17.514,0.097,19.810,6.2,500
+Corrections and Rehabilitation,13.427,4.089,0.000,17.516,5.5,442
+General Government,6.277,7.965,0.003,14.245,4.4,360
+"Legislative, Judicial, and Executive",6.520,4.042,0.251,10.813,3.4,273
+Natural Resources,4.503,2.999,0.470,7.972,2.5,201
+Environmental Protection,0.140,4.132,0.013,4.285,1.3,108
+Government Operations,2.736,0.185,0.012,2.933,0.9,74
+"Business, Consumer Services, and Housing",0.943,1.339,0.522,2.804,0.9,71
+Labor and Workforce Development,0.961,1.229,0.000,2.190,0.7,55
+All agencies,228.366,88.799,3.886,321.051,100.0,8109

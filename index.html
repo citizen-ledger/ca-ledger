@@ -1337,14 +1337,39 @@
   $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
   $("fedToggle").addEventListener("change", e=>{ S.fed=e.target.checked; syncHash(); render(); });
   $("search").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); render(); });
-  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden; if(!p.hidden) $("citeText").textContent = citationText(); });
+  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden;
+    if(!p.hidden){ $("citeText").textContent = citationText();
+      // the button lives in the header and the panel far below it —
+      // opening off-screen reads as a dead control
+      p.scrollIntoView({behavior:"smooth", block:"nearest"}); } });
   $("citeClose").addEventListener("click", ()=>{ $("citePanel").hidden=true; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
-    const done = ok=>{ $("citeCopy").textContent = ok?"Copied ✓":"Copy failed"; setTimeout(()=>{$("citeCopy").textContent="Copy";},1800); };
+    const btn = $("citeCopy");
+    const done = ok => { btn.textContent = ok ? "Citation copied \u2713" : "Copy failed \u2014 text selected";
+      setTimeout(()=>{ btn.textContent = "Copy"; }, 2200); };
+    // fallback for engines where the async clipboard API is missing or
+    // rejects (webviews, expired transient activation): legacy
+    // execCommand, and as a last resort select the citation itself so
+    // a manual copy works — the control must never be silent
+    const fallback = ()=>{
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly","");
+      ta.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch(e){}
+      document.body.removeChild(ta);
+      if (!ok){
+        const r = document.createRange(); r.selectNodeContents($("citeText"));
+        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+      done(ok);
+    };
     if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(text).then(()=>done(true),()=>done(false));
-    else done(false);
+      navigator.clipboard.writeText(text).then(()=>done(true), fallback);
+    else fallback();
   });
   $("savedToggle").addEventListener("click", ()=>{ const p=$("savedPanel"); p.hidden=!p.hidden; if(!p.hidden) renderSaved(); });
   $("savedClose").addEventListener("click", ()=>{ $("savedPanel").hidden=true; });

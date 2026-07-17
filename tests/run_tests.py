@@ -164,7 +164,7 @@ def clipboard_of(page, toggle_sel="#citeToggle", copy_sel="#citeCopy"):
     page.click(toggle_sel)
     page.click(copy_sel)
     page.wait_for_function(
-        f"document.querySelector('{copy_sel}').textContent.includes('Copied')")
+        f"document.querySelector('{copy_sel}').textContent.toLowerCase().includes('copied')")
     text = page.evaluate("navigator.clipboard.readText()")
     page.click("#citeClose")
     return text
@@ -1905,6 +1905,93 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_cite(page, base):
+    """The Cite control must never look dead: the panel scrolls into
+    view when opened (it lives far below the header button), the copy
+    always gives visible feedback, a legacy fallback covers engines
+    with no async clipboard API, and every citation carries an access
+    date. The county layer cites county filings, not city ones."""
+    IN_VIEW = ("() => { const r = document.getElementById('citePanel')"
+               ".getBoundingClientRect(); return r.top < innerHeight - 40"
+               " && r.bottom > 0; }")
+    # panel placement: the two worst offenders measured in diagnosis
+    for f, toggle in (("index.html", "#citeToggle"),
+                      ("schools.html", "#citeToggle")):
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector(toggle)
+        page.click(toggle)
+        try:
+            page.wait_for_function(IN_VIEW, timeout=3000)
+            visible = True
+        except Exception:
+            visible = False
+        check(f"cite {f}: opening the panel brings it into view", visible)
+
+    # copy: feedback + clipboard + access date, on all five pages
+    TARGETS = [("index.html", "#citeToggle"),
+               ("cities.html#c=los-angeles", "#citeToggle"),
+               ("schools.html#c=los-angeles-unified", "#citeToggle"),
+               ("districts.html#d=adelanto-public-financing-authority", "#citeBtn"),
+               ("address.html#c=sacramento", "#citeBtn")]
+    for url, toggle in TARGETS:
+        page.goto(f"{base}/about.html")   # force a full navigation
+        page.goto(f"{base}/{url}")
+        page.wait_for_selector(f"{toggle}:visible")
+        page.click(toggle)
+        page.wait_for_selector("#citeText:visible")
+        cited = page.inner_text("#citeText")
+        check(f"cite {url.split('#')[0]}: citation carries an access date",
+              "Accessed 20" in cited, cited[-60:])
+        page.click("#citeCopy")
+        page.wait_for_timeout(150)
+        label = page.inner_text("#citeCopy")
+        check(f"cite {url.split('#')[0]}: visible confirmation on copy",
+              label.startswith("Citation copied"), label)
+        clip = page.evaluate("navigator.clipboard.readText()")
+        check(f"cite {url.split('#')[0]}: clipboard holds the full citation",
+              clip == cited, clip[:80])
+
+    # blocked async clipboard API (webviews): never silent — either the
+    # legacy fallback copies, or the citation is selected and it says
+    # so. Clobber the API at runtime on the live page (equivalent to an
+    # engine without it; resets on the next navigation).
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/schools.html#c=los-angeles-unified")
+    page.wait_for_selector("#citeToggle")
+    page.evaluate(
+        "Object.defineProperty(navigator,'clipboard',{value:undefined})")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    page.click("#citeCopy")
+    page.wait_for_timeout(150)
+    label = page.inner_text("#citeCopy")
+    check("cite blocked-API: control is never silent",
+          label.startswith("Citation copied") or label.startswith("Copy failed"),
+          label)
+
+    # county layer: citation and CSV name county filings
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#l=county&c=santa-clara")
+    page.wait_for_selector("#recordBody .det-row")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    check("cite county layer: basis names county filings",
+          "county annual financial reports" in page.inner_text("#citeText"))
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("csv county layer: basis header names county filings",
+          "standardized county annual financial reports" in text)
+    page.goto(f"{base}/about.html")
+    page.goto(f"{base}/cities.html#c=los-angeles")
+    page.wait_for_selector("#recordBody .det-row")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("csv city layer: basis header still names city filings",
+          "standardized city annual financial reports" in text)
+
+
 def test_shell(page, base):
     """The institutional shell: a 404 in the Ledger's own voice, a
     steward line in every footer, system-colored identity assets, a
@@ -2350,6 +2437,7 @@ def main():
             test_mobile(browser, base)
             test_precision(page, base)
             test_shell(page, base)
+            test_cite(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()
