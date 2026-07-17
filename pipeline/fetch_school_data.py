@@ -244,7 +244,31 @@ def res_group(code):
     return "local"
 
 
-def build_by_resource(res_map):
+OBJ_ORDER = [k for k, _, _, _ in OBJ_FAMILIES]
+
+
+def obj_cells(res_obj):
+    """V10a reduced cross-tab: the object-family split of ONE resource, as
+    a fixed OBJ_FAMILIES-ordered whole-dollar array that sums EXACTLY to
+    the resource's whole-dollar display value. The largest cell absorbs
+    the rounding remainder (the same exact-remainder trick the group tails
+    use), so the object breakdown ties to the resource total to the cent
+    and the resource value is unchanged from V9. Trailing zeros trimmed.
+    Returns (display_value, array)."""
+    cents = {k: round(res_obj.get(k, 0.0), 2) for k in OBJ_ORDER}
+    dv = round(round(sum(cents.values()), 2))     # == V9's round(resource$)
+    dollars = {k: round(cents[k]) for k in OBJ_ORDER}
+    diff = dv - sum(dollars.values())
+    if diff:
+        big = max(OBJ_ORDER, key=lambda k: (abs(dollars[k]), k))
+        dollars[big] += diff
+    arr = [dollars[k] for k in OBJ_ORDER]
+    while arr and arr[-1] == 0:
+        arr.pop()
+    return dv, arr
+
+
+def build_by_resource(res_map, res_obj_map=None):
     """The finding's hybrid, per district-year: CSAM-range groups, named
     rows for resources >= $1M (STRS on-behalf 7690 always named so it is
     never buried in a group total), and one exact-remainder tail per
@@ -252,7 +276,10 @@ def build_by_resource(res_map):
     $Xm / per-ADA, never to the cent); the tail absorbs the remainder so
     every group STILL sums to the cent — group total = sum(named) + tail,
     and sum(group totals) = the gated Current Expense, exactly.
-    Returns {group: {total (cents), named:[[code, whole$]], tail (cents)}}."""
+    When res_obj_map is given (V10a), each named row also carries its
+    object-family split [code, whole$, [obj array]] — the reduced
+    object × resource cross-tab, summing to the row's own total.
+    Returns {group: {total (cents), named:[[code, whole$, obj?]], tail}}."""
     grouped = defaultdict(list)          # group -> [(code, value)]
     for code, v in res_map.items():
         grouped[res_group(code)].append((code, round(v, 2)))
@@ -264,7 +291,11 @@ def build_by_resource(res_map):
         for code, v in sorted(rows, key=lambda cv: (-abs(cv[1]), cv[0])):
             if abs(v) >= NAMED_FLOOR or code == STRS_ON_BEHALF_RES:
                 dv = round(v)            # whole dollars for display rows
-                named.append([code, dv])
+                row = [code, dv]
+                if res_obj_map is not None:
+                    odv, arr = obj_cells(res_obj_map.get(code, {}))
+                    row = [code, odv, arr]   # odv == dv by construction
+                named.append(row)
                 named_sum += dv
         out[gkey] = {"total": total, "named": named,
                      "tail": round(total - named_sum, 2)}
@@ -362,6 +393,8 @@ def process_year(yy, fy):
     edp_fn_obj = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     edp_restr = defaultdict(lambda: [0.0, 0.0])   # [unrestricted, restricted]
     edp_by_res = defaultdict(lambda: defaultdict(float))    # (c,d) -> code -> $
+    edp_res_obj = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    edp_by_obj = defaultdict(lambda: defaultdict(float))    # (c,d) -> objfam -> $
     edp_fn_grp = defaultdict(lambda: defaultdict(float))    # (c,d) -> (fn,grp) -> $
     res_stats = defaultdict(float)   # statewide: strsOnBehalf, indirect_<grp>
     coe_fn = defaultdict(lambda: defaultdict(float))
@@ -419,6 +452,12 @@ def process_year(yy, fy):
                 # the function × resource-group cross-tab that must
                 # reproduce every function total.
                 edp_by_res[(c, d)][res] += v
+                # V10a: the reduced object × resource cross-tab — object
+                # family within each resource, and the plain object-family
+                # margin the aggregate must reconcile to.
+                of = obj_family(obj)
+                edp_res_obj[(c, d)][res][of] += v
+                edp_by_obj[(c, d)][of] += v
                 edp_fn_grp[(c, d)][(g, res_group(res))] += v
                 if res == STRS_ON_BEHALF_RES:
                     res_stats["strsOnBehalf"] += v
@@ -634,10 +673,52 @@ def process_year(yy, fy):
         raise SystemExit(f"FY {fy}: {len(res_fail)} resource partition(s) "
                          "fail the funding-source gates — nothing written")
 
+    # V10a REDUCED CROSS-TAB GATES (hard, no write on failure): the
+    # object × resource cross-tab must tie to BOTH margins — every
+    # resource's object split sums to that resource's total, and the
+    # object families aggregate across resources to the object-family
+    # totals (V8), hence to Current Expense — and the SHIPPED whole-dollar
+    # object arrays of the named resources must sum to each named value.
+    xt_fail = []
+    for key, pub in ce.items():
+        ro = edp_res_obj[key]
+        # margin 1: sum over object family within each resource == by_res
+        for res, fams in ro.items():
+            if abs(sum(fams.values()) - edp_by_res[key][res]) > 0.005:
+                xt_fail.append(f"{pub['name']} res {res}: object split "
+                               f"!= resource total"); break
+        if xt_fail and xt_fail[-1].startswith(pub['name']):
+            continue
+        # margin 2: sum over resource within each object family == by_obj
+        m_obj = defaultdict(float)
+        for res, fams in ro.items():
+            for of, v in fams.items():
+                m_obj[of] += v
+        bad_margin2 = any(abs(m_obj[of] - edp_by_obj[key][of]) > 0.005
+                          for of in edp_by_obj[key])
+        # and the whole cross-tab totals to Current Expense
+        if bad_margin2 or abs(sum(m_obj.values()) - round(edp[key], 2)) > 0.05:
+            xt_fail.append(f"{pub['name']}: cross-tab object margin or "
+                           f"total off"); continue
+        # the SHIPPED named object arrays sum to the named display value
+        by = build_by_resource(edp_by_res[key], edp_res_obj[key])
+        for g in by.values():
+            for row in g["named"]:
+                if len(row) == 3 and sum(row[2]) != row[1]:
+                    xt_fail.append(f"{pub['name']} res {row[0]}: shipped "
+                                   f"object array {sum(row[2])} != {row[1]}")
+                    break
+    if xt_fail:
+        for s in xt_fail[:10]:
+            print("  V10a GATE FAIL:", s, file=sys.stderr)
+        raise SystemExit(f"FY {fy}: {len(xt_fail)} object×resource cross-tab(s) "
+                         "fail the both-margins gate — nothing written")
+
     return {
         "leas": leas, "charters": charters, "ce": ce, "edp": edp,
         "edp_fn": edp_fn, "edp_fn_obj": edp_fn_obj, "edp_restr": edp_restr,
-        "edp_by_res": edp_by_res, "res_title": res_title,
+        "edp_by_res": edp_by_res, "edp_res_obj": edp_res_obj,
+        "res_title": res_title,
         "res_stats": dict(res_stats), "coe_fn": coe_fn, "coe_tot": coe_tot,
         "coe_ada": coe_ada, "charter_gl": charter_gl,
         "charter_gl_tot": charter_gl_tot, "alt_data": alt_data,
@@ -708,14 +789,15 @@ def main():
             pub = yd["ce"][key]
             fn = {k: round(v, 2) for k, v in yd["edp_fn"][key].items()}
             com = yd["commingled"].get(key)
-            by_res = build_by_resource(yd["edp_by_res"][key])
+            by_res = build_by_resource(yd["edp_by_res"][key],
+                                       yd["edp_res_obj"][key])
             named_year = (fy == latest)
             if named_year:
                 for g in by_res.values():
-                    for code, _ in g["named"]:
-                        t = yd["res_title"].get(code)
+                    for row in g["named"]:
+                        t = yd["res_title"].get(row[0])
                         if t:
-                            res_titles_used[fy][code] = t
+                            res_titles_used[fy][row[0]] = t
             entry["years"][fy] = {
                 "ada": round(pub["ada"], 2),
                 "currentExpense": round(yd["edp"][key], 2),
@@ -942,6 +1024,13 @@ def main():
                     "assigned in CDE's classification (CSAM Procedure 310); "
                     "its codes are shown by their official names, never filed "
                     "under a source.",
+                "objectSplitNote": "Each named funding source expands to what "
+                    "it bought, by object — the same salary / benefit / "
+                    "supply / service families the function view uses. The "
+                    "objects sum to the funding source's total to the cent, "
+                    "and across all sources to the same object totals. This "
+                    "is the reduced cross-tab: a source's own object split, "
+                    "never the full object-by-source grid.",
             },
             "commingledNote": "Charters reported inside an authorizer's Fund "
                               "01 cannot be separated from the district's own "
