@@ -116,8 +116,11 @@
   input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
 
   /* cite + saved panels (square = record) */
-  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:20px}
-  .cite-inner{border-top:3px solid var(--ink);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  dialog.cite-dlg{margin:14vh auto auto;padding:0;border:1px solid var(--ink);border-radius:2px;background:var(--surface);max-width:560px;width:calc(100vw - 48px);box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05)}
+  dialog.cite-dlg::backdrop{background:rgba(36,36,36,.18)}
+  .cite-card{border-top:3px solid var(--ink);padding:14px 18px 18px}
+  .cite-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .cite-card .btn{margin-top:12px}
   .microlbl{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--smoke)}
   .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
   .saved-panel{border:1px solid var(--ash);background:var(--surface);margin-top:20px;padding:16px 22px}
@@ -243,6 +246,7 @@
     h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px}
     header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
     .record{padding:20px 16px 24px}
+    dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
     /* Phone widths: tables reflow instead of scrolling sideways. A row
        is name on its own line with every figure inside the viewport —
        an amount that must be panned to is an amount nobody sees. */
@@ -358,18 +362,6 @@
     <input type="search" id="search" placeholder="Filter rows…" aria-label="Filter table rows">
   </div>
 
-  <div class="cite-panel" id="citePanel" hidden>
-    <div class="cite-inner">
-      <div style="flex:1;min-width:280px">
-        <div class="microlbl">CITATION · REPRODUCES THIS EXACT VIEW</div>
-        <div class="cite-text" id="citeText"></div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn ink" id="citeCopy">Copy</button>
-        <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
-      </div>
-    </div>
-  </div>
 
   <div class="saved-panel np" id="savedPanel" hidden>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
@@ -522,6 +514,17 @@
     </div>
   </section>
 </main>
+
+<dialog class="cite-dlg" id="citePanel" aria-label="Citation for this view">
+  <div class="cite-card">
+    <div class="cite-top">
+      <span class="microlbl">CITATION · REPRODUCES THIS EXACT VIEW</span>
+      <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
+    </div>
+    <div class="cite-text" id="citeText"></div>
+    <button class="btn ink" id="citeCopy" autofocus>Copy</button>
+  </div>
+</dialog>
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
@@ -1337,12 +1340,18 @@
   $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
   $("fedToggle").addEventListener("change", e=>{ S.fed=e.target.checked; syncHash(); render(); });
   $("search").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); render(); });
-  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden;
-    if(!p.hidden){ $("citeText").textContent = citationText();
-      // the button lives in the header and the panel far below it —
-      // opening off-screen reads as a dead control
-      p.scrollIntoView({behavior:"smooth", block:"nearest"}); } });
-  $("citeClose").addEventListener("click", ()=>{ $("citePanel").hidden=true; });
+  $("citeToggle").addEventListener("click", ()=>{
+    const p = $("citePanel");
+    if (p.open){ p.close(); return; }
+    $("citeText").textContent = citationText();
+    // a citation is copy-and-leave: the dialog appears at the reader's
+    // current position — never scroll them elsewhere
+    document.documentElement.style.overflow = "hidden";
+    p.showModal();
+  });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").close(); });
+  $("citePanel").addEventListener("click", e=>{ if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("citePanel").addEventListener("close", ()=>{ document.documentElement.style.overflow = ""; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
     const btn = $("citeCopy");
@@ -1356,11 +1365,11 @@
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly","");
       ta.style.cssText = "position:fixed;left:-9999px;top:0";
-      document.body.appendChild(ta);
+      $("citePanel").appendChild(ta);
       ta.select(); ta.setSelectionRange(0, text.length);
       let ok = false;
       try { ok = document.execCommand("copy"); } catch(e){}
-      document.body.removeChild(ta);
+      $("citePanel").removeChild(ta);
       if (!ok){
         const r = document.createRange(); r.selectNodeContents($("citeText"));
         const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);

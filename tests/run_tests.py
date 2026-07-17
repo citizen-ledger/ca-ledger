@@ -902,6 +902,7 @@ def test_districts(page, base):
     # ---- cite and CSV carry the caveat
     page.click("#citeBtn")
     cite = page.inner_text("#citeText")
+    page.keyboard.press("Escape")   # dismiss the cite dialog before touching the page
     check("district citation: caveat travels with it",
           caveat in cite and "unreconciled" in cite)
     check("district citation: no per-resident figure",
@@ -1037,6 +1038,7 @@ def test_address(page, base):
           h == "#uc=los-angeles", h)
     page.click("#citeBtn")
     cite = page.inner_text("#citeText")
+    page.keyboard.press("Escape")   # dismiss the cite dialog before touching the page
     with page.expect_download() as dl:
         page.click("#csvBtn")
     csv = Path(dl.value.path()).read_text(encoding="utf-8")
@@ -1096,6 +1098,7 @@ def test_address(page, base):
     cite = page.inner_text("#citeText")
     check("address schools: citation carries per-ADA and residence caveat",
           "per ADA" in cite and "district of residence" in cite)
+    page.keyboard.press("Escape")   # dismiss the cite dialog before touching the page
     with page.expect_download() as dl:
         page.click("#csvBtn")
     csvt = Path(dl.value.path()).read_text(encoding="utf-8")
@@ -1455,6 +1458,7 @@ def test_schools(page, base):
     check("schools citation: format and gate claim",
           cite.startswith('Citizen Ledger, "K-12 School District Spending — ')
           and "to the cent" in cite and "never added" in cite, cite[:80])
+    page.keyboard.press("Escape")   # dismiss the cite dialog before touching the page
     with page.expect_download() as dl:
         page.click("#csvBtn")
     csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
@@ -1911,21 +1915,51 @@ def test_cite(page, base):
     always gives visible feedback, a legacy fallback covers engines
     with no async clipboard API, and every citation carries an access
     date. The county layer cites county filings, not city ones."""
-    IN_VIEW = ("() => { const r = document.getElementById('citePanel')"
-               ".getBoundingClientRect(); return r.top < innerHeight - 40"
-               " && r.bottom > 0; }")
-    # panel placement: the two worst offenders measured in diagnosis
+    RECT = ("() => { const r = document.getElementById('citePanel')"
+            ".getBoundingClientRect(); return {t: r.top, b: r.bottom,"
+            " l: r.left, r2: r.right, iw: innerWidth, ih: innerHeight}; }")
+    # a citation is copy-and-leave: the popup appears AT the reader's
+    # position — in the viewport, without scrolling the page
     for f, toggle in (("index.html", "#citeToggle"),
                       ("schools.html", "#citeToggle")):
         page.goto(f"{base}/{f}")
         page.wait_for_selector(toggle)
+        check(f"cite {f}: the citation control is a dialog",
+              page.evaluate("document.getElementById('citePanel').tagName")
+              == "DIALOG")
+        y0 = page.evaluate("scrollY")
         page.click(toggle)
-        try:
-            page.wait_for_function(IN_VIEW, timeout=3000)
-            visible = True
-        except Exception:
-            visible = False
-        check(f"cite {f}: opening the panel brings it into view", visible)
+        page.wait_for_selector("#citePanel[open]")
+        r = page.evaluate(RECT)
+        check(f"cite {f}: popup opens fully inside the viewport",
+              r["t"] >= 0 and r["b"] <= r["ih"]
+              and r["l"] >= 0 and r["r2"] <= r["iw"], str(r))
+        check(f"cite {f}: the page does not scroll away",
+              page.evaluate("scrollY") == y0)
+        page.keyboard.press("Escape")
+        check(f"cite {f}: Escape dismisses",
+              page.evaluate("!document.getElementById('citePanel').open"))
+        page.click(toggle)
+        page.wait_for_selector("#citePanel[open]")
+        page.mouse.click(8, 8)   # backdrop, far from the card
+        page.wait_for_timeout(120)
+        check(f"cite {f}: click-away dismisses",
+              page.evaluate("!document.getElementById('citePanel').open"))
+
+    # phone widths: the popup centers and fits, fully readable
+    for w in (360, 390):
+        page.set_viewport_size({"width": w, "height": 780})
+        page.goto(f"{base}/about.html")
+        page.goto(f"{base}/cities.html#c=los-angeles")
+        page.wait_for_selector("#citeToggle")
+        page.click("#citeToggle")
+        page.wait_for_selector("#citePanel[open]")
+        r = page.evaluate(RECT)
+        check(f"cite {w}px: popup fits the viewport",
+              r["t"] >= 0 and r["b"] <= 780 and r["l"] >= 0 and r["r2"] <= w,
+              str(r))
+        page.keyboard.press("Escape")
+    page.set_viewport_size({"width": 1280, "height": 720})
 
     # copy: feedback + clipboard + access date, on all five pages
     TARGETS = [("index.html", "#citeToggle"),
@@ -1977,6 +2011,7 @@ def test_cite(page, base):
     page.wait_for_selector("#citeText:visible")
     check("cite county layer: basis names county filings",
           "county annual financial reports" in page.inner_text("#citeText"))
+    page.keyboard.press("Escape")   # dismiss the cite dialog before touching the page
     with page.expect_download() as dl:
         page.click("#csvBtn")
     text = Path(dl.value.path()).read_text(encoding="utf-8")

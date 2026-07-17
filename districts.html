@@ -123,7 +123,12 @@
   .unrec .u-row.hd{color:var(--smoke);font-size:10px;letter-spacing:0.07em;border-bottom:1px dashed var(--graphite)}
   .unrec h3{font-family:var(--serif);font-size:22px;font-weight:400;margin-top:4px}
   .recmeta{font-family:var(--mono);font-size:11.5px;color:var(--smoke);margin-top:6px}
-  .cite-panel{border:1px dashed var(--graphite);background:var(--surface);margin-top:16px;padding:16px 22px}
+  dialog.cite-dlg{margin:14vh auto auto;padding:0;border:1px dashed var(--graphite);border-radius:2px;background:var(--surface);max-width:560px;width:calc(100vw - 48px)}
+  dialog.cite-dlg::backdrop{background:rgba(36,36,36,.18)}
+  .cite-card{padding:14px 18px 18px}
+  .cite-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .cite-card .btn{margin-top:12px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:12px}
   .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
   .empty{margin-top:20px;border:1px dashed var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
 
@@ -142,6 +147,7 @@
     h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px}
     header.hd,.prov,.tierband,footer.ft{padding-left:20px;padding-right:20px}
     .record{padding:20px 16px 24px}
+    dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
     /* the finding's per-year table narrows to the viewport — the status
        columns wrap rather than run off the screen */
     .yr-row{grid-template-columns:70px repeat(3,minmax(0,1fr));gap:0 10px;font-size:11px}
@@ -226,11 +232,6 @@
         <button class="btn blue" id="csvBtn">Download CSV</button>
         <button class="btn" id="closeRec">Close record</button>
       </div>
-      <div class="cite-panel" id="citePanel" hidden>
-        <div class="microlbl">CITATION — THE CAVEAT TRAVELS WITH IT</div>
-        <div class="cite-text" id="citeText"></div>
-        <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
-      </div>
     </div>
   </section>
 
@@ -263,6 +264,17 @@
     </div>
   </section>
 </main>
+
+<dialog class="cite-dlg" id="citePanel" aria-label="Citation for this view">
+  <div class="cite-card">
+    <div class="cite-top">
+      <span class="microlbl">CITATION — THE CAVEAT TRAVELS WITH IT</span>
+      <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
+    </div>
+    <div class="cite-text" id="citeText"></div>
+    <button class="btn ink" id="citeCopy" autofocus>Copy</button>
+  </div>
+</dialog>
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
@@ -469,7 +481,7 @@
       + '<span class="st dim">'+STATUS_WORD[r.filings[i]].toUpperCase()+'</span></div>';
     $("expTbl").innerHTML = tbl("EXPENDITURES") + YEARS.map((y,i)=>row(y,i,r.exp[i])).join("");
     $("revTbl").innerHTML = tbl("REVENUES") + YEARS.map((y,i)=>row(y,i,r.rev[i])).join("");
-    $("citePanel").hidden = true;
+    if ($("citePanel").open) $("citePanel").close();
   }
 
   /* ---------- cite + CSV: the caveat travels ---------- */
@@ -532,10 +544,17 @@
   $("closeRec").addEventListener("click", ()=>{ S.d = null; syncHash(); renderRecord(); });
   $("dirSearch").addEventListener("input", e=>{ S.q = e.target.value; syncHash(); renderDirectory(); });
   $("citeBtn").addEventListener("click", ()=>{
-    const p = $("citePanel"); p.hidden = !p.hidden;
-    if (!p.hidden){ $("citeText").textContent = citationText();
-      p.scrollIntoView({behavior:"smooth", block:"nearest"}); }
+    const p = $("citePanel");
+    if (p.open){ p.close(); return; }
+    $("citeText").textContent = citationText();
+    // a citation is copy-and-leave: the dialog appears at the reader's
+    // current position — never scroll them elsewhere
+    document.documentElement.style.overflow = "hidden";
+    p.showModal();
   });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").close(); });
+  $("citePanel").addEventListener("click", e=>{ if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("citePanel").addEventListener("close", ()=>{ document.documentElement.style.overflow = ""; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
     const btn = $("citeCopy");
@@ -549,11 +568,11 @@
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly","");
       ta.style.cssText = "position:fixed;left:-9999px;top:0";
-      document.body.appendChild(ta);
+      $("citePanel").appendChild(ta);
       ta.select(); ta.setSelectionRange(0, text.length);
       let ok = false;
       try { ok = document.execCommand("copy"); } catch(e){}
-      document.body.removeChild(ta);
+      $("citePanel").removeChild(ta);
       if (!ok){
         const r = document.createRange(); r.selectNodeContents($("citeText"));
         const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);

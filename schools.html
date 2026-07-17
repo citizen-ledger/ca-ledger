@@ -138,8 +138,12 @@
   .overlap{margin-top:28px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:18px 22px;font-size:14px;line-height:1.65}
   .overlap b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
   .empty{margin-top:20px;border:1px solid var(--hairline);padding:24px;font-size:14px;color:var(--graphite)}
-  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:20px}
-  .cite-inner{border-top:3px solid var(--ink);padding:16px 22px}
+  dialog.cite-dlg{margin:14vh auto auto;padding:0;border:1px solid var(--ink);border-radius:2px;background:var(--surface);max-width:560px;width:calc(100vw - 48px);box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05)}
+  dialog.cite-dlg::backdrop{background:rgba(36,36,36,.18)}
+  .cite-card{border-top:3px solid var(--ink);padding:14px 18px 18px}
+  .cite-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .cite-card .btn{margin-top:12px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:12px}
   .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
 
   .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
@@ -153,7 +157,7 @@
   .digest{font-family:var(--mono);font-size:10.5px;word-break:break-all;color:var(--graphite);margin-top:6px}
   footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:11px;color:var(--smoke);flex-wrap:wrap}
   @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .det-row,.det-foot{grid-template-columns:1fr 110px} .det-row .bar{display:none} .det-foot>span:empty{display:none} .det-foot .v{text-align:right} }
-  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} .record{padding:20px 16px 24px} .obj-panel{padding:8px 12px} }
+  @media(max-width:720px){ h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px} .record{padding:20px 16px 24px} .obj-panel{padding:8px 12px} dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto} }
 </style>
 </head>
 <body>
@@ -238,13 +242,6 @@
 
   <div class="overlap" id="overlapPanel"></div>
 
-  <div class="cite-panel np" id="citePanel" hidden>
-    <div class="cite-inner">
-      <div class="microlbl">CITATION</div>
-      <div class="cite-text" id="citeText"></div>
-      <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
-    </div>
-  </div>
 
   <section class="method" id="methodology">
     <h2>Methodology</h2>
@@ -273,6 +270,17 @@
     </div>
   </section>
 </main>
+
+<dialog class="cite-dlg" id="citePanel" aria-label="Citation for this view">
+  <div class="cite-card">
+    <div class="cite-top">
+      <span class="microlbl">CITATION · REPRODUCES THIS EXACT VIEW</span>
+      <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
+    </div>
+    <div class="cite-text" id="citeText"></div>
+    <button class="btn ink" id="citeCopy" autofocus>Copy</button>
+  </div>
+</dialog>
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
@@ -634,7 +642,7 @@
     else if (S.type === "districts") renderSingleDistrict(sel[0]);
     else if (S.type === "coes") renderCoe(sel[0]);
     else renderCharter(sel[0]);
-    $("citePanel").hidden = true;
+    if ($("citePanel").open) $("citePanel").close();
   }
 
   /* ---------- cite + CSV ---------- */
@@ -729,11 +737,18 @@
   $("yearPrev").addEventListener("click", () => stepYear(-1));
   $("yearNext").addEventListener("click", () => stepYear(1));
   $("yearSel").addEventListener("change", e => { S.year = e.target.value; syncHash(); render(); });
-  $("citeToggle").addEventListener("click", () => {
-    const p = $("citePanel"); p.hidden = !p.hidden;
-    if (!p.hidden){ $("citeText").textContent = citationText();
-      p.scrollIntoView({behavior:"smooth", block:"nearest"}); }
+  $("citeToggle").addEventListener("click", ()=>{
+    const p = $("citePanel");
+    if (p.open){ p.close(); return; }
+    $("citeText").textContent = citationText();
+    // a citation is copy-and-leave: the dialog appears at the reader's
+    // current position — never scroll them elsewhere
+    document.documentElement.style.overflow = "hidden";
+    p.showModal();
   });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").close(); });
+  $("citePanel").addEventListener("click", e=>{ if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("citePanel").addEventListener("close", ()=>{ document.documentElement.style.overflow = ""; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
     const btn = $("citeCopy");
@@ -747,11 +762,11 @@
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly","");
       ta.style.cssText = "position:fixed;left:-9999px;top:0";
-      document.body.appendChild(ta);
+      $("citePanel").appendChild(ta);
       ta.select(); ta.setSelectionRange(0, text.length);
       let ok = false;
       try { ok = document.execCommand("copy"); } catch(e){}
-      document.body.removeChild(ta);
+      $("citePanel").removeChild(ta);
       if (!ok){
         const r = document.createRange(); r.selectNodeContents($("citeText"));
         const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);

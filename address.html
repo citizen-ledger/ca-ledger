@@ -113,7 +113,12 @@
   .nosum{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:14px;line-height:1.65}
   .nosum b{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;display:block;margin-bottom:6px}
 
-  .cite-panel{border:1px solid var(--ink);background:var(--surface);margin-top:16px;padding:16px 22px}
+  dialog.cite-dlg{margin:14vh auto auto;padding:0;border:1px solid var(--ink);border-radius:2px;background:var(--surface);max-width:560px;width:calc(100vw - 48px);box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05)}
+  dialog.cite-dlg::backdrop{background:rgba(36,36,36,.18)}
+  .cite-card{border-top:3px solid var(--ink);padding:14px 18px 18px}
+  .cite-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .cite-card .btn{margin-top:12px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:12px}
   .cite-text{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:8px;word-break:break-word}
   .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
   .method .lead{font-size:15px;color:var(--graphite);max-width:640px;margin-top:10px}
@@ -128,6 +133,7 @@
     h1{font-size:40px} main{padding:0 20px}
     header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
     .record{padding:20px 16px 24px}
+    dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
     /* the address input yields to the entry card's width so it and its
        suggestion list stay aligned inside the card */
     input[type="text"]{min-width:0}
@@ -194,11 +200,6 @@
       <button class="btn blue" id="csvBtn">Download CSV</button>
       <button class="btn" id="clearBtn">Clear</button>
     </div>
-    <div class="cite-panel" id="citePanel" hidden>
-      <div class="microlbl">CITATION — SLUGS ONLY, NEVER THE ADDRESS</div>
-      <div class="cite-text" id="citeText"></div>
-      <button class="btn sm" id="citeCopy" style="margin-top:10px">Copy</button>
-    </div>
   </section>
 
   <section class="method" id="methodology">
@@ -223,6 +224,17 @@
     </div>
   </section>
 </main>
+
+<dialog class="cite-dlg" id="citePanel" aria-label="Citation for this view">
+  <div class="cite-card">
+    <div class="cite-top">
+      <span class="microlbl">CITATION — SLUGS ONLY, NEVER THE ADDRESS</span>
+      <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button>
+    </div>
+    <div class="cite-text" id="citeText"></div>
+    <button class="btn ink" id="citeCopy" autofocus>Copy</button>
+  </div>
+</dialog>
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
@@ -787,7 +799,7 @@
       + "— and does not guess. Their as-filed records are in the directory."
       + '</div><div class="rec-link"><a href="districts.html#q=' + encodeURIComponent(countyName)
       + '">Search the ' + esc(countyName) + ' County districts →</a></div>';
-    $("citePanel").hidden = true;
+    if ($("citePanel").open) $("citePanel").close();
   }
 
   /* ---------- cite + CSV: slugs only ---------- */
@@ -907,11 +919,18 @@
     $("addrInput").value = ""; $("status").textContent = "";
     syncHash(); render();
   });
-  $("citeBtn").addEventListener("click", () => {
-    const p = $("citePanel"); p.hidden = !p.hidden;
-    if (!p.hidden){ $("citeText").textContent = citationText();
-      p.scrollIntoView({behavior:"smooth", block:"nearest"}); }
+  $("citeBtn").addEventListener("click", ()=>{
+    const p = $("citePanel");
+    if (p.open){ p.close(); return; }
+    $("citeText").textContent = citationText();
+    // a citation is copy-and-leave: the dialog appears at the reader's
+    // current position — never scroll them elsewhere
+    document.documentElement.style.overflow = "hidden";
+    p.showModal();
   });
+  $("citeClose").addEventListener("click", ()=>{ $("citePanel").close(); });
+  $("citePanel").addEventListener("click", e=>{ if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("citePanel").addEventListener("close", ()=>{ document.documentElement.style.overflow = ""; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
     const btn = $("citeCopy");
@@ -925,11 +944,11 @@
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly","");
       ta.style.cssText = "position:fixed;left:-9999px;top:0";
-      document.body.appendChild(ta);
+      $("citePanel").appendChild(ta);
       ta.select(); ta.setSelectionRange(0, text.length);
       let ok = false;
       try { ok = document.execCommand("copy"); } catch(e){}
-      document.body.removeChild(ta);
+      $("citePanel").removeChild(ta);
       if (!ok){
         const r = document.createRange(); r.selectNodeContents($("citeText"));
         const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
