@@ -1,0 +1,21 @@
+# Citizen Ledger — agency table, FY 2022-23
+# Source dataset: Enacted state budgets, Budgetary-Legal basis (California Department of Finance, ebudget.ca.gov)
+# Accounting basis: enacted appropriations, Budgetary-Legal basis (not actual expenditures)
+# Data generated: 2026-07-14 · exported: 2026-07-17
+# View: state funds (General + special + bond)
+# Permalink: https://citizen-ledger.github.io/ca-ledger/index.html#y=2022-23
+# Units: billions of dollars, except Share (percent) and Per resident (dollars)
+Agency,General Fund ($B),Special Funds ($B),Bond Funds ($B),Total ($B),Share of total (%),Per resident ($)
+Health and Human Services,68.047,33.304,0.000,101.351,32.9,2587
+K thru 12 Education,78.407,0.339,1.488,80.234,26.1,2048
+Higher Education,23.619,0.131,1.090,24.840,8.1,634
+General Government,15.022,5.095,0.002,20.119,6.5,514
+Transportation,1.875,17.610,0.095,19.580,6.4,500
+Corrections and Rehabilitation,14.747,4.049,0.000,18.796,6.1,480
+"Legislative, Judicial, and Executive",11.774,-0.165,0.121,11.730,3.8,299
+Natural Resources,8.590,1.985,0.677,11.252,3.7,287
+Environmental Protection,1.190,5.166,0.014,6.370,2.1,163
+"Business, Consumer Services, and Housing",3.699,1.182,0.937,5.818,1.9,149
+Government Operations,5.914,-0.563,0.007,5.358,1.7,137
+Labor and Workforce Development,1.480,0.987,0.000,2.467,0.8,63
+All agencies,234.364,69.120,4.431,307.915,100.0,7861

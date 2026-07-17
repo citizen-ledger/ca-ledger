@@ -1,0 +1,11 @@
+# Citizen Ledger — Your governments (resolved jurisdictions only; the address is never exported)
+# These records do not add: 53.8% of county governmental revenues are intergovernmental (FY 2023-24) — a total would count the same dollars more than once.
+# Figures are spending in residents' name on each government's own basis — not a tax bill.
+# Permalink: https://citizen-ledger.github.io/ca-ledger/address.html#c=palo-alto&sd=palo-alto-unified
+layer,government,fiscal_year,basis,population,governmental_expenditures_millions,per_resident_dollars
+city,Palo Alto,2023-24,"reported actuals, reconciled",67973,288.479,4244
+county,Santa Clara County,2023-24,"reported actuals, reconciled",1903198,5303.358,2787
+state,State of California,2025-26,"enacted budget (plan), Budgetary-Legal basis, state funds",39590000,321051,8109
+# School districts (residence): unaudited actuals, reconciled to CDE's published figure; per ADA, never per resident; charter students may attend schools their district of residence does not run. These figures do not add to the state row: about 50.7% of school revenues are state money it already contains.
+school_district,county,type,fiscal_year,ada,current_expense_dollars,per_ada_dollars
+Palo Alto Unified,Santa Clara,Unified,2024-25,9693.16,329169251.39,33959

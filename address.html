@@ -828,7 +828,8 @@
       + " of county governmental revenues are intergovernmental (FY " + IG.year
       + "), so a total would double-count. Spending in your name, not a tax bill. "
       + "Sources: State Controller (bythenumbers.sco.ca.gov), Dept. of Finance (ebudget.ca.gov). "
-      + "Generated " + CITY.meta.generated + ". Permalink: " + location.href;
+      + "Generated " + CITY.meta.generated + ". Permalink: " + location.href + ". "
+      + "Accessed " + new Date().toISOString().slice(0,10) + ".";
   }
   function csvText(){
     const lines = [
@@ -908,10 +909,36 @@
   });
   $("citeBtn").addEventListener("click", () => {
     const p = $("citePanel"); p.hidden = !p.hidden;
-    if (!p.hidden) $("citeText").textContent = citationText();
+    if (!p.hidden){ $("citeText").textContent = citationText();
+      p.scrollIntoView({behavior:"smooth", block:"nearest"}); }
   });
-  $("citeCopy").addEventListener("click", () => {
-    if (navigator.clipboard) navigator.clipboard.writeText($("citeText").textContent);
+  $("citeCopy").addEventListener("click", ()=>{
+    const text = citationText();
+    const btn = $("citeCopy");
+    const done = ok => { btn.textContent = ok ? "Citation copied \u2713" : "Copy failed \u2014 text selected";
+      setTimeout(()=>{ btn.textContent = "Copy"; }, 2200); };
+    // fallback for engines where the async clipboard API is missing or
+    // rejects (webviews, expired transient activation): legacy
+    // execCommand, and as a last resort select the citation itself so
+    // a manual copy works — the control must never be silent
+    const fallback = ()=>{
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly","");
+      ta.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch(e){}
+      document.body.removeChild(ta);
+      if (!ok){
+        const r = document.createRange(); r.selectNodeContents($("citeText"));
+        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+      done(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(()=>done(true), fallback);
+    else fallback();
   });
   $("csvBtn").addEventListener("click", () => {
     const blob = new Blob([csvText()], {type: "text/csv"});

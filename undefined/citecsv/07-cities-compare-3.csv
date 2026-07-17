@@ -1,0 +1,29 @@
+# Citizen Ledger — cities
+# Source dataset: City annual financial reports, State Controller's Office “By the Numbers” (bythenumbers.sco.ca.gov) — reported actual expenditures and revenues
+# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports
+# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures
+# Data generated: 2026-07-14 · exported: 2026-07-17
+# Permalink: https://citizen-ledger.github.io/ca-ledger/cities.html#c=lakewood,san-francisco,santa-monica
+# Comparison: Lakewood · San Francisco · Santa Monica · FY 2023-24 · cities only — cities and counties are never compared to each other
+# Lakewood population 80162, governmental expenditures $83.4M · San Francisco population 843071, governmental expenditures $8896.0M · Santa Monica population 92912, governmental expenditures $536.5M
+# Units: dollars per resident · governmental activities only
+Function,Lakewood ($/resident),San Francisco ($/resident),Santa Monica ($/resident)
+Police,103,863,1279
+Fire,0,567,635
+Other public safety,21,801,62
+Streets & transportation,97,281,555
+Community development & housing,139,1271,1120
+Sewer & solid waste,85,0,0
+Health & welfare,118,4183,250
+Parks & recreation,180,251,564
+Libraries,0,200,122
+Other culture & leisure,8,206,0
+Public utilities (governmental),0,12,0
+General government,181,675,909
+Other expenditures,0,61,-5
+Debt service,3,763,143
+Capital outlay,104,419,141
+All governmental functions,1041,10552,5774
+# Note (Lakewood): "Police service is provided wholly or in part through contract with the county (FY 2015-16 services checklist, the most recent published — arrangements may have changed since)."
+# Note (Lakewood): "Fire service is provided, without city contract, by a special district or other public agency — that spending appears in the provider's record, not the city's (FY 2015-16 services checklist, the most recent published — arrangements may have changed since)."
+# Note (San Francisco): "San Francisco is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."

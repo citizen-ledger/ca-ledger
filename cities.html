@@ -1110,7 +1110,7 @@
     return 'Citizen Ledger, "' + layerTitle + ' — Governmental Activities by Function'
       + (names.length ? ": " + names.join(", ") : "") + ', FY ' + S.year + ' (Reported actuals)." '
       + figure
-      + "Reported actual expenditures from standardized city annual financial reports; governmental activities only. "
+      + "Reported actual expenditures from standardized " + (S.layer === "county" ? "county" : "city") + " annual financial reports; governmental activities only. "
       + (notes ? notes + " " : "")
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
@@ -1122,7 +1122,7 @@
     const lines = [
       "# Citizen Ledger — cities",
       "# Source dataset: " + D.meta.sourceLabel,
-      "# Accounting basis: reported actual revenues and expenditures from standardized city annual financial reports",
+      "# Accounting basis: reported actual revenues and expenditures from standardized " + (S.layer === "county" ? "county" : "city") + " annual financial reports",
       "# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures",
       "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),
       "# Permalink: " + location.href
@@ -1225,14 +1225,37 @@
     S.mView = null; syncHash();
   });
   $("citySearch").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); renderPicker(); });
-  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden; if(!p.hidden) $("citeText").textContent = citationText(); });
+  $("citeToggle").addEventListener("click", ()=>{ const p=$("citePanel"); p.hidden=!p.hidden;
+    if(!p.hidden){ $("citeText").textContent = citationText();
+      p.scrollIntoView({behavior:"smooth", block:"nearest"}); } });
   $("citeClose").addEventListener("click", ()=>{ $("citePanel").hidden=true; });
   $("citeCopy").addEventListener("click", ()=>{
     const text = citationText();
-    const done = ok=>{ $("citeCopy").textContent = ok?"Copied ✓":"Copy failed"; setTimeout(()=>{$("citeCopy").textContent="Copy";},1800); };
+    const btn = $("citeCopy");
+    const done = ok => { btn.textContent = ok ? "Citation copied \u2713" : "Copy failed \u2014 text selected";
+      setTimeout(()=>{ btn.textContent = "Copy"; }, 2200); };
+    // fallback for engines where the async clipboard API is missing or
+    // rejects (webviews, expired transient activation): legacy
+    // execCommand, and as a last resort select the citation itself so
+    // a manual copy works — the control must never be silent
+    const fallback = ()=>{
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly","");
+      ta.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch(e){}
+      document.body.removeChild(ta);
+      if (!ok){
+        const r = document.createRange(); r.selectNodeContents($("citeText"));
+        const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+      done(ok);
+    };
     if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(text).then(()=>done(true),()=>done(false));
-    else done(false);
+      navigator.clipboard.writeText(text).then(()=>done(true), fallback);
+    else fallback();
   });
   $("savedToggle").addEventListener("click", ()=>{ const p=$("savedPanel"); p.hidden=!p.hidden; if(!p.hidden) renderSaved(); });
   $("savedClose").addEventListener("click", ()=>{ $("savedPanel").hidden=true; });
