@@ -1910,6 +1910,136 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_resource(page, base):
+    """V9 funding-source (resource) layer: the breakout reproduces the
+    gated Current Expense to the cent, is a strict refinement of the
+    restricted/unrestricted split, names codes only from CDE's per-year
+    title table, and carries the four required face statements."""
+    meta = SCHOOL["meta"]["resource"]
+    named_year = meta["namedYear"]
+    group_keys = [g["key"] for g in meta["groups"]]
+    check("resource: five CSAM groups declared",
+          group_keys == ["unrestricted", "federal", "state",
+                         "local", "restrictedOther"])
+    # ---- data gates over every shipped district-year
+    grp_bad, part_bad, disp_bad, title_bad, prior_named = [], [], [], [], []
+    titles = SCHOOL.get("resourceTitles", {})
+    for slug, d in SCHOOL["districts"].items():
+        for y, v in d["years"].items():
+            br = v.get("byResource")
+            if not br:
+                grp_bad.append(f"{slug} {y}: no byResource")
+                continue
+            gsum = round(sum(g["v"] for g in br.values()), 2)
+            if abs(gsum - v["currentExpense"]) > 0.01:
+                grp_bad.append(f"{slug} {y}: groups {gsum} vs CE {v['currentExpense']}")
+            unr = br.get("unrestricted", {}).get("v", 0)
+            restr = round(sum(g["v"] for k, g in br.items()
+                              if k != "unrestricted"), 2)
+            if (abs(unr - v["unrestricted"]) > 0.01
+                    or abs(restr - v["restricted"]) > 0.01):
+                part_bad.append(f"{slug} {y}: partition {unr}/{restr} vs "
+                                f"{v['unrestricted']}/{v['restricted']}")
+            if y == named_year:
+                for gk, g in br.items():
+                    ns = sum(x[1] for x in g.get("n", []))
+                    if abs(ns + g.get("t", 0) - g["v"]) > 0.01:
+                        disp_bad.append(f"{slug} {gk}: named+tail != group v")
+                    for code, _ in g.get("n", []):
+                        if code not in titles.get(y, {}) and not code.isdigit():
+                            title_bad.append(f"{slug} {code}")
+            else:
+                if any("n" in g for g in br.values()):
+                    prior_named.append(f"{slug} {y}")
+    check("resource gate: groups sum to the gated Current Expense to the cent",
+          not grp_bad, str(grp_bad[:3]))
+    check("resource gate: partition equals the restricted/unrestricted split",
+          not part_bad, str(part_bad[:3]))
+    check("resource gate: named rows + tail reproduce each group total",
+          not disp_bad, str(disp_bad[:3]))
+    check("resource: named codes resolve to a title in their own year",
+          not title_bad, str(title_bad[:5]))
+    check("resource: prior years ship group totals only (payload discipline)",
+          not prior_named, str(prior_named[:3]))
+    # every named code's title comes from THIS year's table (per-year names)
+    check("resource: per-year title table shipped for the named year",
+          len(titles.get(named_year, {})) > 40)
+
+    # STRS on-behalf (7690) is present as its own named row somewhere
+    strs = meta["strsOnBehalfRes"]
+    has_strs = any(code == strs for d in SCHOOL["districts"].values()
+                   for g in (d["years"].get(named_year, {}).get("byResource") or {}).values()
+                   for code, _ in g.get("n", []))
+    check("resource: STRS on-behalf ships as its own named row", has_strs)
+    check("resource: on-behalf note states the district never spends it",
+          "never receives or spends" in meta["onBehalfNote"])
+    check("resource: unrestricted-is-not-local rule stated",
+          "not local" in meta["unrestrictedNote"].lower()
+          and "state money" in meta["unrestrictedNote"].lower())
+    check("resource: LCFF base/supplemental limit stated plainly",
+          "not tracked separately" in meta["lcffNote"].lower()
+          and "supplemental" in meta["lcffNote"].lower())
+    check("resource: 2000-2999 range shown by name, not classified",
+          "no funding source" in meta["otherRangeNote"].lower())
+    # no group label conflates unrestricted with local
+    for g in meta["groups"]:
+        if g["key"] == "unrestricted":
+            check("resource: unrestricted group is never labeled local",
+                  "local" not in g["name"].lower())
+
+    # ---- UI: the funding-source section renders and carries its notes
+    page.goto(f"{base}/schools.html#c=los-angeles-unified")
+    page.wait_for_selector("#recordBody .det-row[data-grp]")
+    check("resource UI: funding-source section present",
+          "Where the money comes from" in page.inner_text(".srchead"))
+    check("resource UI: five group rows",
+          page.locator("#recordBody .det-row[data-grp]").count() == 5)
+    page.locator('#recordBody .det-row[data-grp="state"]').click()
+    page.wait_for_timeout(150)
+    body = page.inner_text("#recordBody")
+    check("resource UI: STRS 7690 named with CDE's title",
+          "7690" in body and "On-Behalf Pension" in body)
+    check("resource UI: on-behalf note rendered",
+          "never receives or spends" in body)
+    check("resource UI: unrestricted-not-local note rendered",
+          "Unrestricted is not local" in body)
+    check("resource UI: LCFF-limit note rendered",
+          "supplemental" in body.lower() and "not tracked separately" in body.lower())
+    check("resource UI: indirect-cost note rendered",
+          "indirect-cost rate" in body)
+    # the word 'local' never describes the unrestricted row
+    unr_row = page.locator('#recordBody .det-row:has-text("Unrestricted")').first.inner_text()
+    check("resource UI: unrestricted row not labeled local",
+          "local" not in unr_row.lower())
+    # a prior year shows group totals, states named-year, no drill carets
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&y=2022-23")
+    page.wait_for_selector("#recordBody .det-row[data-grp='unrestricted'], "
+                           "#recordBody .srchead")
+    prior = page.inner_text("#recordBody")
+    check("resource UI: prior year notes the named year",
+          named_year in prior and "latest year" in prior)
+    check("resource UI: prior year exposes no named drill",
+          page.locator("#recordBody .det-row[data-grp]").count() == 0
+          or page.locator("#recordBody .src-code").count() == 0)
+    # citation + CSV carry the funding source
+    page.goto(f"{base}/schools.html#c=los-angeles-unified")
+    page.wait_for_selector("#citeToggle")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    cite = page.inner_text("#citeText")
+    check("resource cite: citation carries the funding-source split",
+          "funding source" in cite.lower() and "unrestricted" in cite.lower())
+    page.keyboard.press("Escape")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("resource CSV: funding-source rows with codes and titles",
+          "funding_source_group" in csv_text and "On-Behalf Pension" in csv_text
+          and "7690" in csv_text)
+    check("resource CSV: unrestricted-not-local stated in the header",
+          "not local" in csv_text.lower())
+
+
 def test_polish(page, base):
     """Design polish: the phone front door orients within ~250px, the
     header is one component on every page, the masthead statement owns
@@ -2553,6 +2683,7 @@ def main():
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)
+            test_resource(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

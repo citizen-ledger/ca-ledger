@@ -122,6 +122,15 @@
   .obj-foot{display:flex;justify-content:space-between;gap:14px;padding:7px 0;font-weight:600;font-size:var(--fs-data);border-bottom:1px solid var(--ink)}
   .obj-note{font-size:var(--fs-data);color:var(--graphite);margin-top:8px;line-height:1.5}
   .det-row.click{cursor:pointer}
+  /* funding-source section: the restricted/unrestricted split, finer */
+  .srchead{font-family:var(--serif);font-size:20px;font-weight:400;margin-top:40px;padding-top:22px;border-top:1px solid var(--ink)}
+  .srcdek{font-size:var(--fs-note);color:var(--graphite);margin-top:6px;line-height:1.5;max-width:70ch}
+  .srclbl{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.07em;color:var(--smoke);margin-top:18px}
+  .src-code{display:flex;justify-content:space-between;gap:14px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--hairline);font-size:var(--fs-data)}
+  .src-code .cd{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-right:8px}
+  .src-code .v{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .src-onbehalf{color:var(--graphite)}
+  .src-dag{border:none;background:transparent;color:var(--blue);cursor:pointer;font-size:var(--fs-micro);padding:0 3px;font-family:var(--serif)}
   .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:var(--fs-data);color:var(--graphite);line-height:1.5}
   .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
 
@@ -321,7 +330,7 @@
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
   const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
-  const S = {...DEFAULTS, sel: [], openFn: null};
+  const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null};
 
   /* ---------- permalink ---------- */
   function hashOf(){
@@ -482,6 +491,83 @@
   const val = (v, ada) => S.unit === "perAda" && ada ? v/ada : v;
   const fmtVal = (v, ada) => S.unit === "perAda" && ada ? money0(v/ada) : moneyExact(v);
 
+  const RES = D.meta.resource;
+  const resTitle = (code, year) => ((D.resourceTitles||{})[year]||{})[code] || null;
+
+  // The funding-source section: the restricted/unrestricted split, finer.
+  // Group totals every year (gated); named codes for the latest year.
+  function srcSection(v){
+    const br = v.byResource || {};
+    const named = (S.year === RES.namedYear);
+    const gtot = g => (br[g] ? br[g].v : 0);
+    const groupRow = gkey => {
+      const meta = RES.groups.find(x => x.key === gkey);
+      const g = br[gkey];
+      if (!g) return "";
+      const canOpen = named && (g.n && g.n.length);
+      const open = S.openGrp === gkey;
+      let h = '<div class="det-row'+(canOpen?' click':'')+'"'
+        + (canOpen ? ' role="button" tabindex="0" data-grp="'+gkey+'"'
+            + ' aria-label="Show funding sources in '+esc(meta.name)+'"' : '')
+        + '><span class="fn">'+esc(meta.name)
+        + (canOpen ? '&nbsp;<i class="dim" style="font-style:normal;font-size:11px">'
+            + (open ? "▾" : "▸") + '</i>' : '')
+        + '</span><span class="bar"><i style="width:'
+        + (Math.abs(g.v)/gmax*100).toFixed(1)+'%"></i></span>'
+        + '<span class="v">'+fmtVal(g.v, v.ada)+'</span></div>';
+      if (canOpen && open){
+        h += '<div class="obj-panel">';
+        g.n.forEach(([code, dollars]) => {
+          const t = resTitle(code, S.year);
+          const onBehalf = code === RES.strsOnBehalfRes;
+          h += '<div class="src-code'+(onBehalf?' src-onbehalf':'')+'">'
+            + '<span><span class="cd">'+esc(code)+'</span>'
+            + esc(t || ("Resource "+code+" — no CDE title this year"))
+            + (onBehalf ? ' <span class="src-dag" title="On-behalf pension — see the'
+                + ' note below">†</span>' : '')
+            + '</span><span class="v">'+fmtVal(dollars, v.ada)+'</span></div>';
+        });
+        if (g.t)
+          h += '<div class="src-code"><span class="dim">Smaller '
+            + esc(meta.name.toLowerCase()) + ' sources, combined</span>'
+            + '<span class="v dim">' + fmtVal(g.t, v.ada)+'</span></div>';
+        h += '<div class="obj-foot"><span>'+esc(meta.name)
+          + ' — sums exactly to the row above</span><span class="v">'
+          + fmtVal(g.v, v.ada)+'</span></div>';
+        if (gkey === "restrictedOther")
+          h += '<div class="obj-note">'+esc(RES.otherRangeNote)+'</div>';
+        h += '</div>';
+      }
+      return h;
+    };
+    const restrictedGroups = RES.groups.filter(g => g.restricted).map(g => g.key);
+    const gmax = Math.max(1, ...RES.groups.map(g => Math.abs(gtot(g.key))));
+    const restrSum = restrictedGroups.reduce((s, k) => s + gtot(k), 0);
+    // does any named row carry on-behalf pension? then show that dagger note
+    const hasOnBehalf = named && Object.values(br).some(
+      g => g.n && g.n.some(([c]) => c === RES.strsOnBehalfRes));
+    let h = '<div class="srchead">Where the money comes from</div>'
+      + '<div class="srcdek">The same gated total, by funding source. This is the '
+      + 'restricted / unrestricted split above, in finer grain: the funding '
+      + 'sources sum to the same Current Expense of Education.'
+      + (named ? '' : ' Named sources are shown for FY ' + RES.namedYear
+          + ' (the latest year); this year shows group totals.')
+      + '</div>'
+      + '<div class="srclbl">UNRESTRICTED</div>'
+      + '<div style="margin-top:6px">' + groupRow("unrestricted") + '</div>'
+      + '<div class="obj-note" style="margin-top:8px">'+esc(RES.unrestrictedNote)+'</div>'
+      + '<div class="srclbl">RESTRICTED (CATEGORICAL PROGRAMS)</div>'
+      + '<div style="margin-top:6px">'
+      + restrictedGroups.map(groupRow).join("")
+      + '<div class="det-foot"><span>All restricted funding sources</span><span></span>'
+      + '<span class="v">'+fmtVal(restrSum, v.ada)+'</span></div></div>';
+    if (hasOnBehalf)
+      h += '<div class="note-row">† '+esc(RES.onBehalfNote)+'</div>';
+    h += '<div class="obj-note" style="margin-top:12px">'+esc(RES.indirectNote)+'</div>'
+      + '<div class="obj-note" style="margin-top:8px">'+esc(RES.lcffNote)+'</div>';
+    return h;
+  }
+
   function renderSingleDistrict(id){
     const d = D.districts[id], v = d.years[S.year];
     $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION — BY FUNCTION · "
@@ -530,9 +616,15 @@
         + (S.openFn===key ? objRows(key) : "")).join("")
       + '<div class="det-foot"><span>Current expense of education</span><span></span>'
       + '<span class="v">'+fmtVal(v.currentExpense, v.ada)+'</span></div></div>'
+      + srcSection(v)
       + notes.map(n => '<div class="note-row">† '+esc(n.text)+'</div>').join("");
     document.querySelectorAll('#recordBody .det-row[data-fn]').forEach(row => {
       const open = () => { S.openFn = S.openFn === row.dataset.fn ? null : row.dataset.fn; render(); };
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } });
+    });
+    document.querySelectorAll('#recordBody .det-row[data-grp]').forEach(row => {
+      const open = () => { S.openGrp = S.openGrp === row.dataset.grp ? null : row.dataset.grp; render(); };
       row.addEventListener("click", open);
       row.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } });
     });
@@ -661,6 +753,12 @@
     if (S.type === "districts" && sel.length){
       figure = sel.map(id => { const v = yr(id);
         return ent(id).name + " " + money0(v.currentExpense / v.ada) + " per ADA"; }).join("; ") + ". ";
+      if (sel.length === 1){
+        const v = yr(sel[0]);
+        figure += "By funding source: unrestricted " + moneyExact(v.unrestricted||0)
+          + ", restricted (categorical) " + moneyExact(v.restricted||0)
+          + " — funding sources sum to the same gated figure and are never added to any other layer. ";
+      }
     } else if (sel.length){
       const v = yr(sel[0]);
       figure = names[0] + " " + moneyExact(v.expenditures) + " expenditures. ";
@@ -695,6 +793,30 @@
           ...FN.map(f => (v.byFunction[f.key]||0).toFixed(2))]
           .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
       });
+      // funding-source breakout for a single district (the current view)
+      if (S.sel.length === 1){
+        const v = D.districts[S.sel[0]].years[S.year];
+        const br = v && v.byResource;
+        if (br){
+          lines.push("");
+          lines.push("# Funding source (resource) — sums to the same gated Current Expense; never added to another layer");
+          lines.push("# Unrestricted holds LCFF, EPA, and Lottery — largely STATE money, not local. Resource 7690 is on-behalf pension the STATE pays; the district never spends it.");
+          if (S.year !== D.meta.resource.namedYear)
+            lines.push("# Named sources shown for FY " + D.meta.resource.namedYear + "; this year lists group totals only.");
+          lines.push("funding_source_group,resource_code,resource_title,dollars");
+          const R = D.meta.resource;
+          R.groups.forEach(g => {
+            const grp = br[g.key]; if (!grp) return;
+            (grp.n || []).forEach(([code, dollars]) => {
+              lines.push([g.name, code, resTitle(code, S.year) || "", dollars]
+                .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+            });
+            if (grp.t) lines.push([g.name, "(smaller, combined)", "", grp.t.toFixed(2)].join(","));
+            lines.push([g.name + " — GROUP TOTAL", "", "", grp.v.toFixed(2)]
+              .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+          });
+        }
+      }
     } else {
       lines.push("entity,county,fiscal_year,expenditures");
       S.sel.forEach(id => { const e = ent(id), v = e.years[S.year];

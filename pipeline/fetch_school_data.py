@@ -198,6 +198,102 @@ def obj_family(n):
     return "otherOutgo"
 
 
+# CSAM Procedure 310 assigns the funding source of a resource ONLY by
+# number range (there is no per-code source column in any CDE artifact).
+# Ranges, verbatim: 0000-1999 unrestricted; 2000-9999 restricted, of
+# which 3000-5999 federal, 6000-7999 state, 8000-9999 local. CDE assigns
+# NO source to 2000-2999 (it sits before the federal block); we surface
+# that range as its own group and never file it under a source. This
+# grouping is the restricted/unrestricted split, finer: "unrestricted"
+# here equals resource < 2000, exactly as edp_restr splits it — so the
+# resource partition can never disagree with the displayed split.
+RES_GROUPS = [
+    ("unrestricted",    "Unrestricted"),
+    ("federal",         "Federal restricted"),
+    ("state",           "State restricted"),
+    ("local",           "Local restricted"),
+    ("restrictedOther", "Restricted — other (CDE assigns no source range)"),
+]
+STRS_ON_BEHALF_RES = "7690"   # On-Behalf Pension Contributions (state pays
+# CalSTRS directly on the district's behalf; booked as object 3101 within
+# resource 7690, entirely inside Current Expense — the district never
+# touches this cash). Always shown as its own named row so a group total
+# is never read as district-controlled spending. See face note below.
+ELOP_RES = "2600"             # Expanded Learning Opportunities Program —
+# the one live code in the unassigned 2000-2999 range; shown by name.
+NAMED_FLOOR = 1_000_000.0     # named rows at >= $1M; the rest combine into
+# an exact-remainder tail per group (the finding's hybrid).
+
+
+def res_group(code):
+    """Resource -> CSAM funding-source group. Non-digit codes fold into
+    unrestricted, matching edp_restr's `isdigit() and >= 2000` rule, so
+    the two views are one partition (empirically no alpha codes appear in
+    Current Expense in any shipped vintage)."""
+    if not code.isdigit():
+        return "unrestricted"
+    n = int(code)
+    if n < 2000:
+        return "unrestricted"
+    if n < 3000:
+        return "restrictedOther"
+    if n < 6000:
+        return "federal"
+    if n < 8000:
+        return "state"
+    return "local"
+
+
+def build_by_resource(res_map):
+    """The finding's hybrid, per district-year: CSAM-range groups, named
+    rows for resources >= $1M (STRS on-behalf 7690 always named so it is
+    never buried in a group total), and one exact-remainder tail per
+    group. Named rows carry whole dollars (funding sources render as
+    $Xm / per-ADA, never to the cent); the tail absorbs the remainder so
+    every group STILL sums to the cent — group total = sum(named) + tail,
+    and sum(group totals) = the gated Current Expense, exactly.
+    Returns {group: {total (cents), named:[[code, whole$]], tail (cents)}}."""
+    grouped = defaultdict(list)          # group -> [(code, value)]
+    for code, v in res_map.items():
+        grouped[res_group(code)].append((code, round(v, 2)))
+    out = {}
+    for gkey, _ in RES_GROUPS:
+        rows = grouped.get(gkey, [])
+        total = round(sum(v for _, v in rows), 2)
+        named, named_sum = [], 0.0
+        for code, v in sorted(rows, key=lambda cv: (-abs(cv[1]), cv[0])):
+            if abs(v) >= NAMED_FLOOR or code == STRS_ON_BEHALF_RES:
+                dv = round(v)            # whole dollars for display rows
+                named.append([code, dv])
+                named_sum += dv
+        out[gkey] = {"total": total, "named": named,
+                     "tail": round(total - named_sum, 2)}
+    return out
+
+
+def slim_by_resource(by, named):
+    """Ship the group total (`v`) for every non-empty group, every year —
+    that is the funding-source answer, gated to the cent and nesting into
+    restricted/unrestricted. The named-code rows (`n`) and their
+    exact-remainder tail (`t`) are shipped for the latest year only: three
+    years of every $1M+ code would be ~+18% on the file, so the finding's
+    hybrid is held to the payload discipline by carrying the named detail
+    on the current year and the group totals on all years. The pipeline
+    still GATES the full breakout at full fidelity in every year."""
+    out = {}
+    for gkey, d in by.items():
+        if abs(d["total"]) < 0.005 and not d["named"]:
+            continue
+        o = {"v": d["total"]}
+        if named:
+            if d["named"]:
+                o["n"] = d["named"]
+            if abs(d["tail"]) >= 0.005:
+                o["t"] = d["tail"]
+        out[gkey] = o
+    return out
+
+
 def edp_in_scope(obj, goal, func):
     """CDE's Current Expense of Education (EDP 365) row filter."""
     in_objects = (1000 <= obj <= 5999) or obj == 6500 or (7300 <= obj <= 7399)
@@ -253,11 +349,21 @@ def process_year(yy, fy):
     if n_coe != 58:
         raise SystemExit(f"FY {fy}: {n_coe} COEs (expected 58) — nothing written")
 
+    # ---- resource titles: CDE's OWN names, from THIS year's table only
+    # (titles drift across vintages — 46 retitles in our window — so they
+    # are never crosswalked across years; the FY2017 vintage lesson).
+    res_title = {}
+    for r in mdb_rows(sacs, "Resource"):
+        res_title[r["Code"].strip()] = r["Title"].strip()
+
     # ---- stream the general ledger once
     edp = defaultdict(float)                 # (c,d) -> EDP365
     edp_fn = defaultdict(lambda: defaultdict(float))
     edp_fn_obj = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     edp_restr = defaultdict(lambda: [0.0, 0.0])   # [unrestricted, restricted]
+    edp_by_res = defaultdict(lambda: defaultdict(float))    # (c,d) -> code -> $
+    edp_fn_grp = defaultdict(lambda: defaultdict(float))    # (c,d) -> (fn,grp) -> $
+    res_stats = defaultdict(float)   # statewide: strsOnBehalf, indirect_<grp>
     coe_fn = defaultdict(lambda: defaultdict(float))
     coe_tot = defaultdict(float)
     charter_gl = defaultdict(lambda: defaultdict(float))   # (c,d,s) -> family
@@ -306,9 +412,18 @@ def process_year(yy, fy):
                 # restricted/unrestricted split (resource >= 2000 is
                 # restricted, SACS's own definition)
                 edp_fn_obj[(c, d)][g][obj_family(obj)] += v
-                res = r["Resource"]
+                res = r["Resource"].strip()
                 restricted = res.isdigit() and int(res) >= 2000
                 edp_restr[(c, d)][1 if restricted else 0] += v
+                # V9: funding source. Resource dollars per district, and
+                # the function × resource-group cross-tab that must
+                # reproduce every function total.
+                edp_by_res[(c, d)][res] += v
+                edp_fn_grp[(c, d)][(g, res_group(res))] += v
+                if res == STRS_ON_BEHALF_RES:
+                    res_stats["strsOnBehalf"] += v
+                if 7300 <= obj <= 7399:      # indirect-cost transfers
+                    res_stats["indirect_" + res_group(res)] += v
             if is_coe and 1000 <= obj <= 7999:
                 coe_fn[(c, d)][fn_group(r["Function"])] += v
                 coe_tot[(c, d)] += v
@@ -478,9 +593,52 @@ def process_year(yy, fy):
         raise SystemExit(f"FY {fy}: {len(depth_fail)} depth partition(s) "
                          "do not sum to the gated figure — nothing written")
 
+    # V9 RESOURCE GATES (hard, no write on failure): the funding-source
+    # breakout must reproduce the gated figure to the cent, be a strict
+    # refinement of the restricted/unrestricted split, and not distort
+    # any function total.
+    res_fail = []
+    for key, pub in ce.items():
+        total = round(edp[key], 2)
+        by = build_by_resource(edp_by_res[key])
+        # 1. group totals + the hybrid tails sum to Current Expense
+        grp_sum = round(sum(g["total"] for g in by.values()), 2)
+        disp_sum = round(sum(round(sum(v for _, v in g["named"]), 2) + g["tail"]
+                             for g in by.values()), 2)
+        if abs(grp_sum - total) > 0.005 or abs(disp_sum - total) > 0.005:
+            res_fail.append(f"{pub['name']}: groups {grp_sum:,.2f} / "
+                            f"displayed {disp_sum:,.2f} vs {total:,.2f}")
+            continue
+        # 2. resource partition == the displayed restricted/unrestricted
+        unr = by["unrestricted"]["total"]
+        restr = round(sum(by[g]["total"] for g, _ in RES_GROUPS
+                          if g != "unrestricted"), 2)
+        if (abs(unr - round(edp_restr[key][0], 2)) > 0.005 or
+                abs(restr - round(edp_restr[key][1], 2)) > 0.005):
+            res_fail.append(f"{pub['name']}: resource partition "
+                            f"unr {unr:,.2f}/restr {restr:,.2f} != split "
+                            f"{edp_restr[key][0]:,.2f}/{edp_restr[key][1]:,.2f}")
+            continue
+        # 3. function × resource-group reproduces every function total
+        fn_from_grp = defaultdict(float)
+        for (g, _grp), v in edp_fn_grp[key].items():
+            fn_from_grp[g] += v
+        for g, v in edp_fn[key].items():
+            if abs(fn_from_grp[g] - v) > 0.005:
+                res_fail.append(f"{pub['name']}: fn×group {g} "
+                                f"{fn_from_grp[g]:,.2f} != {v:,.2f}")
+                break
+    if res_fail:
+        for s in res_fail[:10]:
+            print("  V9 GATE FAIL:", s, file=sys.stderr)
+        raise SystemExit(f"FY {fy}: {len(res_fail)} resource partition(s) "
+                         "fail the funding-source gates — nothing written")
+
     return {
         "leas": leas, "charters": charters, "ce": ce, "edp": edp,
-        "edp_fn": edp_fn, "edp_fn_obj": edp_fn_obj, "edp_restr": edp_restr, "coe_fn": coe_fn, "coe_tot": coe_tot,
+        "edp_fn": edp_fn, "edp_fn_obj": edp_fn_obj, "edp_restr": edp_restr,
+        "edp_by_res": edp_by_res, "res_title": res_title,
+        "res_stats": dict(res_stats), "coe_fn": coe_fn, "coe_tot": coe_tot,
         "coe_ada": coe_ada, "charter_gl": charter_gl,
         "charter_gl_tot": charter_gl_tot, "alt_data": alt_data,
         "alt_tot": alt_tot, "dep_funds_exp": dep_funds_exp,
@@ -526,6 +684,10 @@ def main():
 
     # ---- assemble districts (driven by the published CE list)
     districts, slug_taken = {}, {}
+    # titles for the codes that actually appear as named rows, per year —
+    # CDE's own words, this vintage's table only; a code with no title in
+    # its own year ships as its raw code (never invented, never grouped).
+    res_titles_used = {fy: {} for fy in Y}
     all_keys = sorted({k for fy in Y for k in years[fy]["ce"]},
                       key=lambda k: years[Y[-1]]["ce"].get(k, years[Y[0]]["ce"].get(k, {"name": ""}))["name"])
     for key in all_keys:
@@ -546,6 +708,14 @@ def main():
             pub = yd["ce"][key]
             fn = {k: round(v, 2) for k, v in yd["edp_fn"][key].items()}
             com = yd["commingled"].get(key)
+            by_res = build_by_resource(yd["edp_by_res"][key])
+            named_year = (fy == latest)
+            if named_year:
+                for g in by_res.values():
+                    for code, _ in g["named"]:
+                        t = yd["res_title"].get(code)
+                        if t:
+                            res_titles_used[fy][code] = t
             entry["years"][fy] = {
                 "ada": round(pub["ada"], 2),
                 "currentExpense": round(yd["edp"][key], 2),
@@ -553,6 +723,7 @@ def main():
                 "byFunction": fn,
                 "byFunctionObject": {g: {o: round(v, 2) for o, v in fam.items()}
                                      for g, fam in yd["edp_fn_obj"][key].items()},
+                "byResource": slim_by_resource(by_res, named_year),
                 "unrestricted": round(yd["edp_restr"][key][0], 2),
                 "restricted": round(yd["edp_restr"][key][1], 2),
                 "basicAid": bool(yd["basic_aid"].get(key, False)),
@@ -726,6 +897,52 @@ def main():
                                  "actuals agree to roughly 1-3.5 percent and "
                                  "never to the dollar",
             },
+            "resource": {
+                "groups": [{"key": k, "name": n,
+                            "restricted": k != "unrestricted"}
+                           for k, n in RES_GROUPS],
+                "namedFloorM": round(NAMED_FLOOR / 1e6, 1),
+                "namedYear": latest,   # named codes shipped for this year;
+                # all years carry gated group totals (payload discipline)
+                "strsOnBehalfRes": STRS_ON_BEHALF_RES,
+                "elopRes": ELOP_RES,
+                # live statewide figures per year (Current Expense scope,
+                # districts) so the UI hardcodes no dollar amount
+                "stats": {fy: {
+                    "strsOnBehalfB": round(years[fy]["res_stats"]
+                                           .get("strsOnBehalf", 0) / 1e9, 3),
+                    "indirectToUnrestrictedB": round(-years[fy]["res_stats"]
+                        .get("indirect_unrestricted", 0) / 1e9, 3),
+                } for fy in Y},
+                # the four face requirements, stated once, plainly
+                "onBehalfNote": "Resource 7690, On-Behalf Pension "
+                    "Contributions, is money the State pays to CalSTRS "
+                    "directly on the district's behalf. It is inside the "
+                    "Current Expense of Education but the district never "
+                    "receives or spends this cash — it is not district "
+                    "spending. Shown as its own row wherever it appears.",
+                "indirectNote": "Per-source figures include each program's "
+                    "share of district overhead, transferred into it at the "
+                    "district's approved indirect-cost rate; unrestricted is "
+                    "shown net of those reimbursements. The transfers net to "
+                    "zero across the district, so totals reconcile exactly.",
+                "unrestrictedNote": "Unrestricted is not local. Resource 0000 "
+                    "and the rest of the unrestricted range hold LCFF "
+                    "apportionment, the Education Protection Account, and "
+                    "unrestricted Lottery — largely STATE money the district "
+                    "may spend without a categorical restriction. Local "
+                    "restricted is a separate group.",
+                "lcffNote": "LCFF is accounted for as a single unrestricted "
+                    "resource. Base, supplemental, and concentration grants "
+                    "are NOT tracked separately in any district's general "
+                    "ledger (CDE's LCFF FAQ; California State Auditor "
+                    "2019-101), so no base-vs-supplemental breakout exists "
+                    "here — the ledger does not contain one.",
+                "otherRangeNote": "The 2000-2999 range has no funding source "
+                    "assigned in CDE's classification (CSAM Procedure 310); "
+                    "its codes are shown by their official names, never filed "
+                    "under a source.",
+            },
             "commingledNote": "Charters reported inside an authorizer's Fund "
                               "01 cannot be separated from the district's own "
                               "figures; affected district records state the "
@@ -737,6 +954,7 @@ def main():
         "years": Y,
         "functions": [{"key": k, "name": n} for k, n, _, _ in FN_GROUPS],
         "objectFamilies": [{"key": k, "name": n} for k, n, _, _ in OBJ_FAMILIES],
+        "resourceTitles": res_titles_used,
         "districts": districts,
         "countyOffices": coes,
         "charters": charters_out,
