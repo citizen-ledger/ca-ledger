@@ -32,7 +32,8 @@ basemap tiles — see STATUS.md; everything else stays dependency-free.)
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
-| `tests/run_tests.py` | Headless test suite — one command, 338 assertions on the real data. |
+| `tests/run_tests.py` | Headless test suite — one command, 940 assertions on the real data. |
+| `tests/mutation_test.py` | Mutation testing: tampers with one figure per layer (digest re-stamped) and requires the suite to catch it. A surviving mutation means the tests are reading the pipeline's claims, not the data. |
 | `docs/SCOPE.md` | Standing scope decisions and the architectural rule: no server, no API keys, no per-use costs, no runtime third-party services — features requiring one are out of scope by default. Read it before proposing features. |
 | `STATUS.md` | Data provenance: source, accounting basis, validation against published totals, and the history of how the source was chosen. |
 
@@ -98,7 +99,7 @@ update once a year.
 python3 tests/run_tests.py
 ```
 
-One command, 338 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
+One command, 940 assertions against the real data files (the map assertions need network for basemap tiles): the actuals reconciliation gates (re-asserted against Schedule 6 control totals) and difference arithmetic, V1 and V2
 rendering on the Ledger design system, drill-down and view/unit
 controls, permalink hash round-trips, CSV export contents, citation
 output, Change-view arithmetic, a banned-adjective scan, neutrality
@@ -119,6 +120,30 @@ and the RECORD INTEGRITY digests (verified live with
 permalinks and citations emit the served public URL. Requires Python
 3.9+, `pip install playwright`, and system Chrome (or `playwright
 install chromium`).
+
+### Mutation testing — do the tests verify the data, or the pipeline?
+
+```
+python3 tests/mutation_test.py            # every layer
+python3 tests/mutation_test.py --list
+```
+
+A test can look rigorous and verify nothing. Before the UC layer
+shipped, a review changed one campus figure by $1,000, re-stamped the
+SHA-256 digest so the integrity check still passed, and ran the suite:
+every assertion passed. The gate assertions were reading values the
+pipeline itself had written instead of recomputing the reconciliation
+from the shipped rows.
+
+This harness makes that failure mode impossible to reintroduce. For
+each of 24 targets it creates a throwaway git worktree, changes one
+figure in a shipped data file, re-stamps the digest so the integrity
+check cannot be what catches it, and runs the full suite. **Every
+mutation must fail the suite; a surviving mutation is a hole in the
+gates, not a bug in the script.** It deliberately includes *coordinated*
+tampers that move a figure and its stored parent together — those keep
+every in-file identity true, so only an external control pin can catch
+them. Use `--ref` to test any commit.
 
 ## Licensing: open code, public-domain data, protected name
 
