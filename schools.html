@@ -131,6 +131,12 @@
   .src-code .v{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   .src-onbehalf{color:var(--graphite)}
   .src-dag{border:none;background:transparent;color:var(--blue);cursor:pointer;font-size:var(--fs-micro);padding:0 3px;font-family:var(--serif)}
+  .src-code.click{cursor:pointer}
+  /* V10a: the reduced cross-tab — a funding source's object breakdown */
+  .res-obj{margin:2px 0 8px 14px;border-left:2px solid var(--ash);padding:2px 0 4px 12px}
+  .ro-row{display:flex;justify-content:space-between;gap:14px;padding:3px 0;border-bottom:1px solid var(--hairline);font-size:var(--fs-micro)}
+  .ro-row .v{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+  .ro-foot{display:flex;justify-content:space-between;gap:14px;padding:4px 0 2px;font-size:var(--fs-micro);color:var(--graphite);font-weight:600}
   .note-row{padding:10px 14px 12px 20px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:var(--fs-data);color:var(--graphite);line-height:1.5}
   .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
 
@@ -330,7 +336,7 @@
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
   const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
-  const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null};
+  const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null, openRes: null};
 
   /* ---------- permalink ---------- */
   function hashOf(){
@@ -517,15 +523,41 @@
         + '<span class="v">'+fmtVal(g.v, v.ada)+'</span></div>';
       if (canOpen && open){
         h += '<div class="obj-panel">';
-        g.n.forEach(([code, dollars]) => {
+        g.n.forEach(row => {
+          const code = row[0], dollars = row[1], objArr = row[2] || null;
           const t = resTitle(code, S.year);
           const onBehalf = code === RES.strsOnBehalfRes;
-          h += '<div class="src-code'+(onBehalf?' src-onbehalf':'')+'">'
-            + '<span><span class="cd">'+esc(code)+'</span>'
+          const rk = gkey + ":" + code;
+          const canDrill = !!(objArr && objArr.length);
+          const rOpen = S.openRes === rk;
+          h += '<div class="src-code'+(onBehalf?' src-onbehalf':'')
+            + (canDrill?' click':'')+'"'
+            + (canDrill ? ' role="button" tabindex="0" data-res="'+esc(rk)+'"'
+                + ' aria-label="Show what '+esc(t||code)+' bought, by object"' : '')
+            + '><span><span class="cd">'+esc(code)+'</span>'
             + esc(t || ("Resource "+code+" — no CDE title this year"))
+            + (canDrill ? '&nbsp;<i class="dim" style="font-style:normal;font-size:10px">'
+                + (rOpen ? "▾" : "▸") + '</i>' : '')
             + (onBehalf ? ' <span class="src-dag" title="On-behalf pension — see the'
                 + ' note below">†</span>' : '')
             + '</span><span class="v">'+fmtVal(dollars, v.ada)+'</span></div>';
+          if (canDrill && rOpen){
+            // V10a reduced cross-tab: what this funding source bought, by
+            // object — sums to the source total to the cent
+            const cells = objArr.map((x, i) => [OBJ[i], x])
+              .filter(([o, x]) => o && x !== 0)
+              .sort((a, b) => b[1] - a[1]);
+            h += '<div class="res-obj">';
+            cells.forEach(([o, x]) =>
+              h += '<div class="ro-row"><span>'+esc(o.name)+'</span>'
+                + '<span class="v num">'+(x<0?"−":"")
+                + fmtVal(Math.abs(x), v.ada)+'</span></div>');
+            h += '<div class="ro-foot"><span>'
+              + esc(onBehalf ? "Paid by the State on the district’s behalf — not district spending"
+                    : (t||("Resource "+code))+" — sums to the row above")
+              + '</span><span class="v num">'+fmtVal(dollars, v.ada)+'</span></div>';
+            h += '</div>';
+          }
         });
         if (g.t)
           h += '<div class="src-code"><span class="dim">Smaller '
@@ -550,7 +582,8 @@
       + '<div class="srcdek">The same gated total, by funding source. This is the '
       + 'restricted / unrestricted split above, in finer grain: the funding '
       + 'sources sum to the same Current Expense of Education.'
-      + (named ? '' : ' Named sources are shown for FY ' + RES.namedYear
+      + (named ? ' Expand a named source to see what it bought, by object.'
+          : ' Named sources are shown for FY ' + RES.namedYear
           + ' (the latest year); this year shows group totals.')
       + '</div>'
       + '<div class="srclbl">UNRESTRICTED</div>'
@@ -625,6 +658,11 @@
     });
     document.querySelectorAll('#recordBody .det-row[data-grp]').forEach(row => {
       const open = () => { S.openGrp = S.openGrp === row.dataset.grp ? null : row.dataset.grp; render(); };
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } });
+    });
+    document.querySelectorAll('#recordBody .src-code[data-res]').forEach(row => {
+      const open = () => { S.openRes = S.openRes === row.dataset.res ? null : row.dataset.res; render(); };
       row.addEventListener("click", open);
       row.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } });
     });
@@ -757,7 +795,8 @@
         const v = yr(sel[0]);
         figure += "By funding source: unrestricted " + moneyExact(v.unrestricted||0)
           + ", restricted (categorical) " + moneyExact(v.restricted||0)
-          + " — funding sources sum to the same gated figure and are never added to any other layer. ";
+          + " — funding sources sum to the same gated figure, each also broken down by object "
+          + "(what it bought), and are never added to any other layer. ";
       }
     } else if (sel.length){
       const v = yr(sel[0]);
@@ -803,17 +842,23 @@
           lines.push("# Unrestricted holds LCFF, EPA, and Lottery — largely STATE money, not local. Resource 7690 is on-behalf pension the STATE pays; the district never spends it.");
           if (S.year !== D.meta.resource.namedYear)
             lines.push("# Named sources shown for FY " + D.meta.resource.namedYear + "; this year lists group totals only.");
-          lines.push("funding_source_group,resource_code,resource_title,dollars");
+          // each named source also carries its object split (V10a) — the
+          // objects sum to the source's dollars, and across sources to the
+          // object totals
+          lines.push("# Object columns are what each source bought; they sum to that source's dollars.");
+          lines.push("funding_source_group,resource_code,resource_title,dollars,"
+            + OBJ.map(o => o.key).join(","));
           const R = D.meta.resource;
+          const esc2 = x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x;
           R.groups.forEach(g => {
             const grp = br[g.key]; if (!grp) return;
-            (grp.n || []).forEach(([code, dollars]) => {
-              lines.push([g.name, code, resTitle(code, S.year) || "", dollars]
-                .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+            (grp.n || []).forEach(row => {
+              const code = row[0], dollars = row[1], arr = row[2] || [];
+              lines.push([g.name, code, resTitle(code, S.year) || "", dollars,
+                ...OBJ.map((o, i) => arr[i] || 0)].map(esc2).join(","));
             });
-            if (grp.t) lines.push([g.name, "(smaller, combined)", "", grp.t.toFixed(2)].join(","));
-            lines.push([g.name + " — GROUP TOTAL", "", "", grp.v.toFixed(2)]
-              .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
+            if (grp.t) lines.push([g.name, "(smaller, combined)", "", grp.t.toFixed(2)].map(esc2).join(","));
+            lines.push([g.name + " — GROUP TOTAL", "", "", grp.v.toFixed(2)].map(esc2).join(","));
           });
         }
       }

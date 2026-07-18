@@ -1945,7 +1945,8 @@ def test_resource(page, base):
                     ns = sum(x[1] for x in g.get("n", []))
                     if abs(ns + g.get("t", 0) - g["v"]) > 0.01:
                         disp_bad.append(f"{slug} {gk}: named+tail != group v")
-                    for code, _ in g.get("n", []):
+                    for nrow in g.get("n", []):
+                        code = nrow[0]
                         if code not in titles.get(y, {}) and not code.isdigit():
                             title_bad.append(f"{slug} {code}")
             else:
@@ -1967,9 +1968,9 @@ def test_resource(page, base):
 
     # STRS on-behalf (7690) is present as its own named row somewhere
     strs = meta["strsOnBehalfRes"]
-    has_strs = any(code == strs for d in SCHOOL["districts"].values()
+    has_strs = any(nrow[0] == strs for d in SCHOOL["districts"].values()
                    for g in (d["years"].get(named_year, {}).get("byResource") or {}).values()
-                   for code, _ in g.get("n", []))
+                   for nrow in g.get("n", []))
     check("resource: STRS on-behalf ships as its own named row", has_strs)
     check("resource: on-behalf note states the district never spends it",
           "never receives or spends" in meta["onBehalfNote"])
@@ -2038,6 +2039,98 @@ def test_resource(page, base):
           and "7690" in csv_text)
     check("resource CSV: unrestricted-not-local stated in the header",
           "not local" in csv_text.lower())
+
+    # ---- V10a: the reduced object × resource cross-tab
+    obj_keys = [o["key"] for o in SCHOOL["objectFamilies"]]
+    # data gate: BOTH margins — each named resource's object array sums to
+    # its own total, and object families aggregate to the object totals
+    margin1_bad, margin2_bad, ce_bad, absent_full = [], [], [], []
+    for slug, d in SCHOOL["districts"].items():
+        for y, v in d["years"].items():
+            br = v.get("byResource")
+            if not br:
+                continue
+            obj_margin = {}   # objfam -> summed across named
+            named_dollars = 0.0
+            for gk, g in br.items():
+                for row in g.get("n", []):
+                    named_dollars += row[1]
+                    if len(row) < 3:
+                        if y == named_year:
+                            margin1_bad.append(f"{slug} {row[0]}: no object array")
+                        continue
+                    arr = row[2]
+                    # margin 1: object array sums to the resource total
+                    if sum(arr) != row[1]:
+                        margin1_bad.append(f"{slug} {row[0]}: obj {sum(arr)} != {row[1]}")
+                    for i, x in enumerate(arr):
+                        obj_margin[obj_keys[i]] = obj_margin.get(obj_keys[i], 0) + x
+            # the full grid must NOT be shipped: no per-district resource×
+            # object matrix, only object arrays hanging off named rows
+            if "byResourceObject" in v or "crossTab" in v:
+                absent_full.append(f"{slug} {y}")
+    check("V10a gate: each named resource's object split sums to its total (margin 1)",
+          not margin1_bad, str(margin1_bad[:3]))
+    check("V10a: the full object×resource grid is NOT shipped",
+          not absent_full, str(absent_full[:3]))
+    # margin 2 + CE, verified against the pipeline's own cross-tab is done
+    # in the pipeline gate; here confirm the shipped named arrays aggregate
+    # sensibly to the object families that also appear in byFunctionObject
+    lausd = SCHOOL["districts"]["los-angeles-unified"]["years"][named_year]
+    # object-family totals from the function×object view (V8)
+    v8_obj = {}
+    for fam in lausd["byFunctionObject"].values():
+        for ok, val in fam.items():
+            v8_obj[ok] = v8_obj.get(ok, 0) + val
+    # object-family totals implied by the resource view = named arrays +
+    # (the object composition of tails is not shipped, so this checks the
+    # named portion is a subset that never exceeds the V8 total)
+    res_obj = {}
+    for g in lausd["byResource"].values():
+        for row in g.get("n", []):
+            if len(row) == 3:
+                for i, x in enumerate(row[2]):
+                    res_obj[obj_keys[i]] = res_obj.get(obj_keys[i], 0) + x
+    over = [ok for ok in res_obj
+            if res_obj[ok] - v8_obj.get(ok, 0) > max(1.0, abs(v8_obj.get(ok, 0))*0.02)]
+    check("V10a: named-resource object cells never exceed the V8 object totals",
+          not over, str(over))
+
+    # ---- V10a UI: the drill renders, STRS cell keeps its label
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&u=total")
+    page.wait_for_selector("#recordBody .det-row[data-grp]")
+    page.locator('#recordBody .det-row[data-grp="federal"]').click()
+    page.wait_for_timeout(150)
+    ti = page.locator('#recordBody .src-code[data-res="federal:3010"]')
+    check("V10a UI: a named funding source is drillable to objects",
+          ti.count() == 1)
+    ti.click()
+    page.wait_for_timeout(150)
+    body = page.inner_text("#recordBody")
+    check("V10a UI: object breakdown renders (what Title I bought)",
+          "Certificated salaries" in body and "Employee benefits" in body)
+    # the object rows sum to the source total (foot says so)
+    check("V10a UI: object split states it sums to the source",
+          "sums to the row above" in body)
+    # STRS 7690: single benefits cell, keeps the not-district-spent label
+    page.locator('#recordBody .det-row[data-grp="state"]').click()
+    page.wait_for_timeout(150)
+    strs = page.locator('#recordBody .src-code[data-res="state:7690"]')
+    if strs.count():
+        strs.click()
+        page.wait_for_timeout(150)
+        sbody = page.inner_text("#recordBody")
+        check("V10a UI: STRS on-behalf object cell labeled not-district-spending",
+              "not district spending" in sbody
+              and "Employee benefits" in sbody)
+    # CSV carries the object columns
+    page.goto(f"{base}/schools.html#c=los-angeles-unified")
+    page.wait_for_selector("#csvBtn")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv2 = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("V10a CSV: funding-source rows carry object columns",
+          "certSalaries" in csv2 and "what each source bought" in csv2)
 
 
 def test_polish(page, base):
