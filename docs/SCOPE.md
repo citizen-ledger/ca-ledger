@@ -34,6 +34,43 @@ requires no key, no account, no billing relationship, and its failure
 breaks nothing. Anything requiring an API key, a server, or per-use
 cost does not qualify — by default, without a new finding.
 
+## Reproducibility — where it fully holds, and the one exception
+
+Every layer regenerates from its official source by re-running its
+pipeline against public data — **except CSU.** State, cities, counties,
+special districts, and K-12 all fetch their sources automatically
+(SCO, DOF, CDE endpoints), so anyone can reproduce every figure from
+scratch. That is a core honesty claim of the site.
+
+**The CSU (higher-education) layer is the one exception, and it is
+stated loudly wherever CSU appears** — the CSU page's method box reads
+`NOT AUTO-REPRODUCIBLE`, and the about-page source table and the
+pipeline docstring say the same. CSU's only source of an audited control total is
+the systemwide financial statements PDF on `calstate.edu`, which is
+**bot-gated**: a browser "Human Check" returns HTTP 403 to any
+scripted download (curl, the pipeline's own fetcher, and archive.org
+all fail; verified). The figures were extracted from the real audited
+PDFs through a browser and are checked in at
+`pipeline/cache/csu/csu-fy2324.tsv`; refreshing the layer for a new
+fiscal year requires a **manual browser download** of the CSU audited
+statements and Fact Book into `pipeline/cache/csu/`, then re-running
+the extractor. This is the same class of exception as the one
+bot-gated file the K-12 pipeline already documents (`pubschls.txt`),
+scaled up to a gate source.
+
+Why CSU ships anyway (per docs/V10B_HIGHERED_FINDING.md): the gate is
+real and proven — the 23 campuses plus a visible systemwide &
+eliminations line reconcile **exactly, to the thousand**, to CSU's
+audited University total, and the audited combining identity holds
+exactly. "Exact to the thousand" is the finest resolution CSU
+publishes (its statements are denominated in thousands), so it is
+exact fidelity at the source's own resolution — a different,
+accurately-named tier from K-12's to-the-cent, not a looser version.
+UC and community-college districts are **not** built: UC's raw figure
+is dominated by hospitals (a med-center strip the finding requires but
+which is unresolved), and community-college districts' to-the-cent
+reconciliation is unproven. Only CSU met its bar.
+
 ## "Ask the Ledger" — permanently out of scope
 
 A natural-language query interface ("ask a question about California
