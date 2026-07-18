@@ -61,6 +61,7 @@ DIST = load_data_js(ROOT / "district-data.js")
 SCHOOL = load_data_js(ROOT / "school-data.js")
 CSU = load_data_js(ROOT / "csu-data.js")
 CCC = load_data_js(ROOT / "ccc-data.js")
+UC = load_data_js(ROOT / "uc-data.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -177,7 +178,7 @@ def test_integrity():
                           ("city-geo.js", GEO), ("county-data.js", COUNTY),
                           ("county-geo.js", CGEO), ("district-data.js", DIST),
                           ("school-data.js", SCHOOL), ("csu-data.js", CSU),
-                          ("ccc-data.js", CCC)):
+                          ("ccc-data.js", CCC), ("uc-data.js", UC)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
@@ -1258,6 +1259,7 @@ def test_rename(page, base):
              "districts.html": "Special districts",
              "address.html": "Your governments",
              "ccc.html": "Community colleges",
+             "uc.html": "UC campuses",
              "about.html": "About & method"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
@@ -2129,6 +2131,218 @@ def test_ccc(page, base):
           and "auto-fetchable" in scope.lower())
 
 
+def test_uc(page, base):
+    """V12 UC layer: exact-to-the-thousand gate for BOTH years (ten
+    campuses + UC's own printed Systemwide column == audited total),
+    the column-sum check, the strip on UC's own lines only (shown, never
+    deleted), the hospitals-not-medical-schools limit on the face, the
+    unaudited status quoted verbatim, per-FTE with residents excluded on
+    UC's own line, campuses never ranked, and auto-reproducibility."""
+    camps, sw, meta = UC["campuses"], UC["systemwide"], UC["meta"]
+    # ---- data gate: both years, exact, thousands
+    check("uc: 10 campuses", len(camps) == 10)
+    for fy in ("2024-25", "2023-24"):
+        g = meta["gateHistory"][fy]
+        check(f"uc gate {fy}: campuses + printed Systemwide == audited total (exact, thousands)",
+              g["campusSumK"] + g["systemwideColK"] == g["auditedTotalK"]
+              and g["residualK"] == 0,
+              f"{g['campusSumK']} + {g['systemwideColK']} vs {g['auditedTotalK']}")
+    check("uc gate: displayed-year audited total matches gate history",
+          sw["auditedTotalK"] == meta["gateHistory"]["2024-25"]["auditedTotalK"])
+    # the gate RECOMPUTED from the shipped campus rows — not the pipeline's
+    # own echoed gateHistory (a +1K drift in any campus row must fail here)
+    row_sum = sum(c["totalK"] for c in camps)
+    check("uc gate: shipped campus rows + printed Systemwide == audited total (recomputed)",
+          row_sum + sw["systemwideColK"] == sw["auditedTotalK"],
+          f"{row_sum} + {sw['systemwideColK']} vs {sw['auditedTotalK']}")
+    check("uc gate: gateHistory campus sum equals the shipped rows' sum",
+          row_sum == meta["gateHistory"]["2024-25"]["campusSumK"])
+    # the column-sum check re-asserted from the shipped data: every campus's
+    # function lines sum exactly to its total
+    check("uc gate: every campus's function lines sum exactly to its total (column-sum, from data)",
+          all(sum(c["functions"].values()) == c["totalK"] for c in camps))
+    # campus-rows-to-systemwide bridges (the strip cannot drift from the rows)
+    check("uc gate: campus med lines + systemwide elimination == systemwide med",
+          sum(c["medK"] for c in camps) + sw["medSystemwideElimK"] == sw["medK"])
+    check("uc gate: campus aux lines + systemwide elimination == systemwide aux",
+          sum(c["auxK"] for c in camps) + sw["auxSystemwideElimK"] == sw["auxK"])
+    check("uc gate: campus cores + systemwide core == total core",
+          sum(c["coreK"] for c in camps) + sw["systemwideCoreK"] == sw["coreK"])
+    check("uc gate: the gate text names the column-sum check",
+          "column-sum" in meta["gate"].lower())
+    # the no-write gate logic itself: the column-sum assignment prover must
+    # reject ambiguous and non-tying sparse rows (unit-level, no network)
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    from fetch_uc_data import _prove_assignment
+    ok_grid, err = _prove_assignment(
+        {"Full": [1, 2, 3], "Sparse": [10]}, [11, 2, 3], ["A", "B", "C"])
+    check("uc pipeline: a uniquely-tying sparse assignment is accepted",
+          err is None and ok_grid["Sparse"] == {"A": 10})
+    bad, err2 = _prove_assignment(
+        {"Full": [1, 2, 3], "Sparse": [5]}, [1, 2, 3], ["A", "B", "C"])
+    check("uc pipeline: a non-tying sparse row is a gate failure (nothing written)",
+          bad is None and err2 is not None)
+    amb, err3 = _prove_assignment(
+        {"Full": [1, 1, 3], "Sparse": [0]}, [1, 1, 3], ["A", "B", "C"])
+    check("uc pipeline: an ambiguous sparse assignment is a gate failure, not a guess",
+          amb is None and err3 is not None and "assignments tie" in err3)
+    check("uc: unit is thousands, never claimed 'to the cent'",
+          "thousand" in meta["unit"].lower()
+          and ("to the cent" not in meta["gate"].lower()
+               or "not to the cent" in meta["gate"].lower()))
+    # ---- the strip: UC's own lines, identity exact, shown not deleted
+    check("uc strip: med + aux + DOE + core == audited total (exact)",
+          sw["medK"] + sw["auxK"] + sw["doeK"] + sw["coreK"] == sw["auditedTotalK"])
+    check("uc strip: per-campus core == total - med - aux",
+          all(c["coreK"] == c["totalK"] - c["medK"] - c["auxK"] for c in camps))
+    med_set = sorted(c["name"] for c in camps if c["medK"] > 0)
+    check("uc strip: five medical-center campuses, the known five",
+          med_set == ["Davis", "Irvine", "Los Angeles", "San Diego", "San Francisco"],
+          str(med_set))
+    check("uc strip: definition says UC's own lines, never our judgment",
+          "own" in meta["strip"]["definition"].lower()
+          and "judgment" in meta["strip"]["definition"].lower())
+    check("uc strip: components shown separately, never deleted",
+          "never deleted" in meta["strip"]["definition"].lower())
+    check("uc strip: the limit — hospitals stripped, medical schools NOT",
+          "hospital" in meta["strip"]["limit"].lower()
+          and "not the schools of medicine" in meta["strip"]["limit"].lower())
+    check("uc labs: LBNL inside on UC's own line; Triad/LLNS equity-method, undisclosed",
+          "Lawrence Berkeley" in meta["strip"]["labsNote"]
+          and "equity" in meta["strip"]["labsNote"].lower()
+          and "not disclose" in meta["strip"]["labsNote"].lower())
+    # ---- audit status, verbatim
+    check("uc: unaudited status quotes the verbatim heading",
+          "Campus Facts in Brief (Unaudited)" in meta["unauditedStatus"])
+    check("uc: unaudited status quotes the other-information scope",
+          "other information" in meta["unauditedStatus"]
+          and "do not express an opinion" in meta["unauditedStatus"])
+    # ---- basis / denominator / reproducibility
+    check("uc: basis is GAAP, explicitly NOT budgetary-legal",
+          "gaap" in meta["basis"].lower() and "not" in meta["basis"].lower()
+          and "budgetary-legal" in meta["basis"].lower())
+    check("uc: denominator is student FTE with residents EXCLUDED on UC's own line",
+          "fte" in meta["denominator"].lower()
+          and "excluded" in meta["denominator"].lower()
+          and "resident" in meta["denominator"].lower())
+    check("uc: per-FTE derived as core/studentFTE; residents carried for audit",
+          all(c["corePerFte"] == round(c["coreK"] * 1000 / c["fteStudents"])
+              for c in camps if c["fteStudents"]))
+    check("uc: student FTE excludes the resident line",
+          all(c["fteStudents"] == c["fteGeneral"] + c["fteHealthStudents"] for c in camps)
+          and any(c["fteResidents"] > 0 for c in camps))
+    ucsf = next(c for c in camps if c["flags"]["healthOnly"])
+    check("uc: the health-sciences-only campus is San Francisco (no general campus)",
+          ucsf["name"] == "San Francisco" and ucsf["fteGeneral"] == 0)
+    check("uc: reproducibility says AUTO-reproducible (the CSU contrast)",
+          "auto-reproducible" in meta["reproducibility"].lower()
+          and "not auto-reproducible" not in meta["reproducibility"].lower())
+    ov = meta["overlap"]
+    check("uc: overlap computed live and non-additive (~8.3% / ~9.3%)",
+          ov["shareOfOpex"] == round(ov["stateApprK"] / ov["auditedTotalK"], 4)
+          and ov["shareOfOpRev"] == round(ov["stateApprK"] / ov["opRevK"], 4)
+          and ov["auditedTotalK"] == sw["auditedTotalK"]
+          and 0.07 < ov["shareOfOpex"] < 0.10 and 0.08 < ov["shareOfOpRev"] < 0.11
+          and "do not sum" in ov["statement"].lower())
+
+    # ---- UI
+    page.goto(f"{base}/uc.html")
+    page.wait_for_selector("#tbl .r")
+    gate = page.inner_text("#gateStrip")
+    check("uc UI: gate strip — exact to the thousand, both years, residual $0k",
+          "exact to the thousand" in gate.lower()
+          and "both years" in gate.lower() and gate.lower().count("residual $0k") == 2)
+    check("uc UI: gate strip names the column-sum check",
+          "column-sum" in gate.lower())
+    status = page.inner_text("#statusStrip")
+    check("uc UI: audit status on the face, verbatim heading quoted",
+          "Campus Facts in Brief (Unaudited)" in status
+          and "other information" in status)
+    check("uc UI: basis strip says GAAP, not enacted",
+          "gaap" in page.inner_text("#basisStrip").lower()
+          and "not" in page.inner_text("#basisStrip").lower())
+    body = page.inner_text("#tbl")
+    check("uc UI: UC's printed Systemwide reconciling row is visible",
+          "Systemwide (UCOP, DOE laboratory & eliminations)" in body)
+    check("uc UI: core foot in the default (core) view",
+          "University core" in page.inner_text("#tbl .r.foot"))
+    # never ranked: a plain load sorts by NAME, not by magnitude
+    first_row = page.inner_text("#tbl .r:not(.hd)").split("\n")[0]
+    check("uc UI: default order is alphabetical (Berkeley first), never value-ranked",
+          first_row.startswith("Berkeley"), first_row)
+    strip_box = page.inner_text("#stripBox")
+    check("uc UI: strip box shows all three UC lines and the core, never deleted",
+          "Medical centers" in strip_box and "Auxiliary enterprises" in strip_box
+          and "Department of Energy laboratories" in strip_box
+          and "NEVER DELETED" in strip_box.upper())
+    limit = page.inner_text("#limitBox")
+    check("uc UI: the limit box — hospitals, not medical schools — with the UCSF example",
+          "HOSPITALS, NOT MEDICAL SCHOOLS" in limit.upper()
+          and "San Francisco" in limit)
+    check("uc UI: overlap does-not-add box",
+          "DO NOT ADD" in page.inner_text("#noSum"))
+    check("uc UI: auto-reproducible box present",
+          "AUTO-REPRODUCIBLE" in page.inner_text("#reproBox"))
+    caps = page.inner_text("#recordCaps")
+    check("uc UI: never ranked; residents excluded; the limit restated at the table",
+          "never ranked" in caps.lower()
+          and "residents excluded" in caps.lower()
+          and "hospitals, not medical schools" in caps.lower())
+    # per-FTE view + the UCSF structural dagger — the LIMIT must be pinned
+    # in the one view where per-student figures appear (non-negotiable):
+    # the schedule label, the limit box, and the caps must all carry it HERE
+    page.click('#unitGroup button[data-unit="perFte"]')
+    page.wait_for_timeout(150)
+    sched = page.inner_text("#scheduleLabel").lower()
+    check("uc UI: per-FTE view names the residents exclusion",
+          "residents excluded" in sched)
+    check("uc UI: per-FTE schedule label itself carries the strip's limit",
+          "hospitals stripped, medical schools not" in sched)
+    check("uc UI: limit box visible IN the per-FTE view",
+          page.locator("#limitBox").is_visible()
+          and "HOSPITALS, NOT MEDICAL SCHOOLS"
+              in page.inner_text("#limitBox").upper())
+    check("uc UI: never-ranked + limit caps still present in the per-FTE view",
+          "never ranked" in page.inner_text("#recordCaps").lower()
+          and "hospitals, not medical schools" in page.inner_text("#recordCaps").lower())
+    sf = page.locator('#tbl .r:has-text("San Francisco") .dag')
+    check("uc UI: UCSF carries a comparability dagger in the per-FTE view",
+          sf.count() == 1)
+    sf.first.click()
+    page.wait_for_timeout(120)
+    note = page.inner_text("#tbl .note-row")
+    check("uc UI: UCSF dagger names the health-sciences-only structure",
+          "HEALTH-SCIENCES-ONLY" in note.upper())
+    # total view: audited foot
+    page.click('#unitGroup button[data-unit="total"]')
+    page.wait_for_timeout(150)
+    check("uc UI: audited-total foot in the total view",
+          "University total (audited)" in page.inner_text("#tbl .r.foot"))
+    # cite + CSV
+    page.goto(f"{base}/uc.html")
+    page.wait_for_selector("#citeToggle")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    cite = page.inner_text("#citeText")
+    check("uc cite: thousand + both years + strip limit + never-add stated",
+          "to the thousand" in cite.lower() and "2023-24" in cite
+          and "hospitals, not medical" in cite.lower()
+          and "never added" in cite.lower())
+    page.keyboard.press("Escape")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("uc CSV: campuses + Systemwide + audited total + strip + residents column",
+          "San Francisco" in csv_text and "University total (audited)" in csv_text
+          and "medical_resident_fte" in csv_text
+          and "column-sum check" in csv_text
+          and str(sw["auditedTotalK"]) in csv_text)
+    # SCOPE.md records the layer and its strip discipline
+    scope = (ROOT / "docs" / "SCOPE.md").read_text(encoding="utf-8")
+    check("uc: SCOPE.md records UC as built, stripped on UC's own categories",
+          "V12_UC_FINDING" in scope and "column-sum check" in scope)
+
+
 def test_resource(page, base):
     """V9 funding-source (resource) layer: the breakout reproduces the
     gated Current Expense to the cent, is a strict refinement of the
@@ -2365,11 +2579,12 @@ def test_polish(page, base):
     page.wait_for_selector(".fd-statement")
     top = page.evaluate(
         "document.querySelector('.fd-statement').getBoundingClientRect().top")
-    # eight nav destinations wrap to four two-column rows on a phone (the CSU
-    # and community-college layers added two), so the statement sits a row
-    # lower than at six — still in the top third of an 844px screen, above the fold.
-    check("polish: masthead statement in the top third at 390",
-          top <= 300, f"top {top}")
+    # nine nav destinations wrap to five two-column rows on a phone (the CSU,
+    # community-college, and UC layers added three), so the statement sits a
+    # row lower than at six — still within the top 40% of an 844px screen,
+    # above the fold.
+    check("polish: masthead statement above the fold at 390",
+          top <= 340, f"top {top}")
     cols = page.evaluate(
         "getComputedStyle(document.querySelector('nav.pn'))"
         ".gridTemplateColumns.split(' ').length")
@@ -2382,7 +2597,7 @@ def test_polish(page, base):
 
     # one header everywhere: identical nav on all pages (incl. csu.html, ccc.html)
     navs = set()
-    for f in PAGES + ["csu.html", "ccc.html"]:
+    for f in PAGES + ["csu.html", "ccc.html", "uc.html"]:
         page.goto(f"{base}/{f}")
         page.wait_for_selector("nav.pn")
         navs.add(page.inner_text("nav.pn").strip())
@@ -3001,6 +3216,7 @@ def main():
             test_resource(page, base)
             test_csu(page, base)
             test_ccc(page, base)
+            test_uc(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

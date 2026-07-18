@@ -38,10 +38,10 @@ cost does not qualify — by default, without a new finding.
 
 Every layer regenerates from its official source by re-running its
 pipeline against public data — **except CSU.** State, cities, counties,
-special districts, K-12, and the community-college districts all fetch
-their sources automatically (SCO, DOF, CDE, and the Chancellor's Office
-CCFS-311 portal), so anyone can reproduce every figure from scratch.
-That is a core honesty claim of the site.
+special districts, K-12, the community-college districts, and UC all
+fetch their sources automatically (SCO, DOF, CDE, the Chancellor's
+Office CCFS-311 portal, and ucop.edu), so anyone can reproduce every
+figure from scratch. That is a core honesty claim of the site.
 
 **The CSU (higher-education) layer is the one exception, and it is
 stated loudly wherever CSU appears** — the CSU page's method box reads
@@ -81,10 +81,29 @@ resolution tier — finer than CSU's thousand, coarser than K-12's cent —
 at the resolution the CCFS-311 portal publishes. Per-FTES uses the
 apportionment funded FTES, not the Data Mart derived count.
 
-**UC remains the one higher-education holdout, and is still not built:**
-its raw figure is dominated by hospitals (a med-center strip the
-finding requires but which is unresolved). Of the three higher-education
-systems, CSU and the community colleges met the bar; UC has not.
+**UC is now built too (per docs/V12_UC_FINDING.md), in its honest,
+stripped form only.** The V10b concern — that a raw UC figure is a
+hospital ledger (medical centers are ~34-39% of operating expense) —
+was resolved not by our judgment but by UC's own segment reporting:
+UC's Annual Financial Report publishes "Medical centers", "Auxiliary
+enterprises", and "Department of Energy laboratories" as its own
+per-campus functional lines, so the strip is pure arithmetic on
+UC-published cells, with the stripped components shown separately,
+never deleted. The gate: ten campuses plus UC's own PRINTED Systemwide
+column equal the audited total operating expenses **exactly, to the
+thousand** (the CSU tier — the finest resolution UC publishes), proven
+for BOTH FY2024-25 and FY2023-24, with every campus column proven by a
+**column-sum check** (the sparse rows' column assignment established
+uniquely by exhaustion — the parsing trap the V12 finding documented).
+The per-campus table is UC's auditor-read "other information," marked
+"(Unaudited)"; that status is stated on the page — the audited figure
+is the systemwide total the campuses reconcile to. The strip's limit
+is stated on the face: hospitals are stripped, **medical schools are
+not** (health-sciences instruction/research stays in core; UCSF
+carries the structural dagger). Sources are public ucop.edu URLs —
+auto-fetchable, no manual cache. All three higher-education systems
+now meet the bar: CSU (thousand, manual-cache), CCC (dollar, auto),
+UC (thousand, auto, stripped on UC's own categories).
 
 ## "Ask the Ledger" — permanently out of scope
 

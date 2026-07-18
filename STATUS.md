@@ -1594,6 +1594,74 @@ about.html gained a sources row; docs/SCOPE.md now lists the layer as
 auto-fetchable and corrects the stale "community colleges not built"
 note; verify_digest.py includes ccc-data.js.
 
+## 2026-07-18 — V12 UC layer built (uc.html)
+
+The University of California layer shipped (per docs/V12_UC_FINDING.md,
+option (a): SHIP stripped and gated). New page `uc.html`, pipeline
+`pipeline/fetch_uc_data.py`, data file `uc-data.js`. Nav extended to
+nine items across every page and the 404.
+
+**The gate — exact to the thousand, BOTH years, plus the column-sum
+check.** Ten campuses plus UC's own PRINTED Systemwide column equal the
+audited total operating expenses exactly: FY2024-25 $58,074,198K +
+(−$306,871K) = $57,767,327K, residual $0K; FY2023-24 $52,003,294K +
+$2,700,134K = $54,703,428K, residual $0K. Thousands is the finest
+resolution UC publishes (the CSU tier; never called "to the cent").
+Every campus column's function lines must sum exactly to that column's
+printed total, with the sparse rows' assignment proven UNIQUE by
+exhaustion — the build-time gate the V12 finding prescribed after a
+verification pass mis-mapped a sparse row exactly as a naive build
+would. No write on any failure.
+
+**The strip — UC's own lines only, shown, never deleted.** Medical
+centers $22,304,432K (38.6%), auxiliary enterprises $1,819,469K (3.1%),
+Department of Energy laboratories $1,194,419K (2.1%) → core
+$32,449,007K (56.2%). The DOE line is LBNL, inside UC's statements per
+its own Note 1; Los Alamos and Livermore are equity-method LLCs already
+outside, their equity income undisclosed by UC (stated, so no one reads
+absence as zero). **The limit is on the face, non-negotiable: hospitals
+are stripped, medical schools are NOT** — health-sciences instruction
+and research remain in core, so per-student figures are not comparable
+across campuses with and without medical schools. Stated in the limit
+box, the record caps, the per-FTE view, the cite text, and the CSV
+header; UCSF (health-sciences-only, no general campus — core ≈ $1.5M
+per student FTE) carries the structural dagger, data-derived.
+
+**Audit status quoted verbatim.** The per-campus table is UC's "Campus
+Facts in Brief (Unaudited)" — the auditor's "other information," on
+which PwC "do[es] not express an opinion." Quoted on the page and in
+the method note; the audited figure is the systemwide total the
+campuses reconcile to.
+
+**Denominator and access.** Per-student uses student FTE from UCOP's
+stable-URL actual-FTE PDFs; medical residents are on UC's own labeled
+line and EXCLUDED from the denominator, with the resident counts
+carried in the data so the choice is auditable. Both sources are public
+ucop.edu URLs — `--refresh` re-fetches live and reproduces uc-data.js
+byte-for-byte (confirmed). No manual-cache exception; CSU remains the
+lone one. Overlap live: state educational appropriations 8.3% of
+operating expenses / 9.3% of operating revenues, never summed with the
+enacted budget line. Campuses never ranked.
+
+Tests: +62 assertions (898 total, all passing), including both years'
+gates RECOMPUTED from the shipped campus rows (not just the pipeline's
+own gate metadata), the column-sum check re-asserted from the data,
+the campus-rows-to-systemwide bridges, unit tests of the sparse-row
+assignment prover (ambiguous or non-tying rows are gate failures), the
+strip identity, the five-campus medical roster, the residents-excluded
+FTE math, the verbatim unaudited status, the limit wording pinned in
+the per-FTE view itself, the alphabetical (never value-ranked) default
+order, and the integrity digest. An adversarial three-lens review ran
+before the PR; its two mutation-proven blocking findings (gate
+assertions that only echoed pipeline metadata; the per-FTE view able
+to drop the limit silently) and its pipeline finding (campus column
+order was positional, unverified against the printed header) are all
+fixed — the header order is now a hard gate.
+about.html gained a UC sources row and gate sentence; docs/SCOPE.md
+now records all three higher-education systems as built (CSU thousand
+manual-cache · CCC dollar auto · UC thousand auto stripped);
+verify_digest.py includes uc-data.js.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
@@ -1628,3 +1696,12 @@ district audits, and the SCFF apportionment recalculation are all final
 Exhibit C URL for the new year. The write fails unless the districts'
 Current Expense of Education sum exactly to the printed statewide Table
 VI total. Auto-fetchable — no manual cache.
+
+UC: one new fiscal year per Annual Financial Report (~five months after
+the June 30 close; the UCOP actual-FTE PDF appears alongside). Run
+`python3 pipeline/fetch_uc_data.py --write --refresh`; update the AFR
+and FTE URLs in `AFR`/`FTE_PDF` and `FY_DISPLAY` for the new year (the
+prior year stays in `AFR` so both years' gates always run). The write
+fails unless ten campuses + UC's printed Systemwide column equal the
+audited total exactly, both years, and every campus column passes the
+column-sum check. Auto-fetchable — no manual cache.
