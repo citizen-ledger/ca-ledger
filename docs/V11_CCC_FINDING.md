@@ -6,6 +6,27 @@ and at what resolution, demonstrated on real downloaded data. The CSU
 discipline applied — no gate claimed without a residual measured on
 real figures. Every figure below was fetched and reconciled this week.*
 
+> **Build correction (2026-07-17, when the layer was built).** Building
+> against the live data refined two things in this finding — the "prove
+> it on real data" discipline working as intended. (1) The gate figure:
+> the published Current Expense of Education (ECS 84362) is the
+> *post-exclusion* figure in **Table VI**, the Chancellor's Office's
+> "Summary of Current Expense of Education." This finding's draft LA
+> figure, $774,683,675, was the 50-Percent-Law worksheet's "Total
+> Expenditures Prior to Exclusions" — a pre-exclusion line. The
+> published ECS 84362 for LA is **$716,533,122**, and the statewide
+> total is **$8,469,851,699**. (2) The gate as built is therefore a
+> clean sum-reconciliation: the **73** districts' Current Expense of
+> Education (Table VI includes Allan Hancock, which is off the report
+> dropdown) sum **exactly, to the dollar**, to Table VI's own printed
+> statewide total — one public fetch, all districts, zero fetch
+> failures, auto-reproducible. The multi-college roster was verified
+> against the MIS codes (reconciling to the official 116 colleges) and
+> the community-supported roster against the SCFF Exhibit C (reconciling
+> to the official 8) — the latter catching **San Mateo**, a three-college
+> basic-aid district this finding's hand-listed "dangerous cell" had
+> missed. The recommendation below stands, strengthened.
+
 **Recommendation: (a) SHIP gated, at WHOLE-DOLLAR resolution, proven.**
 The gate holds — and CCC is a *stronger* candidate than CSU on every
 axis that matters: finer resolution (whole dollars, not thousands), a
@@ -72,8 +93,14 @@ finding half-cited.
 
 Every figure on the portal is an integer number of dollars. Real
 example, Los Angeles CCD, FY2022-23, extracted live: **Current Expense
-of Education (ECS 84362) = $774,683,675**; instructional salaries
-subject to the 50-Percent Law = $367,274,887. No cents appear anywhere.
+of Education (ECS 84362) = $716,533,122**; instructional salaries
+subject to the 50-Percent Law = $367,274,887 (51.26%). No cents appear
+anywhere. *(Build correction — see the note at the top: an earlier draft
+of this finding quoted LA's Current Expense of Education as $774,683,675.
+That is the 50-Percent-Law worksheet's "Total Expenditures Prior to
+Exclusions," a pre-exclusion line; the published ECS 84362 figure, after
+the exclusions, is $716,533,122 — the number in Table VI and in the
+built layer.)*
 So the gate resolution is **to the dollar** — finer than CSU's thousands
 (CSU's statements are denominated in thousands), coarser than K-12's
 cents (SACS carries actual cents). The reconciliation to audit is exact

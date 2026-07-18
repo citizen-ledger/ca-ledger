@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Citizen Ledger — CSU campuses</title>
-<meta name="description" content="A nonpartisan record of California government spending. California State University campus spending, exact to the thousand against CSU's audited systemwide total; GAAP basis, per enrolled student, auxiliaries separate.">
-<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/csu.html">
+<title>Citizen Ledger — Community colleges</title>
+<meta name="description" content="A nonpartisan record of California government spending. California Community College district spending — Current Expense of Education (ECS 84362), reconciled to the dollar against the Chancellor's Office statewide total; modified-accrual basis, per apportionment FTES, districts never ranked.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/ccc.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Citizen Ledger">
-<meta property="og:title" content="Citizen Ledger — CSU campuses">
-<meta property="og:description" content="A nonpartisan record of California government spending. CSU campus spending, exact to the thousand against CSU's audited systemwide total; GAAP basis, per enrolled student, auxiliaries separate.">
-<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/csu.html">
+<meta property="og:title" content="Citizen Ledger — Community colleges">
+<meta property="og:description" content="A nonpartisan record of California government spending. Community college district spending, reconciled to the dollar against the Chancellor's Office statewide total; modified-accrual basis, per FTES, districts never ranked.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/ccc.html">
 <meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,10 +23,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* Ledger design system — see index.html. Higher-ed (CSU) layer: gated
-     EXACT TO THE THOUSAND against CSU's own audited systemwide total,
-     GAAP basis (not the state page's budgetary-legal), per enrolled
-     student, auxiliaries shown separately, campuses never ranked. */
+  /* Ledger design system — see index.html. Community-college layer: gated
+     WHOLE-DOLLAR, EXACT against the Chancellor's Office's own printed
+     statewide Current Expense of Education (ECS 84362); modified-accrual
+     BAM basis (not the state page's budgetary-legal), per apportionment
+     FTES, auxiliaries excluded by construction, districts never ranked. */
   :root{
     --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
     --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
@@ -68,7 +69,7 @@
   .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
   .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
   h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
-  .dek{font-size:var(--fs-body);color:var(--graphite);margin-top:12px;max-width:600px;line-height:1.5}
+  .dek{font-size:var(--fs-body);color:var(--graphite);margin-top:12px;max-width:620px;line-height:1.5}
   .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
   .hero-sub{font-family:var(--mono);font-size:var(--fs-data);color:var(--graphite);margin-top:10px}
   .hero-lbl{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-top:4px}
@@ -90,19 +91,21 @@
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
   .basis-strip{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);margin-top:10px;line-height:1.6}
 
-  .tbl{min-width:640px;margin-top:20px}
-  .r{display:grid;grid-template-columns:260px 1fr 130px 120px;gap:0 16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hairline)}
+  .tbl{min-width:660px;margin-top:20px}
+  .r{display:grid;grid-template-columns:250px 1fr 116px 148px;gap:0 16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hairline)}
   .r.hd{border-bottom:1px solid var(--ink);font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;color:var(--smoke);padding:8px 0}
-  .r .nm{font-size:14px;display:flex;align-items:baseline;gap:6px}
+  .r .nm{font-size:14px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .r .sub{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke)}
   .r .bar{height:6px;background:var(--track);border-radius:1px;overflow:hidden}
   .r .bar i{display:block;height:6px;background:var(--ink)}
   .r .v{font-family:var(--mono);font-size:var(--fs-data);text-align:right;font-variant-numeric:tabular-nums}
-  .r.recon{color:var(--graphite);font-style:italic}
   .r.foot{border-bottom:1px solid var(--ink);font-weight:600}
-  .dag{border:none;background:transparent;color:var(--blue);cursor:pointer;font-size:var(--fs-micro);padding:0 2px;font-family:var(--serif)}
+  .dag{border:none;background:transparent;color:var(--blue);cursor:pointer;font-size:var(--fs-micro);padding:0 1px;font-family:var(--serif)}
   .hd-sort{background:none;border:none;font:inherit;color:inherit;cursor:pointer;text-align:right;padding:0}
   .hd-sort.on{color:var(--ink)}
   .note-row{padding:10px 14px 12px 16px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:var(--fs-data);color:var(--graphite);line-height:1.5}
+  .note-row .tag{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;color:var(--ink);display:block;margin-top:8px}
+  .note-row .tag:first-child{margin-top:0}
   .caps{display:flex;justify-content:space-between;gap:16px;margin-top:14px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
 
   .aux{border:1px dashed var(--graphite);background:var(--surface);border-radius:2px;margin-top:22px;padding:16px 22px}
@@ -117,8 +120,8 @@
   .mcol{display:flex;flex-direction:column;gap:16px}
   .mnote{display:flex;gap:12px;font-size:var(--fs-note);line-height:1.55;color:var(--graphite)}
   .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
-  .warnbox{border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:14px 18px;font-size:var(--fs-note);line-height:1.6}
-  .warnbox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:6px}
+  .okbox{border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--surface);padding:14px 18px;font-size:var(--fs-note);line-height:1.6}
+  .okbox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:6px}
   .integrity{border:1px solid var(--hairline);padding:12px 16px}
   .digest{font-family:var(--mono);font-size:var(--fs-micro);word-break:break-all;color:var(--graphite);margin-top:6px}
 
@@ -134,7 +137,7 @@
   footer.ft a{color:var(--blue);text-decoration:none}
   footer.ft a:hover{text-decoration:underline}
 
-  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .r{grid-template-columns:1fr 110px} .r .bar{display:none} .r>.v:nth-child(3){display:none} }
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .r{grid-template-columns:1fr 120px} .r .bar{display:none} .r>.v:nth-child(3){display:none} }
   @media(max-width:720px){
     h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px} .record{padding:20px 16px 24px}
     header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
@@ -157,8 +160,8 @@
     <a href="index.html">State budget</a>
     <a href="cities.html">City &amp; county spending</a>
     <a href="schools.html">K-12 schools</a>
-    <a href="csu.html" class="active">CSU campuses</a>
-    <a href="ccc.html">Community colleges</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html" class="active">Community colleges</a>
     <a href="districts.html">Special districts</a>
     <a href="address.html">Your governments</a>
     <a href="about.html">About &amp; method</a>
@@ -166,30 +169,30 @@
 </header>
 
 <div class="prov">
-  <span>SOURCE: CSU AUDITED FINANCIAL STATEMENTS (GAAP)</span>
-  <span>EXACT TO THE THOUSAND · CSU'S OWN AUDITED TOTAL</span>
-  <span>NOT AUTO-REPRODUCIBLE · BOT-GATED SOURCE</span>
+  <span>SOURCE: CCFS-311 · CHANCELLOR'S OFFICE (PUBLIC PORTAL)</span>
+  <span>WHOLE-DOLLAR, EXACT · STATEWIDE CONTROL TOTAL</span>
+  <span>AUTO-REPRODUCIBLE</span>
   <span>PUBLIC RECORD</span>
 </div>
 
 <main>
   <div class="hero">
     <div>
-      <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2023-24</div>
-      <h1>California State University</h1>
-      <p class="dek">Every campus's operating spending, reconciled exactly — to the thousand, the finest unit CSU publishes — against CSU's own audited systemwide total. Twenty-three campuses; audited GAAP figures, not the state budget's enacted basis.</p>
+      <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2022-23</div>
+      <h1>California Community Colleges</h1>
+      <p class="dek">Every district's Current Expense of Education (ECS 84362), reconciled exactly — to the dollar — against the Chancellor's Office's own statewide total. Seventy-three districts running 116 colleges; modified-accrual figures, not the state budget's enacted basis.</p>
     </div>
     <div class="hero-right">
       <div class="hero-num num" id="heroNum">—</div>
       <div class="hero-sub" id="heroSub"></div>
-      <div class="hero-lbl" id="heroLbl">UNIVERSITY TOTAL OPERATING EXPENSES · GAAP ACCRUAL · FY 2023-24</div>
+      <div class="hero-lbl" id="heroLbl">CURRENT EXPENSE OF EDUCATION · ECS 84362 · FY 2022-23</div>
     </div>
   </div>
 
   <div class="controls np">
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
-      <button data-unit="total" class="on">Total operating expense</button>
-      <button data-unit="perStudent">Per enrolled student</button>
+      <button data-unit="total" class="on">Current Expense of Education</button>
+      <button data-unit="perFtes">Per FTES</button>
     </div>
     <div class="actions">
       <button class="btn ink" id="citeToggle">Cite</button>
@@ -209,18 +212,18 @@
   </section>
 
   <section class="method" id="methodology">
-    <h2>How the CSU layer is built</h2>
-    <p class="lead">A different tier, named accurately: exact fidelity at the source's own resolution — the thousand — not the to-the-cent recomputation the K-12 layer holds.</p>
-    <div class="warnbox" style="margin-top:22px" id="reproBox"></div>
+    <h2>How the community-college layer is built</h2>
+    <p class="lead">A third resolution tier, named accurately: exact to the dollar — finer than CSU's thousand, coarser than K-12's cent — reconciled against the Chancellor's Office's own statewide control total.</p>
+    <div class="okbox" style="margin-top:22px" id="reproBox"></div>
     <div class="mgrid">
       <div class="mcol" id="methodNotes"></div>
       <div class="mcol">
         <div class="integrity">
           <div class="microlbl">RECORD INTEGRITY</div>
           <div class="digest" id="digest"></div>
-          <div style="font-size:var(--fs-data);line-height:1.55;color:var(--graphite);margin-top:8px">Verify: download <a href="csu-data.js" download>csu-data.js</a> and run <span class="mono" style="font-size:var(--fs-label)">python3 pipeline/verify_digest.py csu-data.js</span>. The extraction from the audited PDFs is checked in at <span class="mono" style="font-size:var(--fs-label)">pipeline/cache/csu/</span>.</div>
+          <div style="font-size:var(--fs-data);line-height:1.55;color:var(--graphite);margin-top:8px">Verify: download <a href="ccc-data.js" download>ccc-data.js</a> and run <span class="mono" style="font-size:var(--fs-label)">python3 pipeline/verify_digest.py ccc-data.js</span>. Rebuild from the live public sources with <span class="mono" style="font-size:var(--fs-label)">python3 pipeline/fetch_ccc_data.py --refresh</span>.</div>
         </div>
-        <div style="font-size:var(--fs-note);line-height:1.55;color:var(--graphite)">Citation links reproduce the exact view. Figures are in thousands of dollars, the resolution CSU publishes.</div>
+        <div style="font-size:var(--fs-note);line-height:1.55;color:var(--graphite)">Citation links reproduce the exact view. Figures are whole dollars, the resolution the CCFS-311 portal publishes.</div>
       </div>
     </div>
   </section>
@@ -228,7 +231,7 @@
 
 <dialog class="cite-dlg" id="citePanel" aria-label="Citation for this view">
   <div class="cite-card">
-    <div class="cite-top"><span class="microlbl">CITATION · CSU, AUDITED GAAP · EXACT TO THE THOUSAND</span>
+    <div class="cite-top"><span class="microlbl">CITATION · CCFS-311, ECS 84362 · EXACT TO THE DOLLAR</span>
       <button class="xbtn" id="citeClose" aria-label="Close citation">✕</button></div>
     <div class="cite-text" id="citeText"></div>
     <button class="btn ink" id="citeCopy" autofocus>Copy</button>
@@ -241,23 +244,24 @@
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
-<script src="csu-data.js"></script>
+<script src="ccc-data.js"></script>
 <script>
-  const D = window.CA_CSU_DATA;
+  const D = window.CA_CCC_DATA;
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const M = D.meta, SW = D.systemwide;
+  const M = D.meta, SW = D.statewide;
   const money0 = v => "$" + Math.round(v).toLocaleString("en-US");
-  const moneyB = k => "$" + (k/1e6).toFixed(2) + "B";        // k = thousands
-  const moneyK = k => "$" + Math.round(k).toLocaleString("en-US") + "k";
+  const moneyB = v => "$" + (v/1e9).toFixed(2) + "B";              // v in dollars
+  const titlecase = s => s.replace(/\w[^\s\-\/]*/g, w => w[0] + w.slice(1).toLowerCase())
+                          .replace(/\bCcd\b/,"CCD").replace(/\bLa\b/,"LA");
 
   const DEFAULTS = {unit: "total", sort: "name"};
   const S = {...DEFAULTS};
 
   function applyHash(){
     const p = new URLSearchParams(location.hash.replace(/^#/,""));
-    S.unit = p.get("u") === "perStudent" ? "perStudent" : "total";
-    S.sort = p.get("s") === "perStudent" ? "perStudent" : "name";
+    S.unit = p.get("u") === "perFtes" ? "perFtes" : "total";
+    S.sort = p.get("s") === "perFtes" ? "perFtes" : "name";
   }
   function syncHash(){
     const p = new URLSearchParams();
@@ -267,83 +271,86 @@
     history.replaceState(null, "", h ? "#"+h : location.pathname);
   }
 
-  // structural-comparability daggers, data-derived
-  function campusNotes(c){
-    const notes = [];
-    if (/Maritime/i.test(c.name))
-      notes.push("A small, specialized maritime academy — its per-student figure is not comparable to a comprehensive campus and reflects its distinct mission and scale, not spending choices.");
-    if (c.headcount < 8000)
-      notes.push("A smaller campus; fixed operating costs spread over fewer students raise the per-student figure independent of any spending decision.");
+  // structural-comparability daggers, data-derived from the flags in ccc-data.js
+  function districtNotes(r){
+    const f = r.flags, notes = [];
+    if (f.multiCollege) notes.push(["MULTI-COLLEGE",
+      "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege]);
+    if (f.basicAid) notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
+    if (f.noncreditHeavy) notes.push(["NONCREDIT-HEAVY",
+      Math.round(r.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
+    if (f.multiCollege && f.basicAid) notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
+    if (f.noApportionment) notes.push(["NO APPORTIONMENT FTES",
+      "Calbright is the state's online community college; it is not funded through the apportionment formula, so it has no funded-FTES denominator and no per-FTES figure."]);
     return notes;
   }
 
-  function unitVal(c){ return S.unit === "perStudent" ? c.perStudent : c.opexpK; }
-  function fmtUnit(c){ return S.unit === "perStudent" ? money0(c.perStudent) : moneyK(c.opexpK); }
+  function unitVal(r){ return S.unit === "perFtes" ? (r.perFtes||0) : r.ce; }
+  function fmtUnit(r){
+    if (S.unit === "perFtes") return r.perFtes==null ? "—" : money0(r.perFtes);
+    return money0(r.ce);
+  }
 
   function render(){
-    $("heroNum").textContent = moneyB(SW.universityOpexpK);
-    $("heroSub").textContent = "23 CAMPUSES · " + SW.systemwideHeadcount.toLocaleString() + " SYSTEMWIDE-PROGRAM STUDENTS BEYOND THE CAMPUSES";
-    $("scheduleLabel").textContent = "OPERATING EXPENSES BY CAMPUS · "
-      + (S.unit==="perStudent" ? "PER ENROLLED STUDENT (HEADCOUNT, NOT FTES)" : "TOTAL, IN THOUSANDS") + " · FY 2023-24";
-    $("gateStrip").textContent = "GATED · EXACT TO THE THOUSAND: the 23 campuses ("
-      + moneyK(D.campuses.reduce((s,c)=>s+c.opexpK,0)) + ") plus the Systemwide (Chancellor's Office) & eliminations line ("
-      + moneyK(SW.reconcilingK) + ") sum to CSU's audited University total, " + moneyK(SW.universityOpexpK)
-      + ". The audited combining identity holds exactly: " + moneyK(SW.universityOpexpK) + " + " + moneyK(SW.componentUnitsK)
-      + " − " + moneyK(SW.eliminationsK) + " = " + moneyK(SW.combinedK) + ".";
-    $("basisStrip").textContent = "BASIS: audited GAAP / GASB accrual — NOT the state budget page's enacted, budgetary-legal figure. The two are measured differently and are never added.";
+    $("heroNum").textContent = moneyB(SW.ce);
+    $("heroSub").textContent = SW.nDistricts + " DISTRICTS · " + SW.nColleges + " COLLEGES · " + Math.round(SW.fundedFtes).toLocaleString() + " FUNDED FTES";
+    $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION BY DISTRICT · "
+      + (S.unit==="perFtes" ? "PER FUNDED FTES (APPORTIONMENT, NOT DATA MART)" : "TOTAL, WHOLE DOLLARS") + " · FY 2022-23";
+    $("gateStrip").textContent = "GATED · WHOLE DOLLARS, EXACT: the " + SW.nDistricts
+      + " districts' Current Expense of Education (ECS 84362) sum to " + money0(SW.ce)
+      + " — the Chancellor's Office's own printed statewide total, to the dollar. Independently"
+      + " validated off the portal by each district's mandatory CPA audit (Ed Code 84040).";
+    $("basisStrip").textContent = "BASIS: modified-accrual on the CCC Budget and Accounting Manual — the same shape as K-12's SACS. NOT the state budget page's enacted, budgetary-legal figure. The two are never added.";
 
-    const rows = D.campuses.slice().sort((a,b) =>
-      S.sort === "perStudent" ? b.perStudent - a.perStudent : a.name.localeCompare(b.name));
-    const max = Math.max(...D.campuses.map(unitVal));
-    const sortH = k => 'class="hd-sort'+(S.sort===k?' on':'')+'" data-sort="'+k+'"';
-    let html = '<div class="r hd"><button '+sortH('name')+'>CAMPUS'+(S.sort==='name'?' ▾':'')+'</button>'
-      + '<span></span><span class="v dim">ENROLLMENT</span>'
-      + '<button '+sortH('perStudent')+' class="v hd-sort'+(S.sort==='perStudent'?' on':'')+'">'
-      + (S.unit==='perStudent'?'PER STUDENT':'OPERATING EXPENSE')+(S.sort==='perStudent'?' ▾':'')+'</button></div>';
-    rows.forEach(c => {
-      const notes = campusNotes(c);
-      const dag = notes.length ? ' <button class="dag" data-note="'+esc(c.name)+'" aria-label="Comparability note">†</button>' : '';
-      html += '<div class="r"><span class="nm">'+esc(c.name)+dag+'</span>'
-        + '<span class="bar"><i style="width:'+(unitVal(c)/max*100).toFixed(1)+'%"></i></span>'
-        + '<span class="v dim">'+c.headcount.toLocaleString()+'</span>'
-        + '<span class="v">'+fmtUnit(c)+'</span></div>';
-      const open = S.openNote === c.name;
-      if (open) notes.forEach(t => html += '<div class="note-row">† '+esc(t)+'</div>');
+    const rows = D.districts.slice().sort((a,b) => {
+      if (S.sort === "perFtes"){ const av=a.perFtes==null?-1:a.perFtes, bv=b.perFtes==null?-1:b.perFtes; return bv-av; }
+      return a.name.localeCompare(b.name);
     });
-    // the visible reconciling line, then the University foot
-    html += '<div class="r recon"><span class="nm">'+esc(SW.reconcilingLabel)+'</span><span></span>'
-      + '<span class="v dim">—</span><span class="v">'
-      + (S.unit==='perStudent' ? '—' : moneyK(SW.reconcilingK))+'</span></div>';
-    html += '<div class="r foot"><span class="nm">University total (audited)</span><span></span>'
-      + '<span class="v dim">'+D.campuses.reduce((s,c)=>s+c.headcount,0).toLocaleString()+'</span>'
-      + '<span class="v">'+(S.unit==='perStudent' ? '—' : moneyK(SW.universityOpexpK))+'</span></div>';
+    const max = Math.max(...D.districts.map(unitVal));
+    const sortH = k => 'class="hd-sort'+(S.sort===k?' on':'')+'" data-sort="'+k+'"';
+    let html = '<div class="r hd"><button '+sortH('name')+'>DISTRICT'+(S.sort==='name'?' ▾':'')+'</button>'
+      + '<span></span><span class="v dim">FUNDED FTES</span>'
+      + '<button '+sortH('perFtes')+' class="v hd-sort'+(S.sort==='perFtes'?' on':'')+'">'
+      + (S.unit==='perFtes'?'PER FTES':'CURRENT EXPENSE')+(S.sort==='perFtes'?' ▾':'')+'</button></div>';
+    rows.forEach(r => {
+      const notes = districtNotes(r);
+      const dag = notes.length ? ' <button class="dag" data-note="'+esc(r.name)+'" aria-label="Comparability notes">†'+(notes.length>1?notes.length:'')+'</button>' : '';
+      const w = max ? (unitVal(r)/max*100).toFixed(1) : 0;
+      html += '<div class="r"><span class="nm">'+esc(titlecase(r.name))+dag+'</span>'
+        + '<span class="bar"><i style="width:'+w+'%"></i></span>'
+        + '<span class="v dim">'+(r.fundedFtes==null?'—':Math.round(r.fundedFtes).toLocaleString())+'</span>'
+        + '<span class="v">'+fmtUnit(r)+'</span></div>';
+      if (S.openNote === r.name)
+        html += '<div class="note-row">'+notes.map(n => '<span class="tag">† '+esc(n[0])+'</span>'+esc(n[1])).join('')+'</div>';
+    });
+    html += '<div class="r foot"><span class="nm">Statewide total (Table VI)</span><span></span>'
+      + '<span class="v dim">'+Math.round(SW.fundedFtes).toLocaleString()+'</span>'
+      + '<span class="v">'+(S.unit==='perFtes' ? money0(Math.round(SW.ce/SW.fundedFtes)) : money0(SW.ce))+'</span></div>';
     $("tbl").innerHTML = html;
 
-    $("recordCaps").innerHTML = "<span>CAMPUSES ARE NEVER RANKED — DIFFERENCES REFLECT MISSION, SIZE, AND COST OF LIVING</span>"
-      + "<span>PER-STUDENT USES ENROLLMENT HEADCOUNT (FALL 2023), NOT FTES</span>";
+    $("recordCaps").innerHTML = "<span>DISTRICTS ARE NEVER RANKED — PER-FTES REFLECTS MISSION, STRUCTURE, AND LOCAL FUNDING, NOT PERFORMANCE</span>"
+      + "<span>"+SW.communitySupported+" COMMUNITY-SUPPORTED · "+D.districts.filter(r=>r.flags.multiCollege).length+" MULTI-COLLEGE · † = COMPARABILITY NOTE</span>";
 
-    $("auxBox").innerHTML = '<div class="microlbl">AUXILIARY ORGANIZATIONS — SHOWN SEPARATELY, NEVER MERGED</div>'
-      + '<div style="font-size:var(--fs-note);line-height:1.6;color:var(--graphite)">' + esc(M.auxiliariesNote)
-      + ' Systemwide auxiliary operating expense: <span class="mono">' + moneyB(SW.componentUnitsK)
-      + '</span>. Excluded from every campus figure and every per-student number above.</div>';
+    $("auxBox").innerHTML = '<div class="microlbl">WHAT THE FIGURE ALREADY EXCLUDES</div>'
+      + '<div style="font-size:var(--fs-note);line-height:1.6;color:var(--graphite)">' + esc(M.daggers.auxiliary) + '</div>';
 
     $("noSum").innerHTML = '<b>THESE FIGURES DO NOT ADD TO THE STATE BUDGET</b>' + esc(M.overlap.statement);
 
     // method
-    $("reproBox").innerHTML = '<b>NOT AUTO-REPRODUCIBLE</b>' + esc(M.reproducibility);
+    $("reproBox").innerHTML = '<b>AUTO-REPRODUCIBLE</b>' + esc(M.reproducibility);
     const notes = [
       ["SOURCE", esc(M.sourceLabel) + "."],
       ["BASIS", esc(M.basis)],
       ["GATE", esc(M.gate)],
       ["DENOMINATOR", esc(M.denominator)],
       ["COMPARABILITY", esc(M.comparabilityNote)],
-      ["CADENCE", "Annual; the CSU audited statements publish about four to five months after the June 30 fiscal year-end. This layer currently carries FY 2023-24; refreshing requires the manual download above."],
+      ["CADENCE", "Annual; the CCFS-311 filings are due the December after the June 30 fiscal year-end and reconcile to the independent district audits that follow. This layer carries FY 2022-23, the latest year for which the filings, audits, and apportionment recalculation are all final."],
     ];
     $("methodNotes").innerHTML = notes.map(([k,v]) =>
       '<div class="mnote"><b>'+k+'</b><span>'+v+'</span></div>').join("");
-    $("digest").textContent = "SHA-256 · " + (M.integrity ? M.integrity.digest : "—") + " (csu-data.js)";
+    $("digest").textContent = "SHA-256 · " + (M.integrity ? M.integrity.digest : "—") + " (ccc-data.js)";
 
-    // wire daggers
+    // wire daggers + sort
     document.querySelectorAll("#tbl .dag").forEach(b => b.addEventListener("click", e => {
       e.stopPropagation();
       S.openNote = S.openNote === b.dataset.note ? null : b.dataset.note; render();
@@ -354,31 +361,32 @@
   }
 
   function citationText(){
-    const camps = D.campuses.length;
-    return 'Citizen Ledger, "California State University — Operating Expenses by Campus, FY 2023-24 (audited GAAP)." '
-      + 'University total operating expenses ' + moneyK(SW.universityOpexpK) + ' (in thousands); '
-      + camps + ' campuses plus ' + moneyK(SW.reconcilingK) + ' systemwide (Chancellor’s Office) and eliminations '
-      + 'reconcile to that total exactly, to the thousand — the finest resolution CSU publishes; this is audited GAAP '
-      + 'accrual, not the state budget’s enacted basis, and the two are never added. Per-student figures use enrollment '
-      + 'headcount (Fall 2023), not FTES. Auxiliary organizations (' + moneyB(SW.componentUnitsK) + ') are shown separately. '
-      + 'Source: ' + M.sourceLabel + '. Generated ' + M.generated + '. Permalink: ' + location.href + '. '
-      + 'Accessed ' + new Date().toISOString().slice(0,10) + '.';
+    return 'Citizen Ledger, "California Community Colleges — Current Expense of Education by District, '
+      + 'FY 2022-23 (CCFS-311, ECS 84362)." Statewide Current Expense of Education ' + money0(SW.ce)
+      + '; ' + SW.nDistricts + ' districts reconcile to that Chancellor’s Office statewide total exactly, '
+      + 'to the dollar (independently validated by the districts’ mandatory CPA audits, Ed Code 84040). '
+      + 'This is modified-accrual (BAM) spending, not the state budget’s enacted community-college '
+      + 'appropriation, and the two are never added. Per-FTES uses apportionment funded FTES (SCFF Exhibit C), '
+      + 'not the Data Mart derived count; districts are never ranked. Source: ' + M.sourceLabel + '. '
+      + 'Generated ' + M.generated + '. Permalink: ' + location.href + '. Accessed ' + new Date().toISOString().slice(0,10) + '.';
   }
   function csvText(){
     const esc2 = x => /[",\n]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x;
     const lines = [
-      "# Citizen Ledger — California State University, FY 2023-24 (audited GAAP, in thousands of dollars)",
-      "# EXACT TO THE THOUSAND, not to the cent — thousands is the finest unit CSU's audited statements publish.",
-      "# 23 campuses + the Systemwide (Chancellor's Office) & eliminations line = CSU's audited University total.",
-      "# Basis is audited GAAP accrual, NOT the state budget's enacted budgetary-legal figure; never add the two.",
-      "# Per-student uses enrollment headcount (Fall 2023), NOT FTES. Auxiliaries are shown separately, not merged.",
-      "# Source: " + M.sourceLabel + " (bot-gated; manual refresh). Generated: " + M.generated,
+      "# Citizen Ledger — California Community Colleges, FY 2022-23 (CCFS-311, Current Expense of Education ECS 84362, whole dollars)",
+      "# WHOLE-DOLLAR, EXACT: the "+SW.nDistricts+" districts' Current Expense of Education sum to "+money0(SW.ce)+", the Chancellor's Office printed statewide Table VI total, to the dollar.",
+      "# Basis is modified-accrual (CCC Budget and Accounting Manual), NOT the state budget's enacted budgetary-legal figure; never add the two.",
+      "# Per-FTES uses apportionment funded FTES (SCFF Exhibit C), NOT the CCCCO Data Mart derived count. Calbright is not apportionment-funded (no per-FTES).",
+      "# Flags: multi_college (runs >1 college), community_supported (basic-aid, property-tax funded), noncredit_heavy (>= 2x statewide noncredit share). Districts are never ranked.",
+      "# Source: " + M.sourceLabel + ". Generated: " + M.generated,
       "# Permalink: " + location.href,
-      "campus,operating_expense_thousands,enrollment_headcount,per_student_dollars,state_appropriation_thousands,operating_revenue_thousands"];
-    D.campuses.forEach(c => lines.push([c.name, c.opexpK, c.headcount, c.perStudent, c.stateAppropK, c.opRevK].map(esc2).join(",")));
-    lines.push(["Systemwide (Chancellor's Office) & eliminations", SW.reconcilingK, "", "", "", ""].map(esc2).join(","));
-    lines.push(["University total (audited)", SW.universityOpexpK, D.campuses.reduce((s,c)=>s+c.headcount,0), "", SW.stateAppropK, SW.opRevK].map(esc2).join(","));
-    lines.push(["Auxiliary organizations (component units, shown separately)", SW.componentUnitsK, "", "", "", ""].map(esc2).join(","));
+      "district,colleges,current_expense_of_education_dollars,instructional_salaries_dollars,pct_50_law,funded_ftes,current_expense_per_ftes,state_general_fund_apportionment_dollars,multi_college,community_supported,noncredit_heavy"];
+    D.districts.forEach(r => { lines.push([
+      titlecase(r.name), r.nColleges, r.ce, r.instrSal, r.pct50,
+      r.fundedFtes==null?"":r.fundedFtes, r.perFtes==null?"":r.perFtes, r.stateGf==null?"":r.stateGf,
+      r.flags.multiCollege?"yes":"no", r.flags.basicAid?"yes":"no", r.flags.noncreditHeavy?"yes":"no"
+    ].map(esc2).join(",")); });
+    lines.push(["Statewide total (Table VI)", SW.nColleges, SW.ce, SW.instrSal, SW.pct50, Math.round(SW.fundedFtes), Math.round(SW.ce/SW.fundedFtes), SW.stateGf, "", "", ""].map(esc2).join(","));
     return lines.join("\r\n");
   }
 
@@ -408,7 +416,7 @@
       ta.select(); ta.setSelectionRange(0, text.length);
       let ok=false; try{ ok = document.execCommand("copy"); }catch(e){}
       $("citePanel").removeChild(ta);
-      if (!ok){ const r=document.createRange(); r.selectNodeContents($("citeText")); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+      if (!ok){ const rg=document.createRange(); rg.selectNodeContents($("citeText")); const s=window.getSelection(); s.removeAllRanges(); s.addRange(rg); }
       done(ok);
     };
     if (navigator.clipboard && navigator.clipboard.writeText)
@@ -418,7 +426,7 @@
   $("csvBtn").addEventListener("click", ()=>{
     const blob = new Blob([csvText()], {type:"text/csv"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "ca-ledger-csu-" + M.year + ".csv"; a.click(); URL.revokeObjectURL(a.href);
+    a.download = "ca-ledger-ccc-" + M.year + ".csv"; a.click(); URL.revokeObjectURL(a.href);
   });
   window.addEventListener("hashchange", ()=>{ applyHash();
     $("unitGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.unit===S.unit));

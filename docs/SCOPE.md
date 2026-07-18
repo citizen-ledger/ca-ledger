@@ -38,9 +38,10 @@ cost does not qualify — by default, without a new finding.
 
 Every layer regenerates from its official source by re-running its
 pipeline against public data — **except CSU.** State, cities, counties,
-special districts, and K-12 all fetch their sources automatically
-(SCO, DOF, CDE endpoints), so anyone can reproduce every figure from
-scratch. That is a core honesty claim of the site.
+special districts, K-12, and the community-college districts all fetch
+their sources automatically (SCO, DOF, CDE, and the Chancellor's Office
+CCFS-311 portal), so anyone can reproduce every figure from scratch.
+That is a core honesty claim of the site.
 
 **The CSU (higher-education) layer is the one exception, and it is
 stated loudly wherever CSU appears** — the CSU page's method box reads
@@ -66,10 +67,24 @@ exactly. "Exact to the thousand" is the finest resolution CSU
 publishes (its statements are denominated in thousands), so it is
 exact fidelity at the source's own resolution — a different,
 accurately-named tier from K-12's to-the-cent, not a looser version.
-UC and community-college districts are **not** built: UC's raw figure
-is dominated by hospitals (a med-center strip the finding requires but
-which is unresolved), and community-college districts' to-the-cent
-reconciliation is unproven. Only CSU met its bar.
+The **community-college districts** are now built too (per
+docs/V11_CCC_FINDING.md), and they are a *stronger* case than CSU on
+every axis: the source is **public and auto-fetchable** (no bot-gate,
+no manual cache — the CCFS-311 reporting portal answers a plain POST),
+and the gate is finer and proven on real data. The 73 districts'
+Current Expense of Education (ECS 84362 — the community-college analog
+of K-12's) sum **exactly, to the dollar**, to the Chancellor's Office's
+own printed statewide total, and each district's figure is
+independently validated off the portal by the mandatory CPA audit (Ed
+Code 84040). "Exact to the dollar" is a third, accurately-named
+resolution tier — finer than CSU's thousand, coarser than K-12's cent —
+at the resolution the CCFS-311 portal publishes. Per-FTES uses the
+apportionment funded FTES, not the Data Mart derived count.
+
+**UC remains the one higher-education holdout, and is still not built:**
+its raw figure is dominated by hospitals (a med-center strip the
+finding requires but which is unresolved). Of the three higher-education
+systems, CSU and the community colleges met the bar; UC has not.
 
 ## "Ask the Ledger" — permanently out of scope
 
