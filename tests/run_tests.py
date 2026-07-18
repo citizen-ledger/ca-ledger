@@ -60,6 +60,7 @@ CGEO = load_data_js(ROOT / "county-geo.js")
 DIST = load_data_js(ROOT / "district-data.js")
 SCHOOL = load_data_js(ROOT / "school-data.js")
 CSU = load_data_js(ROOT / "csu-data.js")
+CCC = load_data_js(ROOT / "ccc-data.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -175,7 +176,8 @@ def test_integrity():
     for name, payload in (("data.js", STATE), ("city-data.js", CITY),
                           ("city-geo.js", GEO), ("county-data.js", COUNTY),
                           ("county-geo.js", CGEO), ("district-data.js", DIST),
-                          ("school-data.js", SCHOOL), ("csu-data.js", CSU)):
+                          ("school-data.js", SCHOOL), ("csu-data.js", CSU),
+                          ("ccc-data.js", CCC)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
@@ -1255,6 +1257,7 @@ def test_rename(page, base):
     PAGES = {"index.html": "State budget", "cities.html": "City & county spending",
              "districts.html": "Special districts",
              "address.html": "Your governments",
+             "ccc.html": "Community colleges",
              "about.html": "About & method"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
@@ -2011,6 +2014,121 @@ def test_csu(page, base):
           "bot-gated" in scope.lower() and "NOT AUTO-REPRODUCIBLE" in scope)
 
 
+def test_ccc(page, base):
+    """V11 community-college layer: WHOLE-DOLLAR, EXACT — the 73 districts'
+    Current Expense of Education (ECS 84362) sum exactly to the Chancellor's
+    Office's own printed statewide total; modified-accrual BAM basis (NOT
+    budgetary-legal); per-FTES uses apportionment funded FTES (not the Data
+    Mart derived count); the multi-college and community-supported rosters
+    are data-derived and reconcile to source; the state overlap does-not-add;
+    and — unlike CSU — the layer is AUTO-reproducible."""
+    ds, sw, meta = CCC["districts"], CCC["statewide"], CCC["meta"]
+    # ---- data gate: whole-dollar, exact, sum == printed statewide
+    check("ccc: 73 districts", len(ds) == 73)
+    ce_sum = sum(d["ce"] for d in ds)
+    check("ccc gate: districts' Current Expense of Education sum to the printed statewide, to the dollar",
+          ce_sum == sw["ce"], f"{ce_sum} vs {sw['ce']}")
+    check("ccc gate: every figure is a whole-dollar integer (no cents)",
+          all(isinstance(d["ce"], int) for d in ds) and isinstance(sw["ce"], int))
+    check("ccc: 116 accredited colleges across the districts (reconciles to the official count)",
+          sum(d["nColleges"] for d in ds) == 116 and sw["nColleges"] == 116)
+    # rosters, data-derived, verified against source counts
+    multi = [d for d in ds if d["flags"]["multiCollege"]]
+    basic = [d for d in ds if d["flags"]["basicAid"]]
+    check("ccc: 23 multi-college districts", len(multi) == 23)
+    check("ccc: community-supported count matches the Chancellor's Office figure (8)",
+          len(basic) == sw["communitySupported"] == 8)
+    dangerous = sorted(d["name"] for d in ds
+                       if d["flags"]["multiCollege"] and d["flags"]["basicAid"])
+    check("ccc: the dangerous cell (multi-college AND community-supported) is verified — includes San Mateo",
+          "SAN MATEO" in dangerous and len(dangerous) == 4, str(dangerous))
+    # per-FTES = Current Expense / apportionment funded FTES; Calbright has none
+    check("ccc: per-FTES derived from apportionment funded FTES (ce/fundedFtes)",
+          all(d["perFtes"] == round(d["ce"] / d["fundedFtes"])
+              for d in ds if d["fundedFtes"]))
+    cal = [d for d in ds if d["flags"]["noApportionment"]]
+    check("ccc: the online district (no apportionment FTES) carries no per-FTES figure",
+          len(cal) == 1 and cal[0]["perFtes"] is None)
+    # basis / denominator / gate wording
+    check("ccc: basis is modified-accrual (BAM), explicitly NOT budgetary-legal",
+          "modified-accrual" in meta["basis"].lower()
+          and "not" in meta["basis"].lower()
+          and "budgetary-legal" in meta["basis"].lower())
+    check("ccc: gate names the whole-dollar tier and the audit control",
+          "whole-dollar" in meta["gate"].lower()
+          and "84040" in meta["gate"])
+    check("ccc: denominator is apportionment FTES, NOT the Data Mart derived count",
+          "apportionment" in meta["denominator"].lower()
+          and "data mart" in meta["denominator"].lower()
+          and "not" in meta["denominator"].lower())
+    check("ccc: reproducibility says AUTO-reproducible (the contrast with CSU)",
+          "auto-reproducible" in meta["reproducibility"].lower()
+          and "not auto-reproducible" not in meta["reproducibility"].lower())
+    ov = meta["overlap"]
+    check("ccc: overlap quantified and non-additive",
+          ov["stateGeneralFundB"] > 0 and ov["totalFundingB"] > 0
+          and "do not sum" in ov["statement"].lower())
+
+    # ---- UI
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_selector("#tbl .r")
+    gate = page.inner_text("#gateStrip")
+    check("ccc UI: gate strip states whole-dollar, exact, to the statewide total",
+          "whole dollars" in gate.lower() and "exact" in gate.lower()
+          and f"{sw['ce']:,}" in gate)
+    check("ccc UI: basis strip says modified-accrual, not enacted",
+          "modified-accrual" in page.inner_text("#basisStrip").lower()
+          and "not" in page.inner_text("#basisStrip").lower())
+    foot = page.inner_text("#tbl .r.foot")
+    check("ccc UI: statewide total foot present with the exact figure",
+          "Statewide total" in foot and f"{sw['ce']:,}" in foot)
+    check("ccc UI: what-the-figure-excludes note (auxiliaries/enterprise)",
+          "exclude" in page.inner_text("#auxBox").lower())
+    check("ccc UI: overlap does-not-add box",
+          "DO NOT ADD" in page.inner_text("#noSum"))
+    check("ccc UI: auto-reproducible box present (not a bot-gate warning)",
+          "AUTO-REPRODUCIBLE" in page.inner_text("#reproBox"))
+    caps = page.inner_text("#recordCaps")
+    check("ccc UI: districts never ranked",
+          "never ranked" in caps.lower())
+    # per-FTES view + the dangerous-cell dagger on San Mateo
+    page.click('#unitGroup button[data-unit="perFtes"]')
+    page.wait_for_timeout(150)
+    check("ccc UI: per-FTES view names apportionment (not Data Mart)",
+          "apportionment" in page.inner_text("#scheduleLabel").lower())
+    sm = page.locator('#tbl .r:has-text("San Mateo") .dag')
+    check("ccc UI: the multi-college + community-supported district carries a dagger",
+          sm.count() == 1)
+    sm.first.click()
+    page.wait_for_timeout(120)
+    note = page.inner_text("#tbl .note-row")
+    check("ccc UI: dagger note names the multi-college and community-supported traps",
+          "MULTI-COLLEGE" in note and "COMMUNITY-SUPPORTED" in note)
+    # cite + CSV
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_selector("#citeToggle")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    cite = page.inner_text("#citeText")
+    check("ccc cite: ECS 84362 + to-the-dollar + audit + apportionment stated",
+          "84362" in cite and "to the dollar" in cite.lower()
+          and "84040" in cite and "apportionment" in cite.lower())
+    page.keyboard.press("Escape")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("ccc CSV: districts + statewide total + whole-dollar + apportionment note",
+          "Los Angeles" in csv_text and "Statewide total" in csv_text
+          and "whole dollars" in csv_text.lower() and "apportionment" in csv_text.lower())
+    check("ccc CSV: the statewide row carries the exact gated figure",
+          str(sw["ce"]) in csv_text)
+    # SCOPE.md documents this layer as auto-reproducible (the CSU contrast)
+    scope = (ROOT / "docs" / "SCOPE.md").read_text(encoding="utf-8")
+    check("ccc: SCOPE.md records the community-college layer as auto-fetchable",
+          "community-college" in scope.lower()
+          and "auto-fetchable" in scope.lower())
+
+
 def test_resource(page, base):
     """V9 funding-source (resource) layer: the breakout reproduces the
     gated Current Expense to the cent, is a strict refinement of the
@@ -2247,9 +2365,9 @@ def test_polish(page, base):
     page.wait_for_selector(".fd-statement")
     top = page.evaluate(
         "document.querySelector('.fd-statement').getBoundingClientRect().top")
-    # seven nav destinations now wrap to four two-column rows on a phone
-    # (the CSU layer added one), so the statement sits a row lower than at
-    # six — still in the top third of an 844px screen, well above the fold.
+    # eight nav destinations wrap to four two-column rows on a phone (the CSU
+    # and community-college layers added two), so the statement sits a row
+    # lower than at six — still in the top third of an 844px screen, above the fold.
     check("polish: masthead statement in the top third at 390",
           top <= 300, f"top {top}")
     cols = page.evaluate(
@@ -2262,9 +2380,9 @@ def test_polish(page, base):
           prov_h < 40, f"h {prov_h}")
     page.set_viewport_size({"width": 1280, "height": 720})
 
-    # one header everywhere: identical nav on all pages (incl. csu.html)
+    # one header everywhere: identical nav on all pages (incl. csu.html, ccc.html)
     navs = set()
-    for f in PAGES + ["csu.html"]:
+    for f in PAGES + ["csu.html", "ccc.html"]:
         page.goto(f"{base}/{f}")
         page.wait_for_selector("nav.pn")
         navs.add(page.inner_text("nav.pn").strip())
@@ -2882,6 +3000,7 @@ def main():
             test_polish(page, base)
             test_resource(page, base)
             test_csu(page, base)
+            test_ccc(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

@@ -1536,6 +1536,64 @@ promotion and shelf-life, not claims about the repository's status.
 
 No data, pipeline, or figure changed.
 
+## 2026-07-17 — V11 community-college layer built (ccc.html)
+
+The California Community College district layer shipped (per
+docs/V11_CCC_FINDING.md, option (a), gated at whole-dollar resolution).
+New page `ccc.html`, new pipeline `pipeline/fetch_ccc_data.py`, new data
+file `ccc-data.js`. Nav extended to eight items across every page and
+the 404.
+
+**The gate, proven on real data — whole dollars, exact.** The 73
+districts' Current Expense of Education (ECS 84362, the community-college
+analog of K-12's) sum **exactly, to the dollar**, to the Chancellor's
+Office's own printed statewide total in Table VI: $8,469,851,699 =
+$8,469,851,699, no write on failure. Independently validated off the
+portal by each district's mandatory CPA audit (Ed Code 84040). This is a
+third, accurately-named resolution tier — exact to the dollar, finer than
+CSU's thousand, coarser than K-12's cent.
+
+**Auto-reproducible — the contrast with CSU.** Every source is a public
+endpoint the pipeline fetches without credentials: the CCFS-311 reporting
+portal (a public POST; the statewide Run button is disabled until a
+fiscal-year autopostback fires, which the pipeline scripts), the MIS
+District & College Codes PDF, and the SCFF 2022-23 Recalculation Exhibit
+C PDF. `python3 pipeline/fetch_ccc_data.py --refresh` re-fetches all
+three live and reproduces the data file **byte-for-byte** — confirmed.
+All 73 districts fetch via a single Table VI report; zero fetch failures.
+There is **no** manual-cache exception here — that remains CSU's alone.
+
+**A finding figure corrected in the build.** The finding drafted LA's
+Current Expense of Education as $774,683,675; that is the 50-Percent-Law
+worksheet's "Total Expenditures Prior to Exclusions," a pre-exclusion
+line. The published ECS 84362 (Table VI, after exclusions) is
+$716,533,122. The docstring, the finding's build-correction note, and
+this entry all record it — the "prove it on real data" discipline
+catching a number before it shipped.
+
+**Denominator and daggers, data-derived and reconciled.** Per-FTES uses
+the apportionment funded FTES from Exhibit C (not the Data Mart derived
+count); Calbright, not apportionment-funded, carries no per-FTES.
+Comparability daggers: multi-college (23 districts, verified against the
+MIS codes — reconciling to the official 116 accredited colleges),
+community-supported/basic-aid (8 districts, derived from SCFF
+property-tax excess — matching the Chancellor's Office's own "8 Fully
+Community Supported Districts"), and noncredit-heavy (≥ 2× the statewide
+share). The multi-college **and** community-supported intersection — the
+cell where per-FTES is most misleading — is San Mateo, South Orange
+County, West Valley-Mission, and San Jose-Evergreen; the roster the
+finding listed by hand had missed San Mateo, a three-college basic-aid
+district. Districts are never ranked. The state-overlap "these figures
+do not add" box carries the LAO systemwide structure (~$19B total, ~half
+state General Fund) computed live.
+
+Tests: +45 assertions (836 total, all passing), including the whole-dollar
+gate, the roster reconciliations, the dangerous-cell verification, the
+auto-reproducible/basis/denominator wording, and the integrity digest.
+about.html gained a sources row; docs/SCOPE.md now lists the layer as
+auto-fetchable and corrects the stale "community colleges not built"
+note; verify_digest.py includes ccc-data.js.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
@@ -1561,3 +1619,12 @@ Special districts: same portal. Run
 figures recompute from the live data on every run. When SCO publishes
 a new fiscal year, extend the window in YEARS and add the year's
 late/failed list id to DELINQUENCY.
+
+Community colleges: one new fiscal year once the CCFS-311 filings, the
+district audits, and the SCFF apportionment recalculation are all final
+(the recalculation lands well after the June 30 close). Run
+`python3 pipeline/fetch_ccc_data.py --write --refresh`; update `FY`,
+`FY_PORTAL` (the CCFS-311 FiscalYearDropdown value), and the SCFF
+Exhibit C URL for the new year. The write fails unless the districts'
+Current Expense of Education sum exactly to the printed statewide Table
+VI total. Auto-fetchable — no manual cache.
