@@ -1662,6 +1662,104 @@ now records all three higher-education systems as built (CSU thousand
 manual-cache · CCC dollar auto · UC thousand auto stripped);
 verify_digest.py includes uc-data.js.
 
+## 2026-07-18 — Mutation testing applied to every layer
+
+The UC pre-PR review found a weakness that had nothing to do with UC: a
++$1,000 edit to one campus figure, with the SHA-256 digest re-stamped to
+hide it, passed all 898 assertions. The gate assertions were reading
+`meta.gateHistory` — values the pipeline itself had written — instead of
+recomputing the reconciliation from the shipped rows. **The tests were
+verifying the pipeline's claims about the data, not the data.** That was
+fixed for UC in the same PR; this pass applies the lesson to every layer
+built before it, and proves the result by mutation rather than by
+inspection.
+
+**The harness ships with the repo:** `python3 tests/mutation_test.py`
+mutates one figure per layer in a throwaway git worktree, re-stamps the
+digest so the integrity check cannot be what catches it, and runs the full
+suite. Every mutation must fail the suite; a surviving mutation is a hole
+in the gates. It exercises two classes deliberately — a *single* figure
+(caught by a children-sum-to-parent identity) and a *coordinated* edit that
+moves a figure and its stored parent/control together, so the in-file
+identity still holds and only an external anchor can catch it.
+
+**Before/after, proven by mutation.** Each row: one figure changed in the
+shipped data file, digest re-stamped, full suite run.
+
+| Layer / view | Mutation | Before | After |
+|---|---|---|---|
+| State enacted | one agency's General Fund +$0.05B | **SURVIVED** | caught |
+| State enacted (depth) | one department fund line +$1B | caught | caught |
+| State actuals | one agency's actual GF +$0.05B | caught | caught |
+| Cities | one city-function figure +$0.05M | caught | caught |
+| Cities (headline) | the governmental total alone +$0.05M | **SURVIVED** | caught |
+| Cities (fully consistent) | line + function + total together | **SURVIVED** | caught |
+| Counties | one county-function figure +$0.05M | caught | caught |
+| Counties (coordinated) | function + stored control | caught | caught |
+| Counties (fully consistent) | line + function + control together | **SURVIVED** | caught |
+| Special districts | one district's expenditure +$1,000 | **SURVIVED** | caught |
+| K-12 Current Expense | one district's instruction +$0.10 | caught | caught |
+| K-12 (coordinated) | instruction + currentExpense + cePublished | caught | caught |
+| K-12 (fully consistent) | gate + published + function + fn×obj + split + source | **SURVIVED** | caught |
+| K-12 function × object (V8) | one cell +$0.10 | caught | caught |
+| K-12 funding source (V9) | one resource group +$0.10 | caught | caught |
+| K-12 resource × object (V10a) | one object cell +$1 | caught | caught |
+| K-12 county offices | one function figure +$0.10 | not tested | caught |
+| K-12 charters | one object figure +$0.10 | not tested | caught |
+| CSU | one campus operating expense +$1k | caught | caught |
+| CSU (coordinated) | campus + University total | caught | caught |
+| CCC | one district's Current Expense +$1 | caught | caught |
+| CCC (coordinated) | district + statewide control together | **SURVIVED** | caught |
+| UC | one campus total +$1k | caught | caught |
+| UC (coordinated) | campus + core + audited total + gateHistory | caught | caught |
+
+Seven mutations survived the suite before this pass. The four "fully
+consistent" and "coordinated" cases are the instructive ones: they move a
+figure *and* every stored parent that would otherwise expose it, so every
+in-file identity still holds — the reconciliation passes while the numbers
+are wrong. No sum-check can catch that; only an anchor the data file cannot
+carry along can, which is what the control pins are.
+
+
+**The audit, honestly.** Most layers were already stronger than the UC
+precedent suggested: K-12 (all four views — Current Expense, function ×
+object, V9 funding source, V10a resource × object cross-tab), counties,
+state actuals (pinned against Schedule 6 constants), CSU, CCC and the V8
+depth identities all recompute from the shipped rows and caught a single
+tampered figure. Two hypotheses of mine were corrected by the evidence:
+cities were *not* weak in the way expected — every nonzero city-function
+cell carries line detail, so the existing line-children check covers them
+all — but the headline `expenditures` field was never tied to its own
+functions; and the state-enacted agency↔department bridge turns out to be
+structurally impossible to assert (agencies carry department-less items,
+drifting up to $7.9B), so that layer needed a pinned control rather than a
+child-sum identity.
+
+**What changed in the tests.** New CONTROL PINS anchor each layer to a
+figure the data file cannot carry along: the source's published control
+where one exists (CCC's printed Table VI statewide Current Expense, UC's
+audited totals for both years, CSU's audited University total, Schedule 6
+for actuals) and a verified statewide aggregate where the control lives
+only in the build-time gate (state enacted, cities, counties, K-12).
+Special districts have no published control by design — the record says so
+on its face — so they carry an explicitly-labelled tamper-evidence pin
+instead of a reconciliation gate. Pin tolerances are set two or more orders
+of magnitude above the measured float-summation noise floor (city/county
+~7e-11 $M, schools ~2e-4 $) and below the smallest mutation, so accumulated
+float error can never trip them and a tampered figure always does. Added
+alongside: cities' functions-sum-to-total and enterprise-byFund-sum-to-total
+identities, and children-sum assertions for county offices and charter
+schools, which had verifiable identities that nothing asserted.
+
+**Classification-shape and neutrality gates were checked for the same
+weakness and are sound**: the shape gates recompute statewide function
+sums, the sandwich rule and the LA FY2016-17 regression from shipped rows,
+and the neutrality assertions read computed styles off the rendered page.
+Neither reads pipeline metadata.
+
+The about page now states the discipline plainly, because it is part of how
+a reader is invited to check the record.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
