@@ -59,6 +59,7 @@ COUNTY = load_data_js(ROOT / "county-data.js")
 CGEO = load_data_js(ROOT / "county-geo.js")
 DIST = load_data_js(ROOT / "district-data.js")
 SCHOOL = load_data_js(ROOT / "school-data.js")
+CSU = load_data_js(ROOT / "csu-data.js")
 
 # ----------------------------------------------------------------------
 # Format replicas (only where exact text is asserted)
@@ -174,7 +175,7 @@ def test_integrity():
     for name, payload in (("data.js", STATE), ("city-data.js", CITY),
                           ("city-geo.js", GEO), ("county-data.js", COUNTY),
                           ("county-geo.js", CGEO), ("district-data.js", DIST),
-                          ("school-data.js", SCHOOL)):
+                          ("school-data.js", SCHOOL), ("csu-data.js", CSU)):
         integ = payload["meta"].get("integrity") or {}
         check(f"integrity: {name} has a digest in meta",
               re.fullmatch(r"[0-9a-f]{64}", integ.get("digest", "")) is not None)
@@ -1910,6 +1911,106 @@ def test_frontdoor_about(page, base):
               'href="about.html">About &amp; method</a>' in src)
 
 
+def test_csu(page, base):
+    """V10b CSU layer: exact-to-the-thousand (NOT to the cent) against
+    CSU's own audited systemwide total, the reconciling line visible,
+    GAAP basis stated (not budgetary-legal), per-student is headcount
+    (not FTES), auxiliaries separate, the state overlap does-not-add,
+    and the bot-gated / not-auto-reproducible caveat stated loudly."""
+    camps, sw, meta = CSU["campuses"], CSU["systemwide"], CSU["meta"]
+    # ---- data gate: exact to the thousand
+    check("csu: 23 campuses", len(camps) == 23)
+    camp_sum = sum(c["opexpK"] for c in camps)
+    check("csu gate: campuses + reconciling == University total (exact, thousands)",
+          camp_sum + sw["reconcilingK"] == sw["universityOpexpK"],
+          f"{camp_sum} + {sw['reconcilingK']} vs {sw['universityOpexpK']}")
+    check("csu gate: audited combining identity exact to the thousand",
+          sw["universityOpexpK"] + sw["componentUnitsK"] - sw["eliminationsK"]
+          == sw["combinedK"])
+    check("csu gate: reconciling line is a small, non-negative share",
+          0 <= sw["reconcilingK"] <= sw["universityOpexpK"] * 0.05)
+    check("csu: per-student derived from headcount (opexp*1000/headcount)",
+          all(c["perStudent"] == round(c["opexpK"] * 1000 / c["headcount"])
+              for c in camps))
+    # unit is thousands, and 'to the cent' is never claimed for CSU
+    check("csu: unit is thousands, the finest CSU publishes",
+          "thousand" in meta["unit"].lower())
+    check("csu: never claims 'to the cent'",
+          "to the cent" not in meta["gate"].lower()
+          or "not to the cent" in meta["gate"].lower())
+    check("csu: gate names the exact-to-the-thousand tier",
+          "exact to the thousand" in meta["gate"].lower())
+    check("csu: basis is GAAP, explicitly NOT the budgetary-legal state basis",
+          "gaap" in meta["basis"].lower()
+          and "not" in meta["basis"].lower()
+          and "budgetary-legal" in meta["basis"].lower())
+    check("csu: denominator is headcount, not FTES",
+          "headcount" in meta["denominator"].lower()
+          and "not ftes" in meta["denominator"].lower().replace("-", " "))
+    check("csu: reproducibility caveat stated (bot-gated, manual refresh)",
+          "not auto-reproducible" in meta["reproducibility"].lower()
+          and "bot-gated" in meta["reproducibility"].lower())
+    ov = meta["overlap"]
+    check("csu: overlap quantified and non-additive",
+          ov["stateAppropK"] > 0 and 0.3 < ov["stateShareOfCoreFunds"] < 0.7
+          and "do not sum" in ov["statement"].lower())
+
+    # ---- UI
+    page.goto(f"{base}/csu.html")
+    page.wait_for_selector("#tbl .r")
+    body = page.inner_text("#tbl")
+    check("csu UI: the reconciling line is a visible row (not a hidden plug)",
+          "Chancellor" in body and "eliminations" in body.lower())
+    check("csu UI: University total foot present",
+          "University total" in body)
+    gate = page.inner_text("#gateStrip")
+    check("csu UI: gate strip states exact to the thousand",
+          "exact to the thousand" in gate.lower())
+    check("csu UI: basis strip says GAAP, not enacted",
+          "gaap" in page.inner_text("#basisStrip").lower()
+          and "not" in page.inner_text("#basisStrip").lower())
+    check("csu UI: auxiliaries shown separately",
+          "separately" in page.inner_text("#auxBox").lower()
+          and "never" in page.inner_text("#auxBox").lower())
+    check("csu UI: overlap does-not-add box",
+          "DO NOT ADD" in page.inner_text("#noSum"))
+    check("csu UI: not-auto-reproducible box is loud",
+          "NOT AUTO-REPRODUCIBLE" in page.inner_text("#reproBox"))
+    caps = page.inner_text("#recordCaps")
+    check("csu UI: campuses never ranked; per-student is headcount not FTES",
+          "never ranked" in caps.lower() and "headcount" in caps.lower()
+          and "not ftes" in caps.lower().replace("-", " "))
+    # per-student view + a comparability dagger on the small/specialized campus
+    page.click('#unitGroup button[data-unit="perStudent"]')
+    page.wait_for_timeout(150)
+    check("csu UI: per-student view renders",
+          "PER ENROLLED STUDENT" in page.inner_text("#scheduleLabel"))
+    mar = page.locator('#tbl .r:has-text("Maritime") .dag')
+    check("csu UI: specialized campus carries a comparability dagger",
+          mar.count() == 1)
+    # cite + CSV
+    page.goto(f"{base}/csu.html")
+    page.wait_for_selector("#citeToggle")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    cite = page.inner_text("#citeText")
+    check("csu cite: exact-to-thousand + GAAP + headcount stated",
+          "to the thousand" in cite.lower() and "gaap" in cite.lower()
+          and "headcount" in cite.lower() and "not ftes" in cite.lower().replace("-", " "))
+    page.keyboard.press("Escape")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("csu CSV: campuses + reconciling + University total + auxiliaries",
+          "San Diego State University" in csv_text
+          and "Chancellor" in csv_text and "University total" in csv_text
+          and "Auxiliary" in csv_text and "thousands" in csv_text.lower())
+    # SCOPE.md documents the exception
+    scope = (ROOT / "docs" / "SCOPE.md").read_text(encoding="utf-8")
+    check("csu: SCOPE.md documents the bot-gated manual-refresh exception",
+          "bot-gated" in scope.lower() and "NOT AUTO-REPRODUCIBLE" in scope)
+
+
 def test_resource(page, base):
     """V9 funding-source (resource) layer: the breakout reproduces the
     gated Current Expense to the cent, is a strict refinement of the
@@ -2053,8 +2154,11 @@ def test_polish(page, base):
     page.wait_for_selector(".fd-statement")
     top = page.evaluate(
         "document.querySelector('.fd-statement').getBoundingClientRect().top")
-    check("polish: masthead statement within ~250px at 390",
-          top <= 260, f"top {top}")
+    # seven nav destinations now wrap to four two-column rows on a phone
+    # (the CSU layer added one), so the statement sits a row lower than at
+    # six — still in the top third of an 844px screen, well above the fold.
+    check("polish: masthead statement in the top third at 390",
+          top <= 300, f"top {top}")
     cols = page.evaluate(
         "getComputedStyle(document.querySelector('nav.pn'))"
         ".gridTemplateColumns.split(' ').length")
@@ -2065,9 +2169,9 @@ def test_polish(page, base):
           prov_h < 40, f"h {prov_h}")
     page.set_viewport_size({"width": 1280, "height": 720})
 
-    # one header everywhere: identical nav on all six pages
+    # one header everywhere: identical nav on all pages (incl. csu.html)
     navs = set()
-    for f in PAGES:
+    for f in PAGES + ["csu.html"]:
         page.goto(f"{base}/{f}")
         page.wait_for_selector("nav.pn")
         navs.add(page.inner_text("nav.pn").strip())
@@ -2684,6 +2788,7 @@ def main():
             test_cite(page, base)
             test_polish(page, base)
             test_resource(page, base)
+            test_csu(page, base)
             check("no uncaught page errors", not errors, "; ".join(errors[:3]))
             browser.close()
         httpd.shutdown()

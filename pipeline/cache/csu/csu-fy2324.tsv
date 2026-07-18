@@ -1,0 +1,39 @@
+# Citizen Ledger — CSU extracted figures, FY 2023-24 (year ended June 30, 2024)
+# EXTRACTED from the California State University audited systemwide financial
+# statements (GAAP/GASB accrual) and the CSU Fact Book, both published on the
+# bot-gated calstate.edu site. Dollars are in THOUSANDS, the finest unit the
+# audited statements publish — there is NO cent- or dollar-level figure.
+#
+# Provenance (regenerate with:  python3 fetch_csu_data.py --extract  after
+# placing the two source PDFs in pipeline/cache/csu/ — see the module docstring):
+#   dollars: FY2324 CSU Financial Statements (301pp PDF): systemwide combining
+#            statement p.38; per-campus Schedule 8 statements pp.112-295.
+#   headcount: CSU Fact Book 2024, "Enrollment by Campus" Fall 2023, p.9.
+#
+# kind	name	opexp_k	state_approp_k	op_rev_k	headcount	afr_page
+systemwide	Systemwide (Chancellor's Office) & eliminations	=RECONCILE	=RECONCILE	=RECONCILE	1207	38
+university	University total (all 23 campuses + systemwide)	11630059	4411363	3665820	453433	38
+componentunits	Auxiliary organizations (discretely presented component units)	2376237	0	0	0	38
+campus	CSU Bakersfield	255182	36972	49263	9399	112
+campus	CSU Channel Islands	209982	111262	53865	5127	120
+campus	CSU Chico	373988	185609	99682	13999	128
+campus	CSU Dominguez Hills	357308	169617	67615	14299	137
+campus	CSU East Bay	308830	149087	97504	11771	145
+campus	Fresno State	532137	228818	108344	23832	153
+campus	CSU Fullerton	796980	248412	254744	41326	162
+campus	Cal Poly Humboldt	320758	119980	58514	5976	170
+campus	CSU Long Beach	859542	289564	241764	39530	178
+campus	Cal State LA	554429	244998	110649	24673	187
+campus	CSU Maritime Academy	70652	53145	20846	761	195
+campus	CSU Monterey Bay	273429	114091	90553	6271	203
+campus	CSU Northridge	757247	301437	199519	36368	212
+campus	Cal Poly Pomona	571708	243742	179691	26415	220
+campus	Sacramento State	702302	279669	209950	30193	228
+campus	CSU San Bernardino	428853	112437	88539	18510	237
+campus	San Diego State University	977055	255279	491901	37538	245
+campus	San Francisco State University	621849	150218	219911	23700	253
+campus	San José State University	743760	277609	311858	32229	262
+campus	Cal Poly San Luis Obispo	759968	215096	428285	22279	270
+campus	CSU San Marcos	365233	48659	116593	13932	278
+campus	Sonoma State University	212765	106240	93095	5865	287
+campus	Stanislaus State	275616	117480	63277	9440	295

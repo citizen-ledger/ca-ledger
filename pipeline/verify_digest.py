@@ -25,7 +25,7 @@ def load_payload(path: Path):
 
 
 def main():
-    files = sys.argv[1:] or ["data.js", "city-data.js", "city-geo.js", "county-data.js", "county-geo.js", "district-data.js", "school-data.js"]
+    files = sys.argv[1:] or ["data.js", "city-data.js", "city-geo.js", "county-data.js", "county-geo.js", "district-data.js", "school-data.js", "csu-data.js"]
     root = Path(__file__).resolve().parent.parent
     failed = False
     for name in files:
