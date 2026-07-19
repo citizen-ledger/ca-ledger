@@ -27,11 +27,13 @@ A mutation that the suite does not catch is a hole in the gates.
 Two classes of mutation are exercised deliberately:
 
   single      one figure moved. Caught by a children-sum-to-parent identity.
-  coordinated a figure AND the stored parent/control moved together, so the
-              in-file identity still holds. These can ONLY be caught by an
-              external anchor — the source's published control figure, or a
-              verified statewide aggregate pinned in the suite. They are the
-              reason the CONTROL PINS in run_tests.py exist.
+  coordinated a figure AND every stored parent that would expose it, moved
+              together, so every in-file identity still holds. Nothing inside
+              the file can catch these; only an anchor held OUTSIDE it can —
+              the source's published control where one exists, otherwise a
+              pinned snapshot of the statewide totals we currently ship
+              (which detects the edit without claiming the source agrees).
+              They are the reason the ANCHORS block in run_tests.py exists.
 
 Run sequentially on purpose: concurrent Chromium launches race and hang.
 """
@@ -79,7 +81,7 @@ def m_state_fund(d):
         for dep in a["departments"]:
             if dep.get("funds"):
                 dep["funds"][0][2] += 1_000_000
-                return "state depth: one department fund line +$1M"
+                return "state depth: one department fund line +$1B (rows are in thousands)"
     raise SystemExit("no fund rows found")
 
 
@@ -93,6 +95,13 @@ def m_city_total(d):
     y = _last_year(d["cities"]["adelanto"]["years"])
     _bump(y, "expenditures", 0.05)
     return "cities: the headline governmental total only +$0.05M"
+
+
+def m_city_enterprise(d):
+    y = _last_year(d["cities"]["los-angeles"]["years"])
+    fund = sorted(y["enterprise"]["byFund"])[0]
+    _bump(y["enterprise"]["byFund"], fund, 0.05)
+    return "cities: one enterprise fund figure +$0.05M"
 
 
 def m_county(d):
@@ -246,6 +255,17 @@ def m_uc_coord(d):
             "gateHistory moved together")
 
 
+def m_uc_prior_coord(d):
+    """Shift value between the two printed FY2023-24 components. Their sum is
+    unchanged, so every in-file identity holds; only pinning the components
+    themselves catches it."""
+    g = d["meta"]["gateHistory"]["2023-24"]
+    g["campusSumK"] += 250_000
+    g["systemwideColK"] -= 250_000
+    return ("UC prior-year COMPENSATING SHIFT: $250M moved between campusSumK "
+            "and systemwideColK, their sum unchanged")
+
+
 TARGETS = {
     "state":           ("data.js", m_state),
     "state-fund":      ("data.js", m_state_fund),
@@ -253,6 +273,7 @@ TARGETS = {
     "city":            ("city-data.js", m_city),
     "city-total":      ("city-data.js", m_city_total),
     "city-deep":       ("city-data.js", m_city_deep),
+    "city-enterprise": ("city-data.js", m_city_enterprise),
     "county":          ("county-data.js", m_county),
     "county-coord":    ("county-data.js", m_county_coord),
     "county-deep":     ("county-data.js", m_county_deep),
@@ -271,6 +292,7 @@ TARGETS = {
     "ccc-coord":       ("ccc-data.js", m_ccc_coord),
     "uc":              ("uc-data.js", m_uc),
     "uc-coord":        ("uc-data.js", m_uc_coord),
+    "uc-prior-coord":  ("uc-data.js", m_uc_prior_coord),
 }
 
 
@@ -325,6 +347,8 @@ def run_target(target: str, ref: str) -> dict:
             }
         except subprocess.TimeoutExpired:
             return {"error": "suite timeout"}
+        except Exception as exc:            # a stale slug/key must not abort
+            return {"error": f"{type(exc).__name__}: {exc}"}
         finally:
             subprocess.run(["git", "-C", str(ROOT), "worktree", "remove",
                             "--force", str(wt)], capture_output=True)

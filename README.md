@@ -141,9 +141,16 @@ figure in a shipped data file, re-stamps the digest so the integrity
 check cannot be what catches it, and runs the full suite. **Every
 mutation must fail the suite; a surviving mutation is a hole in the
 gates, not a bug in the script.** It deliberately includes *coordinated*
-tampers that move a figure and its stored parent together — those keep
-every in-file identity true, so only an external control pin can catch
-them. Use `--ref` to test any commit.
+tampers that move a figure and every stored parent that would expose it —
+those keep every in-file identity true, so nothing inside the file can
+catch them. Only an anchor held outside it can: the source's published
+control where one exists (community colleges, UC, CSU, state actuals),
+and otherwise a recorded snapshot of the statewide totals currently
+shipped (state budget, cities, counties, K-12, special districts) — which
+detects the edit without claiming the source has re-confirmed the total.
+A legitimate data refresh will fail those snapshot pins by design; the
+constants are re-derived and reviewed, never updated silently. Use
+`--ref` to test any commit.
 
 ## Licensing: open code, public-domain data, protected name
 

@@ -1735,15 +1735,35 @@ structurally impossible to assert (agencies carry department-less items,
 drifting up to $7.9B), so that layer needed a pinned control rather than a
 child-sum identity.
 
-**What changed in the tests.** New CONTROL PINS anchor each layer to a
-figure the data file cannot carry along: the source's published control
-where one exists (CCC's printed Table VI statewide Current Expense, UC's
-audited totals for both years, CSU's audited University total, Schedule 6
-for actuals) and a verified statewide aggregate where the control lives
-only in the build-time gate (state enacted, cities, counties, K-12).
-Special districts have no published control by design — the record says so
-on its face — so they carry an explicitly-labelled tamper-evidence pin
-instead of a reconciliation gate. Pin tolerances are set two or more orders
+**What changed in the tests.** New ANCHORS tie each layer to a figure the
+data file cannot carry along — and they are of two kinds, which the code,
+the tests and the about page now distinguish rather than blur:
+
+*Published controls*, which a reader can look up: CCC's printed Table VI
+statewide Current Expense, UC's audited totals for both years, CSU's
+audited University total, and Schedule 6 for the state actuals. A
+mismatch means our data disagrees with the source.
+
+*Tamper pins*, which are snapshots of the statewide aggregate we
+currently ship: state enacted, cities, counties, K-12 and special
+districts. **No published statewide control exists for any of these**, so
+a mismatch means the file changed — it says nothing about whether the
+file is right. Stating what actually sits behind each: the state enacted
+layer has **no build-time reconciliation gate at all** (the pipeline
+prints its drift against the API's own grand total and writes
+regardless), and its pin is provably not the published figure — DOF
+publishes $297,862M for 2024-25 where the pin is $297,860M, the $2M being
+the rounding of shipped agency values. Cities do have a real per-city
+build gate, but over all funds, whereas the pin is the governmental-only
+subtotal the site displays. K-12's addends are each gated to the cent
+against CDE's published EDP 365, but CDE publishes no statewide total, so
+the aggregate is ours. Special districts have nothing by design — that
+absence is the finding.
+
+A legitimate data refresh will fail the tamper pins. That is intended:
+the constants are re-derived and the delta reviewed, never updated
+silently, and a companion assertion requires every shipped year to be
+pinned so a new fiscal year cannot slip through unpinned. Pin tolerances are set two or more orders
 of magnitude above the measured float-summation noise floor (city/county
 ~7e-11 $M, schools ~2e-4 $) and below the smallest mutation, so accumulated
 float error can never trip them and a tampered figure always does. Added
