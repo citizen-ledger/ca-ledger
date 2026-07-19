@@ -98,6 +98,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import revisions  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "uc"
@@ -560,6 +561,7 @@ def build(refresh):
         },
         "campuses": campuses,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     return payload, gate_years
 
@@ -599,6 +601,8 @@ def main():
               "in this comment: the loader slices from the first one.) */\n")
     OUT_PATH.write_text(header + "window.CA_UC_DATA = " + body + ";\n", encoding="utf-8")
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size/1024:.0f} KB)")
+
+    revisions.record_revision('uc', prev, payload)
 
 
 if __name__ == "__main__":

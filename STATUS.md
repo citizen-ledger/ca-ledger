@@ -1973,3 +1973,87 @@ positive on the four legitimate patterns.
 A normative rule that is not asserted decays into a preference. This
 one drifted for the whole life of the project; it cannot drift again
 silently.
+
+## 2026-07-19 — The record of changes (V13 option (b), mechanical only)
+
+**What shipped.** `revisions.html`, eight per-layer record files, and
+`pipeline/revisions.py`. Every pipeline now compares the figures it is
+about to publish against the ones already published, and appends what
+moved. The record reports **that** a figure changed and by how much. It
+never reports why.
+
+**Why it never reports why.** A changed figure has at least five
+possible causes: the source restated its own published data; the source
+redefined it; we fixed an extraction bug; we changed method
+deliberately; or an upstream Ledger layer we consume was refreshed. Two
+of those are observationally identical — a restatement and a
+redefinition both look like "old code, new source, different number" —
+and separating them means reading the source's release notes, which no
+engineering removes. On the three State Controller layers it is worse:
+those pipelines push aggregation into the portal (`$select=sum(value)`),
+so the rows never reach this machine and, once the portal revises, the
+prior figure cannot be reproduced by anyone, including us.
+
+Option (a) in the finding would have accepted a per-refresh human
+labelling step. That was rejected here: refreshing the data is the one
+process that must stay frictionless, because friction there is how a
+project like this quietly stops being updated. A feed that guessed at
+cause would also be exactly the class of unearned claim the rest of the
+site exists to avoid.
+
+**Three event kinds, all first-class.** Changed, appeared, disappeared.
+The last two carry most of the weight: when the FY 2016-17 city
+classifier was fixed, money moved between category keys that did not
+previously exist, so counting only changed values reports 31 events out
+of a 482-city correction and misses most of its magnitude.
+
+**Detection compares figures, not digests.** Proven on live data during
+the build: a rebuild of `school-data.js` moved `meta.generated` from
+2026-07-18 to 2026-07-19, which changed the published SHA-256 —
+`0df9b43e…` to `b1e9e5bf…` — while the figures-only digest stayed
+`e09190c1…` and not one figure moved. The record correctly stayed
+silent. That is the case docs/V13_CHANGEFEED_FINDING.md §6 warned
+about, reproduced by accident and handled correctly.
+
+**Identity, not name.** Figures are keyed on the source's own stable
+code — CDS, MIS district code, agency id and department code, charter
+number with name and county. Renaming an entity is not a changed
+figure, and is asserted as such.
+
+**The one attributed event.** The FY 2016-17 city classifier fix, 31
+figures, $3,061.8M of movement, re-derived from git (491218c..342a042)
+and labelled as **our own correction**. Its cause is known rather than
+inferred because it is our own commit. It is the only entry in the
+whole system that carries a cause, and the refresh path cannot write
+one — the note is a module constant, not a field any pipeline can set.
+
+**The backfill does not backdate coverage.** `meta.begins` is the first
+batch written by a real refresh (2026-07-19), never the backfilled
+batch's own date (2026-07-14). An earlier version took the latter and
+made a 2026-07-14 citation look fully covered; the finding is explicit
+that backfill yields one event and the record otherwise starts empty,
+and the file now says so.
+
+**Same-day citations are answered honestly.** A citation carries a
+date, not a time. If a build landed on the day a reader cited, the
+checker returns "cannot be determined for that date" rather than
+guessing in either direction.
+
+**Payload discipline.** Records are per-layer, so a light page never
+pays for a heavy one, and each stores a display name only for entities
+it actually mentions. A first version stored one per entity and made
+the special-district record 426 KB to describe zero events; pruned, the
+whole eight-layer record is 4.4 KB raw / 891 B gzipped, and no existing
+page loads any of it — only `revisions.html` does.
+
+**Provenance recorded, automatically.** Each batch carries the
+figures-only digest, the pipeline commit it was built from (which
+excludes "we changed the method" mechanically, without asking anyone),
+and, where the source publishes one, its own rows-updated stamp. The
+baseline batches record `+dirty` commits because they were written from
+a working tree mid-change; that is accurate and left as-is.
+
+**Assertions.** `test_revisions` proves the record is derived rather
+than echoed — each layer's figures digest must recompute from the
+shipped data — and that no batch except the backfilled one claims a
+cause. 1136 assertions pass.

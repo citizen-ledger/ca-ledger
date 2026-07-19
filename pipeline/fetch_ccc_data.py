@@ -99,6 +99,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import revisions  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "ccc"
@@ -536,6 +537,7 @@ def build(refresh):
         },
         "districts": districts,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     return payload, tvi_statewide, ce_sum
 
@@ -570,6 +572,8 @@ def main():
               "statewide Current Expense of Education. Auto-reproducible: --refresh. */\n")
     OUT_PATH.write_text(header + "window.CA_CCC_DATA = " + body + ";\n", encoding="utf-8")
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB)")
+
+    revisions.record_revision('ccc', prev, payload)
 
 
 if __name__ == "__main__":
