@@ -60,6 +60,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import revisions  # noqa: E402
 
 BASE = "https://bythenumbers.sco.ca.gov/resource"
 EXP, REV = "m9u3-wdam", "nkv3-m73r"
@@ -452,6 +453,7 @@ def main():
         "delinquencyYears": sorted(DELINQUENCY),
         "districts": districts,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     print(f"{len(districts):,} districts ({len(standalone)} on SCO lists "
@@ -468,6 +470,10 @@ def main():
               f"{date.today().isoformat()} — do not edit by hand. */\n")
     OUT_PATH.write_text(header + "window.CA_DISTRICT_DATA = " + body + ";\n",
                         encoding="utf-8")
+
+    revisions.record_revision('district', prev, payload,
+                              source_signal=revisions.socrata_updated(
+                                  ["m9u3-wdam","nkv3-m73r","uiun-snc7","rbwh-942r","fbdc-d5ib","udxr-rcgh","en47-vkkk","9whd-sig6"]))
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1048576:.2f} MB)")
 
 

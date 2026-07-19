@@ -126,6 +126,7 @@
     <a href="districts.html">Special districts</a>
     <a href="address.html">Your governments</a>
     <span class="active">About &amp; method</span>
+    <a href="revisions.html">Record of changes</a>
   </nav>
 </header>
 
@@ -210,6 +211,11 @@
   <p>The same care applies within a gated layer. For FY 2025-26 the Department of Finance's own published statewide total exceeds the sum of its own published agency rows by $1.638 million — about five ten-thousandths of one percent. That difference is inside the source's figures, not this record's. The Ledger reports DOF's agency rows as published rather than quietly adjusting them to close the gap, records the difference as an exact reviewed figure, and fails the build if it ever changes. Two limits are worth stating: that gate holds at agency level, because agencies carry items with no department attribution, so departments never sum to agencies in any year; and no statewide total can detect a transfer between two agencies, which leaves the total unchanged.</p>
   <p>You can check the record yourself. Every data file carries a SHA-256 integrity digest, displayed on its page. Download the file, run <span class="codebit">python3 pipeline/verify_digest.py &lt;file&gt;</span> from the repository, and the recomputed digest must match the displayed one. The pipelines that build each file are in the same repository, so any figure can be traced from the page back to the official source that produced it. A test suite re-runs the gates against the shipped files on every change — and the gates themselves are checked by <b>mutation testing</b>: every layer's figures are deliberately tampered with, one at a time, with the digest re-stamped to hide the edit. If the suite still passes, the test was reading the pipeline's own claims rather than the data, and it is rewritten until a tampered figure breaks it. That discipline began when exactly this weakness was found in the UC layer before it shipped.</p>
 
+  <h2 id="changes">When a figure changes</h2>
+  <p>Published figures are not permanent. A source can restate what it published, redefine what a figure counts, or file late; and we can find an error in our own extraction. So every refresh compares the figures it is about to publish against the ones already published and records what moved, in the <a href="revisions.html">record of changes</a> — including figures that <i>appear</i> and <i>disappear</i>, not only those whose value changes, because a reclassification moves money between categories that did not previously exist.</p>
+  <p><b>That record says what changed and by how much. It does not say why, and this is deliberate.</b> A source restating its own figure and a source redefining what the figure means are indistinguishable from the outside — they differ only in the source's intent, which lives in its release notes rather than in its numbers. On the Controller's layers it is starker still: those pipelines ask the portal to aggregate the rows and return totals, so the underlying rows never reach us, and once the portal revises, the earlier figure cannot be reproduced by anyone, including us. Rather than guess at a cause, or ask a person to assert one on every refresh, the record reports only what it can show. One historical entry carries a cause, and it is labelled: our own FY 2016-17 city classifier fix, where the cause is known because it was our commit.</p>
+  <p>The record begins on the day it shipped, 19 July 2026, and says so on its face. Changes made before then were not captured, because the earlier figures were overwritten rather than compared.</p>
+
   <h2 id="refusals">What this site refuses to do</h2>
   <ul class="plain">
     <li><b>No ranking.</b> Governments appear alphabetically, always. A per-resident figure is context, not a score; differences often reflect structure — which services a government provides, what its tax base looks like — rather than choices, and the notes on each record say when that is so.</li>
@@ -242,7 +248,7 @@
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
-  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="about.html">ABOUT &amp; METHOD</a></span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 

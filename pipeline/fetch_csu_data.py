@@ -76,6 +76,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import revisions  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "csu"
@@ -269,6 +270,7 @@ def main():
         },
         "campuses": out_campuses,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     print(f"23 campuses · University ${univ['opexpK']/1e6:.2f}B opex · "
@@ -284,6 +286,8 @@ def main():
               "refresh). Figures in thousands; exact to the thousand. */\n")
     OUT_PATH.write_text(header + "window.CA_CSU_DATA = " + body + ";\n",
                         encoding="utf-8")
+
+    revisions.record_revision('csu', prev, payload)
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size/1024:.0f} KB)")
 
 

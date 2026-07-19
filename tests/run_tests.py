@@ -3133,6 +3133,139 @@ def test_cite(page, base):
           "standardized city annual financial reports" in text)
 
 
+def test_revisions(page, base):
+    """THE CHANGE RECORD (V13, option (b): mechanical only).
+
+    Two things this has to prove. First that the record is DERIVED —
+    that its figures digest still matches the data it claims to
+    describe, so a tampered data file cannot sit behind a clean record.
+    Second that it never claims to know WHY a figure moved: the whole
+    argument for shipping it is that it only asserts what it can show.
+    """
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+
+    LAYERS = ["state", "city", "county", "district", "school",
+              "csu", "ccc", "uc"]
+    records = {}
+    for layer in LAYERS:
+        p = ROOT / REV.LAYERS[layer][1]
+        check(f"revisions: {layer} record ships", p.exists())
+        records[layer] = load_data_js(p) if p.exists() else None
+
+    # --- the record is re-derived from the shipped data, not echoed
+    for layer in LAYERS:
+        rec = records[layer]
+        if not rec:
+            continue
+        payload = load_data_js(ROOT / REV.LAYERS[layer][0])
+        live = REV.figures_digest(payload)
+        stamped = [b["figuresDigest"] for b in rec["batches"]
+                   if b.get("figuresDigest")]
+        check(f"revisions: {layer} figures digest recomputes from the "
+              f"shipped data (not a stored claim)",
+              bool(stamped) and stamped[-1] == live,
+              f"record {stamped[-1][:16] if stamped else None} vs live {live[:16]}")
+
+    # --- the figures digest is genuinely blind to metadata, which is the
+    # whole reason detection uses it instead of meta.integrity
+    uc = load_data_js(ROOT / "uc-data.js")
+    d0 = REV.figures_digest(uc)
+    moved = json.loads(json.dumps(uc))
+    moved["meta"]["generated"] = "1999-01-01"
+    moved["meta"]["integrity"] = {"algorithm": "SHA-256", "digest": "0" * 64}
+    check("revisions: the figures digest ignores meta — a rebuild that "
+          "only changes the date is not a revision",
+          REV.figures_digest(moved) == d0)
+    moved2 = json.loads(json.dumps(uc))
+    moved2["campuses"][0]["totalK"] += 1
+    check("revisions: the figures digest moves when a figure moves "
+          "(a $1K edit is caught)",
+          REV.figures_digest(moved2) != d0)
+
+    # --- all three event kinds are representable and distinguishable
+    base_p = load_data_js(ROOT / "uc-data.js")
+    chg = json.loads(json.dumps(base_p)); chg["campuses"][0]["totalK"] += 1000
+    app = json.loads(json.dumps(base_p)); app["campuses"][0]["brandNewK"] = 5
+    dis = json.loads(json.dumps(base_p)); del dis["campuses"][0]["auxK"]
+    flat = REV.flatten("uc", base_p)
+    for name, other, want_o, want_n in (
+            ("changed", chg, False, False),
+            ("appeared", app, True, False),
+            ("disappeared", dis, False, True)):
+        evs = REV.diff(flat, REV.flatten("uc", other))
+        check(f"revisions: a {name} figure produces exactly one event",
+              len(evs) == 1, str(evs)[:120])
+        if evs:
+            check(f"revisions: {name} is encoded by null on the right side",
+                  (evs[0]["o"] is None) == want_o
+                  and (evs[0]["n"] is None) == want_n, str(evs[0]))
+
+    # --- identity, not display name
+    ccc = load_data_js(ROOT / "ccc-data.js")
+    renamed = json.loads(json.dumps(ccc))
+    renamed["districts"][0]["name"] = "SOME OTHER NAME"
+    check("revisions: renaming an entity is not a changed figure "
+          "(identity is the source's own code)",
+          REV.diff(REV.flatten("ccc", ccc), REV.flatten("ccc", renamed)) == [])
+
+    # --- the honest limits, on the face of the page
+    page.goto(f"{base}/revisions.html")
+    body = page.inner_text("body")
+    for phrase, why in (
+            ("not tell you why", "must not claim a cause"),
+            ("begins", "must say when the record starts"),
+            ("cannot be reproduced by anyone", "the SCO limit must be stated"),
+            ("indistinguishable", "restatement vs redefinition must be named"),
+    ):
+        check(f"revisions page: states the limit — {why}",
+              phrase.lower() in body.lower(), phrase)
+    check("revisions page: names the day the record begins",
+          "2026-07-19" in body)
+
+    # --- the ONE attributed event is the backfilled one, and it says so
+    city = records["city"]
+    noted = [b for b in city["batches"] if b.get("note")]
+    check("revisions: exactly one batch carries a cause, and it is the "
+          "backfilled one", len(noted) == 1 and noted[0].get("backfilled"),
+          str([b.get("built") for b in noted]))
+    check("revisions: the backfilled batch is the FY2016-17 city "
+          "correction, 31 figures",
+          noted and len(noted[0]["events"]) == 31,
+          str(len(noted[0]["events"])) if noted else "none")
+    check("revisions: it is labelled as OUR correction, not a source change",
+          noted and "our own correction" in noted[0]["note"].lower())
+    # every other batch is silent about cause — that is the design
+    for layer in LAYERS:
+        for b in records[layer]["batches"]:
+            if b.get("backfilled"):
+                continue
+            check(f"revisions: {layer} batch {b['built']} claims no cause",
+                  "note" not in b, str(b.get("note"))[:80])
+
+    # --- backfill must not backdate the record's coverage
+    check("revisions: meta.begins is the first REAL batch, so the "
+          "backfilled event does not advertise coverage we lack",
+          city["meta"]["begins"] == "2026-07-19",
+          str(city["meta"]["begins"]))
+    bf = noted[0]["built"] if noted else None
+    check("revisions: the backfilled batch predates the record's start "
+          "(and is marked, not hidden)",
+          bf is not None and bf < city["meta"]["begins"], str(bf))
+
+    # --- payload discipline: labels only for identities actually mentioned
+    for layer in LAYERS:
+        rec = records[layer]
+        used = {e["e"] for b in rec["batches"] for e in b["events"]}
+        check(f"revisions: {layer} stores no label for an entity it never "
+              f"mentions", set(rec["labels"]) <= used,
+              str(sorted(set(rec["labels"]) - used)[:3]))
+    total = sum((ROOT / REV.LAYERS[l][1]).stat().st_size for l in LAYERS)
+    check("revisions: the whole record is under 64 KB "
+          "(per-layer, so a light page never pays for a heavy one)",
+          total < 65536, f"{total} B")
+
+
 def test_runtime_origins():
     """THE ARCHITECTURAL RULE, ENFORCED — docs/SCOPE.md permits exactly
     two runtime third-party services, and both are non-load-bearing:
@@ -3146,7 +3279,15 @@ def test_runtime_origins():
     source agency are the record citing its sources, not a dependency.
     """
     pages = sorted(p.name for p in ROOT.glob("*.html"))
-    check("origins: all ten pages present", len(pages) == 10, str(len(pages)))
+    EXPECTED = sorted(["404.html", "about.html", "address.html", "ccc.html",
+                       "cities.html", "csu.html", "districts.html",
+                       "index.html", "revisions.html", "schools.html",
+                       "uc.html"])
+    # named rather than counted: adding a page should be a deliberate act
+    # that updates this list, because each new page is a new surface that
+    # could reintroduce a third-party subresource
+    check("origins: the page set is exactly the one we expect",
+          pages == EXPECTED, str(set(pages) ^ set(EXPECTED)))
     ALLOWED = {"tiles.openfreemap.org", "geocoding.geo.census.gov"}
     # Only things the browser FETCHES count. <a href> is the record citing
     # its sources, and <link rel="canonical"> is metadata — neither is a
@@ -3695,6 +3836,7 @@ def main():
             test_mobile(browser, base)
             test_precision(page, base)
             test_runtime_origins()
+            test_revisions(page, base)
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)

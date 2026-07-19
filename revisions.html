@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — Record of changes</title>
+<meta name="description" content="A mechanical record of every figure that has changed on this site: when it changed and by how much. It reports that a figure moved, never why.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/revisions.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — Record of changes">
+<meta property="og:description" content="A mechanical record of every figure that has changed on this site: when it changed and by how much. It reports that a figure moved, never why.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/revisions.html">
+<meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
+   Served from this repository, not a third party: no request leaves the
+   reader's machine to render the page. unicode-range keeps it lazy — the
+   latin-ext file is fetched only if a character in its range appears.
+   Codepoints in neither range (the ▲▼ ✕ ✓ marks) fall through to the
+   platform mono stack, exactly as they did before. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* Ledger design system — see index.html. This page is prose in the
+     same voice as the record: plain, precise, no persuasion. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  @media print{ body{background:#fff} .roundel{print-color-adjust:exact;-webkit-print-color-adjust:exact} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:var(--fs-label);font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:var(--fs-note);text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:840px;margin:0 auto;padding:0 40px}
+  .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:44px;padding-top:22px;border-top:1px solid var(--ink)}
+  .lead{font-size:16px;color:var(--graphite);margin-top:14px;line-height:1.6;max-width:64ch}
+  p{margin-top:14px;line-height:1.65;max-width:70ch}
+  .microlbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;color:var(--smoke)}
+  .hero{margin-top:44px}
+
+  .srctbl{margin-top:18px;border-top:1px solid var(--ink);overflow-x:auto}
+  .src-row{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr;gap:0 18px;padding:12px 0;border-bottom:1px solid var(--hairline);font-size:var(--fs-note);line-height:1.5}
+  .src-row.hd{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.08em;color:var(--smoke);padding:8px 0}
+  .src-row .layer{font-weight:600}
+  .src-row .mono-sm{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite)}
+  .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:var(--fs-note);line-height:1.65}
+  .gatebox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:6px}
+  ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
+  ul.plain li{padding:10px 0 10px 0;border-bottom:1px solid var(--hairline);line-height:1.6;font-size:var(--fs-note)}
+  ul.plain li b{font-weight:600}
+  .codebit{font-family:var(--mono);font-size:var(--fs-data);background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  /* last in the sheet so phone-width rules win over the base rules above */
+  @media(max-width:720px){
+    .src-row{grid-template-columns:1fr;gap:8px 0} h1{font-size:40px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    /* single-column source table: the column headers vanish and each
+       cell carries its own label instead */
+    .src-row.hd{display:none}
+    .src-row>span:not(.layer)::before{display:block;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.08em;color:var(--smoke);margin-bottom:2px}
+    .src-row>span:nth-child(2)::before{content:"SOURCE"}
+    .src-row>span:nth-child(3)::before{content:"ACCOUNTING BASIS"}
+    .src-row>span:nth-child(4)::before{content:"UPDATES"}
+    /* phone header: a table of contents, not wrapped chrome — every
+       section visible at once, provenance condensed to one line */
+    header.hd{padding:12px 20px;gap:10px}
+    nav.pn{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+    nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
+    .prov{padding:7px 20px;font-size:var(--fs-micro)}
+    .prov span+span{display:none}
+  }
+</style>
+<style>
+  .statement{margin-top:30px;border:1px solid var(--ink);background:var(--surface);padding:18px 22px;font-size:var(--fs-note);line-height:1.65}
+  .statement h2{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;font-weight:600}
+  .statement ol{margin:0;padding-left:20px}
+  .statement li{margin-bottom:9px}
+  .statement li:last-child{margin-bottom:0}
+  .statement p{margin:0 0 10px}
+  .statement p:last-child{margin-bottom:0}
+  .checker{margin-top:30px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:18px 22px}
+  .checker h2{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;font-weight:600}
+  .cite-lead{font-size:var(--fs-note);line-height:1.65;margin:0 0 12px}
+  .checker textarea{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:var(--fs-data);line-height:1.5;padding:10px 12px;border:1px solid var(--ash);background:var(--parchment);color:var(--ink);border-radius:2px;resize:vertical}
+  .checker textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+  .checkrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .checkout{margin-top:14px;border-top:1px solid var(--hairline);padding-top:12px;font-size:var(--fs-note);line-height:1.6}
+  .checkout .verdict{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;text-transform:uppercase;font-weight:600;display:block;margin-bottom:6px}
+  .layers{margin-top:34px}
+  .lrec{border-top:1px solid var(--ink);padding:16px 0 20px}
+  .lrec-head{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .lrec-name{font-family:var(--serif);font-size:20px;margin:0}
+  .lrec-count{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;color:var(--graphite);text-transform:uppercase}
+  .lrec-meta{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.04em;color:var(--smoke);margin-top:6px;word-break:break-all}
+  .batch{margin-top:14px;border-left:2px solid var(--ash);padding-left:14px}
+  .batch-hd{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.05em;color:var(--graphite)}
+  .batch-note{font-size:var(--fs-note);line-height:1.6;margin:8px 0 0;padding:10px 12px;border:1px solid var(--hairline);background:var(--surface)}
+  .evt{width:100%;border-collapse:collapse;margin-top:10px;font-size:var(--fs-data)}
+  .evt th{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.07em;text-transform:uppercase;color:var(--smoke);text-align:left;font-weight:600;border-bottom:1px solid var(--hairline);padding:0 10px 5px 0}
+  .evt th.num,.evt td.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .evt td{padding:5px 10px 5px 0;border-bottom:1px solid var(--hairline);vertical-align:top}
+  .evt td.path{font-family:var(--mono);font-size:var(--fs-micro);color:var(--graphite);word-break:break-all}
+  .kind{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;text-transform:uppercase;color:var(--smoke)}
+  .more{margin-top:8px}
+  .empty-rec{font-size:var(--fs-note);color:var(--graphite);margin-top:8px}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  @media (max-width:560px){
+    .evt td.path{max-width:38vw}
+    .lrec-head{flex-direction:column;gap:2px}
+  }
+  @media print{ .checker{display:none} }
+</style>
+
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html">Community colleges</a>
+    <a href="uc.html">UC campuses</a>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <a href="about.html">About &amp; method</a>
+    <span class="active">Record of changes</span>
+  </nav>
+</header>
+
+<div class="prov">
+  <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
+  <span>RECONCILED BEFORE PUBLICATION · SPECIAL DISTRICTS AS FILED</span>
+  <span>MECHANICAL RECORD · WHAT MOVED, NOT WHY</span>
+  <span>PUBLIC RECORD</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="kicker">THE RECORD OF CHANGES · BEGINS 2026-07-19</div>
+    <h1>What has changed, and by how much.</h1>
+    <p class="lead">Every time a layer is rebuilt, the Ledger compares the figures it is
+    about to publish against the ones already published, and records what moved. This page
+    is that record. It tells you <strong>that</strong> a figure changed and by how much —
+    it does not tell you why, because the Ledger cannot honestly say.</p>
+  </div>
+
+  <section class="statement" id="whatThisIs">
+    <h2>Three things to know before you read it</h2>
+    <ol>
+      <li><strong>The record begins the day it shipped — 2026-07-19.</strong> It cannot
+      describe changes made before it existed, because the old figures were overwritten
+      rather than compared. One historical exception is included below, and it is labelled;
+      it is the only one whose cause is known rather than guessed.</li>
+      <li><strong>It reports that a figure moved, never why.</strong> A figure can move
+      because the source restated its own published data, because the source redefined what
+      the figure means, because we corrected an extraction error, or because we changed
+      method deliberately. A restatement and a redefinition are
+      <em>indistinguishable from the outside</em> — they differ only in the source's
+      intent, which lives in its release notes, not in its numbers. The Ledger will not
+      guess between them.</li>
+      <li><strong>On the State Controller's layers, the earlier figure cannot be
+      reproduced by anyone — including us.</strong> Those pipelines ask the Controller's
+      portal to aggregate the rows and return the totals, so the underlying rows never
+      reach this machine. Once the portal revises, the prior figure exists only in this
+      record and in the file it replaced.</li>
+    </ol>
+  </section>
+
+  <section class="checker">
+    <h2>Check a citation</h2>
+    <p class="lead cite-lead">Every citation this site produces carries the date its data
+    was generated — <span class="mono-sm">data generated 2026-07-14</span>, or
+    <span class="mono-sm">Generated 2026-07-18</span>. Paste a citation (or just the date)
+    and this will report whether anything in that layer has changed since.</p>
+    <label class="visually-hidden" for="citeInput">Paste a citation to check</label>
+    <textarea id="citeInput" rows="3" placeholder="Paste a Citizen Ledger citation here…"></textarea>
+    <div class="checkrow">
+      <button class="btn ink" id="checkBtn">Check it</button>
+      <span class="microlbl" id="checkHint">Reads only the generated date. Nothing is sent anywhere.</span>
+    </div>
+    <div id="checkOut" class="checkout" hidden></div>
+  </section>
+
+  <section class="layers" id="layerRecords"></section>
+
+  <section class="statement" id="method">
+    <h2>How the comparison is made</h2>
+    <p>Figures are compared by <strong>identity, not by name</strong> — a district's CDS
+    code, a community-college district's MIS code, an agency's identifier and a
+    department's code. A entity that is renamed at the source is not a changed figure, and
+    a rebuild cannot silently reassign a record from one entity to another.</p>
+    <p>Three kinds of event are recorded, all equally: a figure that
+    <strong>changed</strong>, a figure that <strong>appeared</strong>, and a figure that
+    <strong>disappeared</strong>. The last two matter as much as the first. When the
+    FY&nbsp;2016-17 city classifier was fixed, money moved between category keys that did
+    not previously exist; counting only changed values would have reported 31 events out of
+    a 482-city correction and missed most of its size.</p>
+    <p>Comparison is on <strong>figures, not file digests</strong>. A file's SHA-256 changes
+    when its build date changes, so two builds on the same day can have different digests
+    and identical figures. The record carries a second, figures-only digest — the same hash
+    with the whole metadata block removed — so "did anything actually move" is answerable
+    without trusting a date.</p>
+    <p>Each batch also carries the pipeline commit it was built from. When that is unchanged
+    between two builds, one possible cause — that we changed the method — is excluded
+    mechanically, without anyone being asked to assert it. Where a source publishes its own
+    "rows last updated" stamp, that is recorded too. It is a source signal, not an
+    explanation.</p>
+  </section>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="state-revisions.js"></script>
+<script src="city-revisions.js"></script>
+<script src="county-revisions.js"></script>
+<script src="school-revisions.js"></script>
+<script src="district-revisions.js"></script>
+<script src="csu-revisions.js"></script>
+<script src="ccc-revisions.js"></script>
+<script src="uc-revisions.js"></script>
+<script>
+(function(){
+  "use strict";
+  /* The record's own layer table. Each file is tiny (a few hundred bytes
+     when nothing has moved), so this page loads all of them; no data page
+     pays for any of it. */
+  var LAYERS = [
+    ["state",    "CA_LEDGER_REVISIONS_STATE",    "State budget",       "index.html"],
+    ["city",     "CA_LEDGER_REVISIONS_CITY",     "Cities",             "cities.html"],
+    ["county",   "CA_LEDGER_REVISIONS_COUNTY",   "Counties",           "cities.html"],
+    ["school",   "CA_LEDGER_REVISIONS_SCHOOL",   "K-12 schools",       "schools.html"],
+    ["district", "CA_LEDGER_REVISIONS_DISTRICT", "Special districts",  "districts.html"],
+    ["csu",      "CA_LEDGER_REVISIONS_CSU",      "CSU",                "csu.html"],
+    ["ccc",      "CA_LEDGER_REVISIONS_CCC",      "Community colleges", "ccc.html"],
+    ["uc",       "CA_LEDGER_REVISIONS_UC",       "UC",                 "uc.html"]
+  ];
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); };
+
+  function rec(layer){ return window[layer[1]] || null; }
+  function events(r){
+    if (!r) return [];
+    var out = [];
+    (r.batches || []).forEach(function(b){ (b.events || []).forEach(function(e){ out.push(e); }); });
+    return out;
+  }
+  function kindOf(e){
+    if (e.o === null || e.o === undefined) return "appeared";
+    if (e.n === null || e.n === undefined) return "disappeared";
+    return "changed";
+  }
+  /* Figures arrive in each layer's own published unit; the record does not
+     rescale them, because rescaling would be a claim about what they mean. */
+  function num(v){
+    if (v === null || v === undefined) return "—";
+    var a = Math.abs(v);
+    var d = a >= 1000 ? 0 : (a >= 1 ? 2 : 3);
+    return v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+  }
+  function label(r, id){
+    var l = r && r.labels ? r.labels[id] : null;
+    return l || id;
+  }
+
+  var SHOWN = 25;
+  function renderLayer(layer){
+    var r = rec(layer), evs = events(r);
+    var wrap = document.createElement("div");
+    wrap.className = "lrec";
+    var digest = "", commit = "", src = "";
+    var batches = (r && r.batches) || [];
+    for (var i = batches.length - 1; i >= 0; i--){
+      if (!digest && batches[i].figuresDigest) digest = batches[i].figuresDigest;
+      if (!commit && batches[i].pipelineCommit) commit = batches[i].pipelineCommit;
+      if (!src && batches[i].sourceUpdated) src = JSON.stringify(batches[i].sourceUpdated);
+    }
+    var head = '<div class="lrec-head"><h3 class="lrec-name">' + esc(layer[2]) + '</h3>'
+      + '<span class="lrec-count">' + (evs.length ? evs.length + ' figure' + (evs.length===1?'':'s') + ' moved' : 'no change recorded')
+      + '</span></div>'
+      + '<div class="lrec-meta">FIGURES DIGEST ' + esc(digest ? digest.slice(0,24) : '—')
+      + (commit ? ' · PIPELINE ' + esc(commit) : '')
+      + (src ? ' · SOURCE ROWS UPDATED ' + esc(src) : '')
+      + '</div>';
+
+    var body = "";
+    if (!evs.length){
+      body = '<p class="empty-rec">Nothing has moved in this layer since the record began'
+           + (r && r.meta && r.meta.begins ? ' on ' + esc(r.meta.begins) : '') + '.</p>';
+    } else {
+      batches.forEach(function(b){
+        if (!b.events || !b.events.length) return;
+        body += '<div class="batch"><div class="batch-hd">BUILD ' + esc(b.built)
+             + ' · ' + b.events.length + ' event' + (b.events.length===1?'':'s')
+             + (b.backfilled ? ' · BACKFILLED' : '') + '</div>';
+        if (b.note) body += '<p class="batch-note">' + esc(b.note) + '</p>';
+        var rows = b.events.slice(0, SHOWN).map(function(e){
+          return '<tr><td>' + esc(label(r, e.e)) + '</td>'
+               + '<td class="path">' + esc(e.k) + '</td>'
+               + '<td class="num">' + num(e.o) + '</td>'
+               + '<td class="num">' + num(e.n) + '</td>'
+               + '<td class="kind">' + kindOf(e) + '</td></tr>';
+        }).join("");
+        body += '<table class="evt"><thead><tr><th>Entity</th><th>Figure</th>'
+             + '<th class="num">Was</th><th class="num">Now</th><th>Event</th></tr></thead>'
+             + '<tbody>' + rows + '</tbody></table>';
+        if (b.events.length > SHOWN){
+          body += '<p class="more microlbl">Showing ' + SHOWN + ' of ' + b.events.length
+               + '. The full record is in <span class="mono-sm">' + esc(layer[0])
+               + '-revisions.js</span>, which is plain JSON.</p>';
+        }
+        body += '</div>';
+      });
+    }
+    wrap.innerHTML = head + body;
+    return wrap;
+  }
+
+  function renderAll(){
+    var host = $("layerRecords");
+    if (!host) return;
+    var total = 0;
+    LAYERS.forEach(function(l){
+      total += events(rec(l)).length;
+      host.appendChild(renderLayer(l));
+    });
+    var h = document.createElement("h2");
+    h.className = "microlbl";
+    h.textContent = "PER-LAYER RECORD · " + total + " FIGURE" + (total===1?"":"S")
+                  + " MOVED IN TOTAL";
+    host.insertBefore(h, host.firstChild);
+  }
+
+  /* ---- check a citation -------------------------------------------------
+     Reads only the generated date out of whatever is pasted. Day resolution
+     is all a citation carries, and it is lossy: several builds can share a
+     date. The verdict says so rather than implying more precision than the
+     evidence supports. */
+  function citedDate(text){
+    var m = /(?:data\s+)?generated[:\s]+(\d{4}-\d{2}-\d{2})/i.exec(text);
+    if (m) return m[1];
+    m = /(\d{4}-\d{2}-\d{2})/.exec(text);
+    return m ? m[1] : null;
+  }
+  function check(){
+    var out = $("checkOut");
+    var text = $("citeInput").value || "";
+    var d = citedDate(text);
+    if (!d){
+      out.hidden = false;
+      out.innerHTML = '<span class="verdict">No date found</span>'
+        + 'Paste a full Citizen Ledger citation, or just its generated date in '
+        + 'YYYY-MM-DD form. Every citation this site produces carries one.';
+      return;
+    }
+    var moved = [], sameDay = [], began = null;
+    LAYERS.forEach(function(l){
+      var r = rec(l);
+      if (!r) return;
+      if (r.meta && r.meta.begins && (!began || r.meta.begins < began)) began = r.meta.begins;
+      var after = 0, on = 0;
+      (r.batches || []).forEach(function(b){
+        var n = (b.events || []).length;
+        if (b.built > d) after += n;
+        else if (b.built === d) on += n;   /* same day — order is unknowable */
+      });
+      if (after) moved.push({name: l[2], n: after, page: l[3]});
+      if (on) sameDay.push({name: l[2], n: on, page: l[3]});
+    });
+    var html = "";
+    if (moved.length){
+      html += '<span class="verdict">Figures have changed since ' + esc(d) + '</span>';
+      html += '<ul>' + moved.map(function(m){
+        return '<li><a href="' + esc(m.page) + '">' + esc(m.name) + '</a> — '
+             + m.n + ' figure' + (m.n===1?'':'s') + ' moved after that date.</li>';
+      }).join("") + '</ul>';
+      html += '<p>Whether the figure <em>you</em> cited is among them is listed per layer '
+            + 'above. This tells you that something in the layer moved, not why it moved.</p>';
+    } else if (!sameDay.length){
+      html += '<span class="verdict">Nothing recorded as changed since ' + esc(d) + '</span>';
+      html += '<p>No figure in any layer has been recorded as changing after that date.</p>';
+    }
+    /* A citation carries a date, not a timestamp. If a build landed on the
+       same day the reader accessed the site, nothing in the evidence says
+       which came first — so the record says exactly that instead of
+       guessing in either direction. */
+    if (sameDay.length){
+      if (!moved.length) html += '<span class="verdict">Cannot be determined for ' + esc(d) + '</span>';
+      html += '<p><strong>A build landed on the same day as your citation</strong>, in '
+            + sameDay.map(function(m){
+                return '<a href="' + esc(m.page) + '">' + esc(m.name) + '</a> ('
+                     + m.n + ' figure' + (m.n===1?'':'s') + ')'; }).join(", ")
+            + '. A citation records the day it was generated, not the time, so the record '
+            + 'cannot say whether those figures moved before or after you read them. '
+            + 'Treat the figures you cited from that layer as unconfirmed for that day.</p>';
+    }
+    if (began && d < began){
+      html += '<p><strong>With one caveat that matters here:</strong> your citation predates '
+            + 'this record, which begins on ' + esc(began) + '. Changes made before that date '
+            + 'were not captured — the earlier figures were overwritten, not compared. '
+            + 'A quiet result for a date before ' + esc(began) + ' means "not recorded", '
+            + 'not "did not happen".</p>';
+    }
+    html += '<p class="microlbl">A citation carries a date, not a time. Several builds can '
+          + 'share one date, so this is accurate to the day and no finer.</p>';
+    out.hidden = false;
+    out.innerHTML = html;
+  }
+
+  renderAll();
+  var btn = $("checkBtn");
+  if (btn) btn.addEventListener("click", check);
+  var ta = $("citeInput");
+  if (ta) ta.addEventListener("keydown", function(e){
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) check();
+  });
+})();
+</script>
+
+</body>
+</html>

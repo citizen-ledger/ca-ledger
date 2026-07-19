@@ -73,6 +73,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
+import revisions  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "schools"
@@ -1125,6 +1126,7 @@ def main():
         "charters": charters_out,
         "dependentCharters": dependents,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     print(f"{len(districts)} districts · {len(coes)} county offices · "
@@ -1143,6 +1145,8 @@ def main():
               f"{date.today().isoformat()} — do not edit by hand. */\n")
     OUT_PATH.write_text(header + "window.CA_SCHOOL_DATA = " + body + ";\n",
                         encoding="utf-8")
+
+    revisions.record_revision('school', prev, payload)
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1048576:.2f} MB)")
 
 

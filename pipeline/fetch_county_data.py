@@ -42,6 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp                      # noqa: E402
 from fetch_city_data import soda, norm           # noqa: E402
+import revisions                                 # noqa: E402
 
 DS_EXPEND = "uctr-c2j8"
 DS_REVEN = "emxv-k8xv"
@@ -392,6 +393,7 @@ def main():
         "enterpriseFunds": [{"key": k, "name": n} for k, n in ENTERPRISE_FUNDS],
         "counties": counties_out,
     }
+    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     if not args.write:
         la = payload["counties"]["los-angeles"]["years"]["2023-24"]
@@ -405,6 +407,9 @@ def main():
     OUT_PATH.write_text(header + "window.CA_COUNTY_DATA = "
                         + json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
                         + ";\n", encoding="utf-8")
+    revisions.record_revision("county", prev, payload,
+                              source_signal=revisions.socrata_updated(
+                                  ["uctr-c2j8", "emxv-k8xv", "miui-wb29"]))
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB, "
           f"{len(counties_out)} counties)")
 
