@@ -3133,6 +3133,73 @@ def test_cite(page, base):
           "standardized city annual financial reports" in text)
 
 
+def test_runtime_origins():
+    """THE ARCHITECTURAL RULE, ENFORCED — docs/SCOPE.md permits exactly
+    two runtime third-party services, and both are non-load-bearing:
+    OpenFreeMap tiles on the map view and the Census geocoder on the
+    address view. A third had accumulated undocumented (Google Fonts,
+    on all ten pages), which is how a normative document quietly stops
+    describing the site. This asserts the rule instead of restating it.
+
+    Only SUBRESOURCE origins count — things the browser fetches to
+    render the page. Ordinary <a href> links out to github.com or a
+    source agency are the record citing its sources, not a dependency.
+    """
+    pages = sorted(p.name for p in ROOT.glob("*.html"))
+    check("origins: all ten pages present", len(pages) == 10, str(len(pages)))
+    ALLOWED = {"tiles.openfreemap.org", "geocoding.geo.census.gov"}
+    # Only things the browser FETCHES count. <a href> is the record citing
+    # its sources, and <link rel="canonical"> is metadata — neither is a
+    # dependency. Among <link> rels, only these actually load bytes.
+    FETCHING_REL = ("stylesheet", "preconnect", "dns-prefetch", "preload",
+                    "prefetch", "modulepreload", "icon", "apple-touch-icon",
+                    "manifest")
+    SUB = re.compile(
+        r'<(?:script|img|iframe|source|embed)\b[^>]*\bsrc\s*=\s*["\']'
+        r'(https?://[^"\']+)', re.I)
+    CSSURL = re.compile(r'url\(\s*["\']?(https?://[^"\'\s)]+)', re.I)
+    LINKTAG = re.compile(r'<link\b[^>]*>', re.I)
+    offenders = {}
+    for name in pages:
+        src = (ROOT / name).read_text(encoding="utf-8")
+        found = list(SUB.findall(src)) + list(CSSURL.findall(src))
+        for tag in LINKTAG.findall(src):
+            rel = re.search(r'\brel\s*=\s*["\']([^"\']+)', tag, re.I)
+            href = re.search(r'\bhref\s*=\s*["\'](https?://[^"\']+)', tag, re.I)
+            if href and rel and any(r in rel.group(1).lower().split()
+                                    for r in FETCHING_REL):
+                found.append(href.group(1))
+        for url in found:
+            host = re.sub(r"^https?://([^/]+).*$", r"\1", url)
+            if host not in ALLOWED:
+                offenders.setdefault(name, set()).add(host)
+    check("origins: no page loads a subresource from an undocumented "
+          "third party (SCOPE.md names exactly two)",
+          not offenders,
+          "; ".join(f"{k}: {sorted(v)}" for k, v in sorted(offenders.items())))
+    scope = docs_scope_text()
+    for phrase in ("OpenFreeMap", "Census"):
+        check(f"origins: SCOPE.md still names {phrase} as a permitted "
+              f"runtime service", phrase in scope)
+    check("origins: SCOPE.md records that the rule is asserted, not just "
+          "stated", "test_runtime_origins" in scope)
+    # the font must be ours, and its licence must travel with it
+    fonts = sorted(p.name for p in (ROOT / "vendor" / "fonts").glob("*.woff2"))
+    check("origins: IBM Plex Mono is vendored, not fetched",
+          len(fonts) == 6, str(fonts))
+    check("origins: the SIL Open Font Licence ships with the font files",
+          "SIL Open Font License" in
+          (ROOT / "vendor" / "fonts" / "OFL.txt").read_text(encoding="utf-8"))
+    for name in pages:
+        src = (ROOT / name).read_text(encoding="utf-8")
+        check(f"origins: {name} declares the self-hosted face",
+              "vendor/fonts/plex-mono-400-latin.woff2" in src)
+
+
+def docs_scope_text():
+    return (ROOT / "docs" / "SCOPE.md").read_text(encoding="utf-8")
+
+
 def test_shell(page, base):
     """The institutional shell: a 404 in the Ledger's own voice, a
     steward line in every footer, system-colored identity assets, a
@@ -3627,6 +3694,7 @@ def main():
             test_map(page, base)
             test_mobile(browser, base)
             test_precision(page, base)
+            test_runtime_origins()
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)
