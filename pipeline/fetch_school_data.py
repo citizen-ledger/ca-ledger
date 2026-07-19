@@ -182,6 +182,61 @@ def slugify(s):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", s.lower())).strip("-")
 
 
+def assign_slugs(records, label):
+    """Deterministic, collision-free slugs — the identifier contract.
+
+    `records` is a list of (identity, name, qualifier) where `identity`
+    is the source's own stable code (CDS for districts and county
+    offices, the charter key for charters). The slug is a function of
+    the published name alone when that name is unique, and of the name
+    plus its qualifier when it is not — so no entity ever wins a bare
+    slug that another entity of the same name could have won instead.
+
+    Two properties this guarantees, both asserted in the test suite:
+
+      1. The result depends only on the source data, never on the order
+         Python happened to iterate a set. The old code sorted a set of
+         code tuples keyed on the NAME alone, so for the duplicated
+         names the tie was broken by set-iteration order — i.e. by
+         PYTHONHASHSEED, which Python randomizes per process. The same
+         source produced a different school-data.js, and therefore a
+         different published SHA-256, on every run.
+      2. Every name that is shared is disambiguated for EVERY holder of
+         it. Letting one of three "Jefferson Elementary" districts hold
+         the unqualified slug is a claim we cannot support: it names one
+         district with an identifier that describes three.
+
+    Raises rather than guessing if a qualifier fails to disambiguate.
+
+    Returns (slug_by_identity, ambiguous), where `ambiguous` maps each
+    unqualified slug that is NOT issued to the qualified slugs that
+    share that name. Earlier builds handed the unqualified slug to an
+    arbitrary one of them, so links using it are genuinely ambiguous —
+    that map lets the page say which entities a stale link could have
+    meant instead of silently picking one.
+    """
+    by_name = defaultdict(list)
+    for ident, name, qualifier in records:
+        by_name[slugify(name)].append((ident, name, qualifier))
+    out, ambiguous = {}, {}
+    for base in sorted(by_name):
+        group = sorted(by_name[base], key=lambda r: r[0])
+        if len(group) == 1:
+            out[group[0][0]] = base
+            continue
+        for ident, name, qualifier in group:
+            out[ident] = slugify(name + "-" + str(qualifier))
+        ambiguous[base] = sorted(out[ident] for ident, _, _ in group)
+    if len(set(out.values())) != len(out):
+        dupes = sorted(s for s in set(out.values())
+                       if list(out.values()).count(s) > 1)
+        raise SystemExit(
+            f"SLUG COLLISION in {label} after qualification: {dupes} — "
+            "the qualifier does not disambiguate these records. "
+            "Nothing written; a human must choose a stable identifier.")
+    return out, ambiguous
+
+
 def fn_group(code):
     if code.isdigit():
         n = int(code)
@@ -764,21 +819,23 @@ def main():
                     nces_ids[target].append(nces)
 
     # ---- assemble districts (driven by the published CE list)
-    districts, slug_taken = {}, {}
+    districts = {}
     # titles for the codes that actually appear as named rows, per year —
     # CDE's own words, this vintage's table only; a code with no title in
     # its own year ships as its raw code (never invented, never grouped).
     res_titles_used = {fy: {} for fy in Y}
-    all_keys = sorted({k for fy in Y for k in years[fy]["ce"]},
-                      key=lambda k: years[Y[-1]]["ce"].get(k, years[Y[0]]["ce"].get(k, {"name": ""}))["name"])
+    # sorted on the CDS key itself — the source's own stable identity —
+    # so the iteration order cannot depend on PYTHONHASHSEED.
+    all_keys = sorted({k for fy in Y for k in years[fy]["ce"]})
+    newest_of = {k: next((years[fy]["ce"][k] for fy in reversed(Y)
+                          if k in years[fy]["ce"]), None) for k in all_keys}
+    district_slugs, district_ambig = assign_slugs(
+        [(k, newest_of[k]["name"], COUNTIES[int(k[0]) - 1]) for k in all_keys],
+        "K-12 districts")
     for key in all_keys:
         c, d = key
-        newest = next((years[fy]["ce"][key] for fy in reversed(Y)
-                       if key in years[fy]["ce"]), None)
-        slug = slugify(newest["name"])
-        if slug in slug_taken:
-            slug = slugify(newest["name"] + "-" + COUNTIES[int(c) - 1])
-        slug_taken[slug] = True
+        newest = newest_of[key]
+        slug = district_slugs[key]
         entry = {"name": newest["name"], "county": COUNTIES[int(c) - 1],
                  "type": newest["type"], "cds": c + d,
                  "nces": nces_ids.get(c + d, []), "years": {}}
@@ -827,10 +884,13 @@ def main():
 
     # ---- county offices (records only)
     coes = {}
-    for key, lea in sorted(years[latest]["leas"].items(),
-                           key=lambda kv: kv[1]["name"]):
-        if not lea["type"].startswith("County Office"):
-            continue
+    coe_keys = sorted(k for k, lea in years[latest]["leas"].items()
+                      if lea["type"].startswith("County Office"))
+    coe_slugs, coe_ambig = assign_slugs(
+        [(k, years[latest]["leas"][k]["name"], COUNTIES[int(k[0]) - 1])
+         for k in coe_keys], "county offices")
+    for key in coe_keys:
+        lea = years[latest]["leas"][key]
         c, d = key
         entry = {"name": lea["name"], "county": COUNTIES[int(c) - 1],
                  "cds": c + d, "years": {}}
@@ -843,27 +903,32 @@ def main():
                 "expenditures": round(yd["coe_tot"][key], 2),
                 "byFunction": {k: round(v, 2) for k, v in yd["coe_fn"][key].items()},
             }
-        coes[slugify(lea["name"])] = entry
+        coes[coe_slugs[key]] = entry
 
     # ---- charters that file separately; dependent ones as pointers
     charters_out, dependents = {}, []
-    seen_slugs = set()
     latest_reg = years[latest]["charters"]
+    # sorted on the charter key itself, for the same reason as districts.
     all_charter_keys = sorted(
-        {k for fy in Y for k in list(years[fy]["charter_gl"]) + list(years[fy]["alt_data"])},
-        key=lambda k: (latest_reg.get(k, {}).get("name") or
-                       next((years[fy]["charters"][k]["name"] for fy in reversed(Y)
-                             if k in years[fy]["charters"]), "")))
+        {k for fy in Y for k in list(years[fy]["charter_gl"]) + list(years[fy]["alt_data"])})
+    charter_reg = {}
     for key in all_charter_keys:
         reg = next((years[fy]["charters"][k] for fy in reversed(Y)
                     for k in [key] if k in years[fy]["charters"]), None)
+        if reg is not None:
+            charter_reg[key] = reg
+    # the charter number is NOT unique on its own (0756 is shared by the
+    # nine High Tech schools), so it qualifies a shared NAME, never
+    # identifies a charter; assign_slugs raises if that is not enough.
+    charter_slugs, charter_ambig = assign_slugs(
+        [(k, r["name"], (r["number"] or k[2]).lower())
+         for k, r in charter_reg.items()], "charters")
+    for key in all_charter_keys:
+        reg = charter_reg.get(key)
         if reg is None:
             continue
         c, d, s = key
-        slug = slugify(reg["name"])
-        if slug in seen_slugs:
-            slug = slugify(reg["name"]) + "-" + (reg["number"] or s).lower()
-        seen_slugs.add(slug)
+        slug = charter_slugs[key]
         auth = years[latest]["leas"].get((c, d)) or years[Y[0]]["leas"].get((c, d))
         entry = {"name": reg["name"], "county": COUNTIES[int(c) - 1],
                  "charterNumber": reg["number"],
@@ -889,7 +954,9 @@ def main():
             charters_out[slug] = entry
     FUND_LABEL = {"General": "Fund 01", "CharterSpecRevenue": "Fund 09",
                   "CharterEnterprise": "Fund 62"}
-    for key, ch in sorted(latest_reg.items(), key=lambda kv: kv[1]["name"]):
+    # name, then the charter key — an explicit tie-break so the shipped
+    # order of same-named dependents cannot drift between builds.
+    for key, ch in sorted(latest_reg.items(), key=lambda kv: (kv[1]["name"], kv[0])):
         if ch["level"] in ("CharterSchool", "StateBoardOfEducation") or not ch["level"]:
             continue
         c, d, s = key
@@ -941,6 +1008,15 @@ def main():
                            "summary data",
             "generated": date.today().isoformat(),
             "units": "as-reported dollars (exact); ADA as published",
+            "identifiers": "Slugs are a function of the published name, "
+                           "qualified by county (districts, county offices) "
+                           "or charter number when a name is shared. Records "
+                           "are keyed on CDE's own CDS code throughout, so "
+                           "the same source data always produces the same "
+                           "identifiers and the same digest.",
+            "ambiguousSlugs": {k: v for k, v in (
+                ("districts", district_ambig), ("countyOffices", coe_ambig),
+                ("charters", charter_ambig)) if v},
             "basis": "Unaudited actual expenditures as filed by each LEA under "
                      "SACS. District figures are the Current Expense of "
                      "Education (Fund 01 current operating expense, CDE's EDP "
