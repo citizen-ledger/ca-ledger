@@ -195,6 +195,18 @@ def test_v1(page, base):
     prev_total = sum(state_agency_total(a) for a in STATE["budgets"][prev]["agencies"])
     pop = STATE["meta"]["population"][latest]
 
+    # ── the enacted gate, recomputed from shipped agency rows against the
+    # pinned control (a tampered agency figure with a restamped digest must
+    # fail HERE, not just drift the rendered page along with the data)
+    check("V1 PIN: every shipped budget year is pinned (a new year cannot slip in unpinned)",
+          set(STATE["budgets"]) == set(ENACTED_PIN),
+          str(set(STATE["budgets"]) ^ set(ENACTED_PIN)))
+    for y, control in ENACTED_PIN.items():
+        s = sum(state_agency_total(a) for a in STATE["budgets"][y]["agencies"])
+        check(f"V1 PIN {y}: agencies sum to the pinned snapshot of shipped totals "
+              f"(tamper evidence, not a published control)",
+              abs(s - control) <= 0.005, f"{s:.3f} vs {control}")
+
     page.goto(f"{base}/index.html")
     page.wait_for_selector("#appropBar button")
 
@@ -367,6 +379,34 @@ def test_v2(page, base):
     la_y = la["years"][latest]
     n_funcs = len(CITY["functions"])
 
+    # ── the city gate, recomputed from shipped rows (mutation-hardening):
+    # every city-year's functions must sum to its governmental total, every
+    # enterprise byFund must sum to its enterprise total, and the statewide
+    # aggregate must hit the pinned control — so a single tampered figure
+    # with a restamped digest fails loudly instead of drifting the page.
+    bad_sum, bad_ent = [], []
+    sw_tot = {y: 0.0 for y in years}
+    for slug, c in CITY["cities"].items():
+        for fy, yr in c["years"].items():
+            if abs(round(sum(yr["byFunction"].values()), 3)
+                   - yr["expenditures"]) > 0.02:
+                bad_sum.append(f"{slug} {fy}")
+            ent = yr.get("enterprise") or {}
+            if "byFund" in ent and abs(round(sum(ent["byFund"].values()), 3)
+                                       - ent.get("total", 0)) > 0.02:
+                bad_ent.append(f"{slug} {fy}")
+            sw_tot[fy] = sw_tot.get(fy, 0.0) + yr["expenditures"]
+    check("V2 GATE: every city-year's functions sum to its governmental total",
+          not bad_sum, str(bad_sum[:4]))
+    check("V2 GATE: every enterprise byFund sums to its enterprise total",
+          not bad_ent, str(bad_ent[:4]))
+    check("V2 PIN: every shipped city year is pinned",
+          set(years) == set(CITY_PIN), str(set(years) ^ set(CITY_PIN)))
+    for y, control in CITY_PIN.items():
+        check(f"V2 PIN {y}: statewide city total matches the pinned snapshot "
+              f"(tamper evidence, not a published control)",
+              abs(sw_tot[y] - control) <= 0.005, f"{sw_tot[y]:.3f} vs {control}")
+
     page.goto(f"{base}/cities.html")
     page.wait_for_selector("#dataBanner span")
 
@@ -512,9 +552,112 @@ def test_v2(page, base):
     check("V2 methodology: reconciliation stated", "reconciled against" in body)
     banned_scan(page, "V2")
 
+# ── ANCHORS (the mutation-hardening rule) ────────────────────────────
+# The UC pre-PR review proved that assertions reading values the pipeline
+# itself stored (echoed metadata) let a tampered figure with a restamped
+# digest pass the whole suite. The rule since: every layer's gate is
+# RECOMPUTED from the shipped rows, and anchored to a value the data file
+# cannot carry along.
+#
+# THE ANCHORS ARE OF TWO KINDS, AND THEY ARE NOT EQUIVALENT.
+#
+#   PUBLISHED CONTROL — a figure the SOURCE published, which a reader can
+#     look up independently. A mismatch means our data disagrees with the
+#     source. These are: SCH6_CONTROL (Schedule 6 statewide totals),
+#     CCC_STATEWIDE_CE (the Chancellor's Office printed Table VI total),
+#     UC_AUDITED (UC's audited totals), CSU_UNIVERSITY_OPEXP_K (CSU's
+#     audited University total).
+#
+#   TAMPER PIN — a snapshot of the aggregate WE CURRENTLY SHIP, recorded
+#     here so any later edit to the data file is loud. It is NOT a control
+#     and proves nothing about agreement with the source: it proves only
+#     that the shipped file still holds the figures the pipeline wrote.
+#     These are ENACTED_PIN, CITY_PIN, COUNTY_PIN, SCHOOL_CE_PIN and
+#     DIST_PIN. They exist because a coordinated tamper — moving a figure
+#     AND the stored parent that would expose it — keeps every in-file
+#     identity true, so nothing inside the file can catch it.
+#
+# What sits behind each tamper pin at build time, stated exactly:
+#   ENACTED_PIN    NOTHING. pipeline/fetch_state_data.py prints the drift
+#                  against the API's own stateGrandTotal and never fails,
+#                  so the enacted layer has no reconciliation gate at all.
+#                  This pin is its only anchor. It is provably NOT the
+#                  published figure: DOF's published 2024-25 total is
+#                  $297,862M, this pin is $297,860M — the $2M gap is the
+#                  rounding of shipped agency values to $0.001B, which is
+#                  exactly why it cannot be called a reconciliation.
+#   CITY_PIN       A real per-city build gate exists (fetch_city_data.py
+#                  fails at >0.1% drift from the Controller's published
+#                  per-city total) — but over ALL funds, whereas this pin
+#                  is over the governmental-only figure the site displays.
+#                  Related, not the same quantity.
+#   COUNTY_PIN     Per-county-year gate against the stored scoTotal, which
+#                  is itself pipeline-derived; test_county re-asserts it.
+#   SCHOOL_CE_PIN  A genuine per-district gate to the cent against CDE's
+#                  published EDP 365 — but CDE publishes no STATEWIDE
+#                  figure, so this aggregate is ours, not CDE's.
+#   DIST_PIN       Nothing, by design: no published control total exists
+#                  for special districts, and the record says so on its
+#                  face. Pure tamper evidence.
+#
+# A new fiscal year must update these constants deliberately, in review —
+# the suite fails until it does, and a companion assertion requires every
+# shipped year to be pinned so a new year cannot slip through unpinned.
+#
+# TOLERANCES sit two-or-more orders of magnitude ABOVE the measured
+# float-summation noise floor (city/county ~7e-11 $M, schools ~2e-4 $,
+# state ~6e-14 $B) and comfortably BELOW the smallest mutation
+# tests/mutation_test.py applies — so accumulated float error can never
+# trip them and a tampered figure always does.
+ENACTED_PIN = {                # $B, gf+sp+bd as shipped. TAMPER PIN.
+    "2020-21": 202.075,
+    "2021-22": 262.587,
+    "2022-23": 307.915,
+    "2023-24": 310.803,
+    "2024-25": 297.860,
+    "2025-26": 321.051,
+}
+CITY_PIN = {                   # $M, statewide governmental expenditures
+    "2016-17": 45164.314, "2017-18": 49402.957, "2018-19": 51562.036,   # as shipped. TAMPER PIN.
+    "2019-20": 55796.116, "2020-21": 58632.676, "2021-22": 61680.378,
+    "2022-23": 65522.885, "2023-24": 72650.127,
+}
+COUNTY_PIN = {                 # $M, statewide sum of the stored per-county
+    "2016-17": 76349.474, "2017-18": 81393.525, "2018-19": 89996.339,   # control totals. TAMPER PIN.
+    "2019-20": 96848.236, "2020-21": 104705.656, "2021-22": 106687.413,
+    "2022-23": 115685.330, "2023-24": 126286.986,
+}
+SCHOOL_CE_PIN = {              # $, statewide sum of the per-district Current
+    "2022-23": 89068561292.64, # Expense figures, each gated to the cent
+    "2023-24": 97527767792.56, # against CDE's published EDP 365 at build.
+    "2024-25": 101236938810.13,# The AGGREGATE is ours. TAMPER PIN.
+}
+DIST_PIN = {                   # $, statewide as-filed expenditures. TAMPER
+    "2016-17": 54226963772,    # PIN, and the only kind possible here: no
+    "2017-18": 68843759442,    # published control total exists for special
+    "2018-19": 73204149991,    # districts — that absence is the finding.
+    "2019-20": 76285411834,
+    "2020-21": 75652587914,
+    "2021-22": 83871045478,
+    "2022-23": 92032458217,
+    "2023-24": 100913470057,
+}
+# ── PUBLISHED CONTROLS (a reader can look these up) ──────────────────
+CSU_UNIVERSITY_OPEXP_K = 11_630_059   # CSU audited University total operating
+CSU_PIN_YEAR = "2023-24"              # expenses, in thousands
+CCC_STATEWIDE_CE = 8_469_851_699      # Chancellor's Office Table VI printed
+CCC_PIN_YEAR = "2022-23"              # statewide Current Expense of Education
+UC_AUDITED = {                        # UC audited total operating expenses and
+    "2024-25": {"auditedTotalK": 57_767_327,   # the printed campus/Systemwide
+                "campusSumK": 58_074_198, "systemwideColK": -306_871},
+    "2023-24": {"auditedTotalK": 54_703_428,   # components, all from the AFRs
+                "campusSumK": 52_003_294, "systemwideColK": 2_700_134},
+}
+
 # Schedule 6 statewide control totals (GF, total) in $M, per the vintage
-# publication each year's actuals were extracted from. The pipeline gates
-# on these before writing; this re-asserts the gate on the shipped data.
+# publication each year's actuals were extracted from. PUBLISHED CONTROL:
+# the pipeline gates on these before writing; this re-asserts it on the
+# shipped data.
 SCH6_CONTROL = {
     "2021-22": (216785, 270694),   # 2023-24 Enacted Budget
     "2022-23": (195189, 274039),   # 2024-25 Enacted Budget
@@ -688,6 +831,18 @@ def test_county(page, base):
                 bad_uninc.append(f"{slug} {fy}")
     check("county: every county-year reconciles to its stored control total",
           not bad_gate, str(bad_gate[:4]))
+    # statewide aggregate vs the pinned control (mutation-hardening: a
+    # coordinated per-county tamper of byFunction AND scoTotal together
+    # still moves the statewide sum and fails here)
+    check("county PIN: every shipped county year is pinned",
+          set(COUNTY["years"]) == set(COUNTY_PIN),
+          str(set(COUNTY["years"]) ^ set(COUNTY_PIN)))
+    for y, control in COUNTY_PIN.items():
+        sw_y = sum(c["years"].get(y, {}).get("scoTotal", 0)
+                   for c in COUNTY["counties"].values())
+        check(f"county PIN {y}: statewide scoTotal sum matches the pinned snapshot "
+              f"(tamper evidence, not a published control)",
+              abs(sw_y - control) <= 0.005, f"{sw_y:.3f} vs {control}")
     check("county: unincorporated share present and sane for every county-year",
           not bad_uninc, str(bad_uninc[:4]))
     # geometry: 58 features, exactly one SF pointer, no financial fields
@@ -786,6 +941,18 @@ def test_districts(page, base):
     # ---- data level
     check("districts: >4,500 on record", len(DIST["districts"]) > 4500,
           str(len(DIST["districts"])))
+    # tamper-evidence pin (mutation-hardening). This is NOT a reconciliation
+    # gate — no published control total exists for special districts, and
+    # the record says so on its face — but the as-filed statewide aggregate
+    # is pinned so a single tampered figure with a restamped digest still
+    # breaks the suite.
+    for iy, y in enumerate(DIST["years"]):
+        sw_y = sum(sum(r["exp"][iy] or [0, 0, 0, 0])
+                   for r in DIST["districts"].values())
+        pin = DIST_PIN.get(y)
+        check(f"districts PIN {y}: as-filed statewide expenditures match "
+              f"the tamper-evidence pin", pin is not None and sw_y == pin,
+              f"{sw_y:,} vs {pin if pin is None else format(pin, ',')}")
     bad = [s for s, r in DIST["districts"].items()
            if len(r["filings"]) != len(YRS)
            or any(ch not in "FLM-" for ch in r["filings"])]
@@ -1340,6 +1507,29 @@ def test_schools(page, base):
           "Current Expense figure", not bad_gate, str(bad_gate[:3]))
     check("schools: function rows sum exactly to the gated figure",
           not bad_sum, str(bad_sum[:3]))
+    # statewide CE vs the pinned control (mutation-hardening: a coordinated
+    # tamper of byFunction + currentExpense + cePublished together still
+    # moves the statewide sum and fails here)
+    check("schools PIN: every shipped school year is pinned",
+          set(Y) == set(SCHOOL_CE_PIN), str(set(Y) ^ set(SCHOOL_CE_PIN)))
+    for y, control in SCHOOL_CE_PIN.items():
+        sw_ce = sum(d["years"].get(y, {}).get("currentExpense", 0)
+                    for d in SCHOOL["districts"].values())
+        check(f"schools PIN {y}: statewide Current Expense matches the pinned snapshot "
+              f"(tamper evidence; the per-district figures ARE gated to CDE)",
+              abs(sw_ce - control) <= 0.05, f"{sw_ce:.2f} vs {control}")
+    # county offices and charters: children sum to their own totals
+    bad_co = [f"{s} {y}" for s, c in SCHOOL["countyOffices"].items()
+              for y, v in c["years"].items()
+              if abs(sum(v["byFunction"].values()) - v["expenditures"]) > 0.05]
+    check("schools: county-office functions sum to their expenditures",
+          not bad_co, str(bad_co[:3]))
+    bad_ch = [f"{s} {y}" for s, c in SCHOOL["charters"].items()
+              for y, v in c["years"].items()
+              if "byObject" in v
+              and abs(sum(v["byObject"].values()) - v["expenditures"]) > 0.05]
+    check("schools: charter object rows sum to their expenditures",
+          not bad_ch, str(bad_ch[:3]))
 
     # ---- dagger source data
     pa = SCHOOL["districts"]["palo-alto-unified"]["years"][latest]
@@ -1864,6 +2054,14 @@ def test_frontdoor_about(page, base):
           "no published control total exists for special districts" in body)
     check("about: SHA-256 verification anyone can run",
           "SHA-256" in body and "verify_digest.py" in body)
+    check("about: the mutation-testing discipline is stated on the record",
+          "mutation testing" in body
+          and "digest re-stamped" in body
+          and "tampered figure breaks it" in body)
+    check("about: the two kinds of anchor are distinguished, without overclaiming",
+          "a figure the source itself published" in body
+          and "no published statewide total exists" in body
+          and "not a claim that the source has re-confirmed" in body)
     check("about: refusals — rank/characterize/conclude/vendor/sum",
           "No ranking." in body and "No characterizing." in body
           and "No conclusions." in body and "No vendor data." in body
@@ -1929,6 +2127,13 @@ def test_csu(page, base):
     check("csu gate: campuses + reconciling == University total (exact, thousands)",
           camp_sum + sw["reconcilingK"] == sw["universityOpexpK"],
           f"{camp_sum} + {sw['reconcilingK']} vs {sw['universityOpexpK']}")
+    # pinned audited control (mutation-hardening: universityOpexpK is
+    # pipeline-written; the audited figure itself is pinned here)
+    check("csu gate: the pinned audited figure belongs to the shipped year",
+          meta["year"] == CSU_PIN_YEAR, f"{meta['year']} vs {CSU_PIN_YEAR}")
+    check("csu gate: University total equals the pinned audited figure",
+          sw["universityOpexpK"] == CSU_UNIVERSITY_OPEXP_K,
+          f"{sw['universityOpexpK']} vs {CSU_UNIVERSITY_OPEXP_K}")
     check("csu gate: audited combining identity exact to the thousand",
           sw["universityOpexpK"] + sw["componentUnitsK"] - sw["eliminationsK"]
           == sw["combinedK"])
@@ -2030,6 +2235,12 @@ def test_ccc(page, base):
     ce_sum = sum(d["ce"] for d in ds)
     check("ccc gate: districts' Current Expense of Education sum to the printed statewide, to the dollar",
           ce_sum == sw["ce"], f"{ce_sum} vs {sw['ce']}")
+    # pinned published control (mutation-hardening: sw.ce is pipeline-written;
+    # the Chancellor's Office's printed Table VI statewide figure is pinned)
+    check("ccc gate: the pinned Table VI figure belongs to the shipped year",
+          meta["year"] == CCC_PIN_YEAR, f"{meta['year']} vs {CCC_PIN_YEAR}")
+    check("ccc gate: statewide figure equals the pinned published Table VI total",
+          sw["ce"] == CCC_STATEWIDE_CE, f"{sw['ce']} vs {CCC_STATEWIDE_CE}")
     check("ccc gate: every figure is a whole-dollar integer (no cents)",
           all(isinstance(d["ce"], int) for d in ds) and isinstance(sw["ce"], int))
     check("ccc: 116 accredited colleges across the districts (reconciles to the official count)",
@@ -2149,6 +2360,16 @@ def test_uc(page, base):
               f"{g['campusSumK']} + {g['systemwideColK']} vs {g['auditedTotalK']}")
     check("uc gate: displayed-year audited total matches gate history",
           sw["auditedTotalK"] == meta["gateHistory"]["2024-25"]["auditedTotalK"])
+    # pinned published controls (mutation-hardening: auditedTotalK and
+    # gateHistory are pipeline-written; UC's audited totals are pinned)
+    check("uc gate: every year in gateHistory is pinned",
+          set(meta["gateHistory"]) == set(UC_AUDITED),
+          str(set(meta["gateHistory"]) ^ set(UC_AUDITED)))
+    for fy, pins in UC_AUDITED.items():
+        g = meta["gateHistory"][fy]
+        for k, want in pins.items():
+            check(f"uc gate {fy}: {k} equals the pinned published figure",
+                  g[k] == want, f"{g[k]} vs {want}")
     # the gate RECOMPUTED from the shipped campus rows — not the pipeline's
     # own echoed gateHistory (a +1K drift in any campus row must fail here)
     row_sum = sum(c["totalK"] for c in camps)

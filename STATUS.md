@@ -1662,31 +1662,179 @@ now records all three higher-education systems as built (CSU thousand
 manual-cache · CCC dollar auto · UC thousand auto stripped);
 verify_digest.py includes uc-data.js.
 
+## 2026-07-18 — Mutation testing applied to every layer
+
+The UC pre-PR review found a weakness that had nothing to do with UC: a
++$1,000 edit to one campus figure, with the SHA-256 digest re-stamped to
+hide it, passed all 898 assertions. The gate assertions were reading
+`meta.gateHistory` — values the pipeline itself had written — instead of
+recomputing the reconciliation from the shipped rows. **The tests were
+verifying the pipeline's claims about the data, not the data.** That was
+fixed for UC in the same PR; this pass applies the lesson to every layer
+built before it, and proves the result by mutation rather than by
+inspection.
+
+**The harness ships with the repo:** `python3 tests/mutation_test.py`
+mutates one figure per layer in a throwaway git worktree, re-stamps the
+digest so the integrity check cannot be what catches it, and runs the full
+suite. Every mutation must fail the suite; a surviving mutation is a hole
+in the gates. It exercises two classes deliberately — a *single* figure
+(caught by a children-sum-to-parent identity) and a *coordinated* edit that
+moves a figure and its stored parent/control together, so the in-file
+identity still holds and only an external anchor can catch it.
+
+**Before/after, proven by mutation.** Each row: one figure changed in the
+shipped data file, digest re-stamped, full suite run.
+
+| Layer / view | Mutation | Before | After |
+|---|---|---|---|
+| State enacted | one agency's General Fund +$0.05B | **SURVIVED** | caught |
+| State enacted (depth) | one department fund line +$1B | caught | caught |
+| State actuals | one agency's actual GF +$0.05B | caught | caught |
+| Cities | one city-function figure +$0.05M | caught | caught |
+| Cities (headline) | the governmental total alone +$0.05M | **SURVIVED** | caught |
+| Cities (fully consistent) | line + function + total together | **SURVIVED** | caught |
+| Counties | one county-function figure +$0.05M | caught | caught |
+| Counties (coordinated) | function + stored control | caught | caught |
+| Counties (fully consistent) | line + function + control together | **SURVIVED** | caught |
+| Special districts | one district's expenditure +$1,000 | **SURVIVED** | caught |
+| K-12 Current Expense | one district's instruction +$0.10 | caught | caught |
+| K-12 (coordinated) | instruction + currentExpense + cePublished | caught | caught |
+| K-12 (fully consistent) | gate + published + function + fn×obj + split + source | **SURVIVED** | caught |
+| K-12 function × object (V8) | one cell +$0.10 | caught | caught |
+| K-12 funding source (V9) | one resource group +$0.10 | caught | caught |
+| K-12 resource × object (V10a) | one object cell +$1 | caught | caught |
+| K-12 county offices | one function figure +$0.10 | not tested | caught |
+| K-12 charters | one object figure +$0.10 | not tested | caught |
+| CSU | one campus operating expense +$1k | caught | caught |
+| CSU (coordinated) | campus + University total | caught | caught |
+| CCC | one district's Current Expense +$1 | caught | caught |
+| CCC (coordinated) | district + statewide control together | **SURVIVED** | caught |
+| UC | one campus total +$1k | caught | caught |
+| UC (coordinated) | campus + core + audited total + gateHistory | caught | caught |
+| Cities (enterprise) | one enterprise fund figure +$0.05M | not tested | caught |
+| UC (prior-year shift) | $250M moved between the printed FY2023-24 campus and Systemwide components, sum unchanged | **SURVIVED** (verified) | caught |
+
+Eight mutations survived the suite before this pass (the last found by the adversarial review of the fix itself, which is why the UC pin now covers the printed components and not just the audited total). The four "fully
+consistent" and "coordinated" cases are the instructive ones: they move a
+figure *and* every stored parent that would otherwise expose it, so every
+in-file identity still holds — the reconciliation passes while the numbers
+are wrong. No sum-check can catch that; only an anchor the data file cannot
+carry along can, which is what the control pins are.
+
+
+**The audit, honestly.** Most layers were already stronger than the UC
+precedent suggested: K-12 (all four views — Current Expense, function ×
+object, V9 funding source, V10a resource × object cross-tab), counties,
+state actuals (pinned against Schedule 6 constants), CSU, CCC and the V8
+depth identities all recompute from the shipped rows and caught a single
+tampered figure. Two hypotheses of mine were corrected by the evidence:
+cities were *not* weak in the way expected — every nonzero city-function
+cell carries line detail, so the existing line-children check covers them
+all — but the headline `expenditures` field was never tied to its own
+functions; and the state-enacted agency↔department bridge turns out to be
+structurally impossible to assert (agencies carry department-less items,
+drifting up to $7.9B), so that layer needed a pinned control rather than a
+child-sum identity.
+
+**What changed in the tests.** New ANCHORS tie each layer to a figure the
+data file cannot carry along — and they are of two kinds, which the code,
+the tests and the about page now distinguish rather than blur:
+
+*Published controls*, which a reader can look up: CCC's printed Table VI
+statewide Current Expense, UC's audited totals for both years, CSU's
+audited University total, and Schedule 6 for the state actuals. A
+mismatch means our data disagrees with the source.
+
+*Tamper pins*, which are snapshots of the statewide aggregate we
+currently ship: state enacted, cities, counties, K-12 and special
+districts. **No published statewide control exists for any of these**, so
+a mismatch means the file changed — it says nothing about whether the
+file is right. Stating what actually sits behind each: the state enacted
+layer has **no build-time reconciliation gate at all** (the pipeline
+prints its drift against the API's own grand total and writes
+regardless), and its pin is provably not the published figure — DOF
+publishes $297,862M for 2024-25 where the pin is $297,860M, the $2M being
+the rounding of shipped agency values. Cities do have a real per-city
+build gate, but over all funds, whereas the pin is the governmental-only
+subtotal the site displays. K-12's addends are each gated to the cent
+against CDE's published EDP 365, but CDE publishes no statewide total, so
+the aggregate is ours. Special districts have nothing by design — that
+absence is the finding.
+
+A legitimate data refresh will fail the tamper pins. That is intended:
+the constants are re-derived and the delta reviewed, never updated
+silently, and a companion assertion requires every shipped year to be
+pinned so a new fiscal year cannot slip through unpinned. Each per-layer
+entry under "Update cadence" below now says so, since that is where a
+maintainer looks before a rebuild.
+
+**One residual gap, stated rather than implied away.** A statewide pin
+catches any change to the total, but not a *transfer between* two
+entities that leaves the total unchanged — moving $5B of General Fund
+from one state agency to another survives every check, and the agency
+bars are the largest figures on the front page. Closing it would mean
+pinning per-agency totals for every year, which multiplies the refresh
+burden; it is recorded here instead. The equivalent transfer inside the
+city, county and K-12 layers is caught, because those layers' per-entity
+figures are each anchored by a build-time gate against a published
+per-entity control. Pin tolerances are set two or more orders
+of magnitude above the measured float-summation noise floor (city/county
+~7e-11 $M, schools ~2e-4 $) and below the smallest mutation, so accumulated
+float error can never trip them and a tampered figure always does. Added
+alongside: cities' functions-sum-to-total and enterprise-byFund-sum-to-total
+identities, and children-sum assertions for county offices and charter
+schools, which had verifiable identities that nothing asserted.
+
+**Classification-shape and neutrality gates were checked for the same
+weakness and are sound**: the shape gates recompute statewide function
+sums, the sandwich rule and the LA FY2016-17 regression from shipped rows,
+and the neutrality assertions read computed styles off the rendered page.
+Neither reads pipeline metadata.
+
+The about page now states the discipline plainly, because it is part of how
+a reader is invited to check the record.
+
 ## Update cadence
 
 State: one new fiscal year per annual Budget Act (late June). Run
 `python3 pipeline/fetch_state_data.py` after enactment; update the
 population constant annually from DOF E-4.
+After the rebuild, re-derive `ENACTED_PIN` in `tests/run_tests.py`
+from the new data file and review the delta — the suite fails until
+it is updated, by design.
 
 Cities: one new fiscal year per SCO filing cycle (reports for a fiscal
 year appear on By the Numbers roughly a year later). Run
 `python3 pipeline/fetch_city_data.py --write`; extend `SOURCE_YEARS`
 when a new year appears.
+After the rebuild, re-derive `CITY_PIN` in `tests/run_tests.py`
+from the new data file and review the delta — the suite fails until
+it is updated, by design.
 
 Counties: same cadence and portal as cities. Run
 `python3 pipeline/fetch_county_data.py --write`; the write fails
 unless every county-year reconciles against `miui-wb29`.
+After the rebuild, re-derive `COUNTY_PIN` in `tests/run_tests.py`
+from the new data file and review the delta — the suite fails until
+it is updated, by design.
 
 K-12 schools: one new fiscal year per SACS publication (~7 months
 after the June 30 close). Add the year to YEARS in
 `pipeline/fetch_school_data.py` and run with --write; the write fails
 unless every district-year reproduces CDE's published figure.
+After the rebuild, re-derive `SCHOOL_CE_PIN` in `tests/run_tests.py`
+from the new data file and review the delta — the suite fails until
+it is updated, by design.
 
 Special districts: same portal. Run
 `python3 pipeline/fetch_district_data.py --write`; the finding's
 figures recompute from the live data on every run. When SCO publishes
 a new fiscal year, extend the window in YEARS and add the year's
 late/failed list id to DELINQUENCY.
+After the rebuild, re-derive `DIST_PIN` in `tests/run_tests.py`
+from the new data file and review the delta — the suite fails until
+it is updated, by design.
 
 Community colleges: one new fiscal year once the CCFS-311 filings, the
 district audits, and the SCFF apportionment recalculation are all final
@@ -1695,7 +1843,9 @@ district audits, and the SCFF apportionment recalculation are all final
 `FY_PORTAL` (the CCFS-311 FiscalYearDropdown value), and the SCFF
 Exhibit C URL for the new year. The write fails unless the districts'
 Current Expense of Education sum exactly to the printed statewide Table
-VI total. Auto-fetchable — no manual cache.
+VI total. Auto-fetchable — no manual cache. Update `CCC_STATEWIDE_CE` and
+`CCC_PIN_YEAR` in `tests/run_tests.py` to the new year's printed Table VI
+total — a published control, so it is looked up, not re-derived.
 
 UC: one new fiscal year per Annual Financial Report (~five months after
 the June 30 close; the UCOP actual-FTE PDF appears alongside). Run
@@ -1704,4 +1854,6 @@ and FTE URLs in `AFR`/`FTE_PDF` and `FY_DISPLAY` for the new year (the
 prior year stays in `AFR` so both years' gates always run). The write
 fails unless ten campuses + UC's printed Systemwide column equal the
 audited total exactly, both years, and every campus column passes the
-column-sum check. Auto-fetchable — no manual cache.
+column-sum check. Auto-fetchable — no manual cache. Update `UC_AUDITED` in
+`tests/run_tests.py` with the new year's audited total and printed campus/
+Systemwide components, from the AFR.
