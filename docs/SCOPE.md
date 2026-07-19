@@ -27,6 +27,17 @@ applied correctly rather than argued around:
 - the address view sends the typed address to the U.S. Census
   Bureau's public geocoder.
 
+**These two are the whole list, and the test suite now enforces it**
+(`test_runtime_origins`): no page may load a subresource from any other
+host. That assertion exists because the list had quietly grown to three
+— every page loaded IBM Plex Mono from `fonts.googleapis.com` and
+`fonts.gstatic.com`, undocumented here, which meant this document had
+stopped describing the site. The font is now vendored under
+`vendor/fonts/` (SIL OFL 1.1, licence included), so the page renders
+with no third-party request at all, and a reader's IP and user-agent
+are no longer disclosed to Google on every page view. A normative rule
+that is not asserted decays into a preference; this one is asserted.
+
 Both are **keyless, unmetered, free, and non-load-bearing**: when
 they fail, the record still works (test-asserted degradation). That
 is the boundary. An enhancement may use a runtime service only if it

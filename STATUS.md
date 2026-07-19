@@ -1857,3 +1857,50 @@ audited total exactly, both years, and every campus column passes the
 column-sum check. Auto-fetchable — no manual cache. Update `UC_AUDITED` in
 `tests/run_tests.py` with the new year's audited total and printed campus/
 Systemwide components, from the AFR.
+
+## 2026-07-19 — Fonts self-hosted; the architectural rule is now asserted
+
+**The mismatch.** `docs/SCOPE.md` is normative and names exactly two
+runtime third-party services — OpenFreeMap tiles on the map view, the
+Census geocoder on the address view — both keyless, unmetered, and
+non-load-bearing. But all ten pages also loaded IBM Plex Mono from
+`fonts.googleapis.com` and `fonts.gstatic.com`, undocumented. The
+document that decides which features are allowed had stopped describing
+the site.
+
+Two costs, beyond the inaccuracy. Every page view disclosed the
+reader's IP and user-agent to a third party for no functional reason —
+on a site whose address view is careful to say the typed address never
+leaves the browser except to census.gov. And a page could not render
+as designed without a network round-trip to Google, which is precisely
+the class of dependency `docs/SCOPE.md` exists to prevent.
+
+**Resolved by removal, not by amendment.** IBM Plex Mono is licensed
+under the SIL Open Font License 1.1, which permits redistribution and
+self-hosting provided the license travels with the files. The three
+weights the site uses (400/500/600) are now vendored at
+`vendor/fonts/`, in both the latin and latin-ext subsets, with
+`OFL.txt` alongside as that license requires; `NOTICE` records the
+component and its terms.
+
+The files are the same ones the browser was already fetching, so
+rendering is unchanged. `unicode-range` is preserved, so the subsets
+stay lazy: a page load fetches four of the six files (three latin plus
+one latin-ext), 40,292 bytes measured, and the two unused files are
+never requested. Codepoints in neither range — the ▲▼ ✕ ✓ marks — fall
+through to the platform mono stack exactly as they did before.
+Measured after the change: **zero external subresource requests.**
+
+**The rule is now a test, not a sentence.** `test_runtime_origins`
+fails the build if any page loads a subresource from a host other than
+the two SCOPE.md names. It distinguishes what the browser *fetches*
+from what the record *cites*: `<a href>` links out to source agencies
+and `<link rel="canonical">` are not dependencies and do not trip it.
+Proven against six regression forms — a Google Fonts stylesheet, a
+preconnect hint, a CDN script, a remote image, a font pulled in
+through CSS `url()`, and a remote favicon — all caught, with no false
+positive on the four legitimate patterns.
+
+A normative rule that is not asserted decays into a preference. This
+one drifted for the whole life of the project; it cannot drift again
+silently.

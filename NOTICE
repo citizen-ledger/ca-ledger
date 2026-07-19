@@ -17,3 +17,14 @@ and must not imply that its figures are this project's verified
 record. Authentic figures are those whose SHA-256 integrity digests
 match the ones this project publishes and that reproduce from the
 official state sources via the pipelines in this repository.
+
+THIRD-PARTY COMPONENTS vendored in this repository, under their own
+licenses and not covered by the Apache License above:
+
+  vendor/maplibre-gl.js, vendor/maplibre-gl.css
+      MapLibre GL JS - BSD 3-Clause.
+  vendor/fonts/plex-mono-*.woff2
+      IBM Plex Mono - Copyright (c) 2017 IBM Corp., with Reserved Font
+      Name "Plex". SIL Open Font License, Version 1.1; the full license
+      is at vendor/fonts/OFL.txt, as that license requires. Redistributed
+      unmodified.
