@@ -34,6 +34,7 @@ Exit code 0 = all assertions passed.
 
 import http.server
 import json
+import os
 import re
 import socketserver
 import subprocess
@@ -1714,6 +1715,95 @@ def test_schools(page, base):
     low = src.lower()
     for w in BANNED:
         check(f"schools source: no banned term {w!r}", w not in low)
+
+
+def test_identifier_stability():
+    """THE IDENTIFIER CONTRACT — slugs must be a function of the source
+    data alone, never of set-iteration order.
+
+    Added 2026-07-19. fetch_school_data.py sorted a set of CDS code
+    tuples keyed on the district NAME alone, so for the duplicated names
+    the tie was broken by set-iteration order — i.e. by PYTHONHASHSEED,
+    which Python randomizes per process. The same source produced a
+    different school-data.js, and therefore a different published
+    SHA-256, on every run: under our own authenticity doctrine an honest
+    rebuild read as a tampered copy. It also silently reassigned
+    permalinks between same-named districts.
+
+    This runs the real assignment function in subprocesses under
+    different seeds, over the real shipped roster. It fails on the
+    pre-fix code."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    # identity = the source's own stable code, exactly as the pipeline
+    # keys it: CDS for districts, and for charters the number plus name
+    # and county (the number alone is not unique — 0756 is shared by the
+    # nine High Tech schools).
+    roster = []
+    for d in SCHOOL["districts"].values():
+        roster.append([[d["cds"][:2], d["cds"][2:]], d["name"], d["county"]])
+    for c in SCHOOL["charters"].values():
+        roster.append([[c["charterNumber"] or "", c["name"], c["county"]],
+                       c["name"], (c["charterNumber"] or "").lower()])
+    prog = (
+        "import json,sys\n"
+        "sys.path.insert(0,%r)\n"
+        "from fetch_school_data import assign_slugs\n"
+        "rows=[(tuple(map(str,i)),n,q) for i,n,q in json.load(sys.stdin)]\n"
+        "slugs,amb=assign_slugs(rows,'seed test')\n"
+        "print(json.dumps([sorted(slugs.items()),sorted(amb.items())],"
+        "sort_keys=True))\n" % str(ROOT / "pipeline")
+    )
+    payload = json.dumps(roster)
+    outs = {}
+    for seed in ("0", "1", "2", "42", "12345"):
+        env = dict(os.environ, PYTHONHASHSEED=seed)
+        r = subprocess.run([sys.executable, "-c", prog], input=payload,
+                           capture_output=True, text=True, env=env)
+        check(f"identifiers: assignment runs under PYTHONHASHSEED={seed}",
+              r.returncode == 0, r.stderr.strip()[:200])
+        outs[seed] = r.stdout
+    distinct = set(v for v in outs.values() if v)
+    check("identifiers: slug assignment is byte-identical across five "
+          "PYTHONHASHSEED values (the defect this replaced was seed-dependent)",
+          len(distinct) == 1,
+          f"{len(distinct)} distinct results across seeds {sorted(outs)}")
+
+    # every shipped identifier is unique, and no entity holds a slug that
+    # a same-named entity could have held instead.
+    for coll in ("districts", "countyOffices", "charters"):
+        slugs = list(SCHOOL[coll])
+        check(f"identifiers: {coll} slugs are unique",
+              len(slugs) == len(set(slugs)), f"{len(slugs)} keys")
+    amb = SCHOOL["meta"].get("ambiguousSlugs", {})
+    for coll, mapping in amb.items():
+        for bare, options in mapping.items():
+            check(f"identifiers: retired ambiguous slug {bare!r} is not "
+                  f"issued to any {coll} record",
+                  bare not in SCHOOL[coll])
+            check(f"identifiers: every candidate for {bare!r} exists",
+                  all(o in SCHOOL[coll] for o in options),
+                  str([o for o in options if o not in SCHOOL[coll]]))
+            check(f"identifiers: {bare!r} names more than one entity",
+                  len(options) > 1, str(options))
+    def base_slug(name):
+        return re.sub(r"-+", "-",
+                      re.sub(r"[^a-z0-9]+", "-", name.lower())).strip("-")
+
+    names = {}
+    for coll in ("districts", "countyOffices", "charters"):
+        for slug, r in SCHOOL[coll].items():
+            names.setdefault((coll, r["name"]), []).append(slug)
+    shared = {k: v for k, v in names.items() if len(v) > 1}
+    check("identifiers: shared names still exist to guard against",
+          len(shared) > 0, "no duplicated names — the guard is untested")
+    for (coll, name), slugs in sorted(shared.items()):
+        base = base_slug(name)
+        check(f"identifiers: no {coll} record holds the unqualified slug "
+              f"{base!r} that {len(slugs)} entities share",
+              base not in slugs, str(sorted(slugs)))
+        check(f"identifiers: {base!r} is listed in meta.ambiguousSlugs "
+              f"so a stale link can be explained",
+              base in amb.get(coll, {}), str(sorted(amb.get(coll, {}))[:4]))
 
 
 def test_shape():
@@ -3588,6 +3678,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_identifier_stability()
             test_actuals_view(page, base)
             test_v2(page, base)
             test_county(page, base)

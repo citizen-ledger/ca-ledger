@@ -1,3 +1,8 @@
 __pycache__/
 pipeline/cache/
 .DS_Store
+
+# Verification and design-review artifacts. A shell variable that
+# expanded to the literal string "undefined" once put 76 MB of these
+# under version control; keep them out.
+undefined/
