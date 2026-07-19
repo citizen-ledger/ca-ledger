@@ -154,10 +154,33 @@
      vendored; OpenFreeMap vector tiles). Blue appears only on hover/focus. */
   .map-panel{border:1px solid var(--ash);background:var(--surface);border-radius:2px;margin-top:16px;padding:18px 22px}
   .map-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-  #mapContainer{height:540px;margin-top:14px;border:1px solid var(--hairline);border-radius:2px;background:var(--parchment)}
-  #mapContainer .maplibregl-ctrl-group{border-radius:9999px;box-shadow:none;border:1px solid var(--ash);overflow:hidden}
-  #mapContainer .maplibregl-ctrl-group button{background:var(--surface)}
-  #mapContainer .maplibregl-ctrl-attrib{font-family:var(--mono);font-size:var(--fs-micro);background:rgba(246,243,241,.8)}
+  /* The frame follows California's own proportions (it is a tall state), so
+     the subject fills it instead of floating in out-of-state dead space. */
+  #mapContainer{width:100%;max-width:640px;aspect-ratio:87/100;margin:14px auto 0;
+    border:1px solid var(--hairline);border-radius:2px;background:var(--parchment)}
+  /* controls wear the same outlined-pill vocabulary as the page's buttons */
+  #mapContainer .maplibregl-ctrl-group{border-radius:9999px;box-shadow:none;
+    border:1px solid var(--ash);overflow:hidden;background:var(--surface)}
+  #mapContainer .maplibregl-ctrl-group button{background:var(--surface);width:30px;height:30px}
+  #mapContainer .maplibregl-ctrl-group button+button{border-top:1px solid var(--hairline)}
+  #mapContainer .maplibregl-ctrl-group button:hover{background:var(--wash)}
+  #mapContainer .maplibregl-ctrl-group button:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+  #mapContainer .maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:grayscale(1) contrast(.55)}
+  #mapContainer .maplibregl-ctrl-attrib{font-family:var(--mono);font-size:var(--fs-micro);
+    line-height:1.45;color:var(--smoke);background:rgba(246,243,241,.92);
+    border:1px solid var(--hairline);border-radius:10px;padding:3px 10px;margin:0 8px 8px 0;
+    max-width:calc(100% - 16px);white-space:normal}
+  #mapContainer .maplibregl-ctrl-attrib a{color:var(--graphite);text-decoration:underline}
+  #mapContainer .maplibregl-ctrl-attrib-button{background-color:transparent}
+  /* the compact (i) button is absolutely positioned over the pill's right
+     edge — reserve room so the required credit is never clipped by it */
+  #mapContainer .maplibregl-ctrl-attrib.maplibregl-compact-show{padding-right:30px}
+  /* on a phone the credit is a bigger share of the frame, so it tightens
+     rather than pushing the state out of view — still fully legible */
+  @media(max-width:520px){
+    #mapContainer .maplibregl-ctrl-attrib{font-size:9px;line-height:1.35;padding:2px 8px;margin:0 6px 6px 0}
+    #mapContainer .maplibregl-ctrl-attrib.maplibregl-compact-show{padding-right:26px}
+  }
   .map-readout{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);margin-top:12px;min-height:16px;text-align:center}
   .map-cap{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;color:var(--ghost);text-align:center;margin-top:4px}
   /* keyboard city list: visually hidden, fully focusable */
@@ -411,7 +434,19 @@
   const MAX_SEL = 4;
 
   const PICKERS = ["search","map"];
-  const CA_BOUNDS = [[-124.6, 32.3], [-113.9, 42.2]];
+  /* California's actual bounding box. The old box ran east to -113.9 —
+     well into Arizona — which is part of why out-of-state filled the frame. */
+  const CA_BOUNDS = [[-124.48, 32.53], [-114.13, 42.01]];
+  /* A simplified California outline, used ONLY to decide which place labels
+     are in-state so out-of-state ones can be muted. It is never drawn, never
+     shaded, and carries no data — geography for label priority, nothing more. */
+  const CA_POLY = { type: "Polygon", coordinates: [[
+    [-124.21,42.00],[-124.41,40.44],[-123.83,39.55],[-123.73,38.95],[-122.98,38.31],
+    [-122.51,37.78],[-122.42,37.20],[-121.94,36.60],[-121.28,35.67],[-120.63,34.90],
+    [-120.47,34.45],[-119.21,34.14],[-118.40,33.74],[-117.78,33.54],[-117.13,32.53],
+    [-114.72,32.72],[-114.63,33.03],[-114.52,33.55],[-114.14,34.30],[-114.63,35.00],
+    [-114.63,35.81],[-120.00,39.00],[-120.00,42.00],[-124.21,42.00]
+  ]] };
 
   const DEFAULTS = { year: window.CA_CITY_DATA.years[window.CA_CITY_DATA.years.length-1],
                      unit: "perResident", q: "", picker: "search", layer: "city" };
@@ -634,7 +669,8 @@
     if (S.picker==="map"){
       ensureMap();
       applyMapSelection();
-      if (MAP) setTimeout(()=>MAP.resize(), 0);   // panel was display:none
+      /* panel was display:none, so the frame had no size until now */
+      if (MAP) setTimeout(()=>{ if (S.mView) MAP.resize(); else fitCalifornia(); }, 0);
       mapDefaultReadout();
     }
   }
@@ -673,10 +709,23 @@
       { id: "state", type: "line", source: "omt", "source-layer": "boundary",
         filter: ["all", ["==", ["get", "admin_level"], 4], ["!=", ["get", "maritime"], 1]],
         paint: { "line-color": "#b3aeaa", "line-width": 1.1 } },
-      { id: "place", type: "symbol", source: "omt", "source-layer": "place",
-        filter: ["match", ["get", "class"], ["city", "town"], true, false],
+      /* Out-of-state places stay for orientation but are demoted: smaller,
+         faint, and drawn UNDER the California labels so they never win a
+         collision. California is the subject of this map. */
+      { id: "place-out", type: "symbol", source: "omt", "source-layer": "place",
+        filter: ["all", ["match", ["get", "class"], ["city"], true, false],
+                 ["!", ["within", CA_POLY]]],
         layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]],
-                  "text-font": ["Noto Sans Regular"], "text-size": 11 },
+                  "text-font": ["Noto Sans Regular"], "text-size": 9.5,
+                  "text-padding": 6, "symbol-sort-key": 2 },
+        paint: { "text-color": "#b3aeaa", "text-halo-color": "#f6f3f1",
+                 "text-halo-width": 1 } },
+      { id: "place", type: "symbol", source: "omt", "source-layer": "place",
+        filter: ["all", ["match", ["get", "class"], ["city", "town"], true, false],
+                 ["within", CA_POLY]],
+        layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]],
+                  "text-font": ["Noto Sans Regular"], "text-size": 11,
+                  "symbol-sort-key": 1 },
         paint: { "text-color": "#797776", "text-halo-color": "#f6f3f1",
                  "text-halo-width": 1.2 } }
     ]
@@ -722,6 +771,33 @@
   function mapViewString(){
     const c = MAP.getCenter();
     return MAP.getZoom().toFixed(1) + "/" + c.lat.toFixed(2) + "/" + c.lng.toFixed(2);
+  }
+  /* Re-fit California to the frame's CURRENT size. The camera must be
+     recomputed whenever the frame changes — a resize() alone keeps the
+     zoom that was computed for the old size, which cropped the state at
+     phone widths. resetPending marks this as a default view so it never
+     writes m= into the permalink. */
+  let autoFitting = false, fittedW = 0, fittedH = 0;
+  function fitCalifornia(opts){
+    if (!MAP) return;
+    MAP.resize();
+    const el = MAP.getContainer();
+    const w = el.clientWidth || 640;
+    fittedW = w; fittedH = el.clientHeight || 0;
+    /* the attribution overlays the bottom of the frame and must stay fully
+       legible (a licensing obligation), so reserve its height in the fit
+       rather than let it sit on top of southern California */
+    const attrib = el.querySelector(".maplibregl-ctrl-attrib");
+    const reserve = attrib ? Math.ceil(attrib.getBoundingClientRect().height) + 4 : 0;
+    /* its own flag, not the shared reset one-shot: a deferred moveend from
+       somewhere else must never consume this, or an explicit camera move
+       gets silently undone */
+    autoFitting = true;
+    const pad = Math.max(8, Math.min(20, Math.round(w * 0.03)));
+    MAP.fitBounds(CA_BOUNDS, Object.assign(
+      { padding: { top: pad, left: pad, right: pad, bottom: pad + reserve },
+        duration: 0 },
+      opts || {}));
   }
   function applyMView(){
     if (!MAP || !S.mView) return;
@@ -805,6 +881,22 @@
         paint: { "line-color": "#fdfcfb", "line-width": 0.6 } });
       applyMapSelection();
       applyMView();
+      if (!S.mView) fitCalifornia();
+      /* A single fit races the layout settling (the panel is unhidden a
+         frame earlier), so watch the frame itself: any change to its box
+         re-fits California to it — first paint, rotation, window resize. */
+      if (window.ResizeObserver){
+        let fitTimer = null;
+        new ResizeObserver(() => {
+          if (!MAP || S.mView) return;
+          const el = MAP.getContainer();
+          if (el.clientWidth === fittedW && el.clientHeight === fittedH) return;
+          clearTimeout(fitTimer);
+          fitTimer = setTimeout(() => {
+            if (MAP && !S.mView) fitCalifornia();
+          }, 120);
+        }).observe(MAP.getContainer());
+      }
       window._clMapReady = true;
       map.on("mousemove", "cities-fill", e => {
         const f = e.features && e.features[0];
@@ -838,8 +930,9 @@
         toggleCity(f.properties.slug);
       });
       map.on("moveend", () => {
-        if (resetPending){           // reset lands on the default view:
-          resetPending = false;      // keep the permalink clean of m=
+        if (resetPending || autoFitting){   // a default view (reset, or a
+          resetPending = false;             // re-fit to the frame): keep the
+          autoFitting = false;              // permalink clean of m=
           S.mView = null;
         } else {
           S.mView = mapViewString();
@@ -1231,10 +1324,7 @@
     syncHash(); render();
   }));
   $("mapReset").addEventListener("click", ()=>{
-    if (MAP){
-      resetPending = true;
-      MAP.fitBounds(CA_BOUNDS, { padding: 16, duration: 1200, easing: EASE_OUT });
-    }
+    if (MAP) fitCalifornia({ duration: 1200, easing: EASE_OUT });
     S.mView = null; syncHash();
   });
   $("citySearch").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); renderPicker(); });

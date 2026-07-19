@@ -3259,6 +3259,55 @@ def test_map(page, base):
                 if f["geometry"]["type"] not in ("Polygon", "MultiPolygon")]
     check("map: all geometries are polygons", not bad_geom, str(bad_geom[:5]))
 
+    # ---- presentation: California is the subject of its own map
+    html_c = (ROOT / "cities.html").read_text(encoding="utf-8")
+    addr = (ROOT / "address.html").read_text(encoding="utf-8")
+    check("map frame: both maps follow California's proportions, not a letterbox",
+          "aspect-ratio:87/100" in html_c.replace(" ", "")
+          and "aspect-ratio:87/100" in addr.replace(" ", ""))
+    check("map camera: bounds are California's own, not a box reaching into Arizona",
+          "[-124.48, 32.53], [-114.13, 42.01]" in html_c
+          and "[-124.48, 32.53], [-114.13, 42.01]" in addr)
+    for label, w, h in (("desktop", 1280, 900), ("390", 390, 844), ("360", 360, 780)):
+        page.set_viewport_size({"width": w, "height": h})
+        page.goto(f"{base}/cities.html#p=map")
+        page.wait_for_function("window._clMapReady === true", timeout=45000)
+        page.wait_for_timeout(700)          # let the frame observer settle
+        span = page.evaluate(
+            "(() => { const b = window._clMap.getBounds();"
+            " return 10.35 / (b.getEast() - b.getWest()); })()")
+        check(f"map camera {label}: California fills the frame (>=80% of its width)",
+              span >= 0.80, f"{span*100:.0f}%")
+    page.set_viewport_size({"width": 1280, "height": 720})
+    page.goto(f"{base}/cities.html#p=map")
+    page.wait_for_function("window._clMapReady === true", timeout=45000)
+    labels = page.evaluate(
+        """(() => { const L = window._clMap.getStyle().layers;
+            const g = id => L.find(l => l.id === id) || null;
+            const ca = g('place'), out = g('place-out');
+            return ca && out ? {caSize: ca.layout['text-size'], caColor: ca.paint['text-color'],
+              outSize: out.layout['text-size'], outColor: out.paint['text-color'],
+              outFirst: L.indexOf(out) < L.indexOf(ca),
+              outFiltered: JSON.stringify(out.filter).indexOf('within') > -1,
+              caFiltered: JSON.stringify(ca.filter).indexOf('within') > -1} : null; })()""")
+    check("map labels: in-state and out-of-state are separate layers", labels is not None)
+    if labels:
+        check("map labels: out-of-state places are smaller and lighter than California's",
+              labels["outSize"] < labels["caSize"]
+              and labels["outColor"] == "#b3aeaa" and labels["caColor"] == "#797776",
+              str(labels))
+        check("map labels: out-of-state draws first, so it never wins a collision",
+              labels["outFirst"])
+        check("map labels: in/out decided geographically, not by deleting context",
+              labels["outFiltered"] and labels["caFiltered"])
+    check("map controls: styled to the Ledger, not MapLibre's default white",
+          "maplibregl-ctrl-group" in html_c and "var(--ash)" in html_c
+          and ".maplibregl-ctrl-attrib" in html_c
+          and "maplibregl-ctrl-group" in addr and ".maplibregl-ctrl-attrib" in addr)
+    check("map attribution: OSM/OpenFreeMap credit kept and legible on both maps",
+          "OpenStreetMap" in html_c and "OpenFreeMap" in html_c
+          and "OpenStreetMap" in addr and "OpenFreeMap" in addr)
+
     # print: the map hides in print; the record prints instead
     html = (ROOT / "cities.html").read_text(encoding="utf-8")
     check("map: hidden in print CSS",
