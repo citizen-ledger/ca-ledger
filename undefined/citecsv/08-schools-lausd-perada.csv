@@ -1,7 +1,0 @@
-# Citizen Ledger — K-12 schools (school districts, gated)
-# District figures reproduce CDE's published Current Expense of Education to the cent; unaudited actuals.
-# About 50.7% of school revenues are state money shown on the state budget page — the layers are never added.
-# Source: CDE SACS unaudited actuals · Generated: 2026-07-14
-# Permalink: https://citizen-ledger.github.io/ca-ledger/schools.html#c=los-angeles-unified
-district,county,type,fiscal_year,ada,current_expense_total,cde_published_total,per_ada,basic_aid,small_nss,sponsored_charter_ada,instruction,instrRelated,pupilServices,ancillary,community,enterprise,genAdmin,plant,otherOutgo
-Los Angeles Unified,Los Angeles,Unified,2024-25,371342.1,10877387458.05,10877387458.05,29292,false,false,100270.86,5655379384.15,1791152348.00,1344873226.84,260356594.57,769267.79,0.00,724351307.45,1099645939.79,859389.46
