@@ -1857,3 +1857,72 @@ audited total exactly, both years, and every campus column passes the
 column-sum check. Auto-fetchable — no manual cache. Update `UC_AUDITED` in
 `tests/run_tests.py` with the new year's audited total and printed campus/
 Systemwide components, from the AFR.
+
+## 2026-07-19 — Identifier stability: slugs no longer depend on PYTHONHASHSEED
+
+**The defect.** `pipeline/fetch_school_data.py` sorted a *set* of CDS
+code tuples with a key function that returned the district **name
+alone**. For the names California duplicates, the sort was a pure tie,
+so the winner of the unqualified slug was decided by set-iteration
+order — that is, by `PYTHONHASHSEED`, which Python randomizes per
+process. Reproduced across five seeds: the same source data produced
+five different identifier assignments. All three real districts named
+"Jefferson Elementary" win the bare slug under some seed, and all three
+appear in this repository's own git history in exactly that
+flip-flopping pattern.
+
+Two consequences, both serious:
+
+1. **Digest reproducibility.** Re-running the pipeline on unchanged
+   source produced a different `school-data.js` and therefore a
+   different published SHA-256. Under this project's own authenticity
+   doctrine, an honest rebuild read as a tampered copy.
+2. **Permalink stability.** `schools.html#c=jefferson-elementary`
+   silently pointed at a different district after a rebuild — the
+   reader saw one district's figures under another's cited name, with
+   no signal that anything had changed. Found while investigating the
+   V13 change feed, where a slug-keyed diff of the existing history
+   emitted **2,149 phantom restatements** across four commits that
+   changed not one figure.
+
+**The fix.** A shared `assign_slugs()` helper, used by districts,
+county offices and charters. It sorts on the source's own stable code
+(never on the name), and it qualifies **every** holder of a shared
+name rather than letting one of them win the unqualified form — a
+slug that names three districts is a claim we cannot support. It
+raises rather than guessing if a qualifier fails to disambiguate;
+`countyOffices` previously had no collision guard at all and would
+have silently overwritten a record.
+
+**Identifiers that changed** — 14, every one of them a previously
+unqualified slug that several entities shared. All already-qualified
+slugs are unchanged, and **no figure moved**: 202,976 numeric cells,
+CDS-keyed, identical before and after.
+
+    11 districts   hope-elementary -> hope-elementary-tulare, and the
+                   Jefferson / Junction / Lakeside Union / Liberty /
+                   Mountain View / Ocean View / Pacific Union / Pioneer
+                   Union / South Bay Union / Washington equivalents
+     3 charters    discovery-charter -> discovery-charter-0355,
+                   excel-academy-charter -> -2073, journey -> -1974
+
+**Old links.** A retired identifier is never silently resolved to a
+guess — earlier builds handed it to an arbitrary one of the entities
+sharing it, so resolving it now would restate the original defect in a
+quieter form. `meta.ambiguousSlugs` records what each retired slug
+could have meant; `schools.html` explains the ambiguity and offers the
+candidates, and `address.html` says the same for a stale `sd=`.
+
+**Assertion.** `test_identifier_stability` runs the real assignment
+function in subprocesses under five `PYTHONHASHSEED` values over the
+real shipped roster and requires byte-identical output; it also
+requires every shared name to be disambiguated for every holder and
+recorded in `meta.ambiguousSlugs`. Proven to fail on the pre-fix code
+(five seeds, five distinct results) and pass on the fixed code (five
+seeds, one result). Verified end-to-end as well: two full pipeline
+runs under different seeds produce a byte-identical `school-data.js`.
+
+**Refresh note.** The charter number is **not** unique — 0756 is shared
+by the nine High Tech schools — so it qualifies a shared *name* and
+never identifies a charter. If CDE ever publishes two same-named
+charters sharing a number, the build fails rather than merging them.

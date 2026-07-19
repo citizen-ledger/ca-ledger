@@ -361,8 +361,17 @@
     } else if (uc && CTY.counties[uc]) {
       S.county = uc;
     }
-    S.schools = (p.get("sd")||"").split(",").filter(s => SCH.districts[s]).slice(0,2);
-    S.schoolNote = null;
+    const want = (p.get("sd")||"").split(",").filter(Boolean);
+    S.schools = want.filter(s => SCH.districts[s]).slice(0,2);
+    // Same contract as schools.html: an identifier that several
+    // same-named districts once shared resolves to none of them.
+    const amb = (SCH.meta.ambiguousSlugs || {}).districts || {};
+    const stale = want.filter(s => !SCH.districts[s] && amb[s]);
+    S.schoolNote = stale.length
+      ? "This link uses the identifier " + stale[0] + ", which more than one "
+        + "district of that name has shared; it cannot say which was meant. "
+        + "Search for the district by name to see each one separately."
+      : null;
   }
 
   /* ---------- geocoding (JSONP — the geocoder's CORS blocks fetch) ---------- */

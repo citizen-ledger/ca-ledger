@@ -237,6 +237,7 @@
       <input type="search" id="schoolSearch" placeholder="" aria-label="Search schools">
       <ul class="pick-results" id="schoolList"></ul>
       <div class="chips" id="schoolChips"></div>
+      <div id="ambigNotice" class="statement" hidden></div>
     </div>
     <div class="pillgroup stepper">
       <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
@@ -339,7 +340,8 @@
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
   const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
-  const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null, openRes: null};
+  const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null, openRes: null,
+             ambig: []};
 
   /* ---------- permalink ---------- */
   function hashOf(){
@@ -352,6 +354,12 @@
     return p.toString();
   }
   function syncHash(){
+    // Any deliberate action supersedes a stale link's ambiguity — the
+    // reader has now said what they meant. syncHash runs on user actions
+    // only, never on load, so the notice survives exactly as long as it
+    // is the reason the page looks the way it does. Dismissed here rather
+    // than in render() because not every action triggers a full render.
+    if (S.ambig.length){ S.ambig = []; renderAmbiguous(); }
     const h = hashOf();
     try{ history.replaceState(null,"", h ? "#"+h : location.pathname+location.search); }
     catch(e){ location.hash = h; }
@@ -363,7 +371,14 @@
     S.unit = ["perAda","total"].includes(p.get("u")) ? p.get("u") : "perAda";
     S.q = p.get("q") || "";
     const store = TYPES[S.type].store;
-    S.sel = (p.get("c")||"").split(",").filter(s => store[s]).slice(0, TYPES[S.type].max);
+    const want = (p.get("c")||"").split(",").filter(Boolean);
+    // A link may carry an identifier that earlier builds handed to an
+    // arbitrary one of several same-named entities. Never resolve it to
+    // a guess — collect it and say what it could have meant.
+    const amb = (D.meta.ambiguousSlugs || {})[S.type] || {};
+    S.ambig = want.filter(s => !store[s] && amb[s])
+                  .map(s => ({ was: s, options: amb[s] }));
+    S.sel = want.filter(s => store[s]).slice(0, TYPES[S.type].max);
   }
 
   /* ---------- helpers ---------- */
@@ -494,6 +509,27 @@
   function renderChips(){
     $("schoolChips").innerHTML = S.sel.map(id =>
       '<button class="chip" data-id="'+id+'"><span>'+esc(ent(id).name)+'</span><i>×</i></button>').join("");
+    renderAmbiguous();
+  }
+  // An identifier that named more than one entity cannot be resolved for
+  // the reader — it can only be explained. Naming the candidates is the
+  // honest move; silently picking one would restate the original defect.
+  function renderAmbiguous(){
+    const box = $("ambigNotice");
+    if (!S.ambig.length){ box.hidden = true; box.innerHTML = ""; return; }
+    const store = TYPES[S.type].store;
+    box.innerHTML = S.ambig.map(a =>
+      '<strong>This link is ambiguous.</strong> It uses the identifier '
+      + '<code>' + esc(a.was) + '</code>, which ' + a.options.length
+      + ' entities of the same name have shared. Earlier builds of this page '
+      + 'assigned it to whichever one happened to sort first, so the link '
+      + 'cannot say which was meant. Each now carries its own identifier:'
+      + '<div class="chips">' + a.options.map(o =>
+          '<button class="chip" data-pick="' + esc(o) + '"><span>'
+          + esc(store[o] ? store[o].name + " · " + store[o].county + " County" : o)
+          + '</span></button>').join("") + '</div>'
+    ).join("");
+    box.hidden = false;
   }
 
   /* ---------- record rendering ---------- */
@@ -901,6 +937,14 @@
     const b = e.target.closest(".chip");
     if (!b) return;
     S.sel = S.sel.filter(x => x !== b.dataset.id);
+    syncHash(); render();
+  });
+  $("ambigNotice").addEventListener("click", e => {
+    const b = e.target.closest("button[data-pick]");
+    if (!b) return;
+    const max = TYPES[S.type].max;
+    if (!S.sel.includes(b.dataset.pick) && S.sel.length < max)
+      S.sel.push(b.dataset.pick);
     syncHash(); render();
   });
   $("unitGroup").addEventListener("click", e => {
