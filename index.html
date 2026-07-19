@@ -506,6 +506,7 @@
         <div class="mnote"><b>M-1</b><span>Scope is all state funds: General Fund, special funds, and bond funds, matching the enacted budget's Summary Charts. Federal pass-through dollars are excluded by default and shown via the "Federal funds" control. Per-resident figures use Department of Finance report E-4 population estimates for each fiscal year.</span></div>
         <div class="mnote"><b>M-2</b><span>Negative appropriations exist in the source data and are kept as published — they are offsets and transfers (for example, Statewide General Administrative Expenditures Pro Rata, and the Public School System Stabilization Account in 2021-22 through 2024-25), not errors. Rows carrying them are marked with a † method note.</span></div>
         <div class="mnote"><b>M-3</b><span>Department rows may not sum to the agency total: agency totals come from the source's agency-level table, while the department list is the set of rows the source publishes for web display. Where the gap exceeds rounding, the schedule says so.</span></div>
+        <div class="mnote" id="mGate"><b>M-0</b><span></span></div>
         <div class="mnote"><b>M-4</b><span>Agency groupings reflect the Department of Finance's current organizational mapping, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</span></div>
         <div class="mnote"><b>M-8</b><span>The <a href="schools.html">K-12 schools page</a> shows the same money this page's "K thru 12 Education" agency appropriates, seen from the receiving end — school districts' reported actuals, reconciled to CDE's published figures. About half of what schools report receiving is this page's K-12 money; the rest is chiefly local property tax and federal grants that never appear here. The two pages are never added; the schools page carries the full computed statement.</span></div>
         <div class="mnote"><b>M-5</b><span>The <a href="cities.html">city view</a> shows reported actual revenues and expenditures from cities' standardized State Controller filings — a different accounting basis from this page's enacted appropriations. Its police and fire service-provision notes derive from the State Controller's services checklist, whose most recent published vintage is FY 2015-16, and service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
@@ -686,13 +687,45 @@
     return { rows, bySize, total, prevY, prevTotal };
   }
 
+  /* the reconciliation gate, stated from the gated figures themselves */
+  function renderGateNote(){
+    const g = D.meta && D.meta.gate, el = document.getElementById("mGate");
+    if (!el) return;
+    if (!g){ el.hidden = true; return; }
+    const yrs = Object.keys(g.years).sort();
+    const off = yrs.filter(y => g.years[y].residualK !== 0);
+    const money = k => "$" + Math.abs(k/1e3).toLocaleString("en-US",
+                        {minimumFractionDigits:3, maximumFractionDigits:3}) + " million";
+    let s = "Every figure on this page is gated before publication: the "
+      + "Department of Finance's own agency rows must sum to the statewide total "
+      + "DOF publishes alongside them, exactly, in thousands of dollars. "
+      + yrs.length + " fiscal years are gated; " + (yrs.length - off.length)
+      + " reconcile exactly. Nothing is written if a year fails.";
+    off.forEach(y => {
+      const r = g.years[y];
+      s += " For FY " + y + " DOF's own published statewide total ("
+        + r.publishedControlK.toLocaleString() + " thousand) exceeds the sum of its own "
+        + "published agency rows (" + r.agencyRowsK.toLocaleString() + " thousand) by "
+        + money(r.residualK) + " — a difference inside the source's own figures, not this "
+        + "record's. The agency rows are shown here as DOF published them; the Ledger does "
+        + "not reconcile the difference away, and the build fails if it changes.";
+    });
+    s += " Two limits: the gate is at agency level — agencies carry items with no "
+      + "department attribution, so departments never sum to agencies in any year (see M-3) "
+      + "— and it cannot detect a transfer between two agencies, which leaves the statewide "
+      + "total unchanged.";
+    el.querySelector("span").textContent = s;
+  }
+
   /* ---------- provenance / hero ---------- */
   function renderChrome(C){
     $("dataBanner").innerHTML =
       "<span>SOURCE: CA DEPT. OF FINANCE · EBUDGET.CA.GOV</span>"
       + "<span>BASIS: ENACTED · BUDGETARY-LEGAL</span>"
+      + "<span>GATED: AGENCY ROWS == DOF'S PUBLISHED STATEWIDE TOTAL</span>"
       + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
       + "<span>PUBLIC RECORD</span>";
+    renderGateNote();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     $("totalNum").textContent = S.unit==="perResident"
       ? fmtCap(prOf(C.total,S.year)) : fmtB(C.total);

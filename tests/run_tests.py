@@ -198,6 +198,49 @@ def test_v1(page, base):
     # ── the enacted gate, recomputed from shipped agency rows against the
     # pinned control (a tampered agency figure with a restamped digest must
     # fail HERE, not just drift the rendered page along with the data)
+    # ── THE STATE GATE, re-asserted from the shipped data. DOF publishes a
+    # statewide control (stateGrandTotal); the agency rows must equal it
+    # exactly in thousands, allowing only the recorded source residual.
+    gate = STATE["meta"].get("gate")
+    check("V1 GATE: the state layer ships its reconciliation gate", bool(gate))
+    if gate:
+        check("V1 GATE: gated at agency level against DOF's published control",
+              gate["level"] == "agency" and "stateGrandTotal" in gate["control"])
+        check("V1 GATE: every shipped budget year is gated",
+              set(gate["years"]) == set(STATE["budgets"]),
+              str(set(gate["years"]) ^ set(STATE["budgets"])))
+        for y, r in sorted(gate["years"].items()):
+            check(f"V1 GATE {y}: agency rows − DOF's published control == the recorded residual",
+                  r["agencyRowsK"] - r["publishedControlK"] == r["residualK"],
+                  f"{r['agencyRowsK']} - {r['publishedControlK']} != {r['residualK']}")
+        exact = [y for y, r in gate["years"].items() if r["residualK"] == 0]
+        check("V1 GATE: five of six years reconcile to DOF's control at zero residual",
+              len(exact) == 5, str(sorted(exact)))
+        check("V1 GATE: the one non-zero residual is FY2025-26 at exactly −1,638k "
+              "(DOF's own, not ours)",
+              gate["years"]["2025-26"]["residualK"] == -1638,
+              str(gate["years"]["2025-26"]))
+        check("V1 GATE: the residual is named as the source's, not reconciled away",
+              "exceeds the sum of its own" in gate["sourceResidualNote"]
+              and "as published" in gate["sourceResidualNote"])
+        check("V1 GATE: both limits recorded (agency level; agency-to-agency transfer)",
+              any("agency level" in l for l in gate["limits"])
+              and any("transfer between two agencies" in l for l in gate["limits"]))
+        # the pipeline's constant must match the shipped residual exactly
+        sys.path.insert(0, str(ROOT / "pipeline"))
+        from fetch_state_data import SOURCE_RESIDUAL
+        check("V1 GATE: the pipeline's SOURCE_RESIDUAL constant matches the shipped residual",
+              SOURCE_RESIDUAL.get("2025-26") == gate["years"]["2025-26"]["residualK"]
+              and set(SOURCE_RESIDUAL) == {"2025-26"},
+              f"{SOURCE_RESIDUAL} vs {gate['years']['2025-26']['residualK']}")
+        # the gate figures must be the UNROUNDED source of the rounded display
+        for y, r in gate["years"].items():
+            shipped = sum(a["gf"] + a["sp"] + a["bd"]
+                          for a in STATE["budgets"][y]["agencies"])
+            check(f"V1 GATE {y}: shipped rounded rows track the gated unrounded total",
+                  abs(shipped - r["agencyRowsK"] / 1e6) < 0.01,
+                  f"{shipped} vs {r['agencyRowsK']/1e6}")
+
     check("V1 PIN: every shipped budget year is pinned (a new year cannot slip in unpinned)",
           set(STATE["budgets"]) == set(ENACTED_PIN),
           str(set(STATE["budgets"]) ^ set(ENACTED_PIN)))
@@ -572,20 +615,25 @@ def test_v2(page, base):
 #     here so any later edit to the data file is loud. It is NOT a control
 #     and proves nothing about agreement with the source: it proves only
 #     that the shipped file still holds the figures the pipeline wrote.
-#     These are ENACTED_PIN, CITY_PIN, COUNTY_PIN, SCHOOL_CE_PIN and
-#     DIST_PIN. They exist because a coordinated tamper — moving a figure
+#     These are CITY_PIN, COUNTY_PIN, SCHOOL_CE_PIN and DIST_PIN.
+#     (ENACTED_PIN was one until the state gate landed; the state layer
+#     now reconciles to DOF's published stateGrandTotal, so its pin is a
+#     second, redundant check rather than the layer's only anchor.) They exist because a coordinated tamper — moving a figure
 #     AND the stored parent that would expose it — keeps every in-file
 #     identity true, so nothing inside the file can catch it.
 #
 # What sits behind each tamper pin at build time, stated exactly:
-#   ENACTED_PIN    NOTHING. pipeline/fetch_state_data.py prints the drift
-#                  against the API's own stateGrandTotal and never fails,
-#                  so the enacted layer has no reconciliation gate at all.
-#                  This pin is its only anchor. It is provably NOT the
-#                  published figure: DOF's published 2024-25 total is
-#                  $297,862M, this pin is $297,860M — the $2M gap is the
-#                  rounding of shipped agency values to $0.001B, which is
-#                  exactly why it cannot be called a reconciliation.
+#   ENACTED_PIN    A REAL GATE NOW SITS BEHIND THIS. fetch_state_data.py
+#                  reconciles each year's agency rows to DOF's published
+#                  stateGrandTotal, exactly, in thousands, and refuses to
+#                  write on failure (five of six years reconcile at zero;
+#                  FY2025-26 carries a recorded source residual of −1,638k
+#                  that is DOF's own). This pin remains as a cheap second
+#                  check on the SHIPPED rounded figures. It is deliberately
+#                  NOT the published figure — $297,860M here vs DOF's
+#                  $297,862M for 2024-25 — because it sums the values after
+#                  they are rounded to $0.001B for display. The gate, not
+#                  this pin, is what reconciles.
 #   CITY_PIN       A real per-city build gate exists (fetch_city_data.py
 #                  fails at >0.1% drift from the Controller's published
 #                  per-city total) — but over ALL funds, whereas this pin
@@ -2059,9 +2107,17 @@ def test_frontdoor_about(page, base):
           and "digest re-stamped" in body
           and "tampered figure breaks it" in body)
     check("about: the two kinds of anchor are distinguished, without overclaiming",
-          "a figure the source itself published" in body
-          and "no published statewide total exists" in body
-          and "not a claim that the source has re-confirmed" in body)
+          "Reconciled to a published control" in body
+          and "Pinned for tamper-evidence only" in body
+          and "not a claim that anyone has confirmed the figures are right" in body)
+    check("about: the state layer is classified as reconciling to a published control",
+          "the state budget, the state actuals" in body.lower())
+    check("about: the FY2025-26 source residual is named, not absorbed",
+          "$1.638 million" in body
+          and "inside the source" in body
+          and "rather than quietly adjusting" in body)
+    check("about: the state gate's two limits are stated",
+          "agency level" in body and "transfer between two agencies" in body)
     check("about: refusals — rank/characterize/conclude/vendor/sum",
           "No ranking." in body and "No characterizing." in body
           and "No conclusions." in body and "No vendor data." in body

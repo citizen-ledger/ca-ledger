@@ -69,6 +69,21 @@ def m_state(d):
     return "state enacted: one agency's General Fund +$0.05B"
 
 
+def m_state_gate(d):
+    """Move the gate's recorded residual for the year DOF's own data does not
+    reconcile. The shipped agency rows are untouched, so only an assertion
+    that pins the residual itself can catch it."""
+    d["meta"]["gate"]["years"]["2025-26"]["residualK"] += 100
+    return "state gate: the recorded FY2025-26 source residual moved +100k"
+
+
+def m_state_control(d):
+    """Move DOF's published control as recorded in the shipped gate block,
+    leaving the agency rows alone — the reconciliation no longer holds."""
+    d["meta"]["gate"]["years"]["2024-25"]["publishedControlK"] += 1
+    return "state gate: DOF's published control for FY2024-25 moved +1k"
+
+
 def m_actuals(d):
     ag = next(a for a in d["budgets"]["2022-23"]["agencies"]
               if isinstance(a.get("actual"), dict))
@@ -269,6 +284,8 @@ def m_uc_prior_coord(d):
 TARGETS = {
     "state":           ("data.js", m_state),
     "state-fund":      ("data.js", m_state_fund),
+    "state-gate":      ("data.js", m_state_gate),
+    "state-control":   ("data.js", m_state_control),
     "actuals":         ("data.js", m_actuals),
     "city":            ("city-data.js", m_city),
     "city-total":      ("city-data.js", m_city_total),
