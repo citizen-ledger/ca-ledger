@@ -86,6 +86,51 @@ OUT_PATH = Path(__file__).resolve().parent.parent / "data.js"
 FUND_KEYS = ("gf", "sp", "bd", "fed")
 THOUSANDS_PER_BILLION = 1e6
 
+# ----------------------------------------------------------------------
+# THE RECONCILIATION GATE (no write on failure, like every other layer)
+# ----------------------------------------------------------------------
+# DOF publishes a statewide control total — `stateGrandTotal` — on every
+# /statistics row, distinct from the agency rows beside it. THE GATE: the
+# sum of DOF's own displayed agency rows (General + Special + Bond, the
+# site's state-funds basis) must equal that published total EXACTLY, in
+# THOUSANDS. Nothing is written if any year fails.
+#
+# The gate runs on the UNROUNDED thousands. An earlier tamper pin summed
+# the per-agency figures after they were rounded to $0.001B for display
+# and came out $2M light against DOF's published total; that was our
+# rounding, not a basis difference. Unrounded, FY2024-25 sums to
+# 297,861,977 thousands — exactly DOF's published $297,862M.
+#
+# ONE YEAR DOES NOT RECONCILE INSIDE DOF'S OWN DATA. For FY2025-26 the
+# declared grand total EXCEEDS the sum of its own twelve agency rows by
+# 1,638 thousands ($1.638M, 0.0005%). Verified stable across refetches
+# and not explained by hidden rows (all twelve are displayed), by capital
+# outlay (adding it overshoots by $9.35B), or by department detail
+# (departments never sum to agencies in any year — see the limits below).
+# It is DOF's inconsistency, not our extraction: this pipeline copies
+# generalFundTotal / specialFundTotal / bondFundTotal verbatim.
+#
+# It is recorded here as an EXACT reviewed constant, never a tolerance
+# band. A band would silently swallow the next, different discrepancy; an
+# exact constant catches all extraction drift and names the source's own
+# anomaly. If the residual changes, the build fails and a human looks.
+# The Ledger reports DOF's agency rows AS PUBLISHED and does not
+# reconcile the difference away — the same discipline as CSU's visible
+# reconciling row.
+SOURCE_RESIDUAL = {          # Σ(agency rows) − stateGrandTotal, in thousands
+    "2025-26": -1638,
+}
+#
+# TWO STATED LIMITS.
+#   1. The gate is at AGENCY level. It cannot be pushed down to
+#      departments: agencies carry items with no department attribution,
+#      so departments never sum to agencies in ANY year (−$4.8B even in a
+#      year that reconciles exactly at agency level). The department and
+#      fund drills carry their own separate identities instead.
+#   2. It does not catch a TRANSFER BETWEEN TWO AGENCIES. Moving money
+#      from one agency to another leaves the statewide total unchanged
+#      and passes this gate. That gap is recorded, not closed.
+
 
 # ----------------------------------------------------------------------
 # Fetching
@@ -193,8 +238,10 @@ def dept_depth(year: str, org_cd: str):
 
 
 def fetch_year(year: str):
-    """Returns {agency_name: {gf,sp,bd,fed, departments:{name:{...}}}},
-    all values in THOUSANDS of dollars (budget-year enacted)."""
+    """Returns ({agency_name: {gf,sp,bd,fed, departments:{...}}},
+    stateGrandTotal), all values in THOUSANDS of dollars (budget-year
+    enacted). The published control total travels with the rows so the
+    gate can be re-run on every build, not only on fetch."""
     info = get_json(f"{year}/appInfo")
     if info.get("publication") != "Enacted":
         raise RuntimeError(f"{year}: publication is {info.get('publication')!r},"
@@ -299,11 +346,10 @@ def fetch_year(year: str):
               + (" …" if len(omitted) > 6 else ""), file=sys.stderr)
     total = sum(n["gf"] + n["sp"] + n["bd"] for n in out.values())
     if grand_check:
-        drift = abs(total - grand_check)
         print(f"FY {year}: state funds ${total / THOUSANDS_PER_BILLION:,.3f}B "
-              f"(API stateGrandTotal ${grand_check / THOUSANDS_PER_BILLION:,.3f}B, "
-              f"drift ${drift / 1e3:,.0f}k)", file=sys.stderr)
-    return out
+              f"(DOF stateGrandTotal ${grand_check / THOUSANDS_PER_BILLION:,.3f}B, "
+              f"residual {total - grand_check:+,}k)", file=sys.stderr)
+    return out, grand_check
 
 
 # ----------------------------------------------------------------------
@@ -313,12 +359,13 @@ def cache_path(year: str) -> Path:
     return CACHE_DIR / f"enacted_{year}.json"
 
 
-def save_cache(year, agencies):
+def save_cache(year, agencies, grand_total):
     CACHE_DIR.mkdir(exist_ok=True)
     cache_path(year).write_text(json.dumps({
         "year": year,
         "source": "ebudget-enacted",
         "fetched": date.today().isoformat(),
+        "stateGrandTotal": grand_total,
         "agencies": agencies,
     }), encoding="utf-8")
 
@@ -335,8 +382,51 @@ def load_cached_years():
                 for dv in node["departments"].values():
                     for k in FUND_KEYS:
                         dv[k] = dv[k] or 0
-            out[data["year"]] = data["agencies"]
+            out[data["year"]] = {"agencies": data["agencies"],
+                                 "stateGrandTotal": data.get("stateGrandTotal")}
     return out
+
+
+# ----------------------------------------------------------------------
+# The gate
+# ----------------------------------------------------------------------
+def gate_years(cached):
+    """Every year's agency rows must sum to DOF's published
+    stateGrandTotal, exactly, in thousands — allowing only the reviewed
+    per-year source residual. Raises SystemExit (nothing written) on any
+    failure. Returns {year: {"totalK","controlK","residualK"}}."""
+    report, failures = {}, []
+    for year in sorted(cached):
+        agencies = cached[year]["agencies"]
+        control = cached[year].get("stateGrandTotal")
+        total = sum((n["gf"] or 0) + (n["sp"] or 0) + (n["bd"] or 0)
+                    for n in agencies.values())
+        if control is None:
+            failures.append(f"{year}: no DOF stateGrandTotal cached — refetch "
+                            f"this year (--refresh) so the gate can run")
+            continue
+        residual = total - control
+        expected = SOURCE_RESIDUAL.get(year, 0)
+        if residual != expected:
+            failures.append(
+                f"{year}: agency rows sum to {total:,}k but DOF's published "
+                f"stateGrandTotal is {control:,}k — residual {residual:+,}k, "
+                f"expected {expected:+,}k"
+                + (" (a recorded source residual; if DOF has corrected or "
+                   "changed it, update SOURCE_RESIDUAL after review)"
+                   if expected else ""))
+        report[year] = {"totalK": total, "controlK": control,
+                        "residualK": residual}
+    if failures:
+        for f in failures:
+            print(f"  STATE GATE FAIL: {f}", file=sys.stderr)
+        raise SystemExit(f"{len(failures)} state gate failure(s) — nothing written")
+    for year, r in sorted(report.items()):
+        note = "" if not r["residualK"] else \
+            f"  [recorded source residual {r['residualK']:+,}k — DOF's own]"
+        print(f"FY {year}: STATE GATE PASSED — agency rows {r['totalK']:,}k "
+              f"== DOF stateGrandTotal {r['controlK']:,}k{note}", file=sys.stderr)
+    return report
 
 
 # ----------------------------------------------------------------------
@@ -367,7 +457,7 @@ def attach_actuals(payload, cached, refresh=False):
             continue
         acts = schedule9.load_actuals_year(year, refresh=refresh)
         code_to_agency = {}
-        for aname, node in cached[year].items():
+        for aname, node in cached[year]["agencies"].items():
             for dv in node["departments"].values():
                 if dv.get("code"):
                     code_to_agency[dv["code"]] = aname
@@ -419,7 +509,7 @@ def build_payload(cached):
     for year in years_sorted:
         agencies = []
         for name, node in sorted(
-            cached[year].items(),
+            cached[year]["agencies"].items(),
             key=lambda kv: -(kv[1]["gf"] + kv[1]["sp"] + kv[1]["bd"] + kv[1]["fed"]),
         ):
             depts = []
@@ -549,12 +639,34 @@ def main():
             print(f"FY {year}: cached — skipping fetch (use --refresh to force)",
                   file=sys.stderr)
             continue
-        save_cache(year, fetch_year(year))
+        save_cache(year, *fetch_year(year))
 
     cached = load_cached_years()
     if not cached:
         sys.exit("No fiscal years cached — nothing to write.")
+    gate = gate_years(cached)          # raises SystemExit; nothing written
     payload = build_payload(cached)
+    payload["meta"]["gate"] = {
+        "control": "DOF stateGrandTotal (published on every /statistics row)",
+        "basis": "General + Special + Bond, in thousands, unrounded",
+        "level": "agency",
+        "years": {y: {"agencyRowsK": r["totalK"], "publishedControlK": r["controlK"],
+                      "residualK": r["residualK"]} for y, r in gate.items()},
+        "sourceResidualNote":
+            "For FY 2025-26 the Department of Finance's own published statewide "
+            "total exceeds the sum of its own twelve published agency rows by "
+            "$1.638 million (0.0005%). That difference is DOF's, not this "
+            "record's: the agency figures here are DOF's as published. The "
+            "Ledger reports them unchanged rather than reconciling the "
+            "difference away, and the build fails if the difference changes.",
+        "limits": [
+            "The gate is at agency level. It cannot be pushed down to "
+            "departments: agencies carry items with no department attribution, "
+            "so departments never sum to agencies in any year.",
+            "It does not catch a transfer between two agencies — moving money "
+            "from one to another leaves the statewide total unchanged.",
+        ],
+    }
     attach_actuals(payload, cached, refresh=args.refresh_actuals)
 
     for w in plausibility_report(payload):
