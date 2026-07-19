@@ -90,8 +90,34 @@
   .status.err{color:var(--ink)}
 
   /* pin map */
-  .pinmap{height:340px;border:1px solid var(--ash);margin-top:14px;position:relative;background:var(--parchment)}
+  /* the frame follows California's own proportions, so the state fills it
+     instead of sitting in a letterbox */
+  .pinmap{width:100%;max-width:460px;aspect-ratio:87/100;margin:14px auto 0;
+    border:1px solid var(--ash);position:relative;background:var(--parchment)}
   .pinmap .maplibregl-canvas{cursor:crosshair}
+  /* controls wear the same outlined-pill vocabulary as the page's buttons */
+  .pinmap .maplibregl-ctrl-group{border-radius:9999px;box-shadow:none;
+    border:1px solid var(--ash);overflow:hidden;background:var(--surface)}
+  .pinmap .maplibregl-ctrl-group button{background:var(--surface);width:30px;height:30px}
+  .pinmap .maplibregl-ctrl-group button+button{border-top:1px solid var(--hairline)}
+  .pinmap .maplibregl-ctrl-group button:hover{background:var(--wash)}
+  .pinmap .maplibregl-ctrl-group button:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+  .pinmap .maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:grayscale(1) contrast(.55)}
+  .pinmap .maplibregl-ctrl-attrib{font-family:var(--mono);font-size:var(--fs-micro);
+    line-height:1.45;color:var(--smoke);background:rgba(246,243,241,.92);
+    border:1px solid var(--hairline);border-radius:10px;padding:3px 10px;margin:0 8px 8px 0;
+    max-width:calc(100% - 16px);white-space:normal}
+  .pinmap .maplibregl-ctrl-attrib a{color:var(--graphite);text-decoration:underline}
+  .pinmap .maplibregl-ctrl-attrib-button{background-color:transparent}
+  /* the compact (i) button is absolutely positioned over the pill's right
+     edge — reserve room so the required credit is never clipped by it */
+  .pinmap .maplibregl-ctrl-attrib.maplibregl-compact-show{padding-right:30px}
+  /* on a phone the credit is a bigger share of the frame, so it tightens
+     rather than pushing the state out of view — still fully legible */
+  @media(max-width:520px){
+    .pinmap .maplibregl-ctrl-attrib{font-size:9px;line-height:1.35;padding:2px 8px;margin:0 6px 6px 0}
+    .pinmap .maplibregl-ctrl-attrib.maplibregl-compact-show{padding-right:26px}
+  }
 
   /* stacked records */
   .stack{margin-top:30px}
@@ -485,6 +511,17 @@
       document.head.appendChild(l);
     } else buildPinMap();
   }
+  /* California's actual bounding box, and a simplified outline used ONLY to
+     decide which place labels are in-state so out-of-state ones can be muted.
+     The outline is never drawn and carries no data. */
+  const CA_BOUNDS = [[-124.48, 32.53], [-114.13, 42.01]];
+  const CA_POLY = { type: "Polygon", coordinates: [[
+    [-124.21,42.00],[-124.41,40.44],[-123.83,39.55],[-123.73,38.95],[-122.98,38.31],
+    [-122.51,37.78],[-122.42,37.20],[-121.94,36.60],[-121.28,35.67],[-120.63,34.90],
+    [-120.47,34.45],[-119.21,34.14],[-118.40,33.74],[-117.78,33.54],[-117.13,32.53],
+    [-114.72,32.72],[-114.63,33.03],[-114.52,33.55],[-114.14,34.30],[-114.63,35.00],
+    [-114.63,35.81],[-120.00,39.00],[-120.00,42.00],[-124.21,42.00]
+  ]] };
   function buildPinMap(){
     pinMap = new maplibregl.Map({
       container: "pinMap",
@@ -502,19 +539,56 @@
           { id: "state", type: "line", source: "omt", "source-layer": "boundary",
             filter: ["all", ["==", ["get", "admin_level"], 4], ["!=", ["get", "maritime"], 1]],
             paint: { "line-color": "#b3aeaa", "line-width": 1.1 } },
-          { id: "place", type: "symbol", source: "omt", "source-layer": "place",
-            filter: ["match", ["get", "class"], ["city", "town", "village"], true, false],
+          { id: "place-out", type: "symbol", source: "omt", "source-layer": "place",
+            filter: ["all", ["match", ["get", "class"], ["city"], true, false],
+                     ["!", ["within", CA_POLY]]],
             layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]],
-                      "text-font": ["Noto Sans Regular"], "text-size": 11 },
+                      "text-font": ["Noto Sans Regular"], "text-size": 9.5,
+                      "text-padding": 6, "symbol-sort-key": 2 },
+            paint: { "text-color": "#b3aeaa", "text-halo-color": "#f6f3f1",
+                     "text-halo-width": 1 } },
+          { id: "place", type: "symbol", source: "omt", "source-layer": "place",
+            filter: ["all", ["match", ["get", "class"], ["city", "town", "village"], true, false],
+                     ["within", CA_POLY]],
+            layout: { "text-field": ["coalesce", ["get", "name:latin"], ["get", "name"]],
+                      "text-font": ["Noto Sans Regular"], "text-size": 11,
+                      "symbol-sort-key": 1 },
             paint: { "text-color": "#797776", "text-halo-color": "#f6f3f1",
                      "text-halo-width": 1.2 } }
         ]
       },
-      center: [-119.3, 37.2], zoom: 4.6,
+      bounds: CA_BOUNDS, fitBoundsOptions: { padding: 14 },
       attributionControl: { compact: true },
       customAttribution: "Basemap © OpenStreetMap contributors · tiles: OpenFreeMap",
       dragRotate: false, pitchWithRotate: false, touchPitch: false });
     window._clPinMap = pinMap;
+    /* the container was display:none until a moment ago, so the camera must
+       be recomputed against the frame's real size — otherwise the state is
+       cropped at phone widths */
+    const fitPin = () => {
+      if (!pinMap) return;
+      pinMap.resize();
+      const el = pinMap.getContainer();
+      const w = el.clientWidth || 460;
+      /* reserve the attribution's height so the credit stays fully legible
+         without covering southern California */
+      const attrib = el.querySelector(".maplibregl-ctrl-attrib");
+      const reserve = attrib ? Math.ceil(attrib.getBoundingClientRect().height) + 4 : 0;
+      const pad = Math.max(8, Math.min(18, Math.round(w * 0.03)));
+      pinMap.fitBounds(CA_BOUNDS,
+        { padding: { top: pad, left: pad, right: pad, bottom: pad + reserve },
+          duration: 0 });
+    };
+    pinMap.once("load", fitPin);
+    setTimeout(fitPin, 0);
+    /* watch the frame itself rather than fitting once: the container was
+       unhidden a frame earlier, so its box settles after the map is built */
+    if (window.ResizeObserver){
+      let pinFitTimer = null;
+      new ResizeObserver(() => {
+        clearTimeout(pinFitTimer); pinFitTimer = setTimeout(fitPin, 120);
+      }).observe(pinMap.getContainer());
+    }
     pinMap.on("error", () => {});   // tile failures degrade to boundaries on parchment
     pinMap.on("load", () => {
       pinMap.addSource("counties", {type: "geojson", data: KGEO, promoteId: "slug"});
