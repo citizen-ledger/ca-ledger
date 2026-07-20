@@ -2245,3 +2245,41 @@ guard is present on both pages so a future year cannot slip through
 unadjusted-but-unmarked.
 
 **Assertions.** 1265 pass.
+
+## 2026-07-20 — The print record sheet control
+
+The record sheets shipped on every layer but were reachable only by
+pressing Cmd+P, so the feature was effectively invisible. There is now a
+"Print record sheet" button beside Cite and Download CSV on all nine
+layers, in the same outlined-pill vocabulary as the demoted CSV control.
+
+**Disabled with a reason, not hidden.** Four layers need a record
+selected first. The control stays present and explains itself rather
+than vanishing: a control that disappears is invisible to exactly the
+reader who has not selected anything yet, and an element that appears
+and disappears is more disorienting under a screen reader than one that
+is present and disabled. This matches the inflation toggle, which is
+already disabled-with-reason where deflation is arithmetically inert.
+
+| Layer | Gate |
+|---|---|
+| state, CSU, CCC, UC | always enabled |
+| cities/counties | a city or county selected |
+| K-12 | a district, county office or charter selected |
+| special districts | a district record open |
+| address | a lookup performed |
+
+**It throws on no layer.** The gate is computed inside each page's
+closure and synced at the top of every render, so it cannot drift from
+what is on screen, and every gate call is wrapped. A print-path throw
+has blanked a page's on-screen record before (districts, `money0`), and
+a throw here would leave the button enabled over an empty sheet.
+
+**The control does not print itself.** This is measured, not grepped:
+csu/ccc/uc put their action row in `.actions` while their print CSS
+hides `.hd-actions`, so a grep would have passed while the button leaked
+onto the paper.
+
+**Assertions.** 1429 → 1518 (+89). Also fixed a 2px horizontal overflow
+at 360px that the extra button introduced — the action row could not
+wrap.
