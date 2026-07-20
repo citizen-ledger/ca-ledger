@@ -3603,6 +3603,103 @@ def test_print_remaining(page, base):
     page.emulate_media(media="screen")
 
 
+def test_print_control(page, base):
+    """THE PRINT AFFORDANCE. The record sheets shipped on every layer but
+    were reachable only by pressing Cmd+P, so the feature was invisible.
+
+    Where a record must be chosen first the control is DISABLED WITH A
+    REASON rather than hidden — a control that vanishes is invisible to
+    exactly the reader who has not selected one yet.
+
+    Also asserts the control THROWS NOWHERE. Placing its state in the
+    wrong scope silently disabled the sync on every layer (the const was
+    outside the closure and in the temporal dead zone), and a print-path
+    throw has blanked a page's on-screen record before."""
+    ALWAYS = ["index.html", "csu.html", "ccc.html", "uc.html"]
+    GATED = [("cities.html", "#c=oakland", "Select a city"),
+             ("schools.html", "#c=los-angeles-unified", "Select a district"),
+             ("districts.html", "#d=4-e-water-district", "Open a district"),
+             ("address.html", "#c=oakland&sd=oakland-unified", "Look up an address")]
+
+    def probe(url):
+        errs = []
+        h = lambda e: errs.append(str(e))
+        page.on("pageerror", h)
+        page.goto(url)
+        page.wait_for_selector("#printBtn", state="attached")
+        page.wait_for_timeout(350)
+        st = page.evaluate("""() => { const b = document.getElementById('printBtn');
+            return {tag: b.tagName, cls: b.className, text: b.textContent.trim(),
+                    disabled: b.disabled, aria: b.getAttribute('aria-disabled'),
+                    title: b.title, describedby: b.getAttribute('aria-describedby'),
+                    hint: (document.getElementById('printBtnHint')||{}).textContent||''}; }""")
+        page.remove_listener("pageerror", h)
+        return st, errs
+
+    for f in ALWAYS + [g[0] for g in GATED]:
+        st, errs = probe(f"{base}/{f}")
+        check(f"print control {f}: present", st["tag"] == "BUTTON", st["tag"])
+        check(f"print control {f}: is a real button, keyboard reachable",
+              st["tag"] == "BUTTON")
+        check(f"print control {f}: wears the quiet outlined-pill vocabulary, "
+              f"not a solid fill", st["cls"].strip() == "btn ink", st["cls"])
+        check(f"print control {f}: is labelled", st["text"] == "Print record sheet",
+              st["text"])
+        check(f"print control {f}: has an accessible description",
+              st["describedby"] == "printBtnHint" and bool(st["hint"].strip()))
+        check(f"print control {f}: throws nothing on load", not errs, str(errs[:1]))
+
+    for f in ALWAYS:
+        st, _ = probe(f"{base}/{f}")
+        check(f"print control {f}: enabled — this layer always has a record",
+              st["disabled"] is False and st["aria"] == "false",
+              f'{st["disabled"]}/{st["aria"]}')
+
+    for f, frag, reason in GATED:
+        st, errs = probe(f"{base}/{f}")
+        check(f"print control {f}: disabled with nothing selected, rather than "
+              f"hidden", st["disabled"] is True, str(st["disabled"]))
+        check(f"print control {f}: reports that state to assistive tech",
+              st["aria"] == "true", str(st["aria"]))
+        check(f"print control {f}: gives a reason rather than failing silently",
+              reason.lower() in st["title"].lower(), st["title"])
+        check(f"print control {f}: throws nothing while disabled", not errs)
+
+        st, errs = probe(f"{base}/{f}{frag}")
+        check(f"print control {f}: enabled once a record is selected",
+              st["disabled"] is False and st["aria"] == "false",
+              f'{st["disabled"]}/{st["aria"]}')
+        check(f"print control {f}: the reason clears when enabled",
+              st["title"] == "", st["title"])
+        check(f"print control {f}: throws nothing with a record selected", not errs)
+
+    # the control must not appear on the sheet it produces. csu/ccc/uc put
+    # their action row in .actions while their print CSS hides .hd-actions,
+    # so this is measured rather than grepped.
+    page.emulate_media(media="print")
+    for f in ALWAYS + [g[0] for g in GATED]:
+        page.goto(f"{base}/{f}")
+        page.wait_for_selector("#printBtn", state="attached")
+        page.wait_for_timeout(250)
+        shown = page.evaluate("""() => { const b = document.getElementById('printBtn');
+            const c = getComputedStyle(b);
+            return c.display !== 'none' && c.visibility !== 'hidden'
+                   && b.offsetParent !== null; }""")
+        check(f"print control {f}: does not print itself onto the record sheet",
+              not shown)
+    page.emulate_media(media="screen")
+
+    # the control must reach the same sheet Cmd+P produces
+    page.emulate_media(media="print")
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_function(
+        "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+    check("print control: the sheet it opens is the record sheet, with its notes",
+          "contract with the county" in page.inner_text("#recordSheet"))
+    page.emulate_media(media="screen")
+
+
 def test_print_sheet(page, base):
     """PRINT RECORD SHEETS — the named failure mode is a printed figure
     whose caveat was dropped.
@@ -4551,6 +4648,7 @@ def main():
             test_print_state(page, base)
             test_print_highered(page, base)
             test_print_remaining(page, base)
+            test_print_control(page, base)
             test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)

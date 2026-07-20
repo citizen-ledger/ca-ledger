@@ -186,6 +186,9 @@
     .prov{padding:7px 20px;font-size:var(--fs-micro)} .prov span+span{display:none}
     .tbl{min-width:0} dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
   }
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .btn[disabled]{opacity:0.42;cursor:not-allowed}
+  .btn[disabled]:hover{background:transparent;color:var(--graphite);border-color:var(--ash)}
 </style>
 </head>
 <body>
@@ -240,6 +243,7 @@
     <div class="actions">
       <button class="btn ink" id="citeToggle">Cite</button>
       <button class="btn ink" id="csvBtn">Download CSV</button>
+      <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
     </div>
   </div>
 
@@ -403,7 +407,37 @@
     box.innerHTML = h;
   }
 
+  /* ---- Print record sheet -------------------------------------------
+     The sheets shipped on every layer but were reachable only by pressing
+     Cmd+P. This is the affordance.
+
+     Where a record must be chosen first the control is DISABLED WITH A
+     REASON rather than hidden: a control that vanishes is invisible to
+     exactly the reader who has not selected anything yet, and an element
+     that appears and disappears is more disorienting to a screen-reader
+     user than one that is present and explains itself. Same vocabulary as
+     the inflation toggle, disabled where deflation is arithmetically
+     inert. */
+  const PRINT_REASON = "";
+  function printReady(){ return true; }
+  function syncPrintBtn(){
+    const b = document.getElementById("printBtn");
+    if (!b) return;
+    let ok = true;
+    try { ok = printReady(); } catch (e) { ok = false; }
+    b.disabled = !ok;
+    b.setAttribute("aria-disabled", String(!ok));
+    b.title = ok ? "" : PRINT_REASON;
+  }
+  (function(){
+    const b = document.getElementById("printBtn");
+    if (b) b.addEventListener("click", function(){
+      if (!this.disabled) window.print();
+    });
+  })();
+
   function render(){
+    try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderRecordSheet();
     $("heroNum").textContent = moneyB(SW.coreK);
     $("heroSub").textContent = "10 CAMPUSES · " + moneyB(SW.auditedTotalK) + " AUDITED TOTAL BEFORE THE STRIP · "
