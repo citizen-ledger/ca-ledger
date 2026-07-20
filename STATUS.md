@@ -2124,3 +2124,74 @@ page may not say "combined", "in total", "sum of"), dagger surfacing on
 UCSF and basic-aid districts, identifier resolution, the permalink
 round-trip, keyboard navigation into and out of the results, and no
 horizontal overflow at 360, 390 and desktop.
+
+## 2026-07-19 — Inflation adjustment on the state page (V14)
+
+**What shipped.** `pipeline/fetch_deflator.py`, `deflator-data.js`, and a
+Nominal/Real toggle on `index.html`, per docs/V14_INFLATION_FINDING.md.
+
+**This is the first figure on the site that is not reproduction, and it
+says so.** DOF publishes a fifty-year spending series and never deflates
+it; CDE's Current Expense workbook has no constant-dollar column; the
+State Controller is an explicit pass-through. There is no official
+practice to adopt, so the adjustment is the Ledger's own methodological
+choice — and the words "this adjustment is the Ledger's, not the
+source's" appear in the view, in the citation and in the CSV, not in a
+footnote.
+
+**The index** is the one California statute names for government
+spending: Education Code 42238.1(a)(2)'s Implicit Price Deflator for
+State and Local Government Purchases, published by DOF — the department
+that statute designates as its reporter. Two limits travel with it in
+the data and on the page: it is national, not Californian, and the LAO,
+which used it explicitly from 1999 to 2008, called it "not a
+particularly good indicator of increases in school costs."
+
+**No fiscal-year averaging of our own.** DOF publishes the index already
+averaged to California fiscal years, so the pipeline adopts that file
+wholesale. The most arbitrary of the four decisions became no decision.
+
+**Forecast years are never adjusted.** DOF flags FY2025-26 onward as
+forecast, and FY2025-26 is the state layer's newest year. In the trend
+view a forecast year is **omitted from the real line entirely** rather
+than plotted at its nominal value — a nominal point on a real line would
+make the trend appear to jump for a reason that is an artefact of the
+deflator, not of spending. In single-year views it shows nominal with a
+loud warning. Found while driving the real page logic against the real
+data, not by inspection.
+
+**Disabled where deflation is arithmetically inert.** Percent-of-total
+is a ratio of two same-year figures, and the enacted-versus-actual
+difference is too; deflating both sides changes nothing. Rather than
+render a control that provably does nothing, the toggle is disabled
+there and says why on hover. Verified: shares are identical to 1e-12
+under real.
+
+**Vintage recorded with the data.** A fixed base year does not mean
+fixed values — BEA revises annually and DOF republishes each May and
+November. `deflator-data.js` carries DOF's own "Updated:" stamp, the
+source URL, and the SHA-256 of the exact bytes parsed, and the deflator
+is registered as a layer in the V13 change record so a republication
+surfaces as moved figures like anything else.
+
+**A source anomaly, named rather than absorbed.** DOF's May 2026 file
+lists fiscal year 2029-30 **twice with different values** (153.61942 and
+158.43815). The parser detects duplicate fiscal years: a duplicated
+ACTUAL year blocks the build outright, and a duplicated FORECAST year —
+which this site never uses to adjust anything — is dropped and recorded
+in `meta.sourceAnomalies` rather than silently resolved by taking
+whichever row came last. Same discipline as the state layer's named
+SOURCE_RESIDUAL.
+
+**Scope shipped: the state page only.** Cities/counties and K-12 are in
+the finding's scope and are NOT yet built. The state page is the
+reference implementation, and it is the layer that contains the forecast
+blocker.
+
+**Assertions.** 1220 pass. The new ones are mostly about honesty rather
+than arithmetic: that a real view names the index, statute, base year
+and vintage; that the citation and CSV carry the basis and never stay
+silent about it; that nominal is the default and always one interaction
+away; that the toggle is disabled where inert; that the base year is an
+actual and never a forecast; and that the forecast warning lists only
+years the page shows.
