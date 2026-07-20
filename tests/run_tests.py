@@ -3414,6 +3414,80 @@ def test_inflation(page, base):
     check("inflation: none go the other way", down_up == 0, str(down_up))
 
 
+def test_print_sheet(page, base):
+    """PRINT RECORD SHEETS — the named failure mode is a printed figure
+    whose caveat was dropped.
+
+    On screen a city's comparability note lives behind a dagger and only
+    ONE can be open at a time (S.openNote is a single value), so before
+    this change a printed sheet could show a figure with no caveat in the
+    DOM at all. Lakewood is the case: $103 per resident of police, police
+    contracted to the county AND fire from a special district — two notes,
+    and no interaction that put both on paper.
+
+    These assertions read the PRINT-MEDIA DOM, not the stylesheet."""
+    page.emulate_media(media="print")
+    page.goto(f"{base}/cities.html#c=lakewood")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_function(
+        "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+    sheet = page.inner_text("#recordSheet")
+
+    check("print: the record sheet renders without any interaction",
+          bool(sheet.strip()))
+    check("print: it names the layer and fiscal year",
+          "RECORD SHEET" in sheet and "CITIES" in sheet and "2023-24" in sheet)
+    check("print: it names the entity", "Lakewood" in sheet)
+
+    # THE LAKEWOOD CASE — both notes, in full, with no click
+    check("print: Lakewood's TWO comparability notes both print",
+          "2 APPLY TO THIS RECORD" in sheet, sheet[:200])
+    check("print: the police contract note prints in full, not as a symbol",
+          "contract with the county" in sheet)
+    check("print: the fire provider note prints in full",
+          "special district" in sheet)
+    check("print: the checklist vintage rides with the note",
+          "2015-16" in sheet)
+
+    # everything paper needs, because paper has no tooltips
+    for phrase, why in (
+            ("ACCOUNTING BASIS", "the basis"),
+            ("GATE", "the gate"),
+            ("DOLLARS", "the nominal/real state"),
+            ("BY FUNCTION", "the breakdown"),
+            ("SOURCE", "the source"),
+            ("PERMALINK", "the permalink"),
+            ("SHA-256", "the integrity digest"),
+            ("verify_digest.py", "how to verify it"),
+            ("REVISIONS", "the revision-record caveat"),
+    ):
+        check(f"print: the sheet carries {why}", phrase in sheet, phrase)
+
+    # a note must never be dropped to make the page fit
+    css = page.evaluate(
+        "getComputedStyle(document.querySelector('.rs-notes')).getPropertyValue('break-inside')")
+    check("print: notes may break across pages but are never clipped",
+          css.strip() in ("auto", ""), css)
+
+    # an entity with NO notes must say so rather than leave a silent gap
+    page.goto(f"{base}/cities.html#c=oakland")
+    page.wait_for_selector("#recordSheet", state="attached")
+    oak = page.inner_text("#recordSheet")
+    check("print: an entity with no notes says so explicitly",
+          "COMPARABILITY NOTES" in oak)
+
+    # real dollars must carry the deflator on paper too
+    page.goto(f"{base}/cities.html#c=lakewood&b=real")
+    page.wait_for_selector("#recordSheet", state="attached")
+    real = page.inner_text("#recordSheet")
+    check("print: a real-dollar sheet names the index and vintage",
+          "State and Local Government Purchases" in real
+          and "REAL" in real.upper())
+    check("print: and still carries both notes",
+          "contract with the county" in real and "special district" in real)
+    page.emulate_media(media="screen")
+
+
 def test_search(page, base):
     """CROSS-LAYER SEARCH — and the trap it has to avoid.
 
@@ -4284,6 +4358,7 @@ def main():
             test_runtime_origins()
             test_revisions(page, base)
             test_search(page, base)
+            test_print_sheet(page, base)
             test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)
