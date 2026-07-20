@@ -121,6 +121,8 @@
 
   .controls{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:34px;flex-wrap:wrap}
   .microlbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;color:var(--smoke)}
+  .basisctl{display:inline-flex;align-items:center;gap:8px}
+  .basislbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;text-transform:uppercase;color:var(--graphite);white-space:nowrap}
   .picklbl{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-bottom:8px}
   input[type="search"]{font-family:var(--mono);font-size:var(--fs-data);padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:230px}
   input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
@@ -352,10 +354,14 @@
       <select id="yearSel" aria-label="Select fiscal year"></select>
       <button id="yearNext" aria-label="Next fiscal year">▸</button>
     </div>
-    <div class="pillgroup" role="group" aria-label="Dollar basis" id="basisGroup">
-      <button data-basis="nominal">Nominal</button>
-      <button data-basis="real">Real</button>
-    </div>
+    <span class="basisctl">
+      <span class="basislbl" id="basisLbl">Inflation</span>
+      <span class="pillgroup" role="group" aria-labelledby="basisLbl" id="basisGroup">
+        <button data-basis="nominal">Nominal</button>
+        <button data-basis="real">Real</button>
+      </span>
+      <span id="basisWhy" class="visually-hidden"></span>
+    </span>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="perResident">Per resident</button>
       <button data-unit="total">Total dollars</button>
@@ -655,7 +661,7 @@
       + (realOn()
           ? "<span>DOLLARS: REAL, FY " + esc(DEFM.baseYear)
             + " — THE LEDGER'S OWN ADJUSTMENT, NOT THE CONTROLLER'S</span>"
-          : "<span>DOLLARS: NOMINAL, AS FILED</span>")
+          : "<span>DOLLARS: NOMINAL, AS FILED — NOT ADJUSTED FOR INFLATION</span>")
       + "<span>PUBLIC RECORD</span>";
     renderBasisNote();
     renderRecordSheet();
@@ -1170,13 +1176,25 @@
     box.innerHTML = h;
   }
 
+  /* The pills say "Nominal" and "Real" — the precise words, kept. What a
+     reader who does not already know them needs is what each one DOES, so
+     each carries a plain description. The label beside the group names the
+     subject; these name the operation. */
+  function basisHint(which){
+    if (which === "nominal")
+      return "Dollars as filed, with no adjustment for inflation.";
+    return "Adjusted for inflation into FY " + (DEFM ? DEFM.baseYear : "")
+      + " dollars. This adjustment is the Ledger's, not the source's.";
+  }
+
   function renderBasisNote(){
     const box = $("basisNote");
     if (!box) return;
     if (!realOn()){ box.hidden = true; box.innerHTML = ""; return; }
     const m = DEFM;
     box.innerHTML =
-      '<b>REAL DOLLARS — THIS ADJUSTMENT IS THE LEDGER&rsquo;S, NOT THE SOURCE&rsquo;S</b>'
+      '<b>ADJUSTED FOR INFLATION — INTO FY ' + esc(m.baseYear)
+      + ' DOLLARS, BY THE LEDGER, NOT THE SOURCE</b>'
       + esc(m.ours)
       + ' Figures are restated into <strong>FY ' + esc(m.baseYear)
       + ' dollars</strong> using the <strong>' + esc(m.index) + '</strong> ('
@@ -1230,13 +1248,22 @@
     // changes nothing, so the control is disabled rather than left to
     // look live while doing nothing.
     const inert = S.unit === "percent"
-      ? "% of total is a ratio of two same-year figures — deflating both changes nothing"
-      : !DEF ? "the deflator file did not load" : "";
+        ? "No inflation adjustment applies here: % of total is a ratio of two figures from the same year, so adjusting both changes nothing."
+      : !DEF
+        ? "Inflation adjustment unavailable: the deflator file did not load."
+      : "";
     $("basisGroup").querySelectorAll("button").forEach(b=>{
       b.classList.toggle("on", b.dataset.basis===S.basis);
       b.disabled = !!inert;
-      b.title = inert || "";
+      b.title = inert || basisHint(b.dataset.basis);
     });
+    const why = $("basisWhy");
+    if (why){
+      why.textContent = inert || "";
+      const g = $("basisGroup");
+      if (inert) g.setAttribute("aria-describedby", "basisWhy");
+      else g.removeAttribute("aria-describedby");
+    }
     $("basisGroup").classList.toggle("inert", !!inert);
     $("layerGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.layer===S.layer));
     $("yearSel").value = S.year;
