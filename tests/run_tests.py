@@ -3414,6 +3414,45 @@ def test_inflation(page, base):
     check("inflation: none go the other way", down_up == 0, str(down_up))
 
 
+def test_print_state(page, base):
+    """STATE PRINT SHEET — the worst gap the print audit found.
+
+    The method note was emitted in the ALLOCATION view only, so change,
+    trend and actuals rendered a netted figure with no dagger at all.
+    Office of Emergency Services FY2022-23 reads +1.3% in the change view
+    while a -$3.884B special-fund offset nets against a General Fund line
+    that roughly quintupled (0.861 -> 4.943). These assert the note is
+    both marked on screen in every view and printed in full."""
+    OES_AGENCY = "legislative-judicial-and"
+    for view in ("allocation", "change", "trend", "actuals"):
+        page.emulate_media(media="screen")
+        page.goto(f"{base}/index.html#y=2022-23&v={view}&a={OES_AGENCY}")
+        page.wait_for_selector("#recordSheet", state="attached")
+        n = page.eval_on_selector_all(".dagger", "e => e.length")
+        check(f"print state: the {view} view marks rows carrying a method "
+              f"note (it marked none before)", n > 0, f"{n} daggers")
+
+    page.emulate_media(media="print")
+    for view in ("allocation", "change", "trend", "actuals"):
+        page.goto(f"{base}/index.html#y=2022-23&v={view}&a={OES_AGENCY}")
+        page.wait_for_selector("#recordSheet", state="attached")
+        page.wait_for_function(
+            "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+        sheet = page.inner_text("#recordSheet")
+        check(f"print state: the {view} sheet prints the note IN FULL, not a "
+              f"symbol", "negative appropriations" in sheet, view)
+        check(f"print state: the {view} sheet names the row the note applies to",
+              "Emergency Services" in sheet, view)
+        for phrase in ("ACCOUNTING BASIS", "GATE", "DISPLAY RESOLUTION",
+                       "DOLLARS", "SOURCE", "PERMALINK", "SHA-256",
+                       "verify_digest.py", "REVISIONS"):
+            check(f"print state ({view}): the sheet carries {phrase}",
+                  phrase in sheet, phrase)
+        check(f"print state ({view}): the agency-level gate limit is stated",
+              "AGENCY level" in sheet or "agency level" in sheet.lower())
+    page.emulate_media(media="screen")
+
+
 def test_print_sheet(page, base):
     """PRINT RECORD SHEETS — the named failure mode is a printed figure
     whose caveat was dropped.
@@ -4359,6 +4398,7 @@ def main():
             test_revisions(page, base)
             test_search(page, base)
             test_print_sheet(page, base)
+            test_print_state(page, base)
             test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)
