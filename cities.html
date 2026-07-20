@@ -245,6 +245,12 @@
     .prov{padding:7px 20px;font-size:var(--fs-micro)}
     .prov span+span{display:none}
   }
+  .basisnote{max-width:var(--wrap);margin:0 auto;padding:13px 20px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);font-size:var(--fs-note);line-height:1.62}
+  .basisnote b{display:block;font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;margin-bottom:5px}
+  .basisnote .bn-limit{display:block;margin-top:7px;color:var(--graphite);font-size:var(--fs-data)}
+  .basisnote .bn-warn{display:block;margin-top:7px;padding-top:7px;border-top:1px solid var(--hairline);font-weight:600}
+  .pillgroup.inert{opacity:0.45}
+  .pillgroup.inert button{cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -269,6 +275,7 @@
 </header>
 
 <div class="prov" id="dataBanner"></div>
+<div class="basisnote" id="basisNote" hidden></div>
 
 <main>
   <div class="po cite-text" id="printCite"></div>
@@ -309,6 +316,10 @@
       <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
       <select id="yearSel" aria-label="Select fiscal year"></select>
       <button id="yearNext" aria-label="Next fiscal year">▸</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Dollar basis" id="basisGroup">
+      <button data-basis="nominal">Nominal</button>
+      <button data-basis="real">Real</button>
     </div>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="perResident">Per resident</button>
@@ -409,6 +420,7 @@
 </footer>
 
 <script src="city-data.js"></script>
+<script src="deflator-data.js"></script>
 <script src="city-geo.js"></script>
 <script src="county-data.js"></script>
 <script src="county-geo.js"></script>
@@ -443,6 +455,7 @@
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 
   const UNITS = ["perResident","total","percent"];
+  const BASES = ["nominal","real"];
   const MAX_SEL = 4;
 
   const PICKERS = ["search","map"];
@@ -461,8 +474,8 @@
   ]] };
 
   const DEFAULTS = { year: window.CA_CITY_DATA.years[window.CA_CITY_DATA.years.length-1],
-                     unit: "perResident", q: "", picker: "search", layer: "city" };
-  const S = { year: DEFAULTS.year, unit: DEFAULTS.unit, sel: [], q: "", openNote: null, openFn: null,
+                     unit: "perResident", basis: "nominal", q: "", picker: "search", layer: "city" };
+  const S = { year: DEFAULTS.year, unit: DEFAULTS.unit, basis: DEFAULTS.basis, sel: [], q: "", openNote: null, openFn: null,
               picker: DEFAULTS.picker, mView: null, layer: DEFAULTS.layer };
   bindLayer();
 
@@ -479,11 +492,30 @@
   const cityYear = (id,y) => ENTS[id] && ENTS[id].years[y];
   const dispName = id => ENTS[id].name + (S.layer === "county" ? " County" : "");
   const perCap = (vM,pop) => pop ? vM*1e6/pop : null;
+  /* ---------- inflation adjustment — THE LEDGER'S OWN ----------------
+     See index.html for the full reasoning; the sentences the page renders
+     ship in deflator-data.js with the data so the claim cannot drift from
+     it. Nominal is the default and the record; real is a view. A fiscal
+     year DOF only forecasts is never adjusted. */
+  const DEF  = window.CA_LEDGER_DEFLATOR || null;
+  const DEFM = DEF ? DEF.meta : null;
+  const defOK = fy => !!(DEF && DEF.fy[fy] != null
+                         && DEFM.forecastYears.indexOf(fy) < 0);
+  const realOn = () => S.basis === "real" && !!DEF && S.unit !== "percent";
+  function adjV(v, fy){
+    if (!realOn() || v == null) return v;
+    return defOK(fy) ? v * (DEF.fy[DEFM.baseYear] / DEF.fy[fy]) : v;
+  }
+  const unadjusted = () => realOn() && !defOK(S.year);
+
   function toUnit(vM, yr){
     if (vM==null) return null;
-    if (S.unit==="perResident") return perCap(vM, yr.population);
+    // percent is a ratio of two same-year figures and is invariant under
+    // deflation, so it is left alone (and the control is disabled).
     if (S.unit==="percent") return yr.expenditures ? vM/yr.expenditures*100 : null;
-    return vM;
+    const v = adjV(vM, S.year);
+    if (S.unit==="perResident") return perCap(v, yr.population);
+    return v;
   }
   function fmtUnit(u){
     if (u==null) return "—";
@@ -499,6 +531,7 @@
     if (S.layer !== DEFAULTS.layer) p.set("l", S.layer);
     if (S.sel.length) p.set("c", S.sel.slice().sort().join(","));
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
+    if (S.basis !== DEFAULTS.basis) p.set("b", S.basis);
     if (S.year !== DEFAULTS.year) p.set("y", S.year);
     if (S.picker !== DEFAULTS.picker) p.set("p", S.picker);
     if (S.picker === "map" && S.mView) p.set("m", S.mView);
@@ -519,6 +552,7 @@
     const ids = (p.get("c")||"").split(",").filter(id=>ENTS[id]);
     S.sel = ids.slice(0, MAX_SEL);
     S.unit = UNITS.includes(p.get("u")) ? p.get("u") : DEFAULTS.unit;
+    S.basis = BASES.includes(p.get("b")) ? p.get("b") : DEFAULTS.basis;
     const y = p.get("y"); S.year = (y && D.years.includes(y)) ? y : DEFAULTS.year;
     S.picker = PICKERS.includes(p.get("p")) ? p.get("p") : DEFAULTS.picker;
     const m = p.get("m") || "";
@@ -582,7 +616,12 @@
       "<span>SOURCE: STATE CONTROLLER · BYTHENUMBERS.SCO.CA.GOV</span>"
       + "<span>BASIS: REPORTED ACTUALS · GOVERNMENTAL ACTIVITIES</span>"
       + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + (realOn()
+          ? "<span>DOLLARS: REAL, FY " + esc(DEFM.baseYear)
+            + " — THE LEDGER'S OWN ADJUSTMENT, NOT THE CONTROLLER'S</span>"
+          : "<span>DOLLARS: NOMINAL, AS FILED</span>")
       + "<span>PUBLIC RECORD</span>";
+    renderBasisNote();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     const LU = LAYERS[S.layer];
     $("pickLbl").textContent = LU.plural.toUpperCase();
@@ -990,9 +1029,47 @@
     });
   }
   /* ---------- record body ---------- */
+  /* The label that must never be missing — same contract as the state page.
+     Every sentence comes from deflator-data.js, so the claim ships with the
+     data rather than living in markup that could drift from it. */
+  function renderBasisNote(){
+    const box = $("basisNote");
+    if (!box) return;
+    if (!realOn()){ box.hidden = true; box.innerHTML = ""; return; }
+    const m = DEFM;
+    box.innerHTML =
+      '<b>REAL DOLLARS — THIS ADJUSTMENT IS THE LEDGER&rsquo;S, NOT THE SOURCE&rsquo;S</b>'
+      + esc(m.ours)
+      + ' Figures are restated into <strong>FY ' + esc(m.baseYear)
+      + ' dollars</strong> using the <strong>' + esc(m.index) + '</strong> ('
+      + esc(m.geography) + ', ' + esc(m.indexBase) + '), the index named by '
+      + esc(m.statute) + ', in the fiscal-year form the Department of Finance '
+      + 'publishes — DOF vintage ' + esc(m.vintage) + '.'
+      + '<span class="bn-limit">' + esc(m.limits) + '</span>'
+      + '<span class="bn-limit">' + esc(m.windowNotes.local) + '</span>'
+      + (unadjusted()
+          ? '<span class="bn-warn">FY ' + esc(S.year) + ' is shown in NOMINAL '
+            + 'dollars and is not adjusted. ' + esc(m.forecastRule) + '</span>'
+          : '')
+      + '<span class="bn-limit">' + esc(m.fixedBaseNote) + '</span>';
+    box.hidden = false;
+  }
+
   function render(){
     renderChrome(); renderPicker();
     $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
+    // % of total is a ratio of two same-year figures — deflating both
+    // changes nothing, so the control is disabled rather than left to
+    // look live while doing nothing.
+    const inert = S.unit === "percent"
+      ? "% of total is a ratio of two same-year figures — deflating both changes nothing"
+      : !DEF ? "the deflator file did not load" : "";
+    $("basisGroup").querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on", b.dataset.basis===S.basis);
+      b.disabled = !!inert;
+      b.title = inert || "";
+    });
+    $("basisGroup").classList.toggle("inert", !!inert);
     $("layerGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.layer===S.layer));
     $("yearSel").value = S.year;
     const sel = selCities();
@@ -1207,6 +1284,28 @@
   }
 
   /* ---------- citation / CSV ---------- */
+  /* Basis sentences for the citation and the CSV. A real figure quoted
+     without its index named is the artifact this feature is judged on. */
+  function basisCitation(){
+    if (!realOn())
+      return "Figures in nominal dollars as filed; not adjusted for inflation. ";
+    const m = DEFM;
+    return "Figures restated into FY " + m.baseYear + " dollars by the Ledger using the "
+      + m.index + " (" + m.geography + ", " + m.indexBase + "), the index named by "
+      + m.statute + ", as published in fiscal-year form by the California Department "
+      + "of Finance, vintage " + m.vintage + ". THIS ADJUSTMENT IS THE LEDGER'S OWN — "
+      + "the State Controller publishes these figures in nominal dollars and deflates "
+      + "nothing. ";
+  }
+  function csvBasisLine(){
+    if (!realOn()) return "NOMINAL, as filed; not adjusted for inflation";
+    const m = DEFM;
+    return "REAL, restated into FY " + m.baseYear + " dollars by the Ledger using the "
+      + m.index + " (" + m.geography + ", " + m.indexBase + "), the index named by "
+      + m.statute + ", DOF fiscal-year file vintage " + m.vintage
+      + " — THIS ADJUSTMENT IS THE LEDGER'S OWN, the source publishes nominal only";
+  }
+
   function citationText(){
     const sel = selCities();
     const names = sel.map(id=>dispName(id));
@@ -1230,6 +1329,7 @@
       + figure
       + "Reported actual expenditures from standardized " + (S.layer === "county" ? "county" : "city") + " annual financial reports; governmental activities only. "
       + (notes ? notes + " " : "")
+      + basisCitation()
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
@@ -1251,6 +1351,7 @@
         ? "# County: " + c.name + " County · FY " + S.year + " · population " + yr.population
         : "# City: " + c.name + " (" + c.county + " County) · FY " + S.year + " · population " + yr.population);
       lines.push("# Units: millions of dollars; Per resident in dollars; Share in percent");
+      lines.push("# Dollar basis: " + csvBasisLine());
       lines.push("Function,Governmental expenditures ($M),Per resident ($),Share (%)");
       FUNCS.forEach(f=>{
         const v = (yr.byFunction||{})[f.key]||0;
@@ -1271,6 +1372,7 @@
       lines.push("# " + sel.map(id=>{ const yr=cityYear(id,S.year);
         return dispName(id) + " population " + yr.population + ", governmental expenditures $" + yr.expenditures.toFixed(1) + "M"; }).join(" · "));
       lines.push("# Units: dollars per resident · governmental activities only");
+      lines.push("# Dollar basis: " + csvBasisLine());
       lines.push(["Function"].concat(names.map(n=>csvEscape(n+" ($/resident)"))).join(","));
       FUNCS.forEach(f=>{
         lines.push([csvEscape(f.name)].concat(sel.map(id=>{
@@ -1319,6 +1421,9 @@
   $("yearPrev").addEventListener("click", ()=>{ const i=D.years.indexOf(S.year); if(i>0){ S.year=D.years[i-1]; S.openNote=null; syncHash(); render(); }});
   $("yearNext").addEventListener("click", ()=>{ const i=D.years.indexOf(S.year); if(i<D.years.length-1){ S.year=D.years[i+1]; S.openNote=null; syncHash(); render(); }});
   $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
+  $("basisGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    if (b.disabled) return;
+    S.basis=b.dataset.basis; syncHash(); render(); }));
   $("pickerModeGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
     S.picker=b.dataset.mode; syncHash(); renderPicker(); }));
   $("layerGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{

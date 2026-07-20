@@ -296,6 +296,12 @@
     .prov span+span{display:none}
     .fd-statement{font-size:34px}
   }
+  .basisnote{max-width:var(--wrap);margin:0 auto;padding:13px 20px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);font-size:var(--fs-note);line-height:1.62}
+  .basisnote b{display:block;font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;margin-bottom:5px}
+  .basisnote .bn-limit{display:block;margin-top:7px;color:var(--graphite);font-size:var(--fs-data)}
+  .basisnote .bn-warn{display:block;margin-top:7px;padding-top:7px;border-top:1px solid var(--hairline);font-weight:600}
+  .pillgroup.inert{opacity:0.45}
+  .pillgroup.inert button{cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -320,6 +326,7 @@
 </header>
 
 <div class="prov" id="dataBanner"></div>
+<div class="basisnote" id="basisNote" hidden></div>
 
 <main>
   <div class="po cite-text" id="printCite"></div>
@@ -371,6 +378,10 @@
       <button data-unit="dollars">Dollars</button>
       <button data-unit="perResident">Per resident</button>
       <button data-unit="percent">% of total</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Dollar basis" id="basisGroup">
+      <button data-basis="nominal">Nominal</button>
+      <button data-basis="real">Real</button>
     </div>
     <label class="switch">
       <input type="checkbox" id="fedToggle">
@@ -557,6 +568,7 @@
 </footer>
 
 <script src="data.js"></script>
+<script src="deflator-data.js"></script>
 <script>
 (function(){
   "use strict";
@@ -572,8 +584,9 @@
   const YEARS = Object.keys(D.budgets).sort();
   const VIEWS = ["allocation","change","trend","actuals"];
   const UNITS = ["dollars","perResident","percent"];
+  const BASES = ["nominal","real"];
   const DEFAULTS = { year: YEARS[YEARS.length-1], view:"allocation", unit:"dollars",
-                     fed:false, drill:null, dept:null, fundTailOpen:null, sortKey:"value", sortDir:-1,
+                     fed:false, basis:"nominal", drill:null, dept:null, fundTailOpen:null, sortKey:"value", sortDir:-1,
                      aSortKey:"enacted", aSortDir:-1, q:"" };
   const S = Object.assign({}, DEFAULTS, { openNote:null, hoverKey:null });
 
@@ -595,9 +608,43 @@
         : agencies(y);
       const it = S.drill ? items.find(d=>d.name===name)
                          : items.find(a=>a.name===name);
-      return it ? itemTotal(it, S.fed) : null;
+      // In real dollars a year DOF only forecasts is not plotted at all.
+      // Returning its nominal value would put a nominal point on a real
+      // line — the trend would appear to jump for a reason that is an
+      // artefact of the deflator, not of spending. The line stops, and
+      // the note beneath says why.
+      if (!it) return null;
+      if (realOn() && !defOK(y)) return null;
+      return adjV(itemTotal(it, S.fed), y);
     });
   }
+
+  /* ---------- inflation adjustment — THE LEDGER'S OWN -------------------
+     Every other figure on this page is the Department of Finance's,
+     reproduced. This one is not: DOF publishes its spending series in
+     nominal dollars and deflates nothing, so the adjustment below is the
+     Ledger's methodological choice, made with the one price deflator
+     California statute names for government spending (Education Code
+     42238.1) in the fiscal-year form DOF publishes. The page says so
+     wherever a real figure appears.
+
+     Nominal is the default and the record; real is a view over it. A
+     fiscal year DOF flags as a forecast is NEVER adjusted — a real
+     figure resting on a projected deflator would move when DOF revises
+     while the nominal figure never changed — so such a year returns its
+     nominal value unchanged and is marked. */
+  const DEF  = window.CA_LEDGER_DEFLATOR || null;
+  const DEFM = DEF ? DEF.meta : null;
+  const defOK = fy => !!(DEF && DEF.fy[fy] != null
+                         && DEFM.forecastYears.indexOf(fy) < 0);
+  const defFactor = fy => defOK(fy) ? DEF.fy[DEFM.baseYear] / DEF.fy[fy] : null;
+  const realOn = () => S.basis === "real" && !!DEF && S.unit !== "percent";
+  function adjV(v, fy){
+    if (!realOn() || v == null) return v;
+    const f = defFactor(fy);
+    return f == null ? v : v * f;          // unadjustable year -> nominal
+  }
+  const unadjusted = () => realOn() && !defOK(S.year);
 
   /* ---------- formats ---------- */
   const fmtB = v => {           // v in billions
@@ -627,6 +674,7 @@
     if (S.view !== DEFAULTS.view) p.set("v", S.view);
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
     if (S.fed) p.set("fed","1");
+    if (S.basis !== DEFAULTS.basis) p.set("b", S.basis);
     if (S.drill) p.set("a", S.drill);
     if (S.dept) p.set("dd", S.dept);
     if (S.sortKey!==DEFAULTS.sortKey || S.sortDir!==DEFAULTS.sortDir)
@@ -649,6 +697,7 @@
     S.view = VIEWS.includes(p.get("v")) ? p.get("v") : DEFAULTS.view;
     S.unit = UNITS.includes(p.get("u")) ? p.get("u") : DEFAULTS.unit;
     S.fed = p.get("fed")==="1";
+    S.basis = BASES.includes(p.get("b")) ? p.get("b") : DEFAULTS.basis;
     const a = p.get("a");
     S.drill = (a && agencies(S.year).some(x=>x.id===a)) ? a : null;
     const dd = p.get("dd");
@@ -668,11 +717,11 @@
   /* ---------- computed rows for the current level/year ---------- */
   function computeRows(){
     const items = levelItems(S.year) || [];
-    const total = items.reduce((s,it)=>s+itemTotal(it,S.fed),0);
+    const total = items.reduce((s,it)=>s+adjV(itemTotal(it,S.fed),S.year),0);
     const prevY = YEARS[YEARS.indexOf(S.year)-1] || null;
     let prevTotal = null;
     const rows = items.map(it=>{
-      const val = itemTotal(it,S.fed);
+      const val = adjV(itemTotal(it,S.fed), S.year);
       let prev = null;
       if (prevY){
         const prevItems = S.drill
@@ -680,7 +729,7 @@
           : agencies(prevY);
         const match = S.drill ? prevItems.find(d=>d.name===it.name)
                               : prevItems.find(a=>a.id===it.id);
-        prev = match ? itemTotal(match,S.fed) : null;
+        prev = match ? adjV(itemTotal(match,S.fed), prevY) : null;
       }
       const hasNeg = ["gf","sp","bd"].concat(S.fed?["fed"]:[]).some(k=>it[k]<0);
       return { id: it.id||null, name: it.name, val, prev, it,
@@ -736,8 +785,13 @@
       + "<span>BASIS: ENACTED · BUDGETARY-LEGAL</span>"
       + "<span>GATED: AGENCY ROWS == DOF'S PUBLISHED STATEWIDE TOTAL</span>"
       + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + (realOn()
+          ? "<span>DOLLARS: REAL, FY " + esc(DEFM.baseYear)
+            + " — THE LEDGER'S OWN ADJUSTMENT, NOT DOF'S</span>"
+          : "<span>DOLLARS: NOMINAL, AS PUBLISHED</span>")
       + "<span>PUBLIC RECORD</span>";
     renderGateNote();
+    renderBasisNote();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     $("totalNum").textContent = S.unit==="perResident"
       ? fmtCap(prOf(C.total,S.year)) : fmtB(C.total);
@@ -1160,6 +1214,22 @@
   }
 
   /* ---------- citation / CSV ---------- */
+  /* A citation of a real figure that does not name the index is exactly
+     the artifact this feature would be attacked on. */
+  function basisCitation(){
+    if (!realOn())
+      return "Figures in nominal dollars as published; not adjusted for inflation. ";
+    const m = DEFM;
+    return "Figures restated into FY " + m.baseYear + " dollars by the Ledger "
+      + "using the " + m.index + " (" + m.geography + ", " + m.indexBase + "), "
+      + "the index named by " + m.statute + ", as published in fiscal-year form "
+      + "by the California Department of Finance, vintage " + m.vintage + ". "
+      + "THIS ADJUSTMENT IS THE LEDGER'S OWN — the Department of Finance "
+      + "publishes these figures in nominal dollars and deflates nothing. "
+      + (unadjusted() ? "FY " + S.year + " is shown nominal and unadjusted, "
+         + "because DOF publishes only a forecast deflator for it. " : "");
+  }
+
   function citationText(){
     const a = drillAgency();
     const scope = S.fed ? "state and federal funds" : "state funds (General + special + bond)";
@@ -1179,6 +1249,7 @@
         + "Both figures under California's Budgetary-Legal basis of accounting; actual expenditures as published in the "
         + info.vintage + " (Schedule 9), unaudited. The difference reflects mid-year legislation, re-appropriations, "
         + "carryover, reversions, and fund reclassifications between publications. "
+        + basisCitation()
         + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
         + "Permalink: " + location.href + ". "
         + "Accessed " + new Date().toISOString().slice(0,10) + ".";
@@ -1190,11 +1261,22 @@
       + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + ' (Enacted)." '
       + figure
       + "Enacted appropriations under California's Budgetary-Legal basis of accounting, not actual expenditures. "
+      + basisCitation()
       + "Source: " + D.meta.sourceLabel + ", data generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
   }
   function csvEscape(v){ v=String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+  function csvBasisLine(){
+    if (!realOn()) return "NOMINAL, as published; not adjusted for inflation";
+    const m = DEFM;
+    return "REAL, restated into FY " + m.baseYear + " dollars by the Ledger using the "
+      + m.index + " (" + m.geography + ", " + m.indexBase + "), the index named by "
+      + m.statute + ", DOF fiscal-year file vintage " + m.vintage
+      + " — THIS ADJUSTMENT IS THE LEDGER'S OWN, the source publishes nominal only"
+      + (unadjusted() ? "; FY " + S.year + " shown nominal (DOF publishes only a forecast deflator for it)" : "");
+  }
+
   function buildCSV(){
     const C = computeRows();
     const info = actInfo();
@@ -1210,6 +1292,7 @@
         "# View: " + (S.fed ? "state + federal funds" : "state funds (General + special + bond)"),
         "# Permalink: " + location.href,
         "# Units: billions of dollars",
+        "# Dollar basis: " + csvBasisLine(),
         (S.drill?"Department":"Agency") + ",Enacted ($B),Actual ($B),Difference ($B),Difference (%)"
       ];
       C.rows.slice().sort((a,b)=>b.val-a.val).forEach(r=>{
@@ -1237,6 +1320,7 @@
         + (S.q ? ' · filter: "' + S.q + '"' : ""),
       "# Permalink: " + location.href,
       "# Units: billions of dollars, except Share (percent) and Per resident (dollars)",
+      "# Dollar basis: " + csvBasisLine(),
       (S.drill?"Department":"Agency") + ",General Fund ($B),Special Funds ($B),Bond Funds ($B)"
         + (S.fed?",Federal Funds ($B)":"") + ",Total ($B),Share of total (%),Per resident ($)"
     ];
@@ -1394,6 +1478,9 @@
   $("yearNext").addEventListener("click", ()=>{ const i=YEARS.indexOf(S.year); if(i<YEARS.length-1){ S.year=YEARS[i+1]; yearSel.value=S.year; S.openNote=null; syncHash(); render(); }});
   $("viewGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.view=b.dataset.view; syncHash(); render(); }));
   $("unitGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ S.unit=b.dataset.unit; syncHash(); render(); }));
+  $("basisGroup").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    if (b.disabled) return;
+    S.basis=b.dataset.basis; syncHash(); render(); }));
   $("fedToggle").addEventListener("change", e=>{ S.fed=e.target.checked; syncHash(); render(); });
   $("search").addEventListener("input", e=>{ S.q=e.target.value.trim(); syncHash(); render(); });
   $("citeToggle").addEventListener("click", ()=>{
@@ -1459,6 +1546,40 @@
     $("fedToggle").checked = S.fed;
     $("search").value = S.q;
   }
+  /* The label that must never be missing. A real figure without its index
+     named is the failure mode this whole feature is judged on. */
+  function renderBasisNote(){
+    const box = $("basisNote");
+    if (!box) return;
+    if (!realOn()){ box.hidden = true; box.innerHTML = ""; return; }
+    const m = DEFM;
+    box.innerHTML =
+      '<b>REAL DOLLARS — THIS ADJUSTMENT IS THE LEDGER&rsquo;S, NOT THE SOURCE&rsquo;S</b>'
+      + esc(m.ours)
+      + ' Figures are restated into <strong>FY ' + esc(m.baseYear)
+      + ' dollars</strong> using the <strong>' + esc(m.index)
+      + '</strong> (' + esc(m.geography) + ', ' + esc(m.indexBase)
+      + '), the index named by ' + esc(m.statute)
+      + ', in the fiscal-year form the Department of Finance publishes — '
+      + 'DOF vintage ' + esc(m.vintage) + '.'
+      + '<span class="bn-limit">' + esc(m.limits) + ' ' + esc(m.shortWindow) + '</span>'
+      + (function(){
+          // only the forecast years this page actually shows — listing DOF's
+          // whole projection horizon would be noise
+          const shown = m.forecastYears.filter(fy => YEARS.indexOf(fy) >= 0);
+          if (!shown.length) return '';
+          const plural = shown.length > 1;
+          return '<span class="bn-warn">'
+            + (unadjusted()
+                ? 'FY ' + esc(S.year) + ' is shown in NOMINAL dollars and is not adjusted. '
+                : 'FY ' + esc(shown.join(", FY ")) + (plural ? ' cannot be adjusted and are ' : ' cannot be adjusted and is ')
+                  + (S.view === "trend" ? 'omitted from the real trend line. ' : 'shown nominal. '))
+            + esc(m.forecastRule) + '</span>';
+        })()
+      + '<span class="bn-limit">' + esc(m.fixedBaseNote) + '</span>';
+    box.hidden = false;
+  }
+
   function render(){
     const C = computeRows();
     renderChrome(C);
@@ -1471,6 +1592,18 @@
     if (S.drill) $("crumbName").textContent = drillAgency().name;
     $("viewGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.view===S.view));
     $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
+    // Deflating both sides of a ratio changes nothing, and the difference
+    // between enacted and actual is a same-year ratio too. Rather than
+    // render a control that provably does nothing, disable it and say why.
+    const inert = S.unit === "percent" ? "% of total is a ratio of two same-year figures — deflating both changes nothing"
+                : S.view === "actuals" ? "enacted and actual are the same year — deflating both leaves the difference unchanged"
+                : !DEF ? "the deflator file did not load" : "";
+    $("basisGroup").querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on", b.dataset.basis===S.basis);
+      b.disabled = !!inert;
+      b.title = inert || "";
+    });
+    $("basisGroup").classList.toggle("inert", !!inert);
     renderRuler(C); renderBar(C); setHover(null,C); renderPlain(C);
     $("allocView").hidden = S.view!=="allocation";
     $("changeView").hidden = S.view!=="change";

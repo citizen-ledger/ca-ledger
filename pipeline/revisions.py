@@ -84,6 +84,11 @@ LAYERS = {
     "csu":      ("csu-data.js",      "csu-revisions.js",      "CSU"),
     "ccc":      ("ccc-data.js",      "ccc-revisions.js",      "Community colleges"),
     "uc":       ("uc-data.js",       "uc-revisions.js",       "UC"),
+    # Not a spending layer — the price index the inflation adjustment
+    # uses. Recorded because a republished index moves every real figure
+    # derived from it while no nominal figure changes, which is exactly
+    # the movement this record exists to make visible.
+    "deflator": ("deflator-data.js", "deflator-revisions.js", "Price deflator"),
 }
 
 GLOBAL_NAME = {"state": "CA_LEDGER_REVISIONS_STATE"}
@@ -212,6 +217,9 @@ def flatten(layer, payload):
             ident = f"campus:{c.get('name')}"
             for k, v in _leaves({x: c[x] for x in c if x != "name"}, "", {}).items():
                 out[f"{ident}\t{k}"] = v
+    elif layer == "deflator":
+        for fy, v in (payload.get("fy") or {}).items():
+            out[f"index\t{fy}"] = v
     elif layer == "ccc":
         for k, v in _leaves(payload.get("statewide") or {}, "", {}).items():
             out[f"statewide\t{k}"] = v
@@ -255,6 +263,8 @@ def labels(layer, payload):
         out["systemwide"] = "Systemwide"
         for c in payload.get("campuses") or []:
             out[f"campus:{c.get('name')}"] = c.get("name")
+    elif layer == "deflator":
+        out["index"] = "Deflator index value"
     elif layer == "ccc":
         out["statewide"] = "Statewide"
         for d in payload.get("districts") or []:

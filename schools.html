@@ -193,6 +193,12 @@
     .prov{padding:7px 20px;font-size:var(--fs-micro)}
     .prov span+span{display:none}
   }
+  .basisnote{max-width:var(--wrap);margin:0 auto;padding:13px 20px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);font-size:var(--fs-note);line-height:1.62}
+  .basisnote b{display:block;font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;margin-bottom:5px}
+  .basisnote .bn-limit{display:block;margin-top:7px;color:var(--graphite);font-size:var(--fs-data)}
+  .basisnote .bn-warn{display:block;margin-top:7px;padding-top:7px;border-top:1px solid var(--hairline);font-weight:600}
+  .pillgroup.inert{opacity:0.45}
+  .pillgroup.inert button{cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -217,6 +223,7 @@
 </header>
 
 <div class="prov" id="dataBanner"></div>
+<div class="basisnote" id="basisNote" hidden></div>
 
 <main>
   <div class="po cite-text" id="printCite"></div>
@@ -255,6 +262,10 @@
       <button id="yearPrev" aria-label="Previous fiscal year">◂</button>
       <select id="yearSel" aria-label="Select fiscal year"></select>
       <button id="yearNext" aria-label="Next fiscal year">▸</button>
+    </div>
+    <div class="pillgroup" role="group" aria-label="Dollar basis" id="basisGroup">
+      <button data-basis="nominal">Nominal</button>
+      <button data-basis="real">Real</button>
     </div>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="perAda">Per ADA</button>
@@ -328,6 +339,7 @@
 </footer>
 
 <script src="school-data.js"></script>
+<script src="deflator-data.js"></script>
 <script>
 (function(){
   "use strict";
@@ -351,7 +363,8 @@
   const D_COUNT = Object.keys(D.districts).length;
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
-  const DEFAULTS = {type: "districts", year: latest, unit: "perAda", sel: [], q: ""};
+  const DEFAULTS = {type: "districts", year: latest, unit: "perAda", basis: "nominal", sel: [], q: ""};
+  const BASES = ["nominal","real"];
   const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null, openRes: null,
              ambig: []};
 
@@ -362,6 +375,7 @@
     if (S.sel.length) p.set("c", S.sel.slice().sort().join(","));
     if (S.year !== DEFAULTS.year) p.set("y", S.year);
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
+    if (S.basis !== DEFAULTS.basis) p.set("b", S.basis);
     if (S.q) p.set("q", S.q);
     return p.toString();
   }
@@ -381,6 +395,7 @@
     S.type = TYPES[p.get("t")] ? p.get("t") : "districts";
     S.year = YEARS.includes(p.get("y")) ? p.get("y") : latest;
     S.unit = ["perAda","total"].includes(p.get("u")) ? p.get("u") : "perAda";
+    S.basis = BASES.includes(p.get("b")) ? p.get("b") : DEFAULTS.basis;
     S.q = p.get("q") || "";
     const store = TYPES[S.type].store;
     const want = (p.get("c")||"").split(",").filter(Boolean);
@@ -423,7 +438,12 @@
       "<span>SOURCE: CALIF. DEPT. OF EDUCATION · SACS UNAUDITED ACTUALS</span>"
       + "<span>DISTRICT GATE: REPRODUCES CDE'S PUBLISHED FIGURE TO THE CENT</span>"
       + "<span>GENERATED: " + esc(D.meta.generated) + "</span>"
+      + (realOn()
+          ? "<span>DOLLARS: REAL, FY " + esc(DEFM.baseYear)
+            + " — THE LEDGER'S OWN ADJUSTMENT, NOT CDE'S</span>"
+          : "<span>DOLLARS: NOMINAL, AS FILED</span>")
       + "<span>PUBLIC RECORD</span>";
+    renderBasisNote();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     $("dek").textContent = "Current expense of education for California's "
       + fmt(D_COUNT) + " school districts, reconciled to the Department of "
@@ -470,6 +490,15 @@
     document.querySelectorAll("#unitGroup button").forEach(b =>
       b.classList.toggle("on", b.dataset.unit === S.unit));
     $("unitGroup").style.display = S.type === "districts" ? "" : "none";
+    // no ratio unit on this page, so the only reason to disable is a
+    // missing deflator file
+    const inert = !DEF ? "the deflator file did not load" : "";
+    document.querySelectorAll("#basisGroup button").forEach(b => {
+      b.classList.toggle("on", b.dataset.basis === S.basis);
+      b.disabled = !!inert;
+      b.title = inert || "";
+    });
+    $("basisGroup").classList.toggle("inert", !!inert);
   }
 
   /* ---------- overlap panel: live values only ---------- */
@@ -545,8 +574,24 @@
   }
 
   /* ---------- record rendering ---------- */
-  const val = (v, ada) => S.unit === "perAda" && ada ? v/ada : v;
-  const fmtVal = (v, ada) => S.unit === "perAda" && ada ? money0(v/ada) : moneyExact(v);
+  /* ---------- inflation adjustment — THE LEDGER'S OWN ----------------
+     Same contract as index.html; every sentence ships in deflator-data.js
+     with the data. Nominal is the default and the record. */
+  const DEF  = window.CA_LEDGER_DEFLATOR || null;
+  const DEFM = DEF ? DEF.meta : null;
+  const defOK = fy => !!(DEF && DEF.fy[fy] != null
+                         && DEFM.forecastYears.indexOf(fy) < 0);
+  const realOn = () => S.basis === "real" && !!DEF;
+  function adjV(v, fy){
+    if (!realOn() || v == null) return v;
+    return defOK(fy) ? v * (DEF.fy[DEFM.baseYear] / DEF.fy[fy]) : v;
+  }
+  const unadjusted = () => realOn() && !defOK(S.year);
+
+  const val = (v, ada) => { const a = adjV(v, S.year);
+                            return S.unit === "perAda" && ada ? a/ada : a; };
+  const fmtVal = (v, ada) => { const a = adjV(v, S.year);
+                               return S.unit === "perAda" && ada ? money0(a/ada) : moneyExact(a); };
 
   const RES = D.meta.resource;
   const resTitle = (code, year) => ((D.resourceTitles||{})[year]||{})[code] || null;
@@ -815,6 +860,33 @@
     $("emptyState").innerHTML = msg;
   }
 
+  /* Same contract as the other layers, with ONE addition that matters here:
+     this layer's window is three years, and that is the sensitive case for
+     the choice of index. The K-12 sentence is stated on this page's face,
+     not left to a shared method note. */
+  function renderBasisNote(){
+    const box = $("basisNote");
+    if (!box) return;
+    if (!realOn()){ box.hidden = true; box.innerHTML = ""; return; }
+    const m = DEFM;
+    box.innerHTML =
+      '<b>REAL DOLLARS — THIS ADJUSTMENT IS THE LEDGER&rsquo;S, NOT THE SOURCE&rsquo;S</b>'
+      + esc(m.ours)
+      + ' Figures are restated into <strong>FY ' + esc(m.baseYear)
+      + ' dollars</strong> using the <strong>' + esc(m.index) + '</strong> ('
+      + esc(m.geography) + ', ' + esc(m.indexBase) + '), the index named by '
+      + esc(m.statute) + ', in the fiscal-year form the Department of Finance '
+      + 'publishes — DOF vintage ' + esc(m.vintage) + '.'
+      + '<span class="bn-warn">' + esc(m.windowNotes.k12) + '</span>'
+      + '<span class="bn-limit">' + esc(m.limits) + '</span>'
+      + (unadjusted()
+          ? '<span class="bn-warn">FY ' + esc(S.year) + ' is shown in NOMINAL '
+            + 'dollars and is not adjusted. ' + esc(m.forecastRule) + '</span>'
+          : '')
+      + '<span class="bn-limit">' + esc(m.fixedBaseNote) + '</span>';
+    box.hidden = false;
+  }
+
   function render(){
     renderChrome(); renderPicker();
     const sel = S.sel.filter(id => ent(id) && ent(id).years[S.year]);
@@ -861,16 +933,40 @@
         ? "Unaudited actuals; every district figure reproduces CDE's published Current Expense of Education to the cent; per-ADA uses CDE's own ADA. "
         : "Unaudited actuals as filed; records only, never compared. ")
       + "About " + (OL.stateShare*100).toFixed(0) + "% of school revenues are the state budget's K-12 money — the layers are never added. "
+      + basisCitation()
       + "Source: California Department of Education, SACS unaudited actuals. Generated " + D.meta.generated + ". "
       + "Permalink: " + location.href + ". "
       + "Accessed " + new Date().toISOString().slice(0,10) + ".";
   }
+  function basisCitation(){
+    if (!realOn())
+      return "Figures in nominal dollars as filed; not adjusted for inflation. ";
+    const m = DEFM;
+    return "Figures restated into FY " + m.baseYear + " dollars by the Ledger using the "
+      + m.index + " (" + m.geography + ", " + m.indexBase + "), the index named by "
+      + m.statute + ", as published in fiscal-year form by the California Department "
+      + "of Finance, vintage " + m.vintage + ". THIS ADJUSTMENT IS THE LEDGER'S OWN — "
+      + "the Department of Education publishes these figures in nominal dollars and "
+      + "deflates nothing. This layer covers three fiscal years, and over a window "
+      + "that short the choice of index can change the sign of a real trend. ";
+  }
+  function csvBasisLine(){
+    if (!realOn()) return "NOMINAL, as filed; not adjusted for inflation";
+    const m = DEFM;
+    return "REAL, restated into FY " + m.baseYear + " dollars by the Ledger using the "
+      + m.index + " (" + m.geography + ", " + m.indexBase + "), the index named by "
+      + m.statute + ", DOF fiscal-year file vintage " + m.vintage
+      + " — THIS ADJUSTMENT IS THE LEDGER'S OWN, the source publishes nominal only; "
+      + "over this layer's three-year window the choice of index can change a trend's sign";
+  }
+
   function csvText(){
     const lines = [
       "# Citizen Ledger — K-12 schools (" + (S.type === "districts" ? "school districts, gated" : S.type) + ")",
       "# District figures reproduce CDE's published Current Expense of Education to the cent; unaudited actuals.",
       "# About " + (OL.stateShare*100).toFixed(1) + "% of school revenues are state money shown on the state budget page — the layers are never added.",
       "# Source: CDE SACS unaudited actuals · Generated: " + D.meta.generated,
+      "# Dollar basis: " + csvBasisLine(),
       "# Permalink: " + location.href];
     if (S.type === "districts"){
       lines.push("district,county,type,fiscal_year,ada,current_expense_total,cde_published_total,per_ada,basic_aid,small_nss,sponsored_charter_ada,"
@@ -958,6 +1054,11 @@
     if (!S.sel.includes(b.dataset.pick) && S.sel.length < max)
       S.sel.push(b.dataset.pick);
     syncHash(); render();
+  });
+  $("basisGroup").addEventListener("click", e => {
+    const b = e.target.closest("button[data-basis]");
+    if (!b || b.disabled) return;
+    S.basis = b.dataset.basis; syncHash(); render();
   });
   $("unitGroup").addEventListener("click", e => {
     const b = e.target.closest("button[data-unit]");

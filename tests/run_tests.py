@@ -371,6 +371,8 @@ def test_v1(page, base):
     page.fill("#search", "")
 
     # CSV export
+    page.keyboard.press("Escape")          # the cite dialog would intercept the click
+    page.wait_for_selector("#citePanel:not([open])", state="attached")
     with page.expect_download() as dl:
         page.click("#csvBtn")
     lines = Path(dl.value.path()).read_text(encoding="utf-8").splitlines()
@@ -3135,6 +3137,283 @@ def test_cite(page, base):
           "standardized city annual financial reports" in text)
 
 
+def test_inflation(page, base):
+    """THE INFLATION ADJUSTMENT (V14) — the site's first figure that is a
+    METHODOLOGICAL CHOICE rather than reproduction of a source.
+
+    Almost every assertion here is about honesty rather than arithmetic,
+    because the arithmetic is trivial and the honesty is the whole risk:
+    a real figure that does not name its index, or a real figure resting
+    on a projected deflator, is the artifact this feature would be
+    attacked on.
+    """
+    DEF = load_data_js(ROOT / "deflator-data.js")
+    m = DEF["meta"]
+
+    # --- the index is the one California statute names, from DOF
+    check("inflation: the index is the state-and-local government purchases "
+          "deflator", "State and Local Government Purchases" in m["index"])
+    check("inflation: the statutory basis is recorded",
+          "42238.1" in m["statute"])
+    check("inflation: DOF is the publisher of record",
+          m["source"] == "dof.ca.gov" and "Department of Finance" in m["sourceLabel"])
+    check("inflation: the source file's own vintage is recorded",
+          bool(m["vintage"]), str(m.get("vintage")))
+    check("inflation: the bytes we parsed are digested, so a real figure "
+          "traces to an exact index vintage",
+          m["sourceDigest"].startswith("sha256:") and len(m["sourceDigest"]) == 71)
+    check("inflation: the national limit is stated in the data itself",
+          "national" in m["geography"].lower() and "national" in m["limits"].lower())
+    check("inflation: the adjustment is declared as the Ledger's own",
+          "Ledger" in m["ours"] and "nominal" in m["ours"].lower())
+    check("inflation: the short-window sensitivity is carried with the data",
+          "42%" in m["shortWindow"] or "2.68" in m["shortWindow"])
+
+    # --- fiscal-year values come from DOF, not from our own averaging
+    check("inflation: the series is fiscal-year keyed, as DOF publishes it",
+          all(re.match(r"^\d{4}-\d{2}$", k) for k in DEF["fy"]),
+          str([k for k in DEF["fy"] if not re.match(r"^\d{4}-\d{2}$", k)][:3]))
+    check("inflation: the series is long enough to cover every layer",
+          len(DEF["fy"]) > 60 and "2016-17" in DEF["fy"], str(len(DEF["fy"])))
+
+    # --- THE FORECAST RULE
+    check("inflation: DOF's forecast years are identified",
+          len(m["forecastYears"]) > 0, str(m["forecastYears"]))
+    check("inflation: the base year is an ACTUAL year, never a forecast",
+          m["baseYear"] not in m["forecastYears"] and m["baseYear"] == m["lastActual"],
+          f'base {m["baseYear"]} lastActual {m["lastActual"]}')
+    for fy in m["forecastYears"]:
+        check(f"inflation: forecast year {fy} sorts after the last actual",
+              fy > m["lastActual"])
+    check("inflation: the state layer's newest year is a DOF forecast — the "
+          "case this rule exists for",
+          "2025-26" in m["forecastYears"], str(m["forecastYears"]))
+
+    # --- a source anomaly is named, never silently resolved
+    check("inflation: duplicate fiscal years in DOF's file are recorded "
+          "rather than silently picked",
+          isinstance(m.get("sourceAnomalies"), list))
+    for a in m.get("sourceAnomalies") or []:
+        check("inflation: each anomaly names the year and both values",
+              "twice" in a and "forecast" in a, a[:70])
+
+    # --- the page
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#basisGroup")
+    check("inflation: nominal is the default basis",
+          page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                "e => e.classList.contains('on')"))
+    body = page.inner_text("body")
+    check("inflation: a nominal view does not display the real-dollar note",
+          page.eval_on_selector("#basisNote", "e => e.hidden"))
+    check("inflation: the strip says the figures are nominal as published",
+          "NOMINAL" in body.upper())
+
+    page.goto(f"{base}/index.html#v=trend&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    note = page.inner_text("#basisNote")
+    for phrase, why in (
+            ("Ledger", "must attribute the adjustment to us"),
+            (m["baseYear"], "must name the base year"),
+            ("State and Local Government Purchases", "must name the index"),
+            ("42238.1", "must name the statutory basis"),
+            (m["vintage"], "must name the index vintage"),
+            ("national", "must state the geography limit"),
+    ):
+        check(f"inflation: the real-dollar note {why}",
+              phrase.lower() in note.lower(), phrase)
+    check("inflation: the note says the source publishes nominal only",
+          "nominal" in note.lower() and "deflate nothing" in note.lower())
+    check("inflation: the note names the omitted forecast year",
+          "2025-26" in note)
+    check("inflation: the note lists only forecast years this page shows, "
+          "not DOF's whole projection horizon",
+          "2027-28" not in note and "2028-29" not in note, note[-200:])
+    check("inflation: the strip marks the view as real and as ours",
+          "REAL" in page.inner_text("#dataBanner").upper()
+          and "LEDGER" in page.inner_text("#dataBanner").upper())
+
+    # --- nominal must always be one interaction away
+    check("inflation: the nominal control is present and enabled in a real view",
+          page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                "e => !e.disabled"))
+
+    # --- disabled where deflation is arithmetically inert
+    page.goto(f"{base}/index.html#u=percent&b=real")
+    page.wait_for_selector("#basisGroup")
+    check("inflation: the toggle is DISABLED in percent units, not merely "
+          "inert — a control that provably does nothing must not look live",
+          page.eval_on_selector("#basisGroup button[data-basis='real']",
+                                "e => e.disabled"))
+    check("inflation: and it says why",
+          "ratio" in (page.eval_on_selector(
+              "#basisGroup button[data-basis='real']", "e => e.title") or ""))
+    page.goto(f"{base}/index.html#v=actuals&b=real")
+    page.wait_for_selector("#basisGroup")
+    check("inflation: the toggle is disabled in the actuals view, where the "
+          "difference is a same-year ratio",
+          page.eval_on_selector("#basisGroup button[data-basis='real']",
+                                "e => e.disabled"))
+
+    # --- permalink, citation and CSV can never be ambiguous about basis
+    page.goto(f"{base}/index.html#v=trend&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    check("inflation: the basis rides in the permalink",
+          "b=real" in page.evaluate("location.hash"))
+    with page.expect_download() as dl:      # before opening the dialog, which
+        page.click("#csvBtn")              # would intercept the click
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    page.click("#citeToggle")
+    page.wait_for_selector("#citePanel[open]")
+    cite = page.inner_text("#citeText")
+    check("inflation: a citation of a real figure names the index",
+          "State and Local Government Purchases" in cite)
+    check("inflation: a citation of a real figure names the base year and vintage",
+          m["baseYear"] in cite and m["vintage"] in cite)
+    check("inflation: a citation of a real figure says the adjustment is ours",
+          "LEDGER'S OWN" in cite.upper())
+    check("inflation: the CSV declares its dollar basis",
+          "# Dollar basis:" in csv and "REAL" in csv)
+    check("inflation: the CSV names the index and vintage",
+          "State and Local Government Purchases" in csv and m["vintage"] in csv)
+
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#basisGroup")
+    with page.expect_download() as dl2:
+        page.click("#csvBtn")
+    check("inflation: a nominal CSV says so too",
+          "NOMINAL" in Path(dl2.value.path()).read_text(encoding="utf-8"))
+    page.click("#citeToggle")
+    page.wait_for_selector("#citePanel[open]")
+    nom_cite = page.inner_text("#citeText")
+    check("inflation: a NOMINAL citation says so explicitly rather than "
+          "staying silent about basis",
+          "nominal" in nom_cite.lower() and "not adjusted" in nom_cite.lower())
+
+
+
+    # ---- the same contract on the local and K-12 layers -----------------
+    # Each page's own basis sentences must come from the data file, so a
+    # page can never quietly say something the data does not.
+    for pg, entity_hash, src_word in (
+            ("cities.html", "#c=oakland", "Controller"),
+            ("schools.html", "#c=los-angeles-unified", "CDE")):
+        page.goto(f"{base}/{pg}{entity_hash}")
+        page.wait_for_selector("#basisGroup")
+        check(f"inflation {pg}: nominal is the default",
+              page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                    "e => e.classList.contains('on')"))
+        check(f"inflation {pg}: no real-dollar note in a nominal view",
+              page.eval_on_selector("#basisNote", "e => e.hidden"))
+        check(f"inflation {pg}: the strip says the figures are nominal",
+              "NOMINAL" in page.inner_text("#dataBanner").upper())
+
+        sep = "&" if "#" in entity_hash else "#"
+        page.goto(f"{base}/{pg}{entity_hash}{sep}b=real")
+        page.wait_for_selector("#basisNote:not([hidden])")
+        note = page.inner_text("#basisNote")
+        for phrase, why in (
+                ("Ledger", "attributes the adjustment to us"),
+                (m["baseYear"], "names the base year"),
+                ("State and Local Government Purchases", "names the index"),
+                ("42238.1", "names the statutory basis"),
+                (m["vintage"], "names the index vintage"),
+                ("national", "states the geography limit"),
+        ):
+            check(f"inflation {pg}: the note {why}",
+                  phrase.lower() in note.lower(), phrase)
+        check(f"inflation {pg}: the strip marks the view real and ours",
+              "REAL" in page.inner_text("#dataBanner").upper()
+              and "LEDGER" in page.inner_text("#dataBanner").upper())
+        check(f"inflation {pg}: nominal stays one interaction away",
+              page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                    "e => !e.disabled"))
+        check(f"inflation {pg}: the basis rides in the permalink",
+              "b=real" in page.evaluate("location.hash"))
+
+        with page.expect_download() as d:
+            page.click("#csvBtn" if pg == "cities.html" else "#csvBtn")
+        csvtxt = Path(d.value.path()).read_text(encoding="utf-8")
+        check(f"inflation {pg}: the CSV declares its dollar basis",
+              "# Dollar basis:" in csvtxt and "REAL" in csvtxt)
+        check(f"inflation {pg}: the CSV names index and vintage",
+              "State and Local Government Purchases" in csvtxt
+              and m["vintage"] in csvtxt)
+        page.click("#citeToggle")
+        page.wait_for_selector("#citePanel[open]")
+        c = page.inner_text("#citeText")
+        check(f"inflation {pg}: the citation names the index and base year",
+              "State and Local Government Purchases" in c and m["baseYear"] in c)
+        check(f"inflation {pg}: the citation says the adjustment is ours",
+              "LEDGER'S OWN" in c.upper())
+        check(f"inflation {pg}: the citation names the source that publishes "
+              f"nominal only", src_word.lower() in c.lower())
+
+    # ---- the window sensitivity is stated per layer, on the right face ---
+    wn = m["windowNotes"]
+    check("inflation: per-layer window notes ship with the data",
+          set(wn) >= {"local", "k12", "state"}, str(sorted(wn)))
+    check("inflation: the K-12 note names the 2.68-point divergence and the "
+          "sign risk — the sensitive case",
+          "2.68" in wn["k12"] and "42%" in wn["k12"]
+          and "sign" in wn["k12"].lower())
+    check("inflation: the local note names the 0.6-point divergence and the "
+          "one city that flips — the less sensitive case",
+          "0.6" in wn["local"] and "482" in wn["local"])
+    check("inflation: the local note carries the result this feature exists "
+          "for (71 of 482 reverse direction)",
+          "71" in wn["local"] and "482" in wn["local"])
+
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    k12note = page.inner_text("#basisNote")
+    check("inflation schools.html: the three-year sensitivity is on THIS "
+          "page's face, not only in a shared method note",
+          "2.68" in k12note and "sign" in k12note.lower())
+    page.goto(f"{base}/cities.html#c=oakland&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    citynote = page.inner_text("#basisNote")
+    check("inflation cities.html: the eight-year window is stated as the "
+          "less sensitive case", "0.6" in citynote)
+    check("inflation cities.html: and it does NOT claim K-12's sensitivity",
+          "2.68" not in citynote)
+
+    # ---- inert where a ratio would be deflated on both sides
+    page.goto(f"{base}/cities.html#c=oakland&u=percent&b=real")
+    page.wait_for_selector("#basisGroup")
+    check("inflation cities.html: the toggle is disabled in percent units",
+          page.eval_on_selector("#basisGroup button[data-basis='real']",
+                                "e => e.disabled"))
+
+    # ---- THE RESULT THIS FEATURE EXISTS FOR, recomputed from shipped files
+    DEFfy = DEF["fy"]
+    def adj(v, fy):
+        return (v * (DEFfy[m["baseYear"]] / DEFfy[fy])
+                if fy in DEFfy and fy not in m["forecastYears"] else v)
+    a_fy, b_fy = "2016-17", "2023-24"
+    tot = up_down = down_up = 0
+    for rec in CITY["cities"].values():
+        ys = rec.get("years") or {}
+        va = (ys.get(a_fy) or {}).get("expenditures")
+        vb = (ys.get(b_fy) or {}).get("expenditures")
+        if not (isinstance(va, (int, float)) and isinstance(vb, (int, float))
+                and va > 0):
+            continue
+        tot += 1
+        nom = vb / va - 1
+        real = adj(vb, b_fy) / adj(va, a_fy) - 1
+        if nom > 0 and real < 0:
+            up_down += 1
+        if nom < 0 and real > 0:
+            down_up += 1
+    check("inflation: 482 cities have a usable 2016-17 -> 2023-24 span",
+          tot == 482, str(tot))
+    check("inflation: 71 of 482 cities rise nominally and fall in real terms "
+          "— recomputed from the shipped data and the shipped deflator",
+          up_down == 71, str(up_down))
+    check("inflation: none go the other way", down_up == 0, str(down_up))
+
+
 def test_search(page, base):
     """CROSS-LAYER SEARCH — and the trap it has to avoid.
 
@@ -4005,6 +4284,7 @@ def main():
             test_runtime_origins()
             test_revisions(page, base)
             test_search(page, base)
+            test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)
