@@ -3453,6 +3453,69 @@ def test_print_state(page, base):
     page.emulate_media(media="screen")
 
 
+def test_print_highered(page, base):
+    """PRINT SHEETS — CSU, CCC, UC (priority 2).
+
+    All three shared cities.html's single-value S.openNote, so a printed
+    table showed per-student figures with none of the notes qualifying
+    them. UCSF is the case: four flags (medCenter, healthOnly,
+    researchIntensive, smallScale) and a per-student figure that means
+    nothing without all four."""
+    for pg, layer in (("csu.html", "CSU CAMPUSES"),
+                      ("ccc.html", "COMMUNITY COLLEGE DISTRICTS"),
+                      ("uc.html", "UC CAMPUSES")):
+        page.emulate_media(media="screen")
+        page.goto(f"{base}/{pg}")
+        page.wait_for_selector(".dag")
+        n = page.eval_on_selector_all(".dag", "e => e.length")
+        check(f"print {pg}: rows carrying notes are marked on screen",
+              n > 0, str(n))
+
+        page.emulate_media(media="print")
+        page.goto(f"{base}/{pg}")
+        page.wait_for_selector("#recordSheet", state="attached")
+        page.wait_for_function(
+            "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+        sheet = page.inner_text("#recordSheet")
+        check(f"print {pg}: the sheet names its layer", layer in sheet, layer)
+        for phrase in ("ACCOUNTING BASIS", "GATE", "RESOLUTION AND DENOMINATOR",
+                       "DOLLARS", "COMPARABILITY NOTES", "SOURCE", "PERMALINK",
+                       "SHA-256", "verify_digest.py", "REVISIONS"):
+            check(f"print {pg}: the sheet carries {phrase}", phrase in sheet, phrase)
+        check(f"print {pg}: notes print in full, with no click",
+              "\u2020" in sheet and "CARRY THEM, PRINTED IN FULL" in sheet)
+
+    # each layer's gate resolution, in its own words
+    page.goto(f"{base}/csu.html"); page.wait_for_selector("#recordSheet", state="attached")
+    check("print csu: states its thousand-resolution gate",
+          "TO THE THOUSAND" in page.inner_text("#recordSheet"))
+    page.goto(f"{base}/ccc.html"); page.wait_for_selector("#recordSheet", state="attached")
+    check("print ccc: states its whole-dollar gate",
+          "TO THE DOLLAR" in page.inner_text("#recordSheet"))
+
+    # THE UCSF CASE — all four notes, in full, unprompted
+    page.goto(f"{base}/uc.html")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_function(
+        "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+    uc = page.inner_text("#recordSheet")
+    check("print uc: UCSF declares four notes", "San Francisco" in uc
+          and "4 notes" in uc, uc[uc.find("San Francisco"):][:90])
+    for phrase, flag in (
+            ("schools of medicine and health sciences remain inside the core", "medCenter"),
+            ("No undergraduates and no general campus", "healthOnly"),
+            ("partly measure research mission", "researchIntensive"),
+            ("Fixed operating costs spread over fewer students", "smallScale")):
+        check(f"print uc: UCSF's {flag} note prints IN FULL, not as a symbol",
+              phrase in uc, phrase)
+    check("print uc: the strip's limit is on the face — hospitals stripped, "
+          "medical schools not",
+          "SCHOOLS OF MEDICINE ARE NOT" in uc)
+    check("print uc: the unaudited status of the per-campus table is stated",
+          "Unaudited" in uc)
+    page.emulate_media(media="screen")
+
+
 def test_print_sheet(page, base):
     """PRINT RECORD SHEETS — the named failure mode is a printed figure
     whose caveat was dropped.
@@ -4399,6 +4462,7 @@ def main():
             test_search(page, base)
             test_print_sheet(page, base)
             test_print_state(page, base)
+            test_print_highered(page, base)
             test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)
