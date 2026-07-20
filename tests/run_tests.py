@@ -2946,10 +2946,12 @@ def test_polish(page, base):
     page.wait_for_selector(".fd-statement")
     top = page.evaluate(
         "document.querySelector('.fd-statement').getBoundingClientRect().top")
-    # nine nav destinations wrap to five two-column rows on a phone (the CSU,
-    # community-college, and UC layers added three), so the statement sits a
-    # row lower than at six — still within the top 40% of an 844px screen,
-    # above the fold.
+    # ten nav destinations wrap to five two-column rows on a phone. Search
+    # was added as the eleventh and the change record moved out of the
+    # primary nav to keep it at ten: a sixth row pushes this statement to
+    # 374px, outside the top 40% of an 844px screen. The record of changes
+    # is a provenance surface like About & method and stays reachable from
+    # every footer and from about.html's own section on it.
     check("polish: masthead statement above the fold at 390",
           top <= 340, f"top {top}")
     cols = page.evaluate(
@@ -3133,6 +3135,171 @@ def test_cite(page, base):
           "standardized city annual financial reports" in text)
 
 
+def test_search(page, base):
+    """CROSS-LAYER SEARCH — and the trap it has to avoid.
+
+    Search is the one place in the site where entities from different
+    layers appear together. A city, the county containing it, its school
+    district and its community-college district spend on overlapping
+    populations, with different responsibilities, on different accounting
+    bases. The single most dangerous thing this page could do is present
+    them as a flat comparable list. So the assertions below are mostly
+    about what must NOT appear.
+    """
+    idx = load_data_js(ROOT / "search-index.js")
+    LKEYS = [l["key"] for l in idx["layers"]]
+    check("search: the index ships", bool(idx.get("e")))
+    check("search: every layer the site publishes is indexed",
+          set(LKEYS) == {"state", "city", "county", "school", "coe", "charter",
+                         "district", "ccc", "csu", "uc"}, str(sorted(LKEYS)))
+
+    # --- THE INDEX CARRIES NO FIGURES. Nothing downstream can compare
+    # what was never shipped.
+    MONEY = ("total", "expenditures", "amount", "spend", "perAda", "perCapita",
+             "value", "dollars", "figure", "ce", "opexp")
+    bad_fields = [f for f in idx["meta"]["fields"]
+                  if any(m.lower() in f.lower() for m in MONEY)]
+    check("search: the index declares no money field", not bad_fields,
+          str(bad_fields))
+    shapes = {len(e) for e in idx["e"]}
+    check("search: every entry is name/layer/id/notes/qualifier and nothing "
+          "more — there is no room for a figure", shapes == {5}, str(shapes))
+    numeric_extra = [e for e in idx["e"]
+                     if not isinstance(e[3], int) or not isinstance(e[4], int)]
+    check("search: the only numbers in an entry are a note COUNT and a "
+          "qualifier index", not numeric_extra, str(numeric_extra[:2]))
+
+    # --- identifiers resolve into the layer they name
+    stores = {
+        "city": set(CITY["cities"]), "county": set(COUNTY["counties"]),
+        "school": set(SCHOOL["districts"]), "coe": set(SCHOOL["countyOffices"]),
+        "charter": set(SCHOOL["charters"]),
+        "district": set(load_data_js(ROOT / "district-data.js")["districts"]),
+    }
+
+    def slug(s):
+        return re.sub(r"-+", "-",
+                      re.sub(r"[^a-z0-9]+", "-", s.lower())).strip("-")
+
+    unresolved = []
+    for name, li, ident, notes, q in idx["e"]:
+        key = LKEYS[li]
+        if key not in stores:
+            continue
+        if (ident or slug(name)) not in stores[key]:
+            unresolved.append((key, name))
+    check("search: every indexed identifier resolves to a real record in "
+          "its own layer (derived ids included)",
+          not unresolved, str(unresolved[:4]))
+
+    # --- the page: grouped by layer, basis named, no cross-layer total
+    page.goto(f"{base}/search.html#q=Fresno")
+    page.wait_for_selector(".grp")
+    groups = page.eval_on_selector_all(
+        ".grp", "els => els.map(e => ({"
+        "layer: e.querySelector('.grp-name').textContent,"
+        "basis: e.querySelector('.grp-basis').textContent,"
+        "hits: e.querySelectorAll('.hit').length}))")
+    check("search: results are split into more than one layer group for a "
+          "name that exists in several", len(groups) > 3, str(len(groups)))
+    check("search: every group names its layer",
+          all(g["layer"].strip() for g in groups))
+    check("search: every group states its accounting basis",
+          all("BASIS" in g["basis"] for g in groups),
+          str([g["basis"][:20] for g in groups]))
+    for want in ("Cities", "Counties", "K-12 school districts"):
+        check(f"search: 'Fresno' finds the {want.lower()} record",
+              any(g["layer"] == want for g in groups))
+
+    body = page.inner_text("body")
+    check("search: the page states that the layers do not add",
+          "do not add" in body.lower())
+    check("search: the page states results are never summed or ranked "
+          "against each other",
+          "never summed" in body.lower() or "never sum" in body.lower())
+
+    # --- NO CROSS-LAYER TOTAL ANYWHERE. The status line may count
+    # results; it must never total money, and no element may combine
+    # figures from two layers.
+    money_on_page = re.findall(r"\$[\d,]+(?:\.\d+)?", body)
+    check("search: not one dollar figure appears in the results view",
+          not money_on_page, str(money_on_page[:5]))
+    for banned in ("combined", "total spending", "altogether", "sum of",
+                   "in total", "grand total"):
+        check(f"search: the page never says {banned!r}",
+              banned not in body.lower())
+
+    # --- daggers are surfaced rather than a bare name
+    page.goto(f"{base}/search.html#q=San Francisco")
+    page.wait_for_selector(".grp")
+    hits = page.eval_on_selector_all(
+        ".hit", "els => els.map(e => ({"
+        "name: e.querySelector('.hit-name').textContent,"
+        "notes: (e.querySelector('.hit-notes')||{}).textContent||''}))")
+    ucsf = [h for h in hits if h["name"].strip() == "San Francisco"]
+    check("search: UCSF-style entities surface that they carry notes "
+          "rather than showing a bare name",
+          any("†" in h["notes"] for h in ucsf), str(ucsf))
+    sfusd = [h for h in hits if "San Francisco Unified" in h["name"]]
+    check("search: a basic-aid district surfaces its notes",
+          sfusd and "†" in sfusd[0]["notes"], str(sfusd[:1]))
+    flagged = sum(1 for e in idx["e"] if e[3] > 0)
+    check("search: the index carries comparability notes for a real "
+          "population of entities", 300 < flagged < 2000, str(flagged))
+
+    # --- permalink round-trip
+    page.goto(f"{base}/search.html#q=Oakland")
+    page.wait_for_selector(".grp")
+    check("search: a permalink reproduces the query",
+          page.eval_on_selector("#q", "e => e.value") == "Oakland")
+    page.fill("#q", "Berkeley")
+    page.wait_for_timeout(250)
+    check("search: typing updates the permalink so a search can be shared",
+          "q=Berkeley" in page.evaluate("location.hash"),
+          page.evaluate("location.hash"))
+
+    # --- accessibility
+    check("search: the box is labelled",
+          page.eval_on_selector("label[for=q]", "e => !!e.textContent.trim()"))
+    check("search: the result count is announced to screen readers",
+          page.eval_on_selector("#qhelp", "e => e.getAttribute('aria-live')")
+          == "polite")
+    check("search: each group is an addressable section",
+          page.eval_on_selector_all(
+              ".grp", "els => els.every(e => e.getAttribute('aria-labelledby'))"))
+    check("search: results are real links, so they are keyboard reachable "
+          "and openable in a new tab",
+          page.eval_on_selector_all(
+              ".hit", "els => els.length > 0 && els.every(e => "
+              "e.tagName === 'A' && !!e.getAttribute('href'))"))
+    page.focus("#q")
+    page.keyboard.press("ArrowDown")
+    check("search: ArrowDown from the box moves focus into the results",
+          page.evaluate("document.activeElement.classList.contains('hit')"))
+    page.keyboard.press("ArrowUp")
+    check("search: ArrowUp from the first result returns to the box",
+          page.evaluate("document.activeElement.id") == "q")
+
+    # --- graceful degradation, the site's standing rule
+    page.goto(f"{base}/search.html")
+    page.evaluate("window.CA_LEDGER_SEARCH = undefined")
+    check("search: the index is a real file the page loads, not inlined",
+          (ROOT / "search-index.js").exists())
+
+    # --- narrow widths
+    for w in (360, 390, 1280):
+        page.set_viewport_size({"width": w, "height": 900})
+        page.goto(f"{base}/search.html#q=Fresno")
+        page.wait_for_selector(".grp")
+        over = page.evaluate(
+            "document.documentElement.scrollWidth > "
+            "document.documentElement.clientWidth + 1")
+        check(f"search: no horizontal overflow at {w}px", not over)
+        check(f"search: groups render at {w}px",
+              page.eval_on_selector_all(".grp", "e => e.length") > 3)
+    page.set_viewport_size({"width": 1280, "height": 900})
+
+
 def test_revisions(page, base):
     """THE CHANGE RECORD (V13, option (b): mechanical only).
 
@@ -3282,7 +3449,7 @@ def test_runtime_origins():
     EXPECTED = sorted(["404.html", "about.html", "address.html", "ccc.html",
                        "cities.html", "csu.html", "districts.html",
                        "index.html", "revisions.html", "schools.html",
-                       "uc.html"])
+                       "search.html", "uc.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -3837,6 +4004,7 @@ def main():
             test_precision(page, base)
             test_runtime_origins()
             test_revisions(page, base)
+            test_search(page, base)
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)

@@ -2057,3 +2057,70 @@ a working tree mid-change; that is accurate and left as-is.
 than echoed — each layer's figures digest must recompute from the
 shipped data — and that no batch except the backfilled one claims a
 cause. 1136 assertions pass.
+
+## 2026-07-19 — Cross-layer search (search.html)
+
+**What shipped.** `search.html`, `search-index.js`, and
+`pipeline/build_search_index.py`. One box over 8,068 entities in ten
+layers: state agencies and departments, cities, counties, K-12
+districts, county offices, charter schools, special districts,
+community-college districts, CSU and UC campuses. Typing "Fresno"
+returns 64 results in 7 layers — the city, the county, the unified
+district, the county office, the CSU campus, a charter, and 58 special
+districts.
+
+**The index adds no data.** Every name, identifier and flag is copied
+from a file the site already publishes, and the index is rebuilt from
+those files rather than maintained by hand.
+
+**It carries no figures, deliberately.** This is the whole design
+problem. A city, the county containing it, its school district and its
+community-college district spend on overlapping populations, with
+different responsibilities, on different accounting bases. Putting four
+numbers next to each other in one list invites exactly the arithmetic
+the rest of the site refuses. So a result names an entity, names its
+layer, names that layer's basis, and says whether the entity carries
+comparability notes — and to see a number you follow the link into the
+layer, where the figure appears with its own caveats attached. The
+entry shape is fixed at five fields with no room for a figure, and the
+test suite asserts that not one dollar sign appears in the results view.
+
+**Grouped, never ranked across layers.** Groups are ordered by how well
+the query matched inside them, which ranks the query's relevance and
+never the layers against each other. Each group states its basis in the
+layer's own words.
+
+**Names match their own pages.** Community-college districts are
+title-cased exactly as ccc.html renders them (the portal publishes
+upper case); CSU and UC campuses use the source names their pages show,
+rather than a constructed "California State University, San Francisco
+State University". Where a system's own published name differs from its
+campus names, that system name is searchable as a layer term taken from
+the layer's `meta.sourceLabel` — so "University of California" finds
+campuses filed as "Berkeley" without inventing an alias.
+
+**Identifier discipline.** 7,626 of 8,068 identifiers are just the
+slugified name and are stored empty to save 52 KB gzipped. That is a
+derived identifier, which is the exact fragility removed from the K-12
+pipeline earlier today — so the builder proves the round-trip for every
+entity against the real data files before shipping, and the suite
+re-proves that every indexed identifier resolves to a real record.
+
+**Payload.** 476 KB raw, 86 KB gzipped, loaded only by `search.html`.
+No existing page pays for it.
+
+**A regression this caused, and the honest fix.** Adding Search made
+eleven primary-nav destinations, which wrap to six rows in the phone
+nav's two-column grid and pushed the front door's statement to 374px —
+outside the top 40% of an 844px screen, and past an existing assertion.
+Rather than relax that threshold, the change record moved out of the
+primary nav: it is a provenance surface like About & method, and stays
+reachable from every footer and from about.html's own section on it.
+Ten destinations, five rows, assertion passes on its original terms.
+
+**Assertions.** 1176 pass. The new ones cover layer grouping, the
+absence of any cross-layer total (no dollar figure may appear, and the
+page may not say "combined", "in total", "sum of"), dagger surfacing on
+UCSF and basic-aid districts, identifier resolution, the permalink
+round-trip, keyboard navigation into and out of the results, and no
+horizontal overflow at 360, 390 and desktop.

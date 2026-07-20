@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — Search the record</title>
+<meta name="description" content="Search every layer of the record at once — cities, counties, school districts, special districts, community colleges, CSU, UC and the state budget. Results are grouped by layer and never added together.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/search.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — Search the record">
+<meta property="og:description" content="Search every layer of the record at once — cities, counties, school districts, special districts, community colleges, CSU, UC and the state budget. Results are grouped by layer and never added together.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/search.html">
+<meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
+   Served from this repository, not a third party: no request leaves the
+   reader's machine to render the page. unicode-range keeps it lazy — the
+   latin-ext file is fetched only if a character in its range appears.
+   Codepoints in neither range (the ▲▼ ✕ ✓ marks) fall through to the
+   platform mono stack, exactly as they did before. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* Ledger design system — see index.html. This page is prose in the
+     same voice as the record: plain, precise, no persuasion. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  @media print{ body{background:#fff} .roundel{print-color-adjust:exact;-webkit-print-color-adjust:exact} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:var(--fs-label);font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:var(--fs-note);text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:840px;margin:0 auto;padding:0 40px}
+  .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:44px;padding-top:22px;border-top:1px solid var(--ink)}
+  .lead{font-size:16px;color:var(--graphite);margin-top:14px;line-height:1.6;max-width:64ch}
+  p{margin-top:14px;line-height:1.65;max-width:70ch}
+  .microlbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;color:var(--smoke)}
+  .hero{margin-top:44px}
+
+  .srctbl{margin-top:18px;border-top:1px solid var(--ink);overflow-x:auto}
+  .src-row{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr;gap:0 18px;padding:12px 0;border-bottom:1px solid var(--hairline);font-size:var(--fs-note);line-height:1.5}
+  .src-row.hd{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.08em;color:var(--smoke);padding:8px 0}
+  .src-row .layer{font-weight:600}
+  .src-row .mono-sm{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite)}
+  .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:var(--fs-note);line-height:1.65}
+  .gatebox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:6px}
+  ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
+  ul.plain li{padding:10px 0 10px 0;border-bottom:1px solid var(--hairline);line-height:1.6;font-size:var(--fs-note)}
+  ul.plain li b{font-weight:600}
+  .codebit{font-family:var(--mono);font-size:var(--fs-data);background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  /* last in the sheet so phone-width rules win over the base rules above */
+  @media(max-width:720px){
+    .src-row{grid-template-columns:1fr;gap:8px 0} h1{font-size:40px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    /* single-column source table: the column headers vanish and each
+       cell carries its own label instead */
+    .src-row.hd{display:none}
+    .src-row>span:not(.layer)::before{display:block;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.08em;color:var(--smoke);margin-bottom:2px}
+    .src-row>span:nth-child(2)::before{content:"SOURCE"}
+    .src-row>span:nth-child(3)::before{content:"ACCOUNTING BASIS"}
+    .src-row>span:nth-child(4)::before{content:"UPDATES"}
+    /* phone header: a table of contents, not wrapped chrome — every
+       section visible at once, provenance condensed to one line */
+    header.hd{padding:12px 20px;gap:10px}
+    nav.pn{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+    nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
+    .prov{padding:7px 20px;font-size:var(--fs-micro)}
+    .prov span+span{display:none}
+  }
+</style>
+<style>
+  .searchwrap{margin-top:26px}
+  .searchwrap label.lbl{display:block;font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;text-transform:uppercase;color:var(--graphite);margin-bottom:8px}
+  #q{width:100%;box-sizing:border-box;font-family:var(--serif);font-size:22px;line-height:1.3;padding:14px 16px;border:1px solid var(--ink);background:var(--parchment);color:var(--ink);border-radius:2px}
+  #q:focus{outline:2px solid var(--blue);outline-offset:1px}
+  .srow{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-top:8px}
+  .scount{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;color:var(--graphite);text-transform:uppercase}
+  .nosum{margin-top:22px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:15px 20px;font-size:var(--fs-note);line-height:1.65}
+  .nosum b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:5px}
+  .grp{margin-top:30px;border-top:1px solid var(--ink);padding-top:14px}
+  .grp-hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .grp-name{font-family:var(--serif);font-size:21px;margin:0}
+  .grp-n{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;color:var(--graphite);text-transform:uppercase;white-space:nowrap}
+  .grp-basis{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;text-transform:uppercase;color:var(--smoke);margin-top:5px}
+  .grp-full{font-size:var(--fs-note);line-height:1.6;color:var(--graphite);margin:8px 0 0}
+  .hits{list-style:none;margin:12px 0 0;padding:0}
+  .hits li{border-bottom:1px solid var(--hairline)}
+  .hit{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 4px;text-decoration:none;color:var(--ink)}
+  .hit:hover{background:var(--wash)}
+  .hit:focus{outline:2px solid var(--blue);outline-offset:-2px;background:var(--wash)}
+  .hit-name{font-size:var(--fs-body)}
+  .hit-name mark{background:var(--ash);color:var(--ink);padding:0 1px}
+  .hit-qual{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.04em;color:var(--smoke);text-align:right;white-space:nowrap}
+  .hit-notes{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--graphite);white-space:nowrap}
+  .grp-more{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:9px;text-transform:uppercase}
+  .empty{margin-top:26px;border:1px solid var(--hairline);padding:22px;font-size:var(--fs-note);color:var(--graphite);line-height:1.6}
+  .examples{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .examples button{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;text-transform:uppercase;padding:5px 11px;border:1px solid var(--ash);background:var(--parchment);color:var(--graphite);border-radius:999px;cursor:pointer}
+  .examples button:hover{border-color:var(--ink);color:var(--ink)}
+  .examples button:focus{outline:2px solid var(--blue);outline-offset:1px}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  @media (max-width:560px){
+    #q{font-size:18px;padding:12px 13px}
+    .hit{flex-direction:column;gap:2px}
+    .hit-qual{text-align:left}
+    .grp-hd{flex-direction:column;gap:1px}
+  }
+  @media print{ .searchwrap,.examples{display:none} }
+</style>
+
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <span class="active">Search</span>
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html">Community colleges</a>
+    <a href="uc.html">UC campuses</a>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <a href="about.html">About &amp; method</a>
+  </nav>
+</header>
+
+<div class="prov">
+  <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
+  <span>RECONCILED BEFORE PUBLICATION · SPECIAL DISTRICTS AS FILED</span>
+  <span>LAYERS NEVER ADD · EACH HAS ITS OWN BASIS</span>
+  <span>PUBLIC RECORD</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="kicker">THE PUBLIC RECORD · EVERY LAYER AT ONCE</div>
+    <h1>Search the record.</h1>
+    <p class="lead">One box across every layer: cities, counties, school districts, county
+    offices, charter schools, special districts, community-college districts, CSU, UC, and
+    the state budget's agencies and departments. Type a place and see every government that
+    files under that name.</p>
+  </div>
+
+  <div class="searchwrap">
+    <label class="lbl" for="q">Search 8,068 entities across 10 layers</label>
+    <input type="search" id="q" autocomplete="off" spellcheck="false"
+           placeholder="Fresno, Oakland, Los Angeles Unified…"
+           aria-describedby="qhelp" aria-controls="results">
+    <div class="srow">
+      <span class="scount" id="qhelp" role="status" aria-live="polite"></span>
+    </div>
+    <div class="examples" aria-label="Example searches">
+      <button type="button" data-ex="Fresno">Fresno</button>
+      <button type="button" data-ex="Oakland">Oakland</button>
+      <button type="button" data-ex="San Diego">San Diego</button>
+      <button type="button" data-ex="Berkeley">Berkeley</button>
+      <button type="button" data-ex="water">water</button>
+    </div>
+  </div>
+
+  <div class="nosum">
+    <b>THESE LAYERS DO NOT ADD</b>
+    A city and the county that contains it serve overlapping populations with different
+    responsibilities. A school district, a community-college district and a special district
+    may cover the same ground again, and the state budget funds much of all of it. The
+    figures behind these results are measured on <strong>different accounting bases</strong>
+    — enacted appropriations, reported actuals, unaudited actuals, audited GAAP, as-filed —
+    and are drawn from different sources for different years. <strong>Results are grouped by
+    layer, each with its own basis stated, and are never summed or ranked against each
+    other.</strong> This search finds records; it does not compare them.
+  </div>
+
+  <div id="results"></div>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="search-index.js"></script>
+<script>
+(function(){
+  "use strict";
+  var IX = window.CA_LEDGER_SEARCH;
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s==null?"":s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); };
+
+  if (!IX){                       /* graceful degradation, like the map view */
+    $("results").innerHTML = '<div class="empty">The search index did not load. '
+      + 'Every layer is still reachable from the navigation above, and each has its own '
+      + 'search.</div>';
+    return;
+  }
+
+  /* Identifiers are stored empty when they are just the slugified name; the
+     builder proves that round-trips for every entity before shipping, and
+     this must stay byte-identical to pipeline/build_search_index.py. */
+  function slugify(s){
+    return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-+/g,"-")
+            .replace(/^-|-$/g,"");
+  }
+  /* Fold accents so "Canada Water District" finds "Cañada". Derived from the
+     source name — it invents no alias the source does not carry. */
+  function norm(s){
+    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+            .replace(/[^a-z0-9]+/g," ").trim();
+  }
+  var NAMES = IX.e.map(function(e){ return norm(e[0]); });
+  var TOKENS = NAMES.map(function(n){ return n.split(" "); });
+
+  function linkFor(e){
+    var L = IX.layers[e[1]], id = e[2] || slugify(e[0]);
+    if (!L.param) return L.page;               /* no per-entity permalink there */
+    var parts = [];
+    if (L.extra) parts.push(L.extra);
+    if (L.key === "state" && id.indexOf("|") > -1){
+      var p = id.split("|");
+      parts.push("a=" + encodeURIComponent(p[0]), "dd=" + encodeURIComponent(p[1]));
+    } else {
+      parts.push(L.param + "=" + encodeURIComponent(id));
+    }
+    return L.page + "#" + parts.join("&");
+  }
+
+  /* Ranking. 0 exact, 1 the whole name starts with it, 2 a word starts with
+     it, 3 it appears anywhere. Lower is better; ties break alphabetically,
+     which is the order the rest of the site uses. */
+  function score(i, q){
+    var n = NAMES[i];
+    if (n === q) return 0;
+    if (n.indexOf(q) === 0) return 1;
+    var t = TOKENS[i];
+    for (var j = 0; j < t.length; j++) if (t[j].indexOf(q) === 0) return 2;
+    return n.indexOf(q) > -1 ? 3 : -1;
+  }
+
+  var PER_GROUP = 12;
+  /* A layer can be searched by the name its own source publishes — "University
+     of California" for campuses filed as "Berkeley", "Davis". Those terms come
+     from each layer's meta.sourceLabel, so this matches a name the source uses
+     rather than an alias invented here. Matching a layer returns everything in
+     it, ranked below any entity that matched by its own name. */
+  var LAYER_TERMS = IX.layers.map(function(L){
+    return [L.name].concat(L.terms || []).map(norm);
+  });
+  function layerMatches(li, q){
+    return LAYER_TERMS[li].some(function(t){ return t.indexOf(q) === 0; });
+  }
+
+  function search(raw){
+    var q = norm(raw);
+    if (q.length < 2) return null;
+    var groups = {};
+    for (var i = 0; i < IX.e.length; i++){
+      var li = IX.e[i][1];
+      var s = score(i, q);
+      if (s < 0 && layerMatches(li, q)) s = 4;   /* matched its layer, not itself */
+      if (s < 0) continue;
+      (groups[li] = groups[li] || []).push([s, i]);
+    }
+    var out = [];
+    Object.keys(groups).forEach(function(li){
+      var hits = groups[li];
+      hits.sort(function(a,b){ return a[0]-b[0] || (NAMES[a[1]] < NAMES[b[1]] ? -1 : 1); });
+      out.push({layer: IX.layers[li], li: +li, hits: hits, best: hits[0][0],
+                total: hits.length});
+    });
+    /* Groups are ordered by how well the query matched inside them, then by
+       the index's own layer order. This ranks the QUERY's relevance, never
+       the layers against each other — no layer is "more important". */
+    out.sort(function(a,b){ return a.best - b.best || a.li - b.li; });
+    return out;
+  }
+
+  function mark(name, q){
+    var n = norm(name), at = n.indexOf(q);
+    if (at < 0 || !q) return esc(name);
+    /* norm() collapses runs of punctuation, so offsets can drift; only
+       highlight when the raw name lines up, otherwise show it plain. */
+    var raw = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+    var rat = raw.indexOf(q);
+    if (rat < 0) return esc(name);
+    return esc(name.slice(0, rat)) + "<mark>" + esc(name.slice(rat, rat + q.length))
+         + "</mark>" + esc(name.slice(rat + q.length));
+  }
+
+  function render(raw){
+    var host = $("results"), out = search(raw), q = norm(raw);
+    host.innerHTML = "";
+    if (out === null){
+      $("qhelp").textContent = raw.trim() ? "Keep typing — two characters minimum." : "";
+      return;
+    }
+    var total = out.reduce(function(n,g){ return n + g.total; }, 0);
+    $("qhelp").textContent = total
+      ? total + " result" + (total===1?"":"s") + " in " + out.length + " layer"
+        + (out.length===1?"":"s") + ", grouped below"
+      : "No entity found";
+    if (!total){
+      host.innerHTML = '<div class="empty"><strong>Nothing found for “' + esc(raw.trim())
+        + '”.</strong> The record covers governments that file financial reports with the '
+        + 'State, not individual schools, programs or vendors. Names are as the source '
+        + 'publishes them.</div>';
+      return;
+    }
+    out.forEach(function(g){
+      var sec = document.createElement("section");
+      sec.className = "grp";
+      sec.setAttribute("aria-labelledby", "grp-" + g.layer.key);
+      var shown = g.hits.slice(0, PER_GROUP);
+      var rows = shown.map(function(h){
+        var e = IX.e[h[1]];
+        var qual = e[4] >= 0 ? IX.q[e[4]] : "";
+        var notes = e[3] > 0
+          ? '<span class="hit-notes">† ' + e[3] + ' note' + (e[3]===1?"":"s") + '</span>'
+          : "";
+        return '<li><a class="hit" href="' + esc(linkFor(e)) + '">'
+             + '<span class="hit-name">' + mark(e[0], q) + '</span>'
+             + '<span class="hit-qual">' + notes + (notes && qual ? " · " : "")
+             + esc(qual) + '</span></a></li>';
+      }).join("");
+      sec.innerHTML =
+        '<div class="grp-hd"><h2 class="grp-name" id="grp-' + esc(g.layer.key) + '">'
+        + esc(g.layer.name) + '</h2>'
+        + '<span class="grp-n">' + g.total + ' match' + (g.total===1?"":"es") + '</span></div>'
+        + '<div class="grp-basis">BASIS · ' + esc(g.layer.basis)
+        + (g.best === 4 ? ' · MATCHED THIS LAYER\u2019S NAME' : '') + '</div>'
+        + '<p class="grp-full">' + esc(g.layer.full) + '</p>'
+        + '<ul class="hits">' + rows + '</ul>'
+        + (g.total > shown.length
+            ? '<p class="grp-more">Showing ' + shown.length + ' of ' + g.total
+              + ' — narrow the search, or open the ' + esc(g.layer.name).toLowerCase()
+              + ' page to see them all.</p>' : "");
+      host.appendChild(sec);
+    });
+  }
+
+  /* ---- permalink: the query is the state ---- */
+  function readHash(){
+    var m = /(?:^|&)q=([^&]*)/.exec(location.hash.replace(/^#/,""));
+    return m ? decodeURIComponent(m[1].replace(/\+/g," ")) : "";
+  }
+  function writeHash(v){
+    var h = v.trim() ? "#q=" + encodeURIComponent(v.trim()) : location.pathname + location.search;
+    try { history.replaceState(null, "", h); } catch(e){ location.hash = v.trim() ? "q=" + encodeURIComponent(v.trim()) : ""; }
+  }
+
+  var box = $("q"), t = null;
+  function run(){ render(box.value); writeHash(box.value); }
+  box.addEventListener("input", function(){
+    clearTimeout(t); t = setTimeout(run, 90);
+  });
+  window.addEventListener("hashchange", function(){
+    var v = readHash();
+    if (v !== box.value){ box.value = v; render(v); }
+  });
+  document.querySelector(".examples").addEventListener("click", function(e){
+    var b = e.target.closest("button[data-ex]");
+    if (!b) return;
+    box.value = b.dataset.ex; run(); box.focus();
+  });
+
+  /* ---- keyboard: down from the box walks the results, up returns to it ---- */
+  function hits(){ return Array.prototype.slice.call(document.querySelectorAll(".hit")); }
+  box.addEventListener("keydown", function(e){
+    if (e.key === "ArrowDown"){
+      var h = hits();
+      if (h.length){ e.preventDefault(); h[0].focus(); }
+    } else if (e.key === "Enter"){
+      clearTimeout(t); run();
+      var h = hits();
+      if (h.length){ e.preventDefault(); h[0].focus(); }
+    }
+  });
+  $("results").addEventListener("keydown", function(e){
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    var h = hits(), i = h.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    if (e.key === "ArrowDown" && i + 1 < h.length) h[i+1].focus();
+    else if (e.key === "ArrowUp"){ if (i === 0) box.focus(); else h[i-1].focus(); }
+  });
+
+  var initial = readHash();
+  if (initial){ box.value = initial; render(initial); }
+  box.focus({preventScroll: true});
+})();
+</script>
+
+</body>
+</html>
