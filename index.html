@@ -58,6 +58,33 @@
   .mono{font-family:var(--mono)}
   .po{display:none}
   @media print{
+  /* ---- print record sheet: grayscale-safe, notes never truncated ---- */
+  .rs-head{border-bottom:2px solid #000;padding-bottom:8pt;margin-bottom:10pt}
+  .rs-kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:0.09em;font-weight:700;margin-bottom:7pt}
+  .rs-basis{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-basis b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
+  .rs-ent{margin-bottom:11pt}
+  .rs-name{font-family:var(--serif);font-size:15pt;font-weight:600;border-bottom:1px solid #000;padding-bottom:2pt}
+  .rs-figs{font-family:var(--mono);font-size:9pt;margin-top:4pt}
+  .rs-break{margin-top:6pt}
+  .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
+  .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
+  /* a note may break across pages; it may never be shortened */
+  .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
+  .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
+  .rs-foot div{margin-bottom:4pt}
+  .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
+  .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
+  /* the sheet is self-contained, so the interactive surface is suppressed */
+  header, footer.ft, .prov, .method, #methodology, .bar-wrap, .sched,
+  #allocBody, #changeBody, #trendBody, #actualsBody, #depthPanel,
+  .pillgroup, .switch, .hd-actions, .frontdoor { display:none !important }
+  #recordSheet, #printCite { display:block !important }
+
     .np{display:none!important} .po{display:block!important}
     body{background:#fff}
     .record{box-shadow:none!important}
@@ -329,6 +356,7 @@
 <div class="basisnote" id="basisNote" hidden></div>
 
 <main>
+  <div class="po" id="recordSheet"></div>
   <div class="po cite-text" id="printCite"></div>
 
   <section class="frontdoor np" id="frontDoor" aria-label="Citizen Ledger front door">
@@ -792,6 +820,7 @@
       + "<span>PUBLIC RECORD</span>";
     renderGateNote();
     renderBasisNote();
+    renderRecordSheet(C);
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     $("totalNum").textContent = S.unit==="perResident"
       ? fmtCap(prOf(C.total,S.year)) : fmtB(C.total);
@@ -901,6 +930,17 @@
   function noteText(r){
     return "This row includes negative appropriations as published in the source — offsets and transfers, not errors. Amounts are kept exactly as enacted.";
   }
+  /* The method note applies to a ROW, not to a view. It was emitted only in
+     the allocation view, so change / trend / actuals showed a netted figure
+     with nothing indicating that a negative appropriation is inside it —
+     Office of Emergency Services FY2022-23 reads +1.3% while a -$3.884B
+     special-fund offset nets against a General Fund line that roughly
+     quintupled. One emitter now, used by all four. */
+  const daggerFor = r => r.hasNeg
+    ? ' <button class="dagger" aria-label="Show method note" data-note="'
+      + esc(r.name) + '">\u2020</button>'
+    : "";
+
   function renderAlloc(C){
     $("hName").textContent = (S.drill ? "DEPARTMENT" : "AGENCY") + arrow("name");
     $("hValue").textContent = (S.unit==="dollars" ? "FY "+S.year : S.unit==="perResident" ? "PER RESIDENT" : "% OF TOTAL") + arrow("value");
@@ -930,7 +970,7 @@
       }
       row.innerHTML = '<span class="sw" style="background:'+r.color+'"></span>'
         + '<span class="aname">'+esc(r.name)
-        + (r.hasNeg ? ' <button class="dagger" aria-label="Show method note" data-note="'+esc(r.name)+'">†</button>' : "")
+        + daggerFor(r)
         + '</span>'
         + '<span class="num">'+fmtUnit(r.val,C.total)+'</span>'
         + '<span class="num dim">'+r.pct.toFixed(1)+'%</span>'
@@ -1011,7 +1051,7 @@
     $("changeRows").innerHTML = rows.map(r=>{
       const l = r.db<0 ? Math.abs(r.db)/maxAbs*100 : 0;
       const rt = r.db>0 ? r.db/maxAbs*100 : 0;
-      return '<div class="chg-row"><span style="font-size:13.5px">'+esc(r.name)+'</span>'
+      return '<div class="chg-row"><span style="font-size:13.5px">'+esc(r.name)+daggerFor(r)+'</span>'
         + '<div class="chg-mid"><div class="l"><i style="width:'+l.toFixed(1)+'%"></i></div><div class="axis"></div><div class="r"><i style="width:'+rt.toFixed(1)+'%"></i></div></div>'
         + '<span class="num delta">'+(r.db>=0?"+":MINUS)+"$"+Math.abs(r.db).toFixed(1)+'B <span style="color:var(--smoke)">'+fmtDeltaPct(r.dp)+'</span></span></div>';
     }).join("");
@@ -1047,7 +1087,7 @@
     $("trendGrid").innerHTML = C.bySize.map(r=>{
       const series = seriesFor(r.name);
       const mx = Math.max(...series.map(v=>v||0), 0.001);
-      return '<div class="tcard"><div class="tn">'+esc(r.name)+'</div>'
+      return '<div class="tcard"><div class="tn">'+esc(r.name)+daggerFor(r)+'</div>'
         + '<div class="tb">'+series.map((v,i)=>'<i style="height:'+(((v||0)/mx*100).toFixed(1))+'%;background:'+(YEARS[i]===S.year?"#242424":"#cfc9c4")+'"></i>').join("")+'</div>'
         + '<div class="tf"><span>FY '+YEARS[0].slice(2)+' '+(series[0]==null?"—":fmtB(series[0]))+'</span><span>FY '+YEARS[YEARS.length-1].slice(2)+' '+(series[series.length-1]==null?"—":fmtB(series[series.length-1]))+'</span></div></div>';
     }).join("");
@@ -1129,7 +1169,7 @@
         row.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();doDrill(id);} });
       }
       row.innerHTML = '<span class="sw" style="background:'+r.color+'"></span>'
-        + '<span class="aname">'+esc(r.name)+'</span>'
+        + '<span class="aname">'+esc(r.name)+daggerFor(r)+'</span>'
         + '<span class="num">'+fmtUnit(r.enacted, C.total)+'</span>'
         + '<span class="num">'+(r.actual==null ? "—" : fmtUnit(r.actual, C.total))+'</span>'
         + '<span class="num delta">'+(r.diff==null ? "—"
@@ -1549,6 +1589,104 @@
   }
   /* The label that must never be missing. A real figure without its index
      named is the failure mode this whole feature is judged on. */
+  /* ---------- the print record sheet ------------------------------------
+     Paper has no tooltips, and on screen a method note opens one at a time
+     via S.openNote. This block is rendered on every render(), independent
+     of the view and of the click state, and prints EVERY note that applies
+     to EVERY row on the current level — never a symbol whose legend lives
+     elsewhere. It is never truncated: if the notes overflow, it runs on. */
+  function renderRecordSheet(C){
+    const box = $("recordSheet");
+    if (!box) return;
+    const a = drillAgency();
+    const m = D.meta, integ = m.integrity || {};
+    const flagged = C.rows.filter(r => r.hasNeg);
+    const VIEWNAME = {allocation:"Allocation", change:"Change",
+                      trend:"Trend", actuals:"Enacted vs. actual"};
+    let h = '<div class="rs-head">'
+      + '<div class="rs-kicker">CITIZEN LEDGER · RECORD SHEET · STATE BUDGET · FY '
+      + esc(S.year) + ' · ' + esc((VIEWNAME[S.view] || S.view).toUpperCase())
+      + (a ? ' · ' + esc(a.name.toUpperCase()) : ' · ALL AGENCIES') + '</div>'
+      + '<div class="rs-basis"><b>ACCOUNTING BASIS</b>'
+      + 'Enacted appropriations on California&rsquo;s Budgetary-Legal basis, as '
+      + 'published by the Department of Finance. These are appropriations, not '
+      + 'actual expenditures'
+      + (S.view === "actuals"
+          ? ', shown beside actual expenditures from DOF Schedule 9 (unaudited); '
+            + 'the difference reflects mid-year legislation, re-appropriations, '
+            + 'carryover, reversions and fund reclassifications, and is not a '
+            + 'judgment of any kind.'
+          : '.') + '</div>'
+      + '<div class="rs-basis"><b>GATE</b>'
+      + 'Agency rows reconcile to the Department of Finance&rsquo;s own published '
+      + 'statewide total, exactly, in thousands. The gate holds at AGENCY level: '
+      + 'agencies carry items with no department attribution, so departments do '
+      + 'not sum to agencies in any year, and no statewide total can detect a '
+      + 'transfer between two agencies.</div>'
+      + '<div class="rs-basis"><b>DISPLAY RESOLUTION</b>'
+      + 'Dollar values are stated in billions and rounded to the nearest million, '
+      + 'which is why some small items display as $0M. The gate itself is in '
+      + 'thousands, unrounded.</div>'
+      + (realOn()
+          ? '<div class="rs-basis"><b>DOLLARS</b>REAL — restated into FY '
+            + esc(DEFM.baseYear) + ' dollars by the Ledger using the ' + esc(DEFM.index)
+            + ' (' + esc(DEFM.geography) + ', ' + esc(DEFM.indexBase) + '), the index '
+            + 'named by ' + esc(DEFM.statute) + ', DOF vintage ' + esc(DEFM.vintage)
+            + '. ' + esc(DEFM.ours) + '</div>'
+          : '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as enacted. Not adjusted '
+            + 'for inflation.</div>')
+      + '</div>';
+
+    h += '<div class="rs-ent"><div class="rs-name">'
+      + esc(a ? a.name : "All agencies") + '</div>'
+      + '<div class="rs-figs">' + esc(S.unit === "perResident"
+          ? fmtCap(prOf(C.total, S.year)) + ' per resident'
+          : fmtB(C.total)) + ' · FY ' + esc(S.year)
+      + (S.fed ? ' · state and federal funds' : ' · state funds (General + special + bond)')
+      + '</div>';
+
+    const rows = C.rows.slice().sort((x,y)=>y.val-x.val);
+    h += '<div class="rs-break"><b>' + (S.drill ? 'BY DEPARTMENT' : 'BY AGENCY') + '</b>'
+      + '<table>' + rows.map(r =>
+          '<tr><td>' + esc(r.name) + (r.hasNeg ? ' \u2020' : '') + '</td>'
+          + '<td class="n">' + esc(fmtUnit(r.val, C.total)) + '</td>'
+          + '<td class="n">' + r.pct.toFixed(1) + '%</td></tr>').join("")
+      + '</table></div>';
+
+    /* Every applicable note, in full. The screen shows one at a time; paper
+       shows all of them or the sheet is the artifact we are preventing. */
+    if (flagged.length){
+      h += '<div class="rs-notes"><b>METHOD NOTES — ' + flagged.length
+        + ' ROW' + (flagged.length===1?' ON THIS SHEET CARRIES':'S ON THIS SHEET CARRY')
+        + ' ONE</b>';
+      flagged.forEach(r => {
+        h += '<p>&dagger; <strong>' + esc(r.name) + '</strong> — ' + esc(noteText(r)) + '</p>';
+      });
+      h += '</div>';
+    } else {
+      h += '<div class="rs-notes"><b>METHOD NOTES</b><p>No row on this sheet '
+        + 'carries a method note.</p></div>';
+    }
+    h += '</div>';
+
+    h += '<div class="rs-foot">'
+      + '<div><b>SOURCE</b>' + esc(m.sourceLabel) + ' · generated ' + esc(m.generated) + '</div>'
+      + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span></div>'
+      + (integ.digest
+          ? '<div><b>RECORD INTEGRITY</b>SHA-256 ' + esc(integ.digest)
+            + ' (data.js). Verify with <span class="rs-mono">python3 '
+            + 'pipeline/verify_digest.py</span> from the repository. The digest '
+            + 'proves the file is the one the pipeline wrote; it does not verify '
+            + 'the published figures themselves.</div>'
+          : '')
+      + '<div><b>REVISIONS</b>The Ledger&rsquo;s record of changes begins on the day '
+      + 'it shipped. Figures published before then were replaced rather than '
+      + 'compared, so an absence of recorded change for an earlier period means '
+      + '&ldquo;not recorded&rdquo;, not &ldquo;did not happen&rdquo;.</div>'
+      + '</div>';
+    box.innerHTML = h;
+  }
+
   function renderBasisNote(){
     const box = $("basisNote");
     if (!box) return;
