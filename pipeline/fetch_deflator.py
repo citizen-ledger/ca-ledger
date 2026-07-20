@@ -263,6 +263,33 @@ def build(refresh=False):
                        "index explicitly from 1999 to 2008, has called it "
                        "“not a particularly good indicator of increases "
                        "in school costs.”"),
+            # Per-layer, because the sensitivity genuinely differs by window
+            # length and a shared sentence would understate it on K-12 and
+            # overstate it on the local layers. Measured in
+            # docs/V14_INFLATION_FINDING.md.
+            "windowNotes": {
+                "local": ("Over this layer's eight-year window the choice of "
+                          "index barely matters: this deflator and DOF's "
+                          "California CPI differ by 0.6 percentage points in "
+                          "total, and they disagree about the direction of "
+                          "exactly one city in 482. The nominal-to-real "
+                          "difference, by contrast, is large — 71 of 482 "
+                          "cities rise in nominal dollars and fall in real "
+                          "ones over this window, and none go the other way."),
+                "k12": ("This layer's window is only three years, and short "
+                        "windows are the sensitive case. Over it, this "
+                        "deflator and DOF's California CPI differ by 2.68 "
+                        "percentage points — roughly 42% of the whole "
+                        "measured inflation — which is enough for the choice "
+                        "of index to change the SIGN of a real trend. Treat a "
+                        "small real change here as indistinguishable from no "
+                        "change."),
+                "state": ("Over this layer's six-year window the choice of "
+                          "index is a minor effect next to the "
+                          "nominal-to-real difference, but the newest year "
+                          "cannot be adjusted at all — see the forecast note "
+                          "above."),
+            },
             "shortWindow": ("Short windows are more sensitive to the choice "
                             "of index than long ones. Over the eight-year "
                             "local window this index and DOF's California CPI "

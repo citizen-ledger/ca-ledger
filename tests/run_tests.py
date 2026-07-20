@@ -3292,6 +3292,128 @@ def test_inflation(page, base):
 
 
 
+    # ---- the same contract on the local and K-12 layers -----------------
+    # Each page's own basis sentences must come from the data file, so a
+    # page can never quietly say something the data does not.
+    for pg, entity_hash, src_word in (
+            ("cities.html", "#c=oakland", "Controller"),
+            ("schools.html", "#c=los-angeles-unified", "CDE")):
+        page.goto(f"{base}/{pg}{entity_hash}")
+        page.wait_for_selector("#basisGroup")
+        check(f"inflation {pg}: nominal is the default",
+              page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                    "e => e.classList.contains('on')"))
+        check(f"inflation {pg}: no real-dollar note in a nominal view",
+              page.eval_on_selector("#basisNote", "e => e.hidden"))
+        check(f"inflation {pg}: the strip says the figures are nominal",
+              "NOMINAL" in page.inner_text("#dataBanner").upper())
+
+        sep = "&" if "#" in entity_hash else "#"
+        page.goto(f"{base}/{pg}{entity_hash}{sep}b=real")
+        page.wait_for_selector("#basisNote:not([hidden])")
+        note = page.inner_text("#basisNote")
+        for phrase, why in (
+                ("Ledger", "attributes the adjustment to us"),
+                (m["baseYear"], "names the base year"),
+                ("State and Local Government Purchases", "names the index"),
+                ("42238.1", "names the statutory basis"),
+                (m["vintage"], "names the index vintage"),
+                ("national", "states the geography limit"),
+        ):
+            check(f"inflation {pg}: the note {why}",
+                  phrase.lower() in note.lower(), phrase)
+        check(f"inflation {pg}: the strip marks the view real and ours",
+              "REAL" in page.inner_text("#dataBanner").upper()
+              and "LEDGER" in page.inner_text("#dataBanner").upper())
+        check(f"inflation {pg}: nominal stays one interaction away",
+              page.eval_on_selector("#basisGroup button[data-basis='nominal']",
+                                    "e => !e.disabled"))
+        check(f"inflation {pg}: the basis rides in the permalink",
+              "b=real" in page.evaluate("location.hash"))
+
+        with page.expect_download() as d:
+            page.click("#csvBtn" if pg == "cities.html" else "#csvBtn")
+        csvtxt = Path(d.value.path()).read_text(encoding="utf-8")
+        check(f"inflation {pg}: the CSV declares its dollar basis",
+              "# Dollar basis:" in csvtxt and "REAL" in csvtxt)
+        check(f"inflation {pg}: the CSV names index and vintage",
+              "State and Local Government Purchases" in csvtxt
+              and m["vintage"] in csvtxt)
+        page.click("#citeToggle")
+        page.wait_for_selector("#citePanel[open]")
+        c = page.inner_text("#citeText")
+        check(f"inflation {pg}: the citation names the index and base year",
+              "State and Local Government Purchases" in c and m["baseYear"] in c)
+        check(f"inflation {pg}: the citation says the adjustment is ours",
+              "LEDGER'S OWN" in c.upper())
+        check(f"inflation {pg}: the citation names the source that publishes "
+              f"nominal only", src_word.lower() in c.lower())
+
+    # ---- the window sensitivity is stated per layer, on the right face ---
+    wn = m["windowNotes"]
+    check("inflation: per-layer window notes ship with the data",
+          set(wn) >= {"local", "k12", "state"}, str(sorted(wn)))
+    check("inflation: the K-12 note names the 2.68-point divergence and the "
+          "sign risk — the sensitive case",
+          "2.68" in wn["k12"] and "42%" in wn["k12"]
+          and "sign" in wn["k12"].lower())
+    check("inflation: the local note names the 0.6-point divergence and the "
+          "one city that flips — the less sensitive case",
+          "0.6" in wn["local"] and "482" in wn["local"])
+    check("inflation: the local note carries the result this feature exists "
+          "for (71 of 482 reverse direction)",
+          "71" in wn["local"] and "482" in wn["local"])
+
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    k12note = page.inner_text("#basisNote")
+    check("inflation schools.html: the three-year sensitivity is on THIS "
+          "page's face, not only in a shared method note",
+          "2.68" in k12note and "sign" in k12note.lower())
+    page.goto(f"{base}/cities.html#c=oakland&b=real")
+    page.wait_for_selector("#basisNote:not([hidden])")
+    citynote = page.inner_text("#basisNote")
+    check("inflation cities.html: the eight-year window is stated as the "
+          "less sensitive case", "0.6" in citynote)
+    check("inflation cities.html: and it does NOT claim K-12's sensitivity",
+          "2.68" not in citynote)
+
+    # ---- inert where a ratio would be deflated on both sides
+    page.goto(f"{base}/cities.html#c=oakland&u=percent&b=real")
+    page.wait_for_selector("#basisGroup")
+    check("inflation cities.html: the toggle is disabled in percent units",
+          page.eval_on_selector("#basisGroup button[data-basis='real']",
+                                "e => e.disabled"))
+
+    # ---- THE RESULT THIS FEATURE EXISTS FOR, recomputed from shipped files
+    DEFfy = DEF["fy"]
+    def adj(v, fy):
+        return (v * (DEFfy[m["baseYear"]] / DEFfy[fy])
+                if fy in DEFfy and fy not in m["forecastYears"] else v)
+    a_fy, b_fy = "2016-17", "2023-24"
+    tot = up_down = down_up = 0
+    for rec in CITY["cities"].values():
+        ys = rec.get("years") or {}
+        va = (ys.get(a_fy) or {}).get("expenditures")
+        vb = (ys.get(b_fy) or {}).get("expenditures")
+        if not (isinstance(va, (int, float)) and isinstance(vb, (int, float))
+                and va > 0):
+            continue
+        tot += 1
+        nom = vb / va - 1
+        real = adj(vb, b_fy) / adj(va, a_fy) - 1
+        if nom > 0 and real < 0:
+            up_down += 1
+        if nom < 0 and real > 0:
+            down_up += 1
+    check("inflation: 482 cities have a usable 2016-17 -> 2023-24 span",
+          tot == 482, str(tot))
+    check("inflation: 71 of 482 cities rise nominally and fall in real terms "
+          "— recomputed from the shipped data and the shipped deflator",
+          up_down == 71, str(up_down))
+    check("inflation: none go the other way", down_up == 0, str(down_up))
+
+
 def test_search(page, base):
     """CROSS-LAYER SEARCH — and the trap it has to avoid.
 

@@ -2195,3 +2195,53 @@ silent about it; that nominal is the default and always one interaction
 away; that the toggle is disabled where inert; that the base year is an
 actual and never a forecast; and that the forecast warning lists only
 years the page shows.
+
+## 2026-07-19 — Inflation adjustment extended to cities/counties and K-12
+
+Completes the V14 finding's scope. `cities.html` and `schools.html` now
+carry the same Nominal/Real toggle as `index.html`, built to the same
+contract.
+
+**Every discipline carried forward.** The sentences the pages render
+live in `deflator-data.js` beside the data, never in page markup, so a
+page cannot say something the data does not. "This adjustment is the
+Ledger's, not the source's" renders in the view, the citation and the
+CSV header on all three layers, each naming the source that publishes
+nominal only — the Controller for cities and counties, CDE for K-12.
+Both limits ride along. Nominal is the default and always one
+interaction away. The duplicate-fiscal-year guard is unchanged. The
+toggle is disabled wherever deflating both sides of a ratio provably
+changes nothing.
+
+**Sensitivity is stated per layer, on the right face.** A single shared
+sentence would understate the risk on K-12 and overstate it on the local
+layers, so `meta.windowNotes` carries one per layer and each page renders
+its own:
+
+- **K-12** — rendered as a warning, not a footnote: the window is three
+  years, this deflator and DOF's California CPI differ by **2.68
+  percentage points, roughly 42% of the whole measured inflation**, and
+  that is enough to change the sign of a real trend. The page tells the
+  reader to treat a small real change as indistinguishable from no
+  change, and the citation and CSV repeat it.
+- **Cities and counties** — the less sensitive case: 0.6 points over
+  eight years, disagreeing about the direction of exactly one city in
+  482. The same note carries the result the feature exists for.
+
+Asserted both ways: the K-12 face must contain the 2.68-point figure and
+the word "sign", and the cities face must NOT — a page may not claim a
+sensitivity that is not its own.
+
+**The headline result reproduces in the shipped build.** Recomputed from
+the shipped `city-data.js` through the shipped `deflator-data.js`, using
+the pages' own adjustment: **71 of 482 cities rise in nominal dollars and
+fall in real ones** over FY2016-17 → FY2023-24, and **none go the other
+way**. Statewide city spending is +60.9% nominal against +22.8% real in
+FY2024-25 dollars. That check is now an assertion, not a one-off.
+
+**Forecast years.** Neither new layer's window contains one — the local
+window ends FY2023-24 and K-12 ends FY2024-25, both actuals — but the
+guard is present on both pages so a future year cannot slip through
+unadjusted-but-unmarked.
+
+**Assertions.** 1265 pass.
