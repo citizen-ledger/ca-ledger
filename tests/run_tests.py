@@ -3516,6 +3516,93 @@ def test_print_highered(page, base):
     page.emulate_media(media="screen")
 
 
+def test_print_remaining(page, base):
+    """PRINT SHEETS — schools, special districts, address (priority 3).
+
+    Three different shapes. schools.html already rendered notes inline, so
+    it needed the sheet rather than a rendering-model fix — but inline did
+    NOT mean complete: renderCharter emits no note-row at all, carrying its
+    comparability facts in the schedule label and gate line, so the sheet
+    states them explicitly. districts.html is the as-filed tier and its
+    sheet must not wear the gated layers' dress. address.html stacks
+    governments that are never summed and must never print the address."""
+    page.emulate_media(media="print")
+
+    # ---- schools: districts, county offices, charters
+    for frag, kind, want in (
+            ("#c=los-angeles-unified", "district", "TO THE CENT"),
+            ("#t=coes&c=alameda-county-office-of-education", "county office", "RECORDS ONLY"),
+            ("#t=charters&c=able-charter", "charter", "RECORDS ONLY")):
+        page.goto(f"{base}/schools.html{frag}")
+        page.wait_for_selector("#recordSheet", state="attached")
+        page.wait_for_function(
+            "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+        sh = page.inner_text("#recordSheet")
+        check(f"print schools ({kind}): the sheet renders", bool(sh.strip()))
+        check(f"print schools ({kind}): states its gate or records-only status",
+              want in sh.upper(), want)
+        for ph in ("ACCOUNTING BASIS", "COMPARABILITY NOTES", "SOURCE",
+                   "PERMALINK", "SHA-256", "REVISIONS"):
+            check(f"print schools ({kind}): carries {ph}", ph in sh, ph)
+    # the charter facts that renderCharter never emitted as notes
+    page.goto(f"{base}/schools.html#t=charters&c=able-charter")
+    page.wait_for_selector("#recordSheet", state="attached")
+    ch = page.inner_text("#recordSheet")
+    check("print schools (charter): the filing mode is stated as a note, not "
+          "left in page chrome",
+          "Alternative Form" in ch or "SACS report" in ch, ch[:160])
+    check("print schools (charter): records-only status is a note",
+          "never compared" in ch.lower())
+
+    # ---- districts: the as-filed tier must NOT look like a gated sheet
+    page.goto(f"{base}/districts.html#d=4-e-water-district")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_function(
+        "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+    ds = page.inner_text("#recordSheet")
+    check("print districts: the as-filed caveat leads the sheet",
+          "AS FILED, UNRECONCILED" in ds.upper())
+    check("print districts: states plainly that the Ledger cannot verify it",
+          "cannot verify" in ds.lower())
+    check("print districts: states that no control total exists",
+          "no control-total dataset exists" in ds.lower())
+    check("print districts: NO per-resident figure appears",
+          "per resident" not in ds.lower(), ds[:200])
+    check("print districts: and says why none is shown",
+          "no denominator" in ds.lower())
+    check("print districts: the digest caveat is the as-filed one",
+          "does NOT verify the filed figures" in ds)
+    for ph in ("SOURCE", "PERMALINK", "SHA-256", "REVISIONS"):
+        check(f"print districts: carries {ph}", ph in ds, ph)
+
+    # ---- address: stacked, never summed, address never printed
+    page.goto(f"{base}/address.html#c=oakland&sd=oakland-unified")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_function(
+        "() => document.getElementById('recordSheet').innerText.trim().length > 0")
+    ad = page.inner_text("#recordSheet")
+    check("print address: the do-not-add statement leads",
+          "DO NOT ADD" in ad.upper())
+    check("print address: it carries the LIVE intergovernmental share",
+          "%" in ad and "intergovernmental" not in ad.lower()
+          or "counties" in ad.lower())
+    check("print address: it says this is not a household government cost",
+          "not a household government cost" in ad.lower())
+    check("print address: it states special districts cannot be determined",
+          "cannot be determined" in ad.lower())
+    check("print address: it carries the district-of-residence caveat",
+          "district of residence" in ad.lower())
+    check("print address: each government states its own basis",
+          ad.upper().count("BASIS") >= 2, str(ad.upper().count("BASIS")))
+    check("print address: no total is printed",
+          "total" not in ad.lower().replace("a stacked total", "")
+          .replace("no total", "").replace("total would", ""), "a total appears")
+    check("print address: the sheet says the address is not recorded",
+          "address is not recorded" in ad.lower()
+          or "does not appear on this sheet" in ad.lower())
+    page.emulate_media(media="screen")
+
+
 def test_print_sheet(page, base):
     """PRINT RECORD SHEETS — the named failure mode is a printed figure
     whose caveat was dropped.
@@ -4463,6 +4550,7 @@ def main():
             test_print_sheet(page, base)
             test_print_state(page, base)
             test_print_highered(page, base)
+            test_print_remaining(page, base)
             test_inflation(page, base)
             test_shell(page, base)
             test_cite(page, base)

@@ -55,7 +55,34 @@
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   .mono{font-family:var(--mono)}
   .po{display:none}
-  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}  .roundel,.sw,.bar,.bar *,.cellbar,.cellbar i,.trackbar,.trackbar i,.chg-mid i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .sw,.bar>*,.cellbar i,.trackbar i{outline:1px solid var(--ink);outline-offset:-1px} }
+  @media print{
+  .rs-head{border-bottom:2px solid #000;padding-bottom:8pt;margin-bottom:10pt}
+  .rs-kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:0.09em;font-weight:700;margin-bottom:7pt}
+  .rs-basis{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-basis b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
+  /* the as-filed / do-not-add warning leads, in heavier dress than a basis line */
+  .rs-warn{font-size:9pt;line-height:1.5;margin-bottom:7pt;border:2px solid #000;padding:7pt 9pt}
+  .rs-warn b{font-family:var(--mono);font-size:8pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-ent{margin-bottom:11pt}
+  .rs-name{font-family:var(--serif);font-size:15pt;font-weight:600;border-bottom:1px solid #000;padding-bottom:2pt}
+  .rs-figs{font-family:var(--mono);font-size:9pt;margin-top:4pt}
+  .rs-break{margin-top:6pt}
+  .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
+  .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
+  .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
+  .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
+  .rs-foot div{margin-bottom:4pt}
+  .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
+  .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
+  header, footer.ft, .prov, .method, #methodology, .pillgroup, .hd-actions,
+  .picker-wrap, .searchwrap, .chips, #recordBody, #recordSec, #dirWrap,
+  .finding, .stack, #pinmap, .pinmap { display:none !important }
+  #recordSheet, #printCite { display:block !important }
+ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}  .roundel,.sw,.bar,.bar *,.cellbar,.cellbar i,.trackbar,.trackbar i,.chg-mid i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .sw,.bar>*,.cellbar i,.trackbar i{outline:1px solid var(--ink);outline-offset:-1px} }
 
   header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
   .brand{display:flex;align-items:center;gap:12px}
@@ -209,6 +236,7 @@
 <div class="prov" id="dataBanner"></div>
 
 <main>
+  <div class="po" id="recordSheet"></div>
   <div class="po cite-text" id="printCite"></div>
 
   <div class="hero">
@@ -851,7 +879,88 @@
       + '</div>';
   }
 
+  /* THIS SHEET MUST BE IMPOSSIBLE TO READ AS A HOUSEHOLD TOTAL. The page
+     stacks governments that spend on the same residents on different bases
+     and never sums them; on paper that discipline must survive without the
+     page's layout to carry it. Each government gets its own basis line, the
+     do-not-add statement carries the LIVE intergovernmental share, and no
+     total appears. THE ADDRESS IS NEVER PRINTED - slugs only. */
+  function renderRecordSheet(){
+    const box = document.getElementById("recordSheet");
+    if (!box) return;
+    const rows = [];
+    if (S.city && CITY.cities[S.city]){
+      const c = CITY.cities[S.city], y = c.years[CITY_FY];
+      if (y) rows.push([c.name, "City", money0(y.expenditures * 1e6),
+        "Reported actuals as filed with the State Controller; governmental activities only, "
+        + "ratepayer-funded enterprise activities shown separately. FY " + CITY_FY + "."]);
+    }
+    if (S.county && CTY.counties[S.county]){
+      const c = CTY.counties[S.county], y = c.years[CITY_FY];
+      if (y) rows.push([c.name + " County", "County", money0(y.expenditures * 1e6),
+        "Reported actuals as filed with the State Controller. A county serves the whole "
+        + "county, including the residents of every city inside it. FY " + CITY_FY + "."]);
+    }
+    (S.schools || []).forEach(function(id){
+      const d = SCH.districts[id], v = d && d.years[SCH_FY];
+      if (v) rows.push([d.name, "School district of residence",
+        money0(v.currentExpense / v.ada) + " per ADA",
+        "Unaudited actuals under SACS, reproducing CDE's published Current Expense of "
+        + "Education to the cent. FY " + SCH_FY + "."]);
+    });
+    if (!rows.length){ box.innerHTML = ""; return; }
+    let h = '<div class="rs-head"><div class="rs-kicker">CITIZEN LEDGER \u00b7 RECORD SHEET '
+      + '\u00b7 YOUR GOVERNMENTS \u00b7 STACKED, NEVER SUMMED</div>'
+      + '<div class="rs-warn"><b>THESE FIGURES DO NOT ADD, AND THIS SHEET NEVER ADDS THEM</b>'
+      + 'Money moves between these governments: ' + esc(IG_PCT) + ' of California counties\u2019 '
+      + 'governmental revenues came from the state and federal governments (FY ' + esc(IG.year)
+      + ') \u2014 dollars that also appear in those governments\u2019 own figures. The '
+      + 'state\u2019s enacted budget likewise includes money sent to local governments. A '
+      + 'stacked total would count the same dollars more than once. <strong>No total appears '
+      + 'on this sheet and none should be computed from it. This is not a household '
+      + 'government cost.</strong></div>'
+      + '<div class="rs-basis"><b>DIFFERENT BASES</b>Each government below is measured on its '
+      + 'own accounting basis, over its own fiscal year, from its own source. They are not '
+      + 'comparable with one another and are never ranked.</div>'
+      + '<div class="rs-basis"><b>THE ADDRESS IS NOT RECORDED</b>The address you typed never '
+      + 'left your browser except to the U.S. Census geocoder, and it does not appear on this '
+      + 'sheet, in the permalink, in the citation or in any export \u2014 only the governments '
+      + 'it resolved to.</div>'
+      + '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as published. Not adjusted for '
+      + 'inflation.</div></div>';
+    rows.forEach(function(r){
+      h += '<div class="rs-ent"><div class="rs-name">' + esc(r[0]) + '</div>'
+        + '<div class="rs-figs">' + esc(r[1]) + ' \u00b7 ' + esc(r[2]) + '</div>'
+        + '<div class="rs-notes"><b>BASIS</b><p>' + esc(r[3]) + '</p></div></div>';
+    });
+    h += '<div class="rs-notes"><b>WHAT THIS SHEET CANNOT TELL YOU</b>'
+      + '<p>\u2020 SPECIAL DISTRICTS. The special districts serving this address cannot be '
+      + 'determined. Their service-area boundaries are not published in a form that can be '
+      + 'matched to an address, so this sheet does not attempt it and no figure for them '
+      + 'appears above.</p>'
+      + '<p>\u2020 SCHOOL DISTRICT OF RESIDENCE. The district shown is the district of '
+      + 'residence for this address. Charter-school and inter-district-transfer students may '
+      + 'attend schools run by a different agency, whose spending is not this '
+      + 'district\u2019s.</p>'
+      + '<p>\u2020 THE STATE. California\u2019s enacted budget spends on residents of every '
+      + 'address in the state; no per-address share of it exists or is implied here.</p></div>';
+    h += '<div class="rs-foot">'
+      + '<div><b>SOURCES</b>State Controller (city and county), California Department of '
+      + 'Education (school districts) \u00b7 city data generated ' + esc(CITY.meta.generated)
+      + ', school data ' + esc(SCH.meta.generated) + '</div>'
+      + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span> '
+      + '(government slugs only \u2014 no address)</div>'
+      + '<div><b>RECORD INTEGRITY</b>SHA-256 city-data.js '
+      + esc((CITY.meta.integrity||{}).digest || "\u2014") + '. Verify with '
+      + '<span class="rs-mono">python3 pipeline/verify_digest.py</span> from the repository.</div>'
+      + '<div><b>REVISIONS</b>The Ledger\u2019s record of changes begins on the day it '
+      + 'shipped; an absence of recorded change before then means \u201cnot recorded\u201d, '
+      + 'not \u201cdid not happen\u201d.</div></div>';
+    box.innerHTML = h;
+  }
+
   function render(){
+    try { renderRecordSheet(); } catch (e) { console.error('record sheet:', e); }
     const has = S.city || S.county;
     $("stack").hidden = !has;
     if (!has) return;
