@@ -57,7 +57,29 @@
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   .mono{font-family:var(--mono)}
   .po{display:none}
-  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}
+  @media print{
+  .rs-head{border-bottom:2px solid #000;padding-bottom:8pt;margin-bottom:10pt}
+  .rs-kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:0.09em;font-weight:700;margin-bottom:7pt}
+  .rs-basis{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-basis b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
+  .rs-break{margin-top:6pt}
+  .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
+  .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
+  /* a note may break across pages; it may never be shortened */
+  .rs-notes{margin-top:8pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
+  .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 3pt}
+  .rs-notes p.rs-n{margin-left:9pt;margin-bottom:5pt}
+  .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
+  .rs-foot div{margin-bottom:4pt}
+  .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
+  .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
+  header, footer.ft, .prov, .method, #methodology, .pillgroup,
+  .hd-actions, .tbl, .gatebox, .hero, .dek, .lead { display:none !important }
+  #recordSheet, #printCite { display:block !important }
+ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}
     .bar,.bar i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .bar i{outline:1px solid var(--ink);outline-offset:-1px} }
 
   header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
@@ -189,6 +211,7 @@
 </div>
 
 <main>
+  <div class="po" id="recordSheet"></div>
   <div class="hero">
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2022-23</div>
@@ -304,7 +327,69 @@
     return money0(r.ce);
   }
 
+
+  /* ---------- the print record sheet ------------------------------------
+     On screen the comparability notes open ONE entity at a time via
+     S.openNote, so a printed table showed per-student figures with none of
+     the notes that qualify them. UCSF is the case: four flags, and a
+     per-student figure that means nothing without all four. Rendered on
+     every render(), independent of S.openNote, printing EVERY note for
+     EVERY row in full - never a symbol. Never truncated. */
+  function renderRecordSheet(){
+    const box = document.getElementById("recordSheet");
+    if (!box) return;
+    const ents = D.districts || [];
+    let flagged = 0;
+    let h = '<div class="rs-head"><div class="rs-kicker">'
+      + 'CITIZEN LEDGER \u00b7 RECORD SHEET \u00b7 ' + "COMMUNITY COLLEGE DISTRICTS"
+      + ' \u00b7 FY ' + esc(M.year) + '</div>'
+      + '<div class="rs-basis"><b>ACCOUNTING BASIS</b>' + esc("Modified accrual on the community-college Budget and Accounting Manual chart - the same basis and shape as K-12's SACS. This is NOT the state budget's enacted, budgetary-legal figure; the two are never added.") + '</div>'
+      + '<div class="rs-basis"><b>GATE</b>' + esc("The 73 districts' Current Expense of Education (ECS 84362) sum EXACTLY, TO THE DOLLAR, to the Chancellor's Office's own printed statewide total, and each district's figure is independently validated by the mandatory CPA audit (Ed Code 84040).") + '</div>'
+      + '<div class="rs-basis"><b>RESOLUTION AND DENOMINATOR</b>' + esc("Figures are whole dollars. Per-FTES uses apportionment FUNDED FTES (SCFF Exhibit C), not the Data Mart derived count. Districts are never ranked.") + '</div>'
+      + '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as published. Not adjusted for '
+      + 'inflation: this layer is a single fiscal year, so there is no trend to restate.'
+      + '</div></div>';
+    h += '<div class="rs-break"><b>ALL ROWS \u00b7 ' + esc("whole dollars / per apportionment funded FTES") + '</b><table>'
+      + ents.map(function(c){ return '<tr><td>' + esc(titlecase(c.name))
+          + ((districtNotes(c)||[]).length ? ' \u2020' : '')
+          + '</td><td class="n">' + esc(fmtUnit(c)) + '</td></tr>'; }).join("")
+      + '</table></div>';
+    let notesHtml = '';
+    ents.forEach(function(c){
+      const ns = districtNotes(c) || [];
+      if (!ns.length) return;
+      flagged++;
+      notesHtml += '<p><strong>' + esc(titlecase(c.name)) + '</strong> \u2014 '
+        + ns.length + ' note' + (ns.length===1?'':'s') + '</p>';
+      ns.forEach(function(n){
+        const title = Array.isArray(n) ? n[0] : null;
+        const text  = Array.isArray(n) ? n[1] : n;
+        notesHtml += '<p class="rs-n">\u2020 '
+          + (title ? '<strong>' + esc(title) + '.</strong> ' : '') + esc(text) + '</p>';
+      });
+    });
+    h += '<div class="rs-notes"><b>COMPARABILITY NOTES \u2014 ' + flagged
+      + ' ROW' + (flagged===1?'':'S') + ' CARRY THEM, PRINTED IN FULL</b>'
+      + (notesHtml || '<p>No row on this sheet carries a comparability note.</p>')
+      + '</div>';
+    const integ = M.integrity || {};
+    h += '<div class="rs-foot">'
+      + '<div><b>SOURCE</b>' + esc(M.sourceLabel) + ' \u00b7 generated ' + esc(M.generated) + '</div>'
+      + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span></div>'
+      + (integ.digest ? '<div><b>RECORD INTEGRITY</b>SHA-256 ' + esc(integ.digest)
+          + ' (ccc-data.js). Verify with <span class="rs-mono">python3 '
+          + 'pipeline/verify_digest.py</span> from the repository. The digest proves the '
+          + 'file is the one the pipeline wrote; it does not verify the published figures '
+          + 'themselves.</div>' : '')
+      + '<div><b>REVISIONS</b>The Ledger\u2019s record of changes begins on the day it '
+      + 'shipped. Figures published before then were replaced rather than compared, so an '
+      + 'absence of recorded change for an earlier period means \u201cnot recorded\u201d, '
+      + 'not \u201cdid not happen\u201d.</div></div>';
+    box.innerHTML = h;
+  }
+
   function render(){
+    renderRecordSheet();
     $("heroNum").textContent = moneyB(SW.ce);
     $("heroSub").textContent = SW.nDistricts + " DISTRICTS · " + SW.nColleges + " COLLEGES · " + Math.round(SW.fundedFtes).toLocaleString() + " FUNDED FTES";
     $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION BY DISTRICT · "
