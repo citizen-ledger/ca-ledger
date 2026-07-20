@@ -3137,6 +3137,239 @@ def test_cite(page, base):
           "standardized city annual financial reports" in text)
 
 
+def test_inflation_labeling(page, base):
+    """PLAIN LANGUAGE ON THE INFLATION TOGGLE.
+
+    The control shipped as two pills reading "Nominal" and "Real" with no
+    visible label — its only name was aria-label="Dollar basis", which is
+    screen-reader-only and is itself accounting vocabulary. A reader with no
+    finance background had no way to know the control was an inflation
+    adjustment. Worse, in the DEFAULT nominal state the word "inflation" did
+    not appear anywhere on screen on any of the three layers.
+
+    The precise terms are kept. What is added is a plain-language name for
+    what the control does."""
+    LAYERS = [("index.html", "", "as published"),
+              ("cities.html", "#c=oakland", "as filed"),
+              ("schools.html", "#c=los-angeles-unified", "as filed")]
+
+    for f, frag, asword in LAYERS:
+        page.goto(f"{base}/{f}{frag}")
+        page.wait_for_selector("#basisGroup")
+        page.wait_for_timeout(250)
+
+        st = page.evaluate("""() => { const g = document.getElementById('basisGroup');
+            const l = document.getElementById('basisLbl');
+            const c = l && getComputedStyle(l);
+            return {
+              hasLabel: !!l,
+              labelText: l ? l.textContent.trim() : null,
+              labelVisible: !!(l && c.display !== 'none' && c.visibility !== 'hidden'
+                               && l.offsetParent !== null),
+              labelClass: l ? l.className : null,
+              ariaLabel: g.getAttribute('aria-label'),
+              labelledBy: g.getAttribute('aria-labelledby'),
+              pills: [...g.querySelectorAll('button')].map(b => b.textContent.trim()),
+              nomTitle: g.querySelector("[data-basis='nominal']").title,
+              realTitle: g.querySelector("[data-basis='real']").title,
+            }; }""")
+
+        check(f"inflation labeling {f}: the control carries a VISIBLE label, not "
+              f"only a screen-reader one", st["hasLabel"] and st["labelVisible"])
+        check(f"inflation labeling {f}: and that label says the plain word",
+              st["labelText"] == "Inflation", str(st["labelText"]))
+
+        # aria-label outranks adjacent text in the accessible-name computation.
+        # Leaving it in place would mean a sighted reader sees "Inflation" while
+        # a screen-reader user still hears "Dollar basis" — two names for one
+        # control, strictly worse than before.
+        check(f"inflation labeling {f}: the accounting-vocabulary aria-label is "
+              f"GONE, so the visible word cannot disagree with the announced one",
+              st["ariaLabel"] is None, str(st["ariaLabel"]))
+        check(f"inflation labeling {f}: the group is named BY the visible label",
+              st["labelledBy"] == "basisLbl", str(st["labelledBy"]))
+
+        # The DOM text is title-case and CSS uppercases it. text-transform does
+        # not reach the accessibility tree, so writing "INFLATION" in the markup
+        # would have it announced letter-by-letter by some screen readers.
+        check(f"inflation labeling {f}: the label is uppercased in CSS, not in "
+              f"the DOM, so it is announced as a word",
+              st["labelText"] == "Inflation"
+              and page.eval_on_selector("#basisLbl",
+                    "e => getComputedStyle(e).textTransform") == "uppercase")
+
+        check(f"inflation labeling {f}: the precise terms are KEPT — correct "
+              f"vocabulary is not removed, only made legible",
+              st["pills"] == ["Nominal", "Real"], str(st["pills"]))
+
+        # The group label names the subject; these name the operation. Without
+        # them a reader knows the control concerns inflation but not which pill
+        # applies it.
+        for term, want in (("nominal", asword), ("real", "Adjusted for inflation")):
+            t = st["nomTitle"] if term == "nominal" else st["realTitle"]
+            check(f"inflation labeling {f}: the {term} pill says plainly what it "
+                  f"does", want.lower() in t.lower() and "inflation" in t.lower(), t)
+        check(f"inflation labeling {f}: the real pill names the base year and "
+              f"whose adjustment it is, on the control itself",
+              "2024-25" in st["realTitle"] and "Ledger" in st["realTitle"],
+              st["realTitle"])
+
+        # THE REGRESSION THAT STARTED THIS. Default basis is nominal, and
+        # renderBasisNote() blanks itself when not real — so before this change
+        # the word did not appear on screen at all until Real was already on.
+        vis = page.evaluate("""() => { const out = [];
+            document.querySelectorAll('body *').forEach(e => {
+              if (e.children.length) return;
+              const c = getComputedStyle(e);
+              if (c.display === 'none' || c.visibility === 'hidden' || !e.offsetParent) return;
+              if (/inflation/i.test(e.textContent)) out.push(e.textContent.trim());
+            }); return out; }""")
+        check(f"inflation labeling {f}: the word 'inflation' is on screen in the "
+              f"DEFAULT nominal state, before the reader touches anything",
+              len(vis) > 0, str(vis))
+        check(f"inflation labeling {f}: and the nominal state says it is NOT "
+              f"adjusted, rather than only naming the basis",
+              any("not adjusted for inflation" in v.lower() for v in vis), str(vis))
+
+    # ---- when Real is on, the claim is stated at the point of use
+    for f, frag in [("index.html", "#v=trend&b=real"),
+                    ("cities.html", "#c=oakland&b=real"),
+                    ("schools.html", "#c=los-angeles-unified&b=real")]:
+        page.goto(f"{base}/{f}{frag}")
+        page.wait_for_selector("#basisNote:not([hidden])")
+        lead = page.eval_on_selector("#basisNote b", "e => e.textContent")
+        check(f"inflation labeling {f}: the real-dollar lead states the operation "
+              f"in plain words, not only in accounting terms",
+              "ADJUSTED FOR INFLATION" in lead, lead)
+        check(f"inflation labeling {f}: names the base year in the same line",
+              "2024-25" in lead, lead)
+        # deflator-data.js carries meta.ours; it must reach the face of the page,
+        # not only the method note and the printed sheet.
+        check(f"inflation labeling {f}: and says whose adjustment it is in the "
+              f"same line — the Ledger's, not the source's",
+              "BY THE LEDGER" in lead and "NOT THE SOURCE" in lead, lead)
+
+    # ---- the inert reasons read plainly rather than assuming the reader knows
+    #      why deflating a ratio changes nothing
+    INERT = [("index.html#u=percent&b=real", "percent units", "ratio"),
+             ("index.html#v=actuals&b=real", "the actuals view", "same year"),
+             ("cities.html#c=oakland&u=percent&b=real", "cities percent units", "ratio")]
+    for url, who, must in INERT:
+        page.goto(f"{base}/{url}")
+        page.wait_for_selector("#basisGroup")
+        page.wait_for_timeout(250)
+        r = page.evaluate("""() => { const b = document.querySelector(
+              "#basisGroup button[data-basis='real']");
+            return {disabled: b.disabled, title: b.title}; }""")
+        # native disabled, not aria-disabled: a control that provably does
+        # nothing must not look live. Asserted again here because the plain
+        # rewrite is exactly the kind of change that tempts a switch.
+        check(f"inflation labeling: still natively disabled in {who}",
+              r["disabled"] is True)
+        check(f"inflation labeling: the reason in {who} names inflation in plain "
+              f"words rather than assuming 'deflating' is understood",
+              "inflation" in r["title"].lower() and "deflat" not in r["title"].lower(),
+              r["title"])
+        check(f"inflation labeling: the reason in {who} still gives the arithmetic "
+              f"ground", must in r["title"].lower(), r["title"])
+
+    # ---- THE LABEL MUST STAY WITH THE CONTROL IT LABELS.
+    #      First cut placed the label as a bare sibling in a space-between
+    #      wrapping row. Measured, it detached from its group at 16 of 18
+    #      widths, and on index.html at 1024/900/414/390 it came to rest beside
+    #      the UNIT group — labelling the wrong control, which is worse than
+    #      labelling none. Adjacency is now structural (one inline-flex box),
+    #      and asserted across the range rather than at one convenient width.
+    for f, frag in [("index.html", ""), ("cities.html", "#c=oakland"),
+                    ("schools.html", "#c=los-angeles-unified")]:
+        for w in (1600, 1440, 1280, 1024, 900, 768, 600, 480, 414, 390, 375, 360):
+            page.set_viewport_size({"width": w, "height": 900})
+            page.goto(f"{base}/{f}{frag}")
+            page.wait_for_selector("#basisGroup")
+            page.wait_for_timeout(200)
+            g = page.evaluate("""() => {
+                const l = document.getElementById('basisLbl').getBoundingClientRect();
+                const b = document.getElementById('basisGroup').getBoundingClientRect();
+                const u = document.getElementById('unitGroup');
+                const ur = u ? u.getBoundingClientRect() : null;
+                return {overlap: Math.min(l.bottom, b.bottom) - Math.max(l.top, b.top),
+                        gap: b.left - l.right,
+                        unitOverlap: ur ? Math.min(l.bottom, ur.bottom) - Math.max(l.top, ur.top) : -1,
+                        unitGap: ur ? Math.abs(ur.left - l.right) : 1e9}; }""")
+            check(f"inflation labeling {f} @{w}px: the label shares a line with "
+                  f"the control it names", g["overlap"] > 0,
+                  f'overlap {g["overlap"]:.0f}px')
+            check(f"inflation labeling {f} @{w}px: and sits beside it, not "
+                  f"stranded across the row", 0 <= g["gap"] <= 20, f'gap {g["gap"]:.0f}px')
+            # proximity is the only grouping cue; if another group is nearer on
+            # the same line, the label reads as belonging to that one instead
+            check(f"inflation labeling {f} @{w}px: no other control group is "
+                  f"nearer to it than its own", g["unitOverlap"] <= 0
+                  or g["unitGap"] > g["gap"],
+                  f'unit gap {g["unitGap"]:.0f} vs own gap {g["gap"]:.0f}')
+    page.set_viewport_size({"width": 1280, "height": 900})
+
+    # ---- a reason carried only in title() reaches nobody on a disabled
+    #      control: a disabled button is not focusable, so screen readers get
+    #      nothing. Mirror it into the accessibility tree.
+    page.goto(f"{base}/index.html#u=percent&b=real")
+    page.wait_for_selector("#basisGroup")
+    page.wait_for_timeout(250)
+    a = page.evaluate("""() => { const g = document.getElementById('basisGroup');
+        const w = document.getElementById('basisWhy');
+        return {by: g.getAttribute('aria-describedby'), text: w ? w.textContent : null,
+                title: document.querySelector("#basisGroup button[data-basis='real']").title}; }""")
+    check("inflation labeling: the inert reason reaches assistive tech, not only "
+          "a mouse hover", a["by"] == "basisWhy" and a["text"] == a["title"]
+          and len(a["text"]) > 0, str(a["by"]))
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#basisGroup")
+    page.wait_for_timeout(250)
+    check("inflation labeling: and the description is withdrawn when the control "
+          "works, so nothing stale is announced",
+          page.evaluate("() => document.getElementById('basisGroup')"
+                        ".getAttribute('aria-describedby')") is None)
+
+    # ---- A REASON MUST BE TRUE ON THE SCREEN THAT SHOWS IT.
+    #      realOn() excludes percent units but NOT the actuals view, so figures
+    #      there ARE adjusted. A first draft of this copy read "No inflation
+    #      adjustment applies here" while the basis note on the same screen read
+    #      "ADJUSTED FOR INFLATION". Plain language that is false is worse than
+    #      jargon that is true.
+    page.goto(f"{base}/index.html#v=actuals&b=real")
+    page.wait_for_selector("#basisGroup")
+    page.wait_for_timeout(400)
+    t = page.evaluate("""() => { const n = document.getElementById('basisNote');
+        return {noteShown: !n.hidden,
+                lead: n.hidden ? "" : n.querySelector('b').textContent,
+                reason: document.querySelector("#basisGroup button[data-basis='real']").title}; }""")
+    check("inflation labeling: the actuals reason does not deny an adjustment "
+          "the same screen is announcing",
+          not (t["noteShown"] and "ADJUSTED FOR INFLATION" in t["lead"]
+               and "no inflation adjustment applies" in t["reason"].lower()),
+          f'note={t["lead"][:40]!r} reason={t["reason"][:60]!r}')
+    check("inflation labeling: it says instead that the basis cannot change the "
+          "gap, which is what is actually true",
+          "cannot change" in t["reason"].lower() and "gap" in t["reason"].lower(),
+          t["reason"])
+
+    # ---- the label survives the narrow viewport that has bitten this row twice
+    page.set_viewport_size({"width": 360, "height": 800})
+    for f in ("index.html", "cities.html", "schools.html"):
+        page.goto(f"{base}/{f}")
+        page.wait_for_timeout(500)
+        sw, cw = page.evaluate(
+            "() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")
+        check(f"inflation labeling {f}: no horizontal overflow at 360px", sw <= cw,
+              f"{sw} > {cw}")
+        check(f"inflation labeling {f}: the label is still visible at 360px — a "
+              f"label that vanishes on a phone is not a label",
+              page.evaluate("""() => { const l = document.getElementById('basisLbl');
+                  const c = getComputedStyle(l);
+                  return c.display !== 'none' && l.offsetParent !== null; }"""))
+    page.set_viewport_size({"width": 1280, "height": 900})
+
+
 def test_inflation(page, base):
     """THE INFLATION ADJUSTMENT (V14) — the site's first figure that is a
     METHODOLOGICAL CHOICE rather than reproduction of a source.
@@ -4650,6 +4883,7 @@ def main():
             test_print_remaining(page, base)
             test_print_control(page, base)
             test_inflation(page, base)
+            test_inflation_labeling(page, base)
             test_shell(page, base)
             test_cite(page, base)
             test_polish(page, base)

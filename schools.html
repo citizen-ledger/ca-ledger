@@ -115,6 +115,8 @@
   .hero-lbl{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-top:4px}
   .hero-right{text-align:right}
   .microlbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;color:var(--smoke)}
+  .basisctl{display:inline-flex;align-items:center;gap:8px}
+  .basislbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;text-transform:uppercase;color:var(--graphite);white-space:nowrap}
   .schedlbl{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
   .dim{color:var(--smoke)}
@@ -294,10 +296,14 @@
       <select id="yearSel" aria-label="Select fiscal year"></select>
       <button id="yearNext" aria-label="Next fiscal year">▸</button>
     </div>
-    <div class="pillgroup" role="group" aria-label="Dollar basis" id="basisGroup">
-      <button data-basis="nominal">Nominal</button>
-      <button data-basis="real">Real</button>
-    </div>
+    <span class="basisctl">
+      <span class="basislbl" id="basisLbl">Inflation</span>
+      <span class="pillgroup" role="group" aria-labelledby="basisLbl" id="basisGroup">
+        <button data-basis="nominal">Nominal</button>
+        <button data-basis="real">Real</button>
+      </span>
+      <span id="basisWhy" class="visually-hidden"></span>
+    </span>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="perAda">Per ADA</button>
       <button data-unit="total">Total dollars</button>
@@ -473,7 +479,7 @@
       + (realOn()
           ? "<span>DOLLARS: REAL, FY " + esc(DEFM.baseYear)
             + " — THE LEDGER'S OWN ADJUSTMENT, NOT CDE'S</span>"
-          : "<span>DOLLARS: NOMINAL, AS FILED</span>")
+          : "<span>DOLLARS: NOMINAL, AS FILED — NOT ADJUSTED FOR INFLATION</span>")
       + "<span>PUBLIC RECORD</span>";
     renderBasisNote();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
@@ -524,12 +530,21 @@
     $("unitGroup").style.display = S.type === "districts" ? "" : "none";
     // no ratio unit on this page, so the only reason to disable is a
     // missing deflator file
-    const inert = !DEF ? "the deflator file did not load" : "";
+    const inert = !DEF
+      ? "Inflation adjustment unavailable: the deflator file did not load."
+      : "";
     document.querySelectorAll("#basisGroup button").forEach(b => {
       b.classList.toggle("on", b.dataset.basis === S.basis);
       b.disabled = !!inert;
-      b.title = inert || "";
+      b.title = inert || basisHint(b.dataset.basis);
     });
+    const why = $("basisWhy");
+    if (why){
+      why.textContent = inert || "";
+      const g = $("basisGroup");
+      if (inert) g.setAttribute("aria-describedby", "basisWhy");
+      else g.removeAttribute("aria-describedby");
+    }
     $("basisGroup").classList.toggle("inert", !!inert);
   }
 
@@ -896,13 +911,25 @@
      this layer's window is three years, and that is the sensitive case for
      the choice of index. The K-12 sentence is stated on this page's face,
      not left to a shared method note. */
+  /* The pills say "Nominal" and "Real" — the precise words, kept. What a
+     reader who does not already know them needs is what each one DOES, so
+     each carries a plain description. The label beside the group names the
+     subject; these name the operation. */
+  function basisHint(which){
+    if (which === "nominal")
+      return "Dollars as filed, with no adjustment for inflation.";
+    return "Adjusted for inflation into FY " + (DEFM ? DEFM.baseYear : "")
+      + " dollars. This adjustment is the Ledger's, not the source's.";
+  }
+
   function renderBasisNote(){
     const box = $("basisNote");
     if (!box) return;
     if (!realOn()){ box.hidden = true; box.innerHTML = ""; return; }
     const m = DEFM;
     box.innerHTML =
-      '<b>REAL DOLLARS — THIS ADJUSTMENT IS THE LEDGER&rsquo;S, NOT THE SOURCE&rsquo;S</b>'
+      '<b>ADJUSTED FOR INFLATION — INTO FY ' + esc(m.baseYear)
+      + ' DOLLARS, BY THE LEDGER, NOT THE SOURCE</b>'
       + esc(m.ours)
       + ' Figures are restated into <strong>FY ' + esc(m.baseYear)
       + ' dollars</strong> using the <strong>' + esc(m.index) + '</strong> ('

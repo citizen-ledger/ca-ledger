@@ -2283,3 +2283,52 @@ onto the paper.
 **Assertions.** 1429 → 1518 (+89). Also fixed a 2px horizontal overflow
 at 360px that the extra button introduced — the action row could not
 wrap.
+
+## 2026-07-20 — The inflation toggle says what it is
+
+The nominal/real control shipped as two pills reading "Nominal" and "Real"
+with no visible label. Its only name was `aria-label="Dollar basis"` —
+screen-reader-only, and itself accounting vocabulary. A reader with no
+finance background had no way to know the control was an inflation
+adjustment. In the default nominal state the word "inflation" did not
+appear anywhere on screen on any of the three layers.
+
+The precise terms are kept. "Nominal" and "Real" still read exactly that.
+What is added is a plain-language name for what the control does:
+
+- A visible **Inflation** label bound to the group, with the accounting
+  `aria-label` removed and `aria-labelledby` pointing at the visible word,
+  so the announced name and the rendered name cannot drift apart.
+- Each pill states its operation: "Dollars as filed, with no adjustment for
+  inflation" / "Adjusted for inflation into FY 2024-25 dollars. This
+  adjustment is the Ledger's, not the source's."
+- The real-dollar lead now reads **ADJUSTED FOR INFLATION — INTO FY 2024-25
+  DOLLARS, BY THE LEDGER, NOT THE SOURCE**, carrying all three facts the
+  reader needs in one line, at the point of use.
+- The nominal chip says "NOT ADJUSTED FOR INFLATION" rather than only
+  naming the basis.
+- The inert reasons drop "deflating" for plain words, and are mirrored into
+  the accessibility tree — a disabled button is not focusable, so a reason
+  carried only in `title` reached nobody.
+
+**Two defects were caught by adversarial verification and fixed before
+this shipped.** The label was first placed as a bare sibling in a
+space-between wrapping row; measured, it detached from its group at 16 of
+18 widths, and on the state page at 1024/900/414/390 it came to rest beside
+the *unit* group — labelling the wrong control, which is worse than
+labelling none. It is now structurally bound in one inline-flex box, and
+adjacency is asserted at twelve widths on three layers rather than at one
+convenient size.
+
+The second was a copy defect of exactly the kind this change was meant to
+prevent. `realOn()` excludes percent units but **not** the actuals view, so
+figures there are adjusted — while the first draft of the reason read "No
+inflation adjustment applies here" beside a note reading "ADJUSTED FOR
+INFLATION". Plain language that is false is worse than jargon that is true.
+It now says the basis cannot change the gap, which is what is actually the
+case.
+
+**No figure changed.** 1,162 rendered figures across 16 views compared
+against main: byte-identical.
+
+**Assertions.** 1518 → 1687 (+169).
