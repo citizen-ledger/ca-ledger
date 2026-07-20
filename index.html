@@ -1237,10 +1237,11 @@
     const info = actInfo();
     if (S.view === "actuals" && info && !info.unavailable){
       const items = levelItems(S.year) || [];
-      const actTot = items.reduce((s,it)=>{ const v=actTotalOf(it); return v==null?s:s+v; },0);
+      const actTot = items.reduce((s,it)=>{ const v=actTotalOf(it);
+        return v==null?s:s+adjV(v,S.year); },0);
       const figure = a
-        ? a.name + ", FY " + S.year + ": enacted $" + itemTotal(a,S.fed).toFixed(3)
-          + " billion, actual $" + (actTotalOf(a)==null?"—":actTotalOf(a).toFixed(3)) + " billion in " + scope + ". "
+        ? a.name + ", FY " + S.year + ": enacted $" + adjV(itemTotal(a,S.fed), S.year).toFixed(3)
+          + " billion, actual $" + (actTotalOf(a)==null?"—":adjV(actTotalOf(a), S.year).toFixed(3)) + " billion in " + scope + ". "
         : "FY " + S.year + ": enacted $" + C.total.toFixed(3) + " billion, actual $"
           + actTot.toFixed(3) + " billion in " + scope + ". ";
       return 'Citizen Ledger, "State Budget — Enacted vs. Actual by '
@@ -1255,7 +1256,7 @@
         + "Accessed " + new Date().toISOString().slice(0,10) + ".";
     }
     const figure = a
-      ? a.name + ", FY " + S.year + ": $" + itemTotal(a,S.fed).toFixed(3) + " billion in " + scope + ". "
+      ? a.name + ", FY " + S.year + ": $" + adjV(itemTotal(a,S.fed), S.year).toFixed(3) + " billion in " + scope + ". "
       : "FY " + S.year + " total: $" + C.total.toFixed(3) + " billion in " + scope + ". ";
     return 'Citizen Ledger, "State Budget — Appropriations by '
       + (a ? "Department, " + a.name : "Agency") + ', FY ' + S.year + ' (Enacted)." '

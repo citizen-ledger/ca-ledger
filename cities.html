@@ -53,7 +53,38 @@
   :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   .mono{font-family:var(--mono)}
   .po{display:none}
-  @media print{ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}  .roundel,.sw,.bar,.bar *,.cellbar,.cellbar i,.trackbar,.trackbar i,.chg-mid i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .sw,.bar>*,.cellbar i,.trackbar i{outline:1px solid var(--ink);outline-offset:-1px} }
+  @media print{
+  /* The sheet is self-contained, so the interactive surface and the long
+     methodology prose are suppressed rather than reprinted around it. The
+     record sheet itself is never clipped. */
+  footer.ft, .prov, .hd, header, .encap, .entfoot,
+  main > section, main > .method, #methodology, .overlap, #recordBody,
+  .picker-wrap, .pillgroup, .switch, #mapWrap, .chips, .searchwrap { display:none !important }
+  #recordSheet, #printCite { display:block !important }
+  .rs-break{margin-top:6pt}
+  .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
+  .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
+
+  /* ---- print record sheet: grayscale-safe, notes never truncated ---- */
+  .rs-head{border-bottom:2px solid #000;padding-bottom:8pt;margin-bottom:10pt}
+  .rs-kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:0.09em;font-weight:700;margin-bottom:7pt}
+  .rs-basis{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-basis b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
+  .rs-ent{margin-bottom:11pt;break-inside:avoid}
+  .rs-name{font-family:var(--serif);font-size:15pt;font-weight:600;border-bottom:1px solid #000;padding-bottom:2pt}
+  .rs-figs{font-family:var(--mono);font-size:9pt;margin-top:4pt}
+  /* Notes must never be clipped or truncated to make a page fit. They may
+     break across pages; they may not be shortened. */
+  .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
+  .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
+  .rs-foot div{margin-bottom:4pt}
+  .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
+  .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
+ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}  .roundel,.sw,.bar,.bar *,.cellbar,.cellbar i,.trackbar,.trackbar i,.chg-mid i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .sw,.bar>*,.cellbar i,.trackbar i{outline:1px solid var(--ink);outline-offset:-1px} }
 
   header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
   .brand{display:flex;align-items:center;gap:12px}
@@ -278,6 +309,7 @@
 <div class="basisnote" id="basisNote" hidden></div>
 
 <main>
+  <div class="po" id="recordSheet"></div>
   <div class="po cite-text" id="printCite"></div>
 
   <div class="hero">
@@ -622,6 +654,7 @@
           : "<span>DOLLARS: NOMINAL, AS FILED</span>")
       + "<span>PUBLIC RECORD</span>";
     renderBasisNote();
+    renderRecordSheet();
     $("kicker").textContent = "THE PUBLIC RECORD · FY " + S.year;
     const LU = LAYERS[S.layer];
     $("pickLbl").textContent = LU.plural.toUpperCase();
@@ -1032,6 +1065,107 @@
   /* The label that must never be missing — same contract as the state page.
      Every sentence comes from deflator-data.js, so the claim ships with the
      data rather than living in markup that could drift from it. */
+  /* ---------- the print record sheet ------------------------------------
+     Paper has no tooltips. On screen a comparability note lives behind a
+     dagger and only ONE can be open at a time (S.openNote is a single
+     value), so a printed page could show a figure whose caveat was never
+     in the DOM. Lakewood is the case that names the problem: $103 per
+     resident of police, with police contracted to the county and fire
+     provided by a special district — two notes, and no interaction that
+     puts both on paper.
+
+     This block is rendered on every render(), independent of S.openNote,
+     and prints EVERY note for EVERY selected entity in full. It is never
+     truncated: if the notes overflow a page, the sheet runs to two. */
+  function renderRecordSheet(){
+    const box = $("recordSheet");
+    if (!box) return;
+    const ids = S.sel.slice();
+    if (!ids.length){ box.innerHTML = ""; return; }
+    const L = LAYERS[S.layer];
+    const m = D.meta;
+    const integ = m.integrity || {};
+    let h = '<div class="rs-head">'
+      + '<div class="rs-kicker">CITIZEN LEDGER · RECORD SHEET · '
+      + esc(L.plural.toUpperCase()) + ' · FY ' + esc(S.year) + '</div>'
+      + '<div class="rs-basis"><b>ACCOUNTING BASIS</b>'
+      + 'Reported actual expenditures as filed by each ' + esc(L.noun)
+      + ' with the California State Controller; governmental activities only, '
+      + 'with ratepayer-funded enterprise activities reported separately and '
+      + 'never added to them.</div>'
+      + '<div class="rs-basis"><b>GATE</b>'
+      + 'Every ' + esc(L.noun) + '-year in this layer reconciles to the '
+      + 'Controller&rsquo;s own published total for that government before '
+      + 'publication. Figures are as filed by the government named; the '
+      + 'Controller does not audit them.</div>'
+      + (realOn()
+          ? '<div class="rs-basis"><b>DOLLARS</b>REAL — restated into FY '
+            + esc(DEFM.baseYear) + ' dollars by the Ledger using the '
+            + esc(DEFM.index) + ' (' + esc(DEFM.geography) + ', '
+            + esc(DEFM.indexBase) + '), the index named by ' + esc(DEFM.statute)
+            + ', DOF vintage ' + esc(DEFM.vintage) + '. '
+            + esc(DEFM.ours) + '</div>'
+          : '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as filed. Not adjusted '
+            + 'for inflation.</div>')
+      + '</div>';
+
+    ids.forEach(id => {
+      const e = ENTS[id], yr = (e.years||{})[S.year];
+      const notes = cityNotes(id);
+      h += '<div class="rs-ent">'
+        + '<div class="rs-name">' + esc(dispName(id)) + '</div>'
+        + '<div class="rs-figs">'
+        + (yr ? 'Governmental expenditures ' + esc(fmtM(adjV(yr.expenditures, S.year)))
+              + ' · population ' + esc(fmtPop(yr.population))
+              + ' · ' + esc(fmtCap(perCap(adjV(yr.expenditures, S.year), yr.population)))
+              + ' per resident'
+            : 'No filing on record for FY ' + esc(S.year) + '.')
+        + '</div>';
+      const bf = (yr && yr.byFunction) || {};
+      const rows = FUNCS.map(f => [f.name, bf[f.key]])
+                        .filter(r => typeof r[1] === "number")
+                        .sort((a,b) => b[1]-a[1]);
+      if (rows.length){
+        const tot = rows.reduce((t,r)=>t+r[1],0);
+        h += '<div class="rs-break"><b>BY FUNCTION · GOVERNMENTAL ACTIVITIES</b>'
+          + '<table>' + rows.map(r =>
+              '<tr><td>' + esc(r[0]) + '</td><td class="n">'
+              + esc(fmtM(adjV(r[1], S.year))) + '</td><td class="n">'
+              + (tot ? (r[1]/tot*100).toFixed(1) : "0.0") + '%</td></tr>').join("")
+          + '</table></div>';
+      }
+      if (notes.length){
+        h += '<div class="rs-notes"><b>COMPARABILITY NOTES — ' + notes.length
+          + ' APPLY TO THIS RECORD</b>';
+        notes.forEach(n => { h += '<p>&dagger; ' + esc(n.text) + '</p>'; });
+        h += '</div>';
+      } else {
+        h += '<div class="rs-notes"><b>COMPARABILITY NOTES</b>'
+          + '<p>None recorded for this ' + esc(L.noun) + ' in FY '
+          + esc(S.year) + '.</p></div>';
+      }
+      h += '</div>';
+    });
+
+    h += '<div class="rs-foot">'
+      + '<div><b>SOURCE</b>' + esc(m.sourceLabel) + ' · generated '
+      + esc(m.generated) + '</div>'
+      + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span></div>'
+      + (integ.digest
+          ? '<div><b>RECORD INTEGRITY</b>SHA-256 ' + esc(integ.digest)
+            + ' (' + esc(L.plural === "counties" ? "county-data.js" : "city-data.js")
+            + '). Verify with <span class="rs-mono">python3 pipeline/verify_digest.py</span> '
+            + 'from the repository. The digest proves the file is the one the '
+            + 'pipeline wrote; it does not verify the filed figures themselves.</div>'
+          : '')
+      + '<div><b>REVISIONS</b>The Ledger&rsquo;s record of changes begins on the '
+      + 'day it shipped. Figures published before then were replaced rather than '
+      + 'compared, so an absence of recorded change for an earlier period means '
+      + '&ldquo;not recorded&rdquo;, not &ldquo;did not happen&rdquo;.</div>'
+      + '</div>';
+    box.innerHTML = h;
+  }
+
   function renderBasisNote(){
     const box = $("basisNote");
     if (!box) return;
