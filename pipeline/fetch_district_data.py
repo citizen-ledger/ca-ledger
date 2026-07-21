@@ -139,22 +139,33 @@ def classify(category, subcat):
 
 
 def fetch_amounts(dataset, name_f, year_f, cat_f, sub_f, val_f):
-    """entity -> year label -> {gov, ent, isf, cf} in as-filed dollars."""
+    """(entity, county) -> year label -> {gov, ent, isf, cf} as filed.
+
+    KEYED ON THE SAME PAIR THE DIRECTORY GROUPS ON. Grouping these by
+    name alone silently ADDED two independent agencies that share a
+    name: measured, "Rural North Vacaville Water District" is both a
+    Solano community-services district and a Sutter LEVEE district, and
+    the shipped FY 2017-18 figure was $1,268,460 — the arithmetic sum of
+    $1,101,223 and $167,237. No totals gate could see it; the money was
+    all present, attributed to one entity instead of two."""
     out = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
     where = f"{year_f} >= '2017' and {year_f} <= '2024'"
     rows = soda(dataset, **{
-        "$select": f"{name_f} as n, {year_f} as y, {cat_f} as c, sum({val_f}) as v",
+        "$select": f"{name_f} as n, county as co, {year_f} as y, "
+                   f"{cat_f} as c, sum({val_f}) as v",
         "$where": f"{where} and {cat_f} != '{TRANSPORT_CAT}'",
-        "$group": f"{name_f}, {year_f}, {cat_f}"})
+        "$group": f"{name_f}, county, {year_f}, {cat_f}"})
     collapse = lambda s: re.sub(r"\s+", " ", s).strip()
+    ident = lambda r: (collapse(r["n"]), (r.get("co") or "").strip().lower())
     for r in rows:
-        out[collapse(r["n"])][YEARS[r["y"]]][classify(r["c"], None)] += float(r["v"] or 0)
+        out[ident(r)][YEARS[r["y"]]][classify(r["c"], None)] += float(r["v"] or 0)
     rows = soda(dataset, **{
-        "$select": f"{name_f} as n, {year_f} as y, {sub_f} as s, sum({val_f}) as v",
+        "$select": f"{name_f} as n, county as co, {year_f} as y, "
+                   f"{sub_f} as s, sum({val_f}) as v",
         "$where": f"{where} and {cat_f} = '{TRANSPORT_CAT}'",
-        "$group": f"{name_f}, {year_f}, {sub_f}"})
+        "$group": f"{name_f}, county, {year_f}, {sub_f}"})
     for r in rows:
-        out[collapse(r["n"])][YEARS[r["y"]]][classify(TRANSPORT_CAT, r.get("s"))] += float(r["v"] or 0)
+        out[ident(r)][YEARS[r["y"]]][classify(TRANSPORT_CAT, r.get("s"))] += float(r["v"] or 0)
     return out
 
 
@@ -231,7 +242,18 @@ def main():
                 years_seen |= ys
             merged_variants += len(e["names"]) - 1
         canonical = max(e["names"], key=lambda n2: e["names"][n2])
-        ents[canonical] = {
+        # KEYED ON (name, county) — THE SAME PAIR THE GROUPING ABOVE USES.
+        # Writing to ents[canonical] grouped correctly and then stored on a
+        # subset of the key, so two districts differing only by county
+        # collided and the second silently overwrote the first. The
+        # aggregation was right, which is what made it invisible.
+        ident = (canonical, (e["county"] or "").strip().lower())
+        if ident in ents:
+            raise SystemExit(
+                f"ENTITY KEY COLLISION {ident!r} — two groups resolve to one "
+                "directory key; nothing written")
+        ents[ident] = {
+            "name": canonical,
             "county": e["county"], "activity": e["activity"],
             "type": e["type"], "filedYears": e["filedYears"],
             "variants": sorted(n2 for n2 in e["names"] if n2 != canonical),
@@ -239,19 +261,19 @@ def main():
 
     # re-key amounts by canonical spelling (variant years are disjoint,
     # so this is a union, not an addition across filers)
-    for canonical, e in ents.items():
+    for (canonical, ckey), e in ents.items():
         for v in e["variants"]:
             for src in (exp, rev):
-                if v in src:
-                    for y, vals in src.pop(v).items():
+                if (v, ckey) in src:
+                    for y, vals in src.pop((v, ckey)).items():
                         for k, amt in vals.items():
-                            src[canonical][y][k] += amt
+                            src[(canonical, ckey)][y][k] += amt
 
     # ---- delinquency lists: normalized-prefix + county matching,
     # counted honestly, never guessed.
     by_norm_county = defaultdict(list)
-    for name, e in ents.items():
-        by_norm_county[(e["county"] or "").lower()].append((norm(name), name))
+    for ident, e in ents.items():
+        by_norm_county[(e["county"] or "").lower()].append((norm(ident[0]), ident))
     late = defaultdict(dict)          # name -> {year label: "L"|"M"}
     matching = {"lateMatched": 0, "lateStandalone": 0, "lateAmbiguous": 0,
                 "failedMatched": 0, "failedStandalone": 0,
@@ -266,9 +288,9 @@ def main():
         for r in rows:
             nm, county = r["special_district"].strip(), r["county"].strip()
             key = norm(nm)
-            cands = [full for n, full in by_norm_county[county.lower()]
+            cands = [ident for n, ident in by_norm_county[county.lower()]
                      if n.startswith(key)]
-            exact = [c for c in cands if norm(c) == key]
+            exact = [c for c in cands if norm(c[0]) == key]
             target = exact[0] if len(exact) == 1 else (
                 cands[0] if len(cands) == 1 else None)
             code = "L" if r["status"] == "Filed Late" else "M"
@@ -296,18 +318,22 @@ def main():
         districts[slug] = entry
 
     taken = set()
-    for name in sorted(ents, key=lambda n: n.lower()):
-        e = ents[name]
+    # sorted on the WHOLE identity, so which of two same-named districts
+    # takes the bare slug is deterministic rather than a property of dict
+    # ordering
+    for ident in sorted(ents, key=lambda i: (i[0].lower(), i[1])):
+        name, _ck = ident
+        e = ents[ident]
         slug = slugify(name)
         if slug in taken:                      # same name, different county
             slug = slugify(name + "-" + (e["county"] or "x"))
         taken.add(slug)
         f = "".join(
-            (late.get(name, {}).get(y) or
+            (late.get(ident, {}).get(y) or
              ("F" if y in e["filedYears"] else "-"))
             for y in YEAR_LABELS)
-        def series(src, keys):
-            byy = src.get(name, {})
+        def series(src, keys, _id=ident):
+            byy = src.get(_id, {})
             return [[round(byy[y].get(k, 0)) for k in keys]
                     if y in byy else None for y in YEAR_LABELS]
         entry = {
@@ -344,14 +370,14 @@ def main():
     activity_counts = defaultdict(int)
     dollars = defaultdict(float)
     rev_dollars = defaultdict(float)
-    for name, e in ents.items():
+    for ident, e in ents.items():
         if latest not in e["filedYears"]:
             continue
         type_counts[e["type"] or "Not stated in filings"] += 1
         activity_counts[e["activity"] or "(none stated)"] += 1
-        for k, v in exp.get(name, {}).get(latest, {}).items():
+        for k, v in exp.get(ident, {}).get(latest, {}).items():
             dollars[k] += v
-        for k, v in rev.get(name, {}).get(latest, {}).items():
+        for k, v in rev.get(ident, {}).get(latest, {}).items():
             rev_dollars[k] += v
     filed_latest = filers_by_year[latest]
     failed_latest = per_year_lists[latest]["failed"]
@@ -359,8 +385,8 @@ def main():
     # entry on SCO's latest failed-to-file list that did NOT end up
     # filing for that year (matched-but-unfiled or matched nothing)
     failed_not_filed = sum(
-        1 for name, ys in late.items()
-        if ys.get(latest) == "M" and latest not in ents[name]["filedYears"])
+        1 for ident, ys in late.items()
+        if ys.get(latest) == "M" and latest not in ents[ident]["filedYears"])
     failed_not_filed += sum(1 for st in standalone.values()
                             if latest in st["years"])
     finding = {

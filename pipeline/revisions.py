@@ -578,6 +578,10 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     batch = {"built": date.today().isoformat(), "events": events,
              "figuresDigest": fdigest, "pipelineCommit": pipeline_commit(),
              "cells": len(new_flat)}
+    corr = correction_for(layer, batch["built"])
+    if corr:
+        batch["ours"] = True
+        batch["note"] = corr["note"]
     if source_signal:
         batch["sourceUpdated"] = source_signal
     rec["batches"].append(batch)
@@ -589,6 +593,52 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     rec["labels"] = merged
     write_record(layer, rec)
     return batch
+
+
+# ------------------------------------------------------------ corrections
+
+# OUR OWN CORRECTIONS — the feed's one attributed event type.
+#
+# A changed figure normally gets no cause: telling a source restatement
+# from a source redefinition requires reading release notes, which is a
+# human act (see the module docstring). The exception is a change WE
+# caused, where the cause is known rather than inferred because it is our
+# own commit.
+#
+# The invariant that keeps this honest: a note can only come from a
+# constant declared here. The refresh path may APPLY a declared
+# correction, but it can never invent one, so no per-refresh judgement
+# step is introduced.
+CORRECTIONS = [
+    {
+        "layer": "district",
+        "built": "2026-07-20",
+        "note": "Our own correction, not a change at the source. The special "
+                "district pipeline grouped filings on (name, county) — "
+                "correctly — but then wrote the directory and the amounts "
+                "keyed on the NAME alone, so three pairs of same-named "
+                "districts in different counties collided and each pair was "
+                "published as one entity. Rural North Vacaville Water "
+                "District carried Sutter County and a levee activity while "
+                "being a Solano community-services district, and its "
+                "FY 2017-18 expenditure read $1,268,460 — the arithmetic sum "
+                "of two independent agencies. Hamilton City Fire Protection "
+                "District carried Sonoma County; it is in Glenn. California "
+                "Risk Management Authority (CRMA) merged its Fresno and "
+                "Madera filings. Every totals gate passed throughout: the "
+                "money was all present, attributed to one entity instead of "
+                "two. The six records now match the source's county, "
+                "activity and filing years exactly.",
+    },
+]
+
+
+def correction_for(layer, built):
+    """The declared correction for this layer and build date, or None."""
+    for c in CORRECTIONS:
+        if c["layer"] == layer and c["built"] == built:
+            return c
+    return None
 
 
 # --------------------------------------------------------------- backfill

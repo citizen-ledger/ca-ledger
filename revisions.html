@@ -340,7 +340,8 @@
         if (!b.events || !b.events.length) return;
         body += '<div class="batch"><div class="batch-hd">BUILD ' + esc(b.built)
              + ' · ' + b.events.length + ' event' + (b.events.length===1?'':'s')
-             + (b.backfilled ? ' · BACKFILLED' : '') + '</div>';
+             + (b.backfilled ? ' · BACKFILLED' : '')
+             + (b.ours ? ' · OUR CORRECTION' : '') + '</div>';
         if (b.note) body += '<p class="batch-note">' + esc(b.note) + '</p>';
         var rows = b.events.slice(0, SHOWN).map(function(e){
           return '<tr><td>' + esc(label(r, e.e)) + '</td>'

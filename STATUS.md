@@ -2423,3 +2423,59 @@ county for a district in Solano. Not fixed here; recorded as the next
 priority.
 
 **Assertions.** 1687 → 1705 (+18), all 18 executed.
+
+## 2026-07-20 — Districts: grouped on (name, county), stored on the name
+
+A published figure was wrong. The special-district pipeline grouped
+filings on `(norm(name), county.lower())` — correctly — and then wrote
+both the directory and the amounts keyed on the **display name alone**.
+Three pairs of same-named districts in different counties collided, and
+each pair shipped as one entity.
+
+The grouping being right is what made it invisible. Anyone reading the
+aggregation concluded the code was correct, and no totals gate could see
+it either: the money was all present, attributed to one entity instead of
+two. The defect was at write time, not at aggregation time.
+
+What was published wrong, and what the source actually says:
+
+| record | was | is |
+|---|---|---|
+| Rural North Vacaville Water District | Sutter, "Levee" | **Solano, "Community Services"** |
+| — its FY 2017-18 expenditure | $1,268,460 | **$1,101,223** |
+| Hamilton City Fire Protection District | Sonoma, JPA | **Glenn, "Fire Protection"** |
+| California Risk Management Authority (CRMA) | Fresno+Madera merged | **split, Fresno and Madera** |
+
+The $1,268,460 was the arithmetic sum of two independent agencies —
+$1,101,223 filed in Solano and $167,237 filed by a Sutter levee district
+that merely shares the name. `fetch_amounts()` grouped by name and year
+with no county at all, so the two were added together; worse, they landed
+in different buckets, so one district appeared to run both governmental
+and enterprise activity.
+
+**The fix** keys `ents` and both amount tables on the same `(name,
+county)` pair the grouping already uses, and refuses on a duplicate rather
+than overwriting. Six records now match the source's county, activity and
+filing years exactly, verified row by row against SCO.
+
+A phantom disappeared as a side effect. `rural-north-vacaville-water-district-solano-list-only`
+existed because the Solano delinquency row could not match a directory
+keyed under Sutter, so it fabricated a second entity. With the identity
+fixed the row matches the real district, and its late-filing marker now
+appears in that district's own filing string.
+
+**Recorded as our own correction** — the feed's one attributed event type,
+130 events, marked `OUR CORRECTION` on the record page. The invariant that
+keeps this honest is unchanged and now asserted: a note can only come from
+a constant declared in the pipeline. The refresh path may apply a declared
+correction; it can never invent one.
+
+**The class, audited.** 37 sites across five areas, adversarially
+re-checked; 19 confirmed sound. Ten are structurally vulnerable with no
+live collision. Two more **live** collisions were confirmed and are not
+fixed here: `fetch_state_data.dept_depth()` keys funds on `fundCd` alone
+where DOF distinguishes by `(fundCd, fundLglTitl, fundClassCd)`, and
+`meta.fundNames` is one global dict merged across six years and ~190
+departments, so a fund renamed between budget acts loses one of its names.
+
+**Assertions.** 1733 → 1774 (+41).
