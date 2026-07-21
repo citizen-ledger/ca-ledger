@@ -2377,3 +2377,49 @@ recorded as the next priority.
 
 **Assertions.** 1687 → 1715 (+28), including the FY 2009-10 case
 reproduced verbatim from the source.
+
+## 2026-07-20 — The change feed is keyed on identity, not rank
+
+The slug-instability lesson reappearing in a second subsystem. Several
+payloads ship a figure as a row in an array **sorted by amount** — city
+and county `lines`, state `funds` and `programs`, K-12 `byResource.n`.
+`_leaves` walks a list by enumeration index, so the key a figure got was
+its RANK. Measured: 576,953 of 825,331 keys (69.9%) were rank-derived;
+the districts layer was 100%.
+
+Two consequences, both reproduced against the shipped data:
+
+- `lineLabels` is `sorted()` over the observed label set, so one new
+  label anywhere in California renumbers up to 90 labels and shifts every
+  index below it. **The feed reported 76,114 events for a single real
+  change.** It now reports 1.
+- Two lines swapping order, with neither value altered, were reported as
+  each other's change — 4 phantom events. Now 0.
+- City rows are `[labelIndex, dollars]`, and the index is numeric, so the
+  walker emitted it as though it were a figure. A pure re-indexing read
+  as a changed value. The index is no longer emitted at all.
+
+Every figure is now keyed on something intrinsic: the line label, the
+fund code, the program code, the resource code, or a NAMED fixed slot
+(`exp.gov`, `nr.N`). A duplicate intrinsic key refuses rather than
+letting one figure silently overwrite another.
+
+**Nothing historical was rewritten.** Zero of the 31 published events
+were rank-derived — they are all `byFunction` paths from the FY2016-17
+backfill. Re-deriving the backfill under the new keying produces the
+identical 31 events and the identical cell count. `--verify` passes on
+all nine layers.
+
+**The class, audited across every subsystem.** 32 sites examined, each
+adversarially re-checked; 10 confirmed sound and 9 more confirmed as the
+*sound* side of the distinction (an index into a constant declared in
+code is meaning, not rank). Five unstable identifiers survived, of which
+one is **already shipping wrong**: `fetch_district_data.py` groups
+districts on `(name, county)` but writes them to `ents[name]`, so two
+same-named districts in different counties collide and the second
+overwrites the first. Verified in the shipped file — Rural North
+Vacaville Water District appears twice, and one copy carries **Sutter**
+county for a district in Solano. Not fixed here; recorded as the next
+priority.
+
+**Assertions.** 1687 → 1705 (+18), all 18 executed.
