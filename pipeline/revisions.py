@@ -290,7 +290,14 @@ def _state_dept(d):
     o = {x: d[x] for x in d
          if x not in ("name", "code", "funds", "programs", "nr")}
     if d.get("funds"):
-        o["funds"] = _intrinsic(d["funds"], 0, 2, "fund")
+        # A fund row is [cd, class, thousands, legal title?]. The title is
+        # present only where DOF publishes more than one fund under one
+        # code, so the identity is the code alone where the code is
+        # unique and code|title where it is not — the same tuple the
+        # source distinguishes by.
+        o["funds"] = _intrinsic(
+            [[(r[0] if len(r) < 4 or not r[3] else f"{r[0]}|{r[3]}"), r[1], r[2]]
+             for r in d["funds"]], 0, 2, "fund")
     if d.get("programs"):
         o["programs"] = _intrinsic(d["programs"], 0, 2, "program")
     if d.get("nr"):
@@ -610,6 +617,29 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
 # correction, but it can never invent one, so no per-refresh judgement
 # step is introduced.
 CORRECTIONS = [
+    {
+        "layer": "state",
+        "built": "2026-07-20",
+        "note": "Our own correction, not a change at the source. Department "
+                "fund rows were keyed on the fund CODE alone, where the "
+                "Department of Finance distinguishes a fund by code, legal "
+                "title and class together. Enumerated across all 1,155 "
+                "department-years in the six loaded budgets: 43 collisions, "
+                "every one of them fund 0001, where DOF publishes \"General "
+                "Fund\" and \"General Fund, Proposition 98\" as separate "
+                "rows. Those two were being added together and shown as one "
+                "line, folding away the Proposition 98 education guarantee. "
+                "Separately, the fund-name legend was one global dictionary "
+                "merged across six budget acts, so a fund renamed between "
+                "acts lost its earlier name: 23 codes drift across the "
+                "window, and FY 2020-21 was rendering fund 3085 as the "
+                "\"Behavioral Health Services Fund\" \u2014 a name it did "
+                "not carry until FY 2025-26. Fund names are now scoped per "
+                "year. No gated total moved: every agency and department "
+                "figure is identical, and the V8 parent-sum gate passes "
+                "unchanged. What changed is which rows the fund drill shows "
+                "and what they are called.",
+    },
     {
         "layer": "district",
         "built": "2026-07-20",

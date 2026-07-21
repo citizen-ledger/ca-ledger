@@ -180,13 +180,38 @@ def latest_enacted_years(n: int):
     return sorted(years)
 
 
+def _fund_rows(funds):
+    """[[fundCd, class, thousands]] — plus the legal title as a fourth
+    member ONLY where DOF publishes more than one title under one code in
+    this department-year. Carrying it unconditionally would repeat ~190
+    titles per year for no gain; carrying it never would render two
+    genuinely different funds as one repeated name."""
+    titles = {}
+    for cd, title, _cls in funds:
+        titles.setdefault(cd, set()).add(title)
+    rows = []
+    for (cd, title, cls), v in funds.items():
+        row = [cd, cls, v]
+        if len(titles[cd]) > 1:
+            row.append(title)
+        rows.append(row)
+    return rows
+
+
 def dept_depth(year: str, org_cd: str):
     """Everything below the department that the V8 finding approved:
     fund rows (the drill whose children sum exactly to the gated
     parents), the N/R totals (the bridge), and programs (the labeled
     all-funds view). All dollars in THOUSANDS, kept as integers —
     integer source units per the V8 cross-cutting rules."""
-    funds = {}          # fundCd -> [class, thousands]
+    # KEYED ON (fundCd, legal title, class) — THE TUPLE DOF DISTINGUISHES BY.
+    # Keying on fundCd alone ADDED rows the source publishes separately and
+    # kept whichever class arrived first. Enumerated across all 1,155
+    # dept-years in the six loaded budgets: 43 collisions, every one of them
+    # fund 0001, where DOF emits "General Fund" and "General Fund,
+    # Proposition 98" as distinct rows. The Proposition 98 guarantee is a
+    # real distinction and was being folded away.
+    funds = {}          # (fundCd, title, class) -> thousands
     fund_names = {}
     nr = {"N": 0, "R": 0}
     fed = 0
@@ -204,11 +229,9 @@ def dept_depth(year: str, org_cd: str):
                 nr[cls] += v
             if cls in ("G", "S", "B", "F"):
                 cd = r.get("fundCd") or "?"
-                if cd in funds:
-                    funds[cd][1] += v
-                else:
-                    funds[cd] = [cls, v]
-                fund_names[cd] = (r.get("fundLglTitl") or cd).strip()
+                title = (r.get("fundLglTitl") or cd).strip()
+                funds[(cd, title, cls)] = funds.get((cd, title, cls), 0) + v
+                fund_names.setdefault(cd, title)
     prog = get_json(f"{year}/orgProgram/{org_cd}", ok_404=True) or {}
     prog_rows = prog.get("lines") or []
     programs = [[(r.get("programCode") or "").strip(),
@@ -230,8 +253,7 @@ def dept_depth(year: str, org_cd: str):
         "fed": fed,
         "progTotals": tot,
         "infra": infra,
-        "funds": sorted(([cd, cl, v] for cd, (cl, v) in funds.items()),
-                        key=lambda x: -abs(x[2])),
+        "funds": sorted(_fund_rows(funds), key=lambda x: (-abs(x[2]), x[0])),
         "nr": [nr["N"], nr["R"]],
         "programs": sorted(programs, key=lambda x: -abs(x[2])),
         "fundNames": fund_names,
@@ -287,7 +309,8 @@ def fetch_year(year: str):
             #    F is identical by construction;
             #  - programs (all funds) == gf+sp+bd+fed+N+R.
             by_cls = {}
-            for _cd, cl, v in depth["funds"]:
+            for row in depth["funds"]:            # [cd, class, thousands, title?]
+                cl, v = row[1], row[2]
                 by_cls[cl] = by_cls.get(cl, 0) + v
             for cls, key in (("G", "gf"), ("S", "sp"), ("B", "bd")):
                 parent = node[key] or 0
@@ -506,8 +529,18 @@ def attach_actuals(payload, cached, refresh=False):
 def build_payload(cached):
     years_sorted = sorted(cached.keys())
     budgets, trend = {}, {}
-    fund_names = {}
+    # SCOPED PER YEAR. One global dict merged six budget acts and ~190
+    # departments per year, so a fund renamed between acts kept only the
+    # last title and every earlier year rendered under a name it did not
+    # have. Enumerated: 23 fund codes drift across the loaded window —
+    # 3085 Mental Health Services -> Behavioral Health Services (Prop 1),
+    # 3246 Fair Employment and Housing -> Civil Rights Enforcement and
+    # Litigation, 3209 Office of Patient Advocate -> Health Plan
+    # Improvement, among others. Same lesson as the school resource
+    # titles, which are already per-year for exactly this reason.
+    fund_names = {}     # fiscal year -> {fundCd: legal title}
     for year in years_sorted:
+        fund_names.setdefault(year, {})
         agencies = []
         for name, node in sorted(
             cached[year]["agencies"].items(),
@@ -525,7 +558,7 @@ def build_payload(cached):
                 if dv.get("funds"):
                     dd["funds"] = dv["funds"]
                     for cd, nm in (dv.get("fundNames") or {}).items():
-                        fund_names[cd] = nm
+                        fund_names[year].setdefault(cd, nm)
                 if dv.get("nr") and any(dv["nr"]):
                     dd["nr"] = dv["nr"]
                 if dv.get("programsOmitted"):
@@ -553,7 +586,8 @@ def build_payload(cached):
             "generated": date.today().isoformat(),
             "population": POPULATION,
             "fundNames": fund_names,
-            "depth": "Per department: funds = [[fundCd, class, thousands]] "
+            "depth": "Per department: funds = [[fundCd, class, thousands, "
+                     "legal title where one code carries more than one]] "
                      "(G/S/B/F only — children of the gated parents, exact); "
                      "nr = [nongovernmental-cost, reimbursements] thousands "
                      "(the bridge); programs = [[code, title, thousands]] "

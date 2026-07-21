@@ -1244,6 +1244,17 @@
   $("ahDiff").addEventListener("click", ()=>{ S.aSortKey==="diff" ? S.aSortDir*=-1 : (S.aSortKey="diff",S.aSortDir=-1); syncHash(); render(); });
 
   /* ---------- fund source schedule ---------- */
+  /* Fund names are PER YEAR — DOF renames funds between budget acts, and a
+     single global legend rendered every earlier year under the latest name.
+     A row carries its own title only where one code carries more than one
+     in that department-year (DOF publishes "General Fund" and "General
+     Fund, Proposition 98" separately under code 0001). */
+  function fundName(f){
+    if (f.length > 3 && f[3]) return f[3];
+    const byYear = (D.meta.fundNames || {})[S.year] || {};
+    return byYear[f[0]] || f[0];
+  }
+
   function renderFunds(){
     const box = $("funds"); box.innerHTML = "";
     const meta = [["gf","General Fund","income, sales & corporation taxes"],
@@ -1434,7 +1445,7 @@
     const stateFunds = dept.funds.filter(f=>f[1]!=="F");
     const fedFunds = dept.funds.filter(f=>f[1]==="F");
     const fundRow = (f, exact) =>
-      '<div class="depth-row"><span>'+esc((D.meta.fundNames||{})[f[0]]||f[0])
+      '<div class="depth-row"><span>'+esc(fundName(f))
       + '</span><span class="dim">'+CLASS_LABEL[f[1]]+'</span>'
       + '<span class="num">'+(exact
           ? (f[2]<0?MINUS:"")+"$"+Math.abs(f[2]*1000).toLocaleString("en-US")

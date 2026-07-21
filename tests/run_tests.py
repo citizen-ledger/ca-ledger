@@ -1948,6 +1948,134 @@ def test_position_guard():
           "failing bare", "NO LINE DETAIL IN THIS SOURCE VINTAGE" in src)
 
 
+def test_state_fund_identity(page, base):
+    """A FUND IS (CODE, LEGAL TITLE, CLASS), NOT A CODE.
+
+    dept_depth() keyed fund rows on fundCd alone. DOF distinguishes a fund
+    by code, legal title and class together, and where it publishes two
+    titles under one code the pipeline ADDED them and kept whichever class
+    arrived first. Enumerated across all 1,155 department-years in the six
+    loaded budgets: 43 collisions, every one fund 0001, where DOF emits
+    "General Fund" and "General Fund, Proposition 98" as separate rows.
+    The Proposition 98 education guarantee was being folded away.
+
+    Separately, the fund-name legend was ONE global dict merged across six
+    budget acts and ~190 departments per year, so a fund renamed between
+    acts lost its earlier name — 23 codes drift across the window. Names
+    are now scoped per year, as the school resource titles already are."""
+    depts = [(fy, ag, d)
+             for fy, b in STATE["budgets"].items()
+             for ag in b["agencies"]
+             for d in (ag.get("departments") or [])]
+
+    # ---- identity: no two rows in a department-year may collide
+    collisions = []
+    for fy, ag, d in depts:
+        seen = {}
+        for r in (d.get("funds") or []):
+            ident = (r[0], r[3] if len(r) > 3 else None)
+            if ident in seen:
+                collisions.append((fy, d.get("code"), ident))
+            seen[ident] = r
+    check("state funds: no two fund rows in one department-year share an "
+          "identity", not collisions, str(collisions[:3]))
+
+    # ---- where DOF splits one code, we carry both, each named
+    split = [(fy, d) for fy, ag, d in depts
+             if len([r for r in (d.get("funds") or []) if r[0] == "0001"]) > 1]
+    check("state funds: fund 0001 is split wherever DOF publishes two titles "
+          "for it, rather than summed into one row", len(split) == 43,
+          str(len(split)))
+    titles = set()
+    for fy, d in split:
+        for r in (d.get("funds") or []):
+            if r[0] == "0001":
+                check(f"state funds: each split 0001 row carries its own legal "
+                      f"title (FY {fy} org {d.get('code')})",
+                      len(r) > 3 and bool(r[3]), str(r))
+                if len(r) > 3:
+                    titles.add(r[3])
+    check("state funds: and the two titles are DOF's own",
+          titles == {"General Fund", "General Fund, Proposition 98"},
+          str(sorted(titles)))
+
+    # ---- conservation: splitting moved no money
+    for fy, d in split[:6]:
+        rows = [r for r in d["funds"] if r[0] == "0001"]
+        check(f"state funds: the split 0001 rows are all class G (FY {fy})",
+              {r[1] for r in rows} == {"G"}, str({r[1] for r in rows}))
+    # the V8 parent-sum gate, recomputed from the shipped file
+    bad = []
+    for fy, ag, d in depts:
+        by_cls = {}
+        for r in (d.get("funds") or []):
+            by_cls[r[1]] = by_cls.get(r[1], 0) + r[2]
+        for cls, key in (("G", "gf"), ("S", "sp"), ("B", "bd")):
+            parent = round((d.get(key) or 0) * 1e6)      # billions -> thousands
+            if abs(by_cls.get(cls, 0) - parent) > 1000:
+                bad.append((fy, d.get("code"), cls, by_cls.get(cls, 0), parent))
+    check("state funds: fund rows still sum to their gated parent by class — "
+          "splitting a row moved no money", not bad, str(bad[:3]))
+
+    # ---- names are PER YEAR
+    fn = STATE["meta"]["fundNames"]
+    check("state funds: the name legend is scoped per fiscal year, not one "
+          "global dict", set(fn) == set(STATE["years"]), str(sorted(fn))[:90])
+    check("state funds: every year carries a populated legend",
+          all(len(v) > 400 for v in fn.values()),
+          str({y: len(v) for y, v in fn.items()}))
+
+    # THE CASE. Proposition 1 renamed fund 3085 for FY 2025-26. Under one
+    # global legend, FY 2020-21 rendered it under a name it would not carry
+    # for five more years.
+    RENAMES = [("3085", "2020-21", "Mental Health Services Fund",
+                "2025-26", "Behavioral Health Services Fund"),
+               ("3246", "2020-21", "Fair Employment and Housing Enforcement "
+                "and Litigation Fund", "2024-25",
+                "Civil Rights Enforcement and Litigation Fund"),
+               ("3209", "2020-21", "Office of Patient Advocate Trust Fund",
+                "2024-25", "Health Plan Improvement Trust Fund")]
+    for cd, y_old, n_old, y_new, n_new in RENAMES:
+        check(f"state funds: fund {cd} carries its FY {y_old} name in FY "
+              f"{y_old}", fn.get(y_old, {}).get(cd) == n_old,
+              str(fn.get(y_old, {}).get(cd)))
+        check(f"state funds: and its FY {y_new} name in FY {y_new}",
+              fn.get(y_new, {}).get(cd) == n_new,
+              str(fn.get(y_new, {}).get(cd)))
+        check(f"state funds: the later name never appears in the earlier year",
+              fn.get(y_old, {}).get(cd) != n_new)
+
+    # ---- recorded as our own correction
+    rec = load_data_js(ROOT / "state-revisions.js")
+    ours = [b for b in rec["batches"] if b.get("ours")]
+    check("state funds: the correction is recorded in the change feed",
+          len(ours) == 1, str(len(ours)))
+    if ours:
+        b = ours[0]
+        check("state funds: attributed to us, not to the source",
+              "our own correction" in b.get("note", "").lower())
+        kinds = {}
+        for e in b["events"]:
+            k = ("appeared" if e["o"] is None
+                 else "disappeared" if e["n"] is None else "changed")
+            kinds[k] = kinds.get(k, 0) + 1
+        check("state funds: the merged rows are recorded as disappeared and "
+              "the split rows as appeared — the event kinds the totals gate "
+              "cannot see", kinds.get("disappeared") == 43
+              and kinds.get("appeared") == 86, str(kinds))
+        check("state funds: and no figure is reported as merely CHANGED, "
+              "because none was", kinds.get("changed", 0) == 0, str(kinds))
+
+    # ---- the page renders the era-correct name, not the latest one
+    page.goto(f"{base}/index.html#y=2020-21&a=health-and-human-service")
+    page.wait_for_selector("#allocView:not([hidden])")
+    page.wait_for_timeout(400)
+    body = page.inner_text("body")
+    check("state funds: the FY 2020-21 page does not show a fund under a name "
+          "it did not have until FY 2025-26",
+          "Behavioral Health Services Fund" not in body)
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -2022,7 +2150,8 @@ def test_depth(page, base):
                 if "funds" not in d:
                     continue
                 by = {}
-                for cd, cl, v in d["funds"]:
+                for _row in d["funds"]:   # [cd, class, thousands, title?]
+                    cd, cl, v = _row[0], _row[1], _row[2]
                     by[cl] = by.get(cl, 0) + v
                 for cl, key in (("G","gf"),("S","sp"),("B","bd"),("F","fed")):
                     if abs(by.get(cl, 0)/1e6 - d[key]) > 0.0006:
@@ -2032,7 +2161,7 @@ def test_depth(page, base):
                     psum = sum(x[2] for x in d["programs"])
                     # the exact parent comes from the integer fund rows,
                     # never from display-rounded billions
-                    allf = sum(v for _cd, _cl, v in d["funds"]) \
+                    allf = sum(r[2] for r in d["funds"]) \
                         + sum(d.get("nr", [0, 0])) - d.get("infraUnalloc", 0)
                     if abs(psum - allf) > 2:
                         prog_bad.append(f"{y} {d['name']}: {psum} vs {allf}")
@@ -2040,8 +2169,11 @@ def test_depth(page, base):
           not fund_bad, str(fund_bad[:3]))
     check("depth state: programs reconcile through the N/R bridge exactly",
           not prog_bad and has_programs > 1000, str(prog_bad[:3]))
-    check("depth state: fund names dictionary ships",
-          len(STATE["meta"].get("fundNames", {})) > 300)
+    check("depth state: fund names ship, scoped per fiscal year",
+          set(STATE["meta"].get("fundNames", {})) == set(STATE["years"])
+          and all(len(v) > 300 for v in STATE["meta"]["fundNames"].values()),
+          str({y: len(v) for y, v in
+               (STATE["meta"].get("fundNames") or {}).items()}))
     # refused: program prior-year columns must not exist
     check("depth state: no prior-year columns in programs (refused as actuals)",
           all(len(x) == 3 for b in STATE["budgets"].values()
@@ -2194,9 +2326,15 @@ def test_legibility(page, base):
     page.locator('[data-tail="state"]').click()
     page.wait_for_timeout(200)
     expanded = page.inner_text(".depth-panel")
+    _legend = STATE["meta"]["fundNames"]["2025-26"]
+    def _fund_name(f):
+        # same resolution as index.html fundName(): the row's own title
+        # where one code carries more than one, else the year's legend
+        return f[3] if len(f) > 3 and f[3] else _legend.get(f[0], f[0])
     check("legibility: tail expands to every member fund",
-          all((STATE["meta"]["fundNames"].get(f[0], f[0]) in expanded)
-              for f in tail))
+          all(_fund_name(f) in expanded for f in tail),
+          str([_fund_name(f) for f in tail
+               if _fund_name(f) not in expanded][:3]))
 
     # department-actuals note, with the agency relationship explicit
     page.goto(f"{base}/index.html#v=actuals&y=2023-24&a=health-and-human-service")
@@ -4466,8 +4604,13 @@ def test_revision_identity():
         rec = load_data_js(Path(f))
         for b in rec.get("batches") or []:
             for e in b.get("events") or []:
-                if re.search(r"\.(lines|funds|programs|nr|exp|rev)\.\d+(\.|$)",
-                             e.get("k", "")):
+                # RANK signatures, precisely. A fund or resource CODE is
+                # legitimately numeric ("funds.0001"); a RANK is a bare
+                # ordinal in a slot that should carry a name, or the
+                # two-ordinal pair a list-of-lists produced.
+                k = e.get("k", "")
+                if (re.search(r"\.(lines\.[A-Za-z]+|funds|programs)\.\d+\.\d+$", k)
+                        or re.search(r"\.(exp|rev|nr)\.\d+$", k)):
                     stale += 1
     check("revision identity: no already-published event was keyed on rank, "
           "so re-keying rewrites no dated record", stale == 0, str(stale))
@@ -5290,6 +5433,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_state_fund_identity(page, base)
             test_position_guard()
             test_identifier_stability()
             test_actuals_view(page, base)
