@@ -139,6 +139,7 @@
   .evt td{padding:5px 10px 5px 0;border-bottom:1px solid var(--hairline);vertical-align:top}
   .evt td.path{font-family:var(--mono);font-size:var(--fs-micro);color:var(--graphite);word-break:break-all}
   .kind{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;text-transform:uppercase;color:var(--smoke)}
+  .mid{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);background:var(--wash);padding:1px 4px;border-radius:3px}
   .more{margin-top:8px}
   .empty-rec{font-size:var(--fs-note);color:var(--graphite);margin-top:8px}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -306,9 +307,20 @@
     var d = a >= 1000 ? 0 : (a >= 1 ? 2 : 3);
     return v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
   }
+  /* An identity whose display name we do not have is shown AS an
+     identifier, not as a name. Rendering the raw key unmarked put strings
+     like "campus:Cal Poly Humboldt" in front of readers as though they
+     were the entity's name. */
   function label(r, id){
     var l = r && r.labels ? r.labels[id] : null;
-    return l || id;
+    return l || null;
+  }
+  function labelHtml(r, id){
+    var l = label(r, id);
+    return l ? esc(l)
+             : '<code class="mid" title="Internal identifier — this entity '
+               + 'is no longer in the data, so its name is not known">'
+               + esc(id) + '</code>';
   }
 
   var SHOWN = 25;
@@ -344,7 +356,7 @@
              + (b.ours ? ' · OUR CORRECTION' : '') + '</div>';
         if (b.note) body += '<p class="batch-note">' + esc(b.note) + '</p>';
         var rows = b.events.slice(0, SHOWN).map(function(e){
-          return '<tr><td>' + esc(label(r, e.e)) + '</td>'
+          return '<tr><td>' + labelHtml(r, e.e) + '</td>'
                + '<td class="path">' + esc(e.k) + '</td>'
                + '<td class="num">' + num(e.o) + '</td>'
                + '<td class="num">' + num(e.n) + '</td>'

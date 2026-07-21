@@ -350,6 +350,7 @@ def fetch_year(year: str):
                     node["programsOmitted"] = True
             dept_nodes[d["legalTitl"].strip()] = node
         node = {
+            "code": agency_cd,          # DOF's own webAgencyCd — the stable id
             "gf": a["generalFundTotal"] or 0, "sp": a["specialFundTotal"] or 0,
             "bd": a["bondFundTotal"] or 0,
             "fed": sum(v["fed"] for v in dept_nodes.values()),
@@ -456,6 +457,56 @@ def gate_years(cached):
 # ----------------------------------------------------------------------
 # data.js writer (schema unchanged — index.html depends on it)
 # ----------------------------------------------------------------------
+# THE AGENCY IDENTITY, PINNED TO DOF'S OWN CODE.
+#
+# The published id was slugify(name)[:24] — derived from a display name and
+# then truncated. Two hazards, and the second is the live one:
+#
+#   collision: two agency names agreeing in their first 24 slug characters
+#              would share an id. Enumerated across all 12 agencies in the
+#              six loaded budgets: 0 collisions today, but truncation is
+#              load-bearing for 5 of the 12 (the longest full slug is 38
+#              characters), so the margin is thinner than it looks.
+#   rename:    a DOF rename moving no money at all would change the id, and
+#              the change record — which keys on it — would republish every
+#              figure beneath that agency as disappeared and then appeared.
+#              Measured: 4,821 keys for the largest agency, 22,931 across
+#              all twelve. That is the slug-instability lesson again.
+#
+# Pinning the id to webAgencyCd removes both. The MAPPING is declared rather
+# than computed so the published ids keep the exact values they have today —
+# no permalink breaks, no re-keying churn in the record — while the NAME no
+# longer feeds the identity. An unknown code refuses the build rather than
+# silently minting an id from a name.
+AGENCY_IDS = {
+    "0010": "legislative-judicial-and",
+    "1000": "business-consumer-servic",
+    "2500": "transportation",
+    "3000": "natural-resources",
+    "3890": "environmental-protection",
+    "4000": "health-and-human-service",
+    "5210": "corrections-and-rehabili",
+    "6010": "k-thru-12-education",
+    "6013": "higher-education",
+    "7000": "labor-and-workforce-deve",
+    "7500": "government-operations",
+    "8000": "general-government",
+}
+
+
+def agency_id(code, name):
+    """The published agency identity. Declared per DOF code, never derived
+    from the display name."""
+    if code not in AGENCY_IDS:
+        raise SystemExit(
+            f"UNKNOWN AGENCY CODE {code!r} ({name!r}) — the published "
+            "identity is pinned to DOF's webAgencyCd and this code has no "
+            "declared id. Add it to AGENCY_IDS deliberately; do not fall "
+            "back to slugifying the name, which is what made the identity "
+            "move when DOF renamed an agency.")
+    return AGENCY_IDS[code]
+
+
 def slugify(name: str) -> str:
     slug = "".join(c if c.isalnum() else "-" for c in name.lower())
     while "--" in slug:
@@ -569,7 +620,7 @@ def build_payload(cached):
                     dd["programs"] = dv["programs"]
                 depts.append(dd)
             agencies.append({
-                "id": slugify(name), "name": name,
+                "id": agency_id(node.get("code"), name), "name": name,
                 **{k: round(node[k] / THOUSANDS_PER_BILLION, 3) for k in FUND_KEYS},
                 "departments": depts,
             })

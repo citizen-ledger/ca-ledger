@@ -372,11 +372,16 @@
   }
 
   function scoUrl(rec){
-    // most recent year with any filing mark; the explorer keys years by
-    // their ending calendar year
-    let yyyy = 2024;
+    // Most recent year with any filing mark. The explorer keys years by
+    // their ending calendar year, which is read OUT OF THE YEAR LABEL —
+    // "2016-17" -> 2017. Deriving it as 2017 + i made the link's identity
+    // the array POSITION, so prepending a year to the window would have
+    // silently repointed every district's outbound link to the wrong
+    // filing. Same class as the change-feed rank keying.
+    const endYear = fy => 2000 + Number(String(fy).slice(-2));
+    let yyyy = endYear(YEARS[YEARS.length - 1]);
     for (let i = YEARS.length - 1; i >= 0; i--){
-      if (rec.filings[i] !== "-"){ yyyy = 2017 + i; break; }
+      if (rec.filings[i] !== "-"){ yyyy = endYear(YEARS[i]); break; }
     }
     return "https://districts.bythenumbers.sco.ca.gov/#!/year/" + yyyy
       + "/operating/0/entityname/" + encodeURIComponent(rec.name)

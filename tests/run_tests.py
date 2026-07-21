@@ -2076,6 +2076,125 @@ def test_state_fund_identity(page, base):
           "Behavioral Health Services Fund" not in body)
 
 
+def test_identity_leaks(page, base):
+    """THREE IDENTITY DEFECTS, from the audit attached to the district fix.
+
+    1. A retired identity rendered its RAW INTERNAL KEY to readers as a
+       display name — "campus:Cal Poly Humboldt" shown where a campus name
+       belongs. record_revision stored the key AS the label whenever an
+       event mentioned an identity it had no name for, and the page
+       rendered labels verbatim.
+    2. The special-district outbound SCO link derived its fiscal year from
+       ARRAY POSITION (2017 + i). Prepending a year to the window would
+       have silently repointed every district's link to the wrong filing —
+       the same rank-as-identifier class as the change-feed keying.
+    3. The state agency id was slugify(name)[:24]: derived from a display
+       name and truncated. A DOF rename moving no money would change the
+       id, and the change record keys on it. Measured: 4,821 keys under
+       the largest agency, 22,931 across all twelve, each of which would
+       be republished as disappeared and then appeared."""
+    import importlib.util
+
+    # ---- 1. no machine key may be stored as, or rendered as, a name
+    for layer in ("state", "city", "county", "district", "school",
+                  "csu", "ccc", "uc", "deflator"):
+        rec = load_data_js(ROOT / f"{layer}-revisions.js")
+        selfnamed = [k for k, v in (rec.get("labels") or {}).items() if k == v]
+        check(f"identity: {layer} stores no label that is merely its own key",
+              not selfnamed, str(selfnamed[:3]))
+    src = (ROOT / "pipeline" / "revisions.py").read_text(encoding="utf-8")
+    check("identity: the pipeline no longer labels an entity with its own "
+          "identifier", 'setdefault(ev["e"], ev["e"])' not in src)
+    rsrc = (ROOT / "revisions.html").read_text(encoding="utf-8")
+    check("identity: the page renders an unnamed identity AS an identifier, "
+          "not as a name", "labelHtml" in rsrc and 'return l || null;' in rsrc)
+    check("identity: and marks it so a reader can tell",
+          "Internal identifier" in rsrc)
+
+    # the page still renders real names for entities it knows
+    page.goto(f"{base}/revisions.html")
+    page.wait_for_selector(".lrec")
+    body = page.inner_text("body")
+    check("identity: known entities still render by name, not by key",
+          "Rural North Vacaville Water District" in body)
+    check("identity: and no raw entity key leaks into the rendered page",
+          not re.search(r"\bcampus:|\bcharter:\d|\bdistricts:\d", body),
+          body[:0])
+
+    # ---- 2. the SCO link's year is the year, not the index
+    dsrc = (ROOT / "districts.html").read_text(encoding="utf-8")
+    # strip // comments before checking: the fix's own comment names the
+    # pattern it removed, and an assertion that matched prose rather than
+    # code would fail on its own documentation
+    dcode = re.sub(r"^\s*//.*$", "", dsrc, flags=re.M)
+    check("identity: the district SCO link no longer derives its year from "
+          "array position", "2017 + i" not in dcode)
+    check("identity: it reads the year out of the year label instead",
+          "endYear" in dsrc and "YEARS[i]" in dsrc)
+    # drive it: the link must name the latest year the district actually filed
+    page.goto(f"{base}/districts.html#d=rural-north-vacaville-water-district")
+    page.wait_for_selector(".ext")
+    href = page.get_attribute(".ext", "href")
+    rec = DIST["districts"]["rural-north-vacaville-water-district"]
+    last = max(i for i, c in enumerate(rec["filings"]) if c != "-")
+    want = 2000 + int(DIST["years"][last][-2:])
+    check(f"identity: the outbound link points at FY{want}, the district's "
+          f"own latest filing", f"/year/{want}/" in (href or ""), str(href))
+    # and it agrees with the year label, not with 2017 + index
+    check("identity: which is the year LABEL's ending year",
+          want == 2000 + int(DIST["years"][last][-2:]))
+
+    # ---- 3. the agency id is pinned to DOF's code, not to the name
+    spec = importlib.util.spec_from_file_location(
+        "fsd", str(ROOT / "pipeline" / "fetch_state_data.py"))
+    fsd = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_state_data.py"]
+    try:
+        spec.loader.exec_module(fsd)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    check("identity: agency ids are declared per DOF code",
+          len(fsd.AGENCY_IDS) == 12, str(len(fsd.AGENCY_IDS)))
+    check("identity: every declared id is unique",
+          len(set(fsd.AGENCY_IDS.values())) == 12)
+    shipped = {ag["id"] for b in STATE["budgets"].values()
+               for ag in b["agencies"]}
+    check("identity: and the shipped ids are exactly the declared ones — the "
+          "pinning moved no permalink", shipped == set(fsd.AGENCY_IDS.values()),
+          str(sorted(shipped ^ set(fsd.AGENCY_IDS.values()))))
+
+    # THE POINT: a rename must not move the identity
+    for cd, want_id in list(fsd.AGENCY_IDS.items())[:4]:
+        check(f"identity: agency {cd} keeps its id under any display name",
+              fsd.agency_id(cd, "Some Entirely New Name") == want_id)
+    # an unknown code refuses rather than minting an id from a name
+    try:
+        fsd.agency_id("9999", "Department of Newly Invented Things")
+        refused = False
+    except SystemExit:
+        refused = True
+    check("identity: an undeclared agency code REFUSES the build rather than "
+          "slugifying a name", refused)
+
+    # truncation: enumerated, not assumed
+    names = {ag["name"] for b in STATE["budgets"].values()
+             for ag in b["agencies"]}
+    trunc = {}
+    for n in names:
+        trunc.setdefault(fsd.slugify(n), []).append(n)
+    check("identity: no two agency names collide under the old 24-character "
+          "truncation today — the hazard was the rename, not a live clash",
+          all(len(v) == 1 for v in trunc.values()),
+          str([v for v in trunc.values() if len(v) > 1]))
+    check("identity: truncation was load-bearing for several agencies, so "
+          "the margin was thin", sum(1 for n in names if len(
+              "".join(c if c.isalnum() else "-" for c in n.lower())
+              .replace("--", "-").strip("-")) > 24) >= 4)
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -5433,6 +5552,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
             test_identifier_stability()

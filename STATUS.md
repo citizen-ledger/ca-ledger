@@ -2532,3 +2532,44 @@ ordinal where a name belongs, or the two-ordinal pair a list-of-lists
 produced — verified against ten cases separating codes from ranks.
 
 **Assertions.** 1774 → 1888 (+114).
+
+## 2026-07-21 — Three identity defects: a leaked key, a positional year, a name-derived id
+
+The remainder of the identity audit. None changed a published figure, so
+the change record is silent — correctly.
+
+**1. A retired identity rendered its raw internal key as a name.**
+`record_revision` stored the key AS the label whenever an event mentioned
+an identity it had no name for, and the page rendered labels verbatim, so
+a reader would have been shown `campus:Cal Poly Humboldt` where a campus
+name belongs. Labels already carry forward for retired identities — that
+is the point of labelling separately from keying — so the fallback was
+never needed. The pipeline no longer writes it, and an identity with no
+known name now renders as a marked identifier rather than as a name.
+Checked every layer: no shipped label is merely its own key.
+
+**2. The district SCO link derived its fiscal year from array position.**
+`yyyy = 2017 + i` reproduced the right answer only because the window
+happens to begin at FY 2016-17. Prepending a year would have silently
+repointed every district's outbound "filing at the State Controller" link
+to the wrong year. It now reads the ending year out of the year LABEL —
+the same rank-as-identifier lesson as the change-feed keying.
+
+**3. The state agency id was `slugify(name)[:24]`.** Enumerated across all
+12 agencies in the six loaded budgets: **zero truncation collisions
+today**, though truncation is load-bearing for five of the twelve (the
+longest full slug is 38 characters). The live hazard was the rename: a DOF
+rename moving no money would change the id, and the change record keys on
+it — **4,821 keys for the largest agency, 22,931 across all twelve**, each
+republished as disappeared and then appeared. Naively re-keying onto the
+code would itself have produced ~4.9 MB of events against a 64 KB budget,
+so the id is instead **pinned to DOF's own webAgencyCd through a declared
+mapping**: the published ids keep the exact values they have today, and
+the display name no longer feeds the identity. An unknown code refuses the
+build rather than minting an id from a name.
+
+Verified: every agency id is unchanged across all 72 agency-years, no
+permalink moved, and `data.js` differs from its predecessor only in the
+generated date and the digest that follows from it.
+
+**Assertions.** 1888 → 1916 (+28).
