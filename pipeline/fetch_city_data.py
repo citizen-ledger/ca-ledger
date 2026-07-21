@@ -230,13 +230,28 @@ def classify_expenditure(category, sub1, sub2):
     """Returns ('gov', function_key) | ('ent', fund_key) |
     ('isf', None) | ('conduit', None).
 
-    SHAPE-DRIVEN, not year-driven: the FY 2016-17 source vintage puts
-    the function group in `category` (line in subcategory_1), while
-    2017-18+ puts paired super-groups in `category` and the group in
-    subcategory_1. Detect the group by VALUE wherever it sits, and
-    refuse to classify anything whose group is unrecognized — the
-    silent fall-through to "other" is what shipped a year of
-    misclassified functions (see STATUS.md, 2026-07-14)."""
+    SHAPE-DRIVEN, not year-driven. Three source layouts have shipped:
+      A  pre-FY 2016-17 : the group is repeated in `category`,
+                          `subcategory_1` AND `subcategory_2`. No line
+                          breakdown exists at all — police and fire are
+                          not separable in this layout.
+      B  FY 2016-17     : group in `category`, line in `subcategory_1`
+                          (`subcategory_2` for the capital/debt split).
+      C  FY 2017-18+    : paired super-group in `category`, group in
+                          `subcategory_1`, line in `subcategory_2`.
+
+    RECOGNIZING THE GROUP'S VALUE IS NOT ENOUGH TO TELL A FROM C.
+    In layout A `subcategory_1` holds a perfectly valid group name, so a
+    value test accepts the row, takes the layout-C branch, and files
+    every police and fire dollar under `safetyOther` — while the totals
+    gate still passes, because conservation cannot see classification.
+    That is the FY 2016-17 defect wearing a different vintage. Measured
+    live against FY 2009-10: 8 of 8 row shapes accepted, $15.2B misfiled,
+    police and fire both reading exactly $0 (docs/V15_HISTORICAL_FINDING.md).
+
+    So the line slot must be PROVEN to carry a line, not assumed to. If
+    the value in the line position is the group itself, position carries
+    no information and the row is refused."""
     cat = norm(category)
     if cat in ENTERPRISE_BY_CATEGORY:
         return "ent", ENTERPRISE_BY_CATEGORY[cat], None
@@ -244,9 +259,9 @@ def classify_expenditure(category, sub1, sub2):
         return "isf", None, None
     if cat == "Conduit Financing":
         return "conduit", None, None
-    if norm(sub1) in GOV_GROUPS:                # 2017-18+ shape
+    if norm(sub1) in GOV_GROUPS:                # layout C (and B's split)
         g, line = norm(sub1), norm(sub2)
-    elif cat in GOV_GROUPS:                     # 2016-17 shape
+    elif cat in GOV_GROUPS:                     # layout B
         g, line = cat, norm(sub1)
         if not line or line in GOV_GROUPS:      # FY2017 debt/capital split
             line = norm(sub2)
@@ -256,6 +271,17 @@ def classify_expenditure(category, sub1, sub2):
             f"category={category!r} sub1={sub1!r} sub2={sub2!r}. "
             "A source vintage has shifted columns again; extend "
             "classify_expenditure deliberately.")
+    if not line or line == g:
+        raise SystemExit(
+            "NO LINE DETAIL IN THIS SOURCE VINTAGE — refusing to classify: "
+            f"category={category!r} sub1={sub1!r} sub2={sub2!r}. "
+            f"The function group {g!r} occupies the line position too, so "
+            "nothing establishes which field the line came from — this is "
+            "the pre-FY 2016-17 SCO layout, in which police and fire are "
+            "not separable. Classifying it would file every public-safety "
+            "dollar under 'safetyOther' while every totals gate passed. "
+            "Extend classify_expenditure deliberately if this vintage is "
+            "ever to be loaded.")
     if g == "Public Safety":
         if line.startswith("Police"):
             return "gov", "police", line
@@ -627,10 +653,26 @@ def shape_gate(years_data):
          2021-22, Woodland FY 2022-23, verified at source). The $1M
          materiality floor exists because tiny incidental lines
          legitimately touch zero (Mendota fire: $16k, $0, $1.5k —
-         verified at source); a real department cannot."""
+         verified at source); a real department cannot.
+      4. statewide, a residual bucket cannot swallow its group: the
+         unnamed remainder of Public Safety and of Culture and Leisure
+         must stay a minority of that group.
+
+    Rule 4 exists because rules 1-3 all reduce to "is this named line
+    zero", and a layout in which the line position echoes the group
+    defeats them in exactly one step: every dollar lands in the
+    residual bucket, which is nonzero, so nothing named looks missing.
+    Measured on the pre-FY 2016-17 vintage the residual reads 100% of
+    Public Safety while police and fire read $0. Clean shipped years
+    measure 9.5-10.6% (safety) and 11.7-14.3% (culture), so the 35%
+    bound has wide headroom and still catches a total swallow.
+    Two independent rules, not one, now stand between this project and
+    repeating its worst defect."""
     errors = []
     yrs = SOURCE_YEARS
     core = ("police", "fire", "admin", "streets", "parks")
+    residual = (("safetyOther", ("police", "fire")),
+                ("cultureOther", ("parks", "library")))
     statewide = {sy: {} for sy in yrs}
     for sy in yrs:
         for name, c in years_data[sy].items():
@@ -646,6 +688,15 @@ def shape_gate(years_data):
             errors.append(f"SHAPE FY {fy_label(sy)}: 'other' is "
                           f"{statewide[sy]['other']/tot*100:.1f}% of "
                           "governmental spending (clean years are <1%)")
+        for res, named in residual:
+            grp = statewide[sy].get(res, 0) + sum(
+                statewide[sy].get(k, 0) for k in named)
+            if grp and statewide[sy].get(res, 0) / grp > 0.35:
+                errors.append(
+                    f"SHAPE FY {fy_label(sy)}: {res!r} is "
+                    f"{statewide[sy][res]/grp*100:.1f}% of its group — the "
+                    "residual bucket has swallowed the named lines, which "
+                    "is what a line position echoing the group looks like")
     for i in range(1, len(yrs) - 1):
         prev_y, cur_y, next_y = yrs[i-1], yrs[i], yrs[i+1]
         for name in years_data[cur_y]:

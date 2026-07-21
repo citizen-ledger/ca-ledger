@@ -2333,6 +2333,51 @@ against main: byte-identical.
 
 **Assertions.** 1518 → 1687 (+169).
 
+## 2026-07-20 — The refusal guard now establishes position, not value
+
+`classify_expenditure()` was made shape-driven after the FY 2016-17
+misclassification, with an explicit refusal for unrecognised layouts. It
+did not refuse the layout that matters.
+
+SCO has shipped three layouts of the same table. Pre-FY 2016-17 the
+function group is repeated in `category`, `subcategory_1` **and**
+`subcategory_2`. The guard tested only whether `subcategory_1` held a
+known group name — in that layout it does — so the row was accepted,
+routed down the FY 2017-18+ branch, and every police and fire dollar was
+filed under `safetyOther`. Measured live against FY 2009-10: 8 of 8 row
+shapes accepted, $15.2B misfiled, police and fire reading exactly $0,
+every totals gate passing. Conservation cannot see classification.
+
+**The fix is positional.** The line slot must be proven to carry a line.
+If the value in the line position is the group itself, nothing
+establishes which field it came from, and the row is refused. Verified
+across all 22 published years: refuses all 14 pre-2017 years (112 of 112
+row shapes), accepts all 8 shipped years (1,842 of 1,842). Zero false
+refusals, zero false accepts. Regenerating `city-data.js` produces a
+byte-identical file.
+
+**A second, independent defence.** Shape-gate rules 1-3 all reduce to "is
+this named line zero", which a group-echoing layout defeats in one step:
+every dollar lands in the residual bucket, so nothing named looks
+missing. New rule 4 bounds the residual: `safetyOther` and `cultureOther`
+cannot exceed 35% of their group. Clean shipped years measure 9.5-10.6%
+and 11.7-14.3%; the misclassification measures 100%. Either rule alone
+now stops the build.
+
+**The class, audited across every pipeline.** Forty candidate sites were
+examined and adversarially re-checked; seven were confirmed sound. Six
+survived as live instances of the same class. The most serious is in
+`revisions.py`: the change feed keys city, county and state figures on
+their RANK in an amount-sorted array, and emits the label index itself as
+a value. `lineLabels` is `sorted()` over the observed label set, so a
+single new label renumbers up to 90 labels across 76,112 line entries —
+and the change record, whose whole premise is mechanical trustworthiness,
+would publish tens of thousands of phantom changes. Not fixed here;
+recorded as the next priority.
+
+**Assertions.** 1687 → 1715 (+28), including the FY 2009-10 case
+reproduced verbatim from the source.
+
 ## 2026-07-20 — The change feed is keyed on identity, not rank
 
 The slug-instability lesson reappearing in a second subsystem. Several
