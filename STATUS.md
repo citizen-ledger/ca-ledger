@@ -2479,3 +2479,56 @@ where DOF distinguishes by `(fundCd, fundLglTitl, fundClassCd)`, and
 departments, so a fund renamed between budget acts loses one of its names.
 
 **Assertions.** 1733 → 1774 (+41).
+
+## 2026-07-20 — A fund is (code, title, class), not a code
+
+Two identity collisions in the state layer, both confirmed in the audit
+attached to the district fix, both enumerated against DOF rather than
+inspected.
+
+**Fund rows were keyed on the fund code alone.** DOF distinguishes a fund
+by code, legal title and class together. Where it publishes two titles
+under one code, the pipeline added them and kept whichever class arrived
+first. Probing all 1,155 department-years across the six loaded budgets:
+**43 collisions, every one fund 0001**, where DOF emits "General Fund" and
+"General Fund, Proposition 98" as separate rows. The Proposition 98
+education guarantee was being folded into the general fund line.
+
+**The fund-name legend was one global dictionary** merged across six
+budget acts and ~190 departments per year, so a fund renamed between acts
+kept only its latest name. **23 codes drift** across the window:
+
+| code | was shown as | actually |
+|---|---|---|
+| 3085 | Behavioral Health Services Fund, in every year | Mental Health Services until FY 2025-26 (Prop 1 renamed it) |
+| 3246 | Civil Rights Enforcement and Litigation, in every year | Fair Employment and Housing until FY 2023-24 |
+| 3209 | Health Plan Improvement Trust, in every year | Office of Patient Advocate until FY 2023-24 |
+
+Reading our FY 2020-21 page, a fund appeared under a name it would not
+carry for five more years. Names are now scoped per year — the same shape
+the school resource titles already use, for the same reason.
+
+**No gated total moved.** Every agency and department figure is identical,
+and the V8 parent-sum gate passes unchanged: splitting a row into two of
+the same class preserves the class sum. What changed is which rows the
+fund drill shows and what they are called. A row now carries its own legal
+title only where one code carries more than one, so the payload cost is
+the 43 real cases rather than a title on every row.
+
+**Recorded as our own correction** — 129 events: 43 disappeared and 86
+appeared, and none merely changed, because none was. That is the event
+class the V13 finding warned a value-only feed would under-report, and it
+is exactly what a re-keying looks like.
+
+The duplicate-key guard added with the change-feed fix earned its keep
+here: it refused the build the moment fund codes stopped being unique,
+rather than letting one figure overwrite another.
+
+**One of my own assertions was wrong and is now corrected.** The
+rank-detection check written with the change-feed fix treated any numeric
+path segment as a rank, but a fund code is legitimately numeric
+("funds.0001"). It now matches the specific rank signatures — a bare
+ordinal where a name belongs, or the two-ordinal pair a list-of-lists
+produced — verified against ten cases separating codes from ranks.
+
+**Assertions.** 1774 → 1888 (+114).
