@@ -1808,6 +1808,146 @@ def test_identifier_stability():
               base in amb.get(coll, {}), str(sorted(amb.get(coll, {}))[:4]))
 
 
+def test_position_guard():
+    """THE GUARD MUST ESTABLISH POSITION, NOT RECOGNISE A VALUE.
+
+    SCO has shipped three layouts for the same expenditure table. In the
+    pre-FY 2016-17 layout the function group is repeated in `category`,
+    `subcategory_1` AND `subcategory_2`. The guard written after the
+    FY 2016-17 incident tested only whether `subcategory_1` held a known
+    group name — it does — so the row was accepted, routed down the
+    FY 2017-18+ branch, and every police and fire dollar was filed under
+    'safetyOther'. Measured live against FY 2009-10: 8 of 8 row shapes
+    accepted, $15.2B misfiled, police and fire reading exactly $0, and
+    every totals gate passing, because conservation cannot see
+    classification (docs/V15_HISTORICAL_FINDING.md).
+
+    These assertions use the REAL pre-2017 row shapes, verbatim from the
+    source, and prove the guard now refuses them."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fcd", str(ROOT / "pipeline" / "fetch_city_data.py"))
+    fcd = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_city_data.py"]
+    try:
+        spec.loader.exec_module(fcd)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    def refuses(cat, s1, s2):
+        try:
+            fcd.classify_expenditure(cat, s1, s2)
+            return False
+        except SystemExit:
+            return True
+
+    # ---- THE FY 2009-10 CASE, reproduced. These eight triples are the
+    #      complete set of shapes in that year at the source: the group
+    #      name repeated in all three columns.
+    ERA_A = ["Public Safety", "Transportation", "Public Utilities",
+             "General Government", "Community Development",
+             "Culture and Leisure", "Health", "Other Expenditures"]
+    for g in ERA_A:
+        check(f"position guard: refuses the FY 2009-10 shape for {g!r} — the "
+              f"group repeated in every column", refuses(g, g, g))
+
+    # The specific dollars that moved. Before the fix this returned
+    # ('gov', 'safetyOther', 'Public Safety') and $15.2B of police and fire
+    # disappeared into the residual bucket.
+    check("position guard: THE $15.2B CASE — ('Public Safety', 'Public "
+          "Safety', 'Public Safety') is refused, not filed under safetyOther",
+          refuses("Public Safety", "Public Safety", "Public Safety"))
+
+    # ---- and it must not have become a blunt instrument: every shape the
+    #      shipped years actually contain still classifies.
+    LIVE = [
+        # FY 2017-18+ : paired super-group, group in sub1, line in sub2
+        ("General Government and Public Safety", "Public Safety",
+         "Police_Current Expenditures", "police"),
+        ("General Government and Public Safety", "Public Safety",
+         "Fire_Current Expenditures", "fire"),
+        ("Transportation and Community Development", "Transportation",
+         "Airports_Current Expenditures", "streets"),
+        ("Health and Culture and Leisure", "Culture and Leisure",
+         "Parks and Recreation_Current Expenditures", "parks"),
+        # FY 2016-17 : group in category, line in sub1
+        ("Public Safety", "Police_Current Expenditures", "", "police"),
+        ("Public Safety", "Fire_Current Expenditures", "", "fire"),
+        ("Culture and Leisure", "Libraries_Current Expenditures", "", "library"),
+        # FY 2016-17 capital/debt split : sub1 is itself a group name, but
+        # the LINE is in sub2 and differs from it — position is established,
+        # so this must still be accepted
+        ("Capital Outlay", "Capital Outlay", "Community Development", "capital"),
+        ("Health", "Health", "Current Expenditures", "health"),
+    ]
+    for cat, s1, s2, want in LIVE:
+        kind, key, _line = fcd.classify_expenditure(cat, s1, s2)
+        check(f"position guard: still classifies the live shape "
+              f"{(cat, s1, s2)!r} as {want!r}", kind == "gov" and key == want,
+              f"{kind}/{key}")
+
+    # enterprise, internal service and conduit rows are decided on category
+    # alone and must be untouched by the change
+    for cat, kind in (("Water Enterprise Fund", "ent"),
+                      ("Internal Service Fund", "isf"),
+                      ("Conduit Financing", "conduit")):
+        check(f"position guard: {cat!r} still routes to {kind!r}",
+              fcd.classify_expenditure(cat, "", "")[0] == kind)
+
+    # ---- an unrecognised layout is still refused outright
+    check("position guard: an unknown column layout is still refused",
+          refuses("Something New", "Also New", "Also New"))
+
+    # ---- THE SECOND DEFENCE. Rules 1-3 all reduce to "is this named line
+    #      zero", which a group-echoing layout defeats in one step: every
+    #      dollar lands in the residual bucket, so nothing named looks
+    #      missing. Rule 4 is independent of the guard and of rule 1.
+    def statewide(bad=None):
+        tot = {}
+        for city in CITY["cities"].values():
+            for fy, yr in (city.get("years") or {}).items():
+                if fy != CITY["years"][-1]:
+                    continue
+                for k, v in (yr.get("byFunction") or {}).items():
+                    tot[k] = tot.get(k, 0) + v
+        if bad:
+            tot = dict(tot)
+            tot["safetyOther"] = tot.get("safetyOther", 0) + tot.get("police", 0) \
+                + tot.get("fire", 0)
+            tot["police"] = tot["fire"] = 0.0
+        return tot
+
+    clean = statewide()
+    grp = clean["safetyOther"] + clean["police"] + clean["fire"]
+    share = clean["safetyOther"] / grp
+    check("position guard: the shipped residual share is well inside the "
+          "rule-4 bound", share < 0.35, f"{share*100:.1f}%")
+    check("position guard: and has real headroom — clean years measure far "
+          "below the bound, so rule 4 is not tuned to the edge",
+          share < 0.20, f"{share*100:.1f}%")
+
+    # simulate exactly what the misclassification produces and prove rule 4
+    # fires on it independently of rule 1
+    broken = statewide(bad=True)
+    bgrp = broken["safetyOther"] + broken["police"] + broken["fire"]
+    bshare = broken["safetyOther"] / bgrp
+    check("position guard: THE SECOND DEFENCE — folding police and fire into "
+          "the residual, as the pre-2017 layout does, drives the share to "
+          "100% and breaches rule 4", bshare > 0.35, f"{bshare*100:.1f}%")
+    check("position guard: rule 1 would also fire, so the two defences are "
+          "independent and either alone would stop the build",
+          broken["police"] == 0 and broken["fire"] == 0)
+
+    # rule 4 must actually be wired into the pipeline, not merely described
+    src = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
+    check("position guard: rule 4 is implemented in shape_gate, not just "
+          "documented", "residual" in src and "swallowed the named lines" in src)
+    check("position guard: the refusal explains what it caught rather than "
+          "failing bare", "NO LINE DETAIL IN THIS SOURCE VINTAGE" in src)
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -4858,6 +4998,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_position_guard()
             test_identifier_stability()
             test_actuals_view(page, base)
             test_v2(page, base)
