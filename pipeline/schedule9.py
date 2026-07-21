@@ -139,6 +139,7 @@ def parse_publication(sch9_text, sch6_text, year):
     spans.sort(key=lambda x: x[1])
     depts = []
     dropped = []
+    unparsed, unreconciled = [], []
     for i, (gname, gpos) in enumerate(spans):
         start = spans[i - 1][1] if i else 0
         seg = sch9_text[start:gpos]
@@ -148,12 +149,31 @@ def parse_publication(sch9_text, sch6_text, year):
             rows.append({"code": dm.group(1), "name": dm.group(2).strip(),
                          **dict(zip(("gf", "sp", "bd", "tot", "fed"), v)),
                          "group": gname})
-        if rows and abs(sum(r["tot"] for r in rows) - groups[gname]["tot"]) <= GATE_TOLERANCE \
-                and abs(sum(r["gf"] for r in rows) - groups[gname]["gf"]) <= GATE_TOLERANCE:
+        # TWO DIFFERENT OUTCOMES, KEPT APART. `if rows and <reconciles>`
+        # collapsed them: a group whose department rows failed to PARSE was
+        # indistinguishable from one whose rows parsed and did not
+        # reconcile. The first is a defect in our extraction; the second is
+        # a property of DOF's document, and only the second is a legitimate
+        # reason to withhold department detail.
+        if not rows:
+            unparsed.append(gname)
+            dropped.append(gname)
+        elif (abs(sum(r["tot"] for r in rows) - groups[gname]["tot"]) <= GATE_TOLERANCE
+                and abs(sum(r["gf"] for r in rows) - groups[gname]["gf"]) <= GATE_TOLERANCE):
             depts.extend(rows)
         else:
+            unreconciled.append(gname)
             dropped.append(gname)
-    return groups, depts, dropped
+    # Parsing NOTHING anywhere is a failure, not a document property: the
+    # group totals still gate against Schedule 6, but a Schedule 9 whose
+    # department rows never matched means the regex has lost the document.
+    if not depts:
+        raise GateError(
+            f"GATE 2 FAIL for {year}: no department row parsed in ANY of the "
+            f"{len(spans)} groups. The group totals still reconcile, so this "
+            "is an extraction failure rather than a source property — the "
+            "department pattern has lost the document.")
+    return groups, depts, dropped, unparsed, unreconciled
 
 
 class GateError(Exception):
@@ -179,7 +199,8 @@ def load_actuals_year(year, refresh=False):
             print(f"  actuals {year}: fetching Schedule 9 ({label})…", file=sys.stderr)
             s9 = _fetch_text(s9url)
             s6 = _fetch_text(s6url)
-            groups, depts, dropped = parse_publication(s9, s6, year)
+            (groups, depts, dropped,
+             unparsed, unreconciled) = parse_publication(s9, s6, year)
         except (GateError, ValueError) as e:
             errors.append(f"{label}: {e}")
             continue
@@ -188,13 +209,22 @@ def load_actuals_year(year, refresh=False):
             "source": s9url,
             "groups": groups, "departments": depts,
             "deptDetailDropped": dropped,
+            # WHY each group's detail was withheld, kept distinct: a group
+            # DOF prints without reconcilable department rows is a property
+            # of the document; a group whose rows we failed to parse is our
+            # defect. Both withhold the detail; only one is our fault, and a
+            # reader should not have to guess which.
+            "deptDetailUnreconciled": unreconciled,
+            "deptDetailUnparsed": unparsed,
         }
         CACHE_DIR.mkdir(exist_ok=True)
         cache_path(year).write_text(json.dumps(payload), encoding="utf-8")
         state = sum(g["gf"] + g["sp"] + g["bd"] for g in groups.values())
         print(f"  actuals {year}: GATES PASSED — {len(groups)} groups, "
               f"{len(depts)} dept rows, state ${state / 1e6:,.3f}B ({label})"
-              + (f"; dept detail unavailable for {dropped}" if dropped else ""),
+              + (f"; dept detail unreconciled for {unreconciled}"
+                 if unreconciled else "")
+              + (f"; dept rows UNPARSED for {unparsed}" if unparsed else ""),
               file=sys.stderr)
         return payload
     raise GateError(f"actuals {year}: every candidate publication failed — "

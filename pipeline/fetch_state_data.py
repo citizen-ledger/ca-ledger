@@ -111,6 +111,34 @@ OUT_PATH = Path(__file__).resolve().parent.parent / "data.js"
 FUND_KEYS = ("gf", "sp", "bd", "fed")
 THOUSANDS_PER_BILLION = 1e6
 
+# DEPARTMENTS DOF PUBLISHES WITHOUT A PROGRAM STRUCTURE.
+#
+# The program gate used to be wrapped in `if depth["programs"]:`, so a
+# department that arrived with no program lines simply skipped it. That
+# made "no programs" ambiguous between "DOF publishes none here" and "we
+# did not check", and the second reading is the dangerous one.
+#
+# Measured across all nine cached years: eleven departments ever ship an
+# empty program list, and exactly ONE of them carries money — 9860,
+# Capital Outlay Planning and Studies, at $1-2M a year. DOF publishes it
+# as a bare appropriation with no program breakdown, so its absence is a
+# fact about the source. It is declared here, and the absence is recorded
+# on the node as a positive statement rather than inferred from silence.
+#
+# Any OTHER department that arrives with money and no programs fails the
+# gate. The ten remaining empty-program departments carry no money at all
+# in any year, so there is nothing for the program gate to reconcile.
+NO_PROGRAM_STRUCTURE = {
+    "9860": "Capital Outlay Planning and Studies is published as a bare "
+            "appropriation; the Department of Finance prints no program "
+            "breakdown for it.",
+    "9889": "The Public School System Stabilization Account is a reserve, "
+            "not a programme-delivering department: the Department of "
+            "Finance publishes deposits into and withdrawals from it, with "
+            "no program structure to break down.",
+}
+
+
 # ----------------------------------------------------------------------
 # THE RECONCILIATION GATE (no write on failure, like every other layer)
 # ----------------------------------------------------------------------
@@ -648,6 +676,34 @@ def build_payload(cached):
                       **({"code": dv["code"]} if dv.get("code") else {}),
                       **{k: round(dv[k] / THOUSANDS_PER_BILLION, 3)
                          for k in FUND_KEYS}}
+                # SILENCE IS NOT A CHECK. A department with no program lines
+                # used to skip the program gate entirely, so "no programs"
+                # was ambiguous between "DOF publishes none here" and "we did
+                # not check". The absence is now DECLARED or it is a failure.
+                #
+                # This lives in build_payload, which runs on EVERY build, not
+                # in fetch_year, which runs only on --refresh: a gate that
+                # fires only when the cache is cold is a gate most builds skip.
+                #
+                # The money test is on ABSOLUTE values. The Public School
+                # System Stabilization Account moves up to $5.2B in a year as
+                # offsetting deposits and withdrawals that net to exactly
+                # zero; a signed total reports it as carrying nothing, which
+                # is how it was missed on the first pass.
+                if not dv.get("programs"):
+                    moved = sum(abs(dv[k] or 0) for k in FUND_KEYS)
+                    code = dv.get("code")
+                    if moved and code not in NO_PROGRAM_STRUCTURE:
+                        raise SystemExit(
+                            f"V8 GATE {year} {dn!r} ({code}): the department "
+                            f"moves {moved:,}k but carries no program lines, "
+                            "so the program gate would be skipped and the "
+                            "build would report success without checking it. "
+                            "If DOF genuinely publishes no program structure "
+                            "here, declare it in NO_PROGRAM_STRUCTURE; do not "
+                            "let silence stand in for a check. Nothing written.")
+                    if code in NO_PROGRAM_STRUCTURE:
+                        dd["programsNone"] = NO_PROGRAM_STRUCTURE[code]
                 # V8 depth: children in integer thousands (source units)
                 if dv.get("funds"):
                     dd["funds"] = dv["funds"]
@@ -774,7 +830,25 @@ def main():
             continue
         save_cache(year, *fetch_year(year))
 
-    cached = load_cached_years()
+    # BUILD FROM THE YEARS ASKED FOR, NOT FROM WHATEVER IS ON DISK.
+    #
+    # load_cached_years() returns every FY file in pipeline/cache/, so the
+    # shipped window used to depend on what a previous run — or a different
+    # BRANCH — happened to leave there. Measured: a checkout with
+    # DEFAULT_YEARS = 6 silently built a nine-year payload because three
+    # extra caches were present, and the build then failed a gate whose
+    # constant lived on the other branch. Same source and same code must
+    # produce the same output regardless of disk state.
+    on_disk = load_cached_years()
+    missing = [y for y in wanted if y not in on_disk]
+    if missing:
+        sys.exit(f"Requested fiscal years not cached: {missing} — nothing "
+                 "written. Re-run without --years, or with --refresh.")
+    cached = {y: on_disk[y] for y in wanted}
+    extra = sorted(set(on_disk) - set(wanted))
+    if extra:
+        print(f"  ignoring {len(extra)} cached year(s) outside the requested "
+              f"window: {extra}", file=sys.stderr)
     if not cached:
         sys.exit("No fiscal years cached — nothing to write.")
     gate = gate_years(cached)          # raises SystemExit; nothing written

@@ -2749,3 +2749,63 @@ unchanged.
 from the payloads; **12 of 12** files carrying a digest verify.
 
 **Assertions.** 2075 → 2099 (+24).
+
+## 2026-07-21 — Silence is not a check, and disk state is not an input
+
+The last three defects from the vacuous-gate audit.
+
+**1. The state program gate skipped itself.** `if depth["programs"]:` wrapped
+a hard gate, so a department arriving with no program lines simply passed.
+"No programs" was ambiguous between "DOF publishes none here" and "we did
+not check", and the second reading is the dangerous one.
+
+Two departments legitimately have no program structure, and both are now
+DECLARED with a reason: **9860** Capital Outlay Planning and Studies, a bare
+appropriation at $1-2M; and **9889** the Public School System Stabilization
+Account, a reserve DOF publishes as deposits and withdrawals. Any other
+department that moves money with no program lines now stops the build.
+
+The declaration is asserted to be EARNED — every declared code must actually
+occur, so it is a record rather than a blanket exemption.
+
+**Two measurement errors of my own, both caught by the work itself.** I first
+declared only 9860, because I scanned the cache summing SIGNED fund values —
+and 9889's deposits and withdrawals net to exactly zero while moving up to
+**$5.2B** in a single year. The gate now tests absolute movement. And I first
+put the gate in `fetch_year`, which runs only on `--refresh`: a gate that
+fires only when the cache is cold is a gate most builds skip. It now lives in
+`build_payload`, which runs on every build.
+
+**2. Schedule 9's Gate 2 conflated two outcomes.** `if rows and <reconciles>`
+made "parsed nothing" — our defect — indistinguishable from "parsed rows that
+do not reconcile", a property of DOF's document. They are separated:
+`deptDetailUnparsed` and `deptDetailUnreconciled` are recorded distinctly, and
+parsing nothing in ANY group now fails outright.
+
+Re-running every actuals year: all seven report **unreconciled**, none
+unparsed. So HHS and General Government are withheld because DOF's own
+department rows do not reconcile to their group totals — not because our
+extraction failed. Their group totals are gated by Gate 1 throughout.
+
+**No published claim overstates this.** `meta.actuals.basis` claims
+reconciliation against Schedule 6 *statewide* control totals, which is Gate 1
+and is true; nothing claims department detail is reconciled where it was
+withheld.
+
+**3. The build window is the requested years, not the disk.** `build_payload`
+consumed every FY file in the cache, so a checkout with `DEFAULT_YEARS = 6`
+silently built nine years because another branch had left three caches behind.
+The build now takes exactly the requested window, refuses if a requested year
+is missing, and reports any cached year it ignores. Verified: an extra cache
+file no longer changes the output, and `--years 2023-24 2024-25 2025-26`
+builds exactly three years and reports six ignored.
+
+**Also fixed:** a coverage declaration was re-applied on every build, so
+running the pipeline twice in one day declared the same extension twice. It is
+a one-time fact and is now recorded once.
+
+**No figure moved.** 14 `programsNone` declarations were added; every figure
+in all nine years is unchanged. Digest coverage measured: 12 discovered, 12
+verified.
+
+**Assertions.** 2099 → 2118 (+19).
