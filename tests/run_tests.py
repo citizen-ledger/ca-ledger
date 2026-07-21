@@ -2466,6 +2466,130 @@ def test_empty_gate_guard():
           "EMPTY GATE TARGET" in ssrc)
 
 
+def test_uc_strip_verification():
+    """A GATE THAT CANNOT FAIL, AND A WRITE PATH THAT NEVER RAN.
+
+    The UC strip identity asserted `med + aux + doe + core ==
+    auditedTotal` — but `core` is DEFINED one line above as
+    `auditedTotal - med - aux - doe`. Substituting gives auditedTotal ==
+    auditedTotal. Measured over 2,000 randomised trials, including
+    components exceeding the total and negative components, it fired
+    zero times. It is replaced by checks that constrain something.
+
+    What the strip's components actually rest on is the COLUMN-SUM CHECK
+    inside _prove_assignment: every campus column's function lines must
+    sum exactly to that column's printed total. A row that fails to
+    parse makes no assignment tie and refuses the build — so the
+    'unguarded aux' reported in the audit is guarded, one layer up. This
+    test pins that coupling, because it is not obvious from the strip
+    code and a refactor could quietly break it."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+
+    # ---- the tautology is gone
+    src = (ROOT / "pipeline" / "fetch_uc_data.py").read_text(encoding="utf-8")
+    check("uc strip: the tautological identity is gone",
+          "strip identity broken" not in src)
+    check("uc strip: replaced by a bound on the residual, which CAN fail",
+          "strip residual is negative" in src
+          and "outside the 30-90% band" in src)
+    # NB: assert on fragments that survive line-wrapping. Twice now a
+    # source-text assertion has failed because the string it looked for
+    # was split across two lines by the formatter.
+    check("uc strip: and by a presence check on each stripped component",
+          "strip component" in src and "was not found in the" in src
+          and "cannot be built from" in src)
+
+    # ---- the replacement is not itself a tautology: it fires on bad input
+    A = 100_000
+    for med, aux, doe, why in ((60_000, 50_000, 10_000, "components exceed the total"),
+                               (95_000, 3_000, 1_000, "residual too small"),
+                               (1_000, 1_000, 1_000, "residual too large")):
+        core = A - med - aux - doe
+        bad = core < 0 or not 0.30 <= core / A <= 0.90
+        check(f"uc strip: the new bound rejects {why}", bad,
+              f"core={core} share={core/A:.2f}")
+    med, aux, doe = 38_600, 3_100, 2_100          # the real shape
+    core = A - med - aux - doe
+    check("uc strip: and accepts the real shipped shape",
+          core >= 0 and 0.30 <= core / A <= 0.90, f"{core/A:.2f}")
+
+    # ---- THE COUPLING: a row that fails to parse is refused upstream
+    COLS = ("A", "B", "C")
+    rows = {"Instruction": [100, 200, 300], "Research": [10, 20, 30],
+            "Auxiliary enterprises": [5, 6, 7]}
+    totals = [115, 226, 337]
+    grid, err = U._prove_assignment(rows, totals, COLS)
+    check("uc strip: a complete campus table proves its assignment", grid is not None)
+    short = {k: v for k, v in rows.items() if k != "Auxiliary enterprises"}
+    grid2, err2 = U._prove_assignment(short, totals, COLS)
+    check("uc strip: a MISSING auxiliary row is refused by the column-sum "
+          "check — the strip's components are not unguarded, they are "
+          "guarded one layer up", grid2 is None, str(err2))
+
+    # ---- the residual is labelled as ours, not as a UC-published figure
+    strip = UC["meta"]["strip"]
+    check("uc strip: the payload states the residual is not UC-published",
+          "residual" in strip, str(sorted(strip)))
+    r = strip.get("residual", "")
+    check("uc strip: and says so plainly", "NOT a figure UC publishes" in r
+          or "not a figure UC publishes" in r.lower(), r[:80])
+    check("uc strip: naming what it inherits", "inherits any error" in r)
+    check("uc strip: while still crediting the three lines to UC",
+          "UC's own" in strip.get("definition", ""))
+
+    # ---- the gate text claims only identities that are real
+    gate = UC["meta"]["gate"]
+    check("uc strip: meta.gate claims two identities, and does not count the "
+          "removed tautology among them",
+          "Two identities" in gate and "strip identity" not in gate)
+
+
+def test_ccc_write_path():
+    """THE WRITE PATH THAT HAD NEVER RUN.
+
+    fetch_ccc_data and fetch_uc_data both assigned `prev` inside build()
+    and used it in main() — a different scope — so every --write raised
+    NameError after writing the payload but before recording anything.
+    Neither layer's change record had ever been written by a real
+    refresh, which is why the CCC parser fix could not reach the
+    published file until this was fixed too."""
+    for f in ("fetch_ccc_data.py", "fetch_uc_data.py"):
+        src = (ROOT / "pipeline" / f).read_text(encoding="utf-8")
+        import re as _re
+        cur, prev_fn, rec_fn = None, None, None
+        for line in src.splitlines():
+            m = _re.match(r"^def (\w+)", line)
+            if m:
+                cur = m.group(1)
+            if "previous_payload" in line and prev_fn is None:
+                prev_fn = cur
+            if "record_revision(" in line and "def " not in line and rec_fn is None:
+                rec_fn = cur
+        check(f"ccc write path: {f} reads the previous payload in the same "
+              f"scope that records the revision", prev_fn == rec_fn,
+              f"prev in {prev_fn}, record in {rec_fn}")
+
+    # the correction that could not ship until the write path worked
+    rec = load_data_js(ROOT / "ccc-revisions.js")
+    ours = [b for b in rec["batches"] if b.get("ours")]
+    check("ccc write path: the funded-FTES correction is recorded",
+          len(ours) == 1, str(len(ours)))
+    if ours:
+        evs = ours[0]["events"]
+        check("ccc write path: exactly one figure moved", len(evs) == 1, str(evs))
+        e = evs[0]
+        check("ccc write path: it is the statewide funded-FTES figure",
+              e["e"] == "statewide" and e["k"] == "fundedFtes", str(e))
+        check("ccc write path: from our own sum to the published control",
+              e["o"] == 1100664.62 and e["n"] == 1100664.61, str(e))
+        check("ccc write path: attributed to us, not to the source",
+              "our own correction" in ours[0]["note"].lower())
+    check("ccc write path: the shipped figure is now the published control",
+          CCC["statewide"]["fundedFtes"] == 1100664.61,
+          str(CCC["statewide"]["fundedFtes"]))
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -5830,6 +5954,8 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_uc_strip_verification()
+            test_ccc_write_path()
             test_historical_state(page, base)
             test_empty_gate_guard()
             test_identity_leaks(page, base)

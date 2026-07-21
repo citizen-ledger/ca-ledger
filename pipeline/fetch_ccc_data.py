@@ -578,7 +578,6 @@ def build(refresh):
         },
         "districts": districts,
     }
-    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     return payload, tvi_statewide, ce_sum
 
@@ -611,6 +610,12 @@ def main():
               "portal (Table VI, ECS 84362), the SCFF Exhibit C, and the MIS District & "
               "College Codes. Whole dollars; the 73 districts sum exactly to the printed "
               "statewide Current Expense of Education. Auto-reproducible: --refresh. */\n")
+    # The previous payload must be read BEFORE the new one overwrites
+    # it. This was assigned inside build() and used here, in a
+    # different scope, so every --write raised NameError before it
+    # could record anything: this layer's change record has never
+    # been written by a real refresh.
+    prev = revisions.previous_payload(OUT_PATH)
     OUT_PATH.write_text(header + "window.CA_CCC_DATA = " + body + ";\n", encoding="utf-8")
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB)")
 

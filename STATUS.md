@@ -2696,3 +2696,56 @@ tests `is None`, because zero is a real published value.
 
 **Assertions.** 1916 → 1945 (+29), including a mutation proof: emptying a
 gate's target now refuses where it previously produced a clean build.
+
+## 2026-07-21 — The UC strip: a gate that could not fail, and a write that never ran
+
+Two of the four gates left open by the vacuous-gate sweep. The other two
+(the state program gate and schedule9's Gate 2) remain.
+
+**The strip identity was a tautology.** `core_k` was defined as
+`auditedTotal − med − aux − doe` and then asserted to sum back to
+`auditedTotal`. Substituting the definition gives `auditedTotal ==
+auditedTotal`. Measured over 2,000 randomised trials — including
+components exceeding the total and negative components — it fired **zero
+times**. It is replaced by checks that constrain something: each stripped
+component must have been found, the residual must be non-negative, and it
+must fall in a 30–90% band (the real figure is 56.2%).
+
+**No published provenance claim rested on it.** `meta.gate` names exactly
+two identities — campuses + Systemwide == audited total, and the
+column-sum check — and both are real. The tautology was dead weight, not
+a load-bearing falsehood.
+
+**The "unguarded aux" is guarded, one layer up.** The audit's mutation
+popped the auxiliary row from the grid *after* `_prove_assignment` had
+validated it — a state a parse failure cannot produce. A row that fails to
+parse leaves the columns short of their printed totals, no assignment
+ties, and the build refuses (verified: removing the row yields "0
+sparse-row assignments tie"). A row the table omits entirely is caught by
+Gate 1. The coupling is now pinned by a test, because it is not obvious
+from the strip code.
+
+**What the strip does NOT verify is now stated.** The three stripped lines
+are UC's own and their values are proven; the remainder shown as "core" is
+**not a figure UC publishes** — it is the Ledger's arithmetic residual and
+inherits any error in the three lines subtracted from it. `meta.strip`
+says so.
+
+**A second defect, and it was blocking the first.** `fetch_uc_data` and
+`fetch_ccc_data` both assigned `prev` inside `build()` and used it in
+`main()` — a different scope — so **every `--write` raised NameError**
+after writing the payload but before recording anything. Neither layer's
+change record had ever been written by a real refresh.
+
+That is why the CCC parser fix of 2026-07-21 never reached the published
+file: it was verified in a dry run, and `--write` crashed. **A published
+figure changes now.** Statewide funded FTES moves from **1,100,664.62** —
+the pipeline's own sum of the 72 district pages — to **1,100,664.61**, the
+Chancellor's Office's printed control. Recorded as our own correction, one
+event. Nothing else moved: all 72 districts and every Table VI figure are
+unchanged.
+
+**Digest coverage, measured:** `verify_digest.py` discovers its file list
+from the payloads; **12 of 12** files carrying a digest verify.
+
+**Assertions.** 2075 → 2099 (+24).
