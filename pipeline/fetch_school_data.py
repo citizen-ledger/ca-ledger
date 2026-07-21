@@ -99,6 +99,57 @@ COMMON_ADMIN_NCES = {
     "0635810": "4940253", "0635830": "4940253",   # Santa Rosa Elem / High
 }
 
+# ---------------------------------------------------------------- vintages
+#
+# CDE'S SOURCE VOCABULARY, DECLARED PER YEAR — never sniffed.
+#
+# The Current Expense workbook and the SACS database rename things between
+# vintages. A detector loosened to accept any of several spellings would
+# also silently accept a vintage nobody has checked, which is how FY2018-19
+# used to pass every gate on ZERO districts: its header row reads
+# "CO Code"/"District Code" where the shipped detector tested for "CO"
+# exactly, so the control table stayed empty and each gate iterated nothing.
+#
+# Every entry below was read off the real published file, not inferred:
+#   sheet / county-code / district-code / district-name column headers.
+CE_VINTAGE = {
+    "1617": ("CDS",               "CO",      "CDS",           "DISTRICT"),
+    "1718": ("CDS",               "CO",      "CDS",           "DISTRICT"),
+    "1819": ("District (by CDS)", "CO Code", "District Code", "District"),
+    "1920": ("CDS",               "CO",      "CDS",           "DISTRICT"),
+    "2021": ("District",          "CO",      "CDS",           "DISTRICT"),
+    "2122": ("District",          "CO",      "CDS",           "DISTRICT"),
+    "2223": ("District",          "CO",      "CDS",           "District"),
+    "2324": ("District",          "CO",      "CDS",           "District"),
+    "2425": ("District",          "CO",      "CDS",           "District"),
+}
+
+# The SACS database changed two names between FY2021-22 and FY2022-23.
+# Verified by inspection on every year FY2016-17..FY2021-22, and by the
+# shipped gate on the current years: the running pipeline reads
+# Charters.SchoolCode and counts 58 county offices by the long spelling,
+# so a mismatch there would already have failed.
+SACS_ERA = {
+    "legacy":  {"charterSchool": "SchoolID",   "coeType": "CO OFFICE"},
+    "current": {"charterSchool": "SchoolCode", "coeType": "County Office"},
+}
+SACS_LEGACY_YEARS = {"1617", "1718", "1819", "1920", "2021", "2122"}
+
+
+def vintage(yy):
+    """The declared vocabulary for one source year, or a refusal."""
+    if yy not in CE_VINTAGE:
+        raise SystemExit(
+            f"FY {yy}: no declared source vocabulary. CDE renames sheets and "
+            "columns between vintages, and a year whose spellings have not "
+            "been read off the published file cannot be parsed safely — the "
+            "FY2018-19 vintage passed every gate on zero districts that way. "
+            "Add it to CE_VINTAGE deliberately; nothing written.")
+    sheet, co, dcode, dname = CE_VINTAGE[yy]
+    era = SACS_ERA["legacy" if yy in SACS_LEGACY_YEARS else "current"]
+    return {"sheet": sheet, "co": co, "dcode": dcode, "dname": dname, **era}
+
+
 YEARS = [("2223", "2022-23"), ("2324", "2023-24"), ("2425", "2024-25")]
 GATE_TOL = 0.05          # per-district vs published EDP 365
 ROLLUP_TOL = 0.05        # per fund×object cell vs CDE's own totals
@@ -416,6 +467,7 @@ def rev_group(n):
 
 
 def process_year(yy, fy):
+    V = vintage(yy)          # the declared vocabulary for THIS source year
     sacs, alt, ce_path, lcff_path = ensure_year_files(yy, fy)
     import openpyxl
 
@@ -427,13 +479,13 @@ def process_year(yy, fy):
             "ada": float(r["K12ADA"] or 0)}
     charters = {}
     for r in mdb_rows(sacs, "Charters"):
-        charters[(r["Ccode"], r["Dcode"], r["SchoolCode"])] = {
+        charters[(r["Ccode"], r["Dcode"], r[V["charterSchool"]])] = {
             "name": r["CharterName"].strip(),
             "number": r["CharterNumber"].strip(),
             "level": r["ReportLevel"].strip(), "fund": (r.get("FundUsed") or "").strip(),
             "type": (r.get("ReportType") or "").strip(),
             "ada": float(r["K12ADA"] or 0)}
-    n_coe = sum(1 for v in leas.values() if v["type"].startswith("County Office"))
+    n_coe = sum(1 for v in leas.values() if v["type"].startswith(V["coeType"]))
     if n_coe != 58:
         raise SystemExit(f"FY {fy}: {n_coe} COEs (expected 58) — nothing written")
 
@@ -568,21 +620,26 @@ def process_year(yy, fy):
 
     # ---- GATE 1: published Current Expense of Education, to the cent
     wb = openpyxl.load_workbook(ce_path, read_only=True)
-    ws = wb["District"]
+    if V["sheet"] not in wb.sheetnames:
+        raise SystemExit(
+            f"FY {fy}: the Current Expense workbook has no {V['sheet']!r} "
+            f"sheet (it has {wb.sheetnames}). The declared vocabulary no "
+            "longer matches the published file; nothing written.")
+    ws = wb[V["sheet"]]
     rows = ws.iter_rows(values_only=True)
     header = None
     ce = {}
     for row in rows:
         if header is None:
-            if row and str(row[0]).strip() == "CO":
+            if row and str(row[0]).strip() == V["co"]:
                 header = [str(x or "").replace("\n", " ").strip() for x in row]
             continue
         if row[0] is None:
             continue
         rec = dict(zip(header, row))
-        c = str(rec["CO"]).zfill(2)
-        d = str(rec["CDS"]).zfill(5)
-        ce[(c, d)] = {"name": str(rec["District"]).strip(),
+        c = str(rec[V["co"]]).zfill(2)
+        d = str(rec[V["dcode"]]).zfill(5)
+        ce[(c, d)] = {"name": str(rec[V["dname"]]).strip(),
                       "edp": float(rec["EDP 365"]),
                       "ada": float(rec["Current Expense ADA"]),
                       "type": str(rec["LEA Type"]).strip()}
