@@ -22,12 +22,13 @@ means something different**, and in one case the pipeline cannot tell.
 | counties | 2016-17 (8 yr) | **2016-17** | gated | **no change** |
 | special districts | 2016-17 (8 yr) | 2003-04 possible | as-filed | +13, not advised now |
 | K-12 | 2022-23 (3 yr) | **2016-17** | gated | +6 years |
-| CSU | 2023-24 (1 yr) | **2018-19** | gated | +5 years |
-| CCC | 2022-23 (1 yr) | **2009-10** partial | gated | +13 years, split record |
+| CSU | 2023-24 (1 yr) | **2023-24** | gated | **no change — see the 2026-07-21 correction** |
+| CCC | 2022-23 (1 yr) | **2009-10** | gated | +14 years, split record |
 | UC | 2024-25 (1 yr) | **2021-22** | gated | +3 years |
 
-Two layers cannot be deepened at all. That is the most important line in
-this document, and it is the one that took the most work to establish.
+Three layers cannot be deepened at all — cities, counties and, on the
+2026-07-21 correction below, CSU. That is the most important line in this
+document, and it is the one that took the most work to establish.
 
 ---
 
@@ -190,9 +191,9 @@ Full enumerations are in the per-layer research; the load-bearing items:
 - **UC** — the audit-status caveat currently on the page **does not exist**
   in older vintages. Carrying the current sentence backward would put a
   false statement on the face of the site.
-- **CSU** — older PDFs are not unreadable, as first reported; they carry a
-  uniform −29 character shift affecting letters and digits alike. Readable
-  once known, invisible if not.
+- **CSU** — this entry was WRONG and is corrected at the end of this
+  document. The −29 character shift could not be verified, because the
+  documents could not be obtained at all.
 
 ---
 
@@ -339,14 +340,13 @@ re-litigating; sections on sensitivity do.
 - **K-12 → FY2016-17** (3 → 8 years, gated). Stops one year above the
   provable `UserGL_Totals` floor. Do not cross LCFF (FY2013-14) — the
   restricted/unrestricted split changes meaning.
-- **CSU → FY2018-19** (1 → 6 years, gated). FY2012-13 is the structural
-  floor and is reachable, but the −29 character-shift encoding and campus
-  eliminations sign handling make the deeper tier a separate project.
-- **CCC → FY2009-10 for the Table VI core** (16 years), **FY2019-20 for
-  per-FTES**. Ship the record with two explicit depths rather than
-  truncating the core to match the shallower field. Three vintages
-  (FY2015-16 – FY2017-18) are unretrievable and must be shown as absent,
-  not interpolated.
+- **CSU → no change.** Superseded; see the correction below. The layer
+  stays at its single year.
+- **CCC → FY2009-10 for the Table VI core** (14 years in scope), **FY2019-20
+  for per-FTES**. Ship the record with two explicit depths rather than
+  truncating the core to match the shallower field. The claim that
+  FY2015-16 – FY2017-18 are unretrievable was WRONG; see the correction
+  below.
 - **UC → FY2021-22** (1 → 4 years, gated). Do not carry the audit-status
   sentence backward — it is not true of older vintages. Do not go below
   FY2008-09 under any framing.
@@ -406,3 +406,66 @@ HTTP status, one "files have been removed" claim that was false, and one
 "not machine-readable" claim that was an unrecognised character encoding.
 Where a per-layer number below is not in the paragraph above, it carries
 that provenance and not mine.
+
+---
+
+## Correction, 2026-07-21
+
+This finding was written from a fan-out of per-layer investigations. Before
+building on it, each layer's recommendation was re-probed by running the
+real parser against the real source. **Two of its claims were wrong**, and
+they are corrected here rather than left to mislead the next reader.
+
+### CSU cannot be extended at all — the finding said +5 years
+
+The recommendation of FY2018-19 rested on the report that older CSU PDFs
+"carry a uniform −29 character shift … readable once known". That could not
+be verified, for a reason that supersedes it entirely:
+
+- **The documents cannot be obtained.** `calstate.edu` returns **HTTP 403**
+  with an Imperva "Human Check" interstitial to every scripted request. No
+  attempt was made to defeat it and none should be.
+- **The parser does not exist.** `extract_from_pdfs()` in
+  `pipeline/fetch_csu_data.py` is a documented stub: it globs for PDFs,
+  imports `pypdf`, and returns nothing.
+- **Existence is undecidable by fetch on that host** — a real statements
+  path and a deliberately impossible one return the same thing, the CSU
+  analogue of the soft-404 trap this document records for `www.sco.ca.gov`.
+
+So the control total for every proposed CSU year is **uncomputable, not
+merely unreconciled**. A year that cannot be gated does not ship. CSU stays
+at its single gated year, FY2023-24.
+
+The structural floor of FY2012-13 named above is not refuted — it is
+unreachable, which is a different and stronger objection.
+
+### CCC's three "unretrievable" vintages are retrievable — and there are 14 years, not 13
+
+The finding stated that FY2015-16, FY2016-17 and FY2017-18 "are
+unretrievable and must be shown as absent". Re-probed: **all three fetch
+real, year-labelled data and reconcile at the proven whole-dollar
+resolution with a residual of exactly $0**, using the shipped Table VI
+parser unchanged.
+
+The in-scope Table VI core is therefore **FY2009-10 through FY2022-23 — 14
+years, every one gate-verified at $0** — a better result than this document
+predicted, not a worse one.
+
+Two limits stand, and one is new:
+
+- The apportionment-derived fields (per-FTES, state GF, basic aid) still
+  begin at **FY2019-20**; the split-depth record is unchanged.
+- **FY2018-19 apportionment has no published control**: "Funded FTES"
+  appears nowhere in that year's R1 document and the statewide page carries
+  none of the three control fields. That year ships its Table VI core and
+  shows the apportionment fields as absent — not interpolated, not
+  defaulted.
+
+### What this says about the method
+
+Both errors ran in the same direction as the agent that produced them: the
+CSU report was optimistic about a document it never held, and the CCC report
+was pessimistic about documents it failed to fetch once. Neither survived a
+second attempt with the real parser. The finding's own evidence standard —
+VERIFIED means *I fetched it* — was the right rule; it was applied
+unevenly, and the re-probe is what caught that.
