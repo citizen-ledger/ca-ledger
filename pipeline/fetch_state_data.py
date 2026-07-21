@@ -308,6 +308,16 @@ def fetch_year(year: str):
             #  - fund rows by class == the statistics parents (G/S/B);
             #    F is identical by construction;
             #  - programs (all funds) == gf+sp+bd+fed+N+R.
+            # An empty fund list makes every class sum 0, and a department
+            # whose parents are also 0 would then "reconcile" against
+            # nothing. Departments legitimately have no fund rows only when
+            # they have no state funds at all — require one or the other.
+            if not depth["funds"] and any(node.get(k) for k in ("gf", "sp", "bd")):
+                raise SystemExit(
+                    f"EMPTY GATE TARGET {year} {d['legalTitl'].strip()!r}: the "
+                    "department reports state funds but parsed no fund rows, so "
+                    "the parent-sum gate would compare 0 against 0 and pass; "
+                    "nothing written")
             by_cls = {}
             for row in depth["funds"]:            # [cd, class, thousands, title?]
                 cl, v = row[1], row[2]

@@ -2573,3 +2573,59 @@ permalink moved, and `data.js` differs from its predecessor only in the
 generated date and the digest that follows from it.
 
 **Assertions.** 1888 → 1916 (+28).
+
+## 2026-07-21 — A check that cannot fail is not a check
+
+The dormant-assertion lesson, moved from the test suite into the pipeline.
+A gate whose comparison target is empty passes vacuously: it loops over
+nothing, accumulates no failures, and reports success.
+
+**This was shipping.** `fetch_ccc_data.build()` reconciled funded FTES and
+state General Fund with `if appn_statewide.get("fundedFtes") and ...`, and
+`fetch_apportionment()` returned `statewide == {}` for FY 2022-23 — its
+page-identity regex required a heading ending in "CCD" or "District", and
+the statewide summary page is headed "Statewide Totals", so the target was
+excluded by construction. The `and` short-circuited and both comparisons
+were skipped while the build printed its success banner.
+
+**Was that year ever verified? No.** Forensic proof: the shipped
+`statewide.fundedFtes` is 1,100,664.62 — the pipeline's own fallback
+self-sum — while the Chancellor's Office control prints 1,100,664.61. The
+published figure was never the published control. Reconciled properly now,
+funded FTES lands within +0.01 and state General Fund at **exactly $0**, so
+no figure was wrong; only the assurance was false. That is its own defect:
+`meta.daggers.basicAid` publishes the claim that the community-supported
+count "matches the Chancellor's Office's own figure", and that comparison
+had never run.
+
+**The guard.** New `pipeline/gates.py` — `require_target()` refuses an
+empty comparison target, `require_rows()` refuses a row count below the
+floor a source must produce, and a minimum of zero is itself rejected
+because "at least none" is not a check. Both raise `VacuousGate`, a
+`SystemExit` subclass, so a build stops the way every other gate failure
+stops it. Applied to CCC (Table VI and apportionment), K-12 (the Current
+Expense header and district count, plus the classification-shape gate),
+cities (city-years to shape-check) and state (a department reporting funds
+must have parsed fund rows).
+
+**A second live case, and an embarrassing one.** `verify_digest.py` carried
+a hardcoded list of ten files while **twelve** shipped payloads carry a
+digest: `deflator-data.js` and `search-index.js` had never been verified,
+and the run still printed a clean sweep. Every recent PR of mine cited
+"10 files VERIFIED" as evidence. The list is now discovered from the files
+themselves, the run refuses if any digest-bearing file would be skipped,
+and all twelve verify.
+
+**A third.** The cities reconciliation guarded itself with
+`if key in official and official[key] > 0`, so any city-year whose
+published control is zero was never compared. Three of 3,856 shipped
+city-years carry a published total of zero. They are now counted as
+unreconciled rather than silently passed, and a build must reconcile at
+least 3,800 of them.
+
+**Also closed:** CCC's community-supported count used a truthiness test, so
+a legitimately-zero published control would have disabled the check. It now
+tests `is None`, because zero is a real published value.
+
+**Assertions.** 1916 → 1945 (+29), including a mutation proof: emptying a
+gate's target now refuses where it previously produced a clean build.

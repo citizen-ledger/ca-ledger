@@ -85,6 +85,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -449,6 +450,8 @@ def fetch_official_totals():
 # ----------------------------------------------------------------------
 def sanity_check(years_data, official):
     errors, warnings = [], []
+    reconciled = 0
+    unreconciled = []
     for sy, cities in years_data.items():
         if len(cities) < 450:
             errors.append(f"FY {fy_label(sy)}: only {len(cities)} cities (expected ~482)")
@@ -458,15 +461,34 @@ def sanity_check(years_data, official):
             ours = (sum(c["byFunction"].values()) + sum(c["enterprise"].values())
                     + c["isf"] + c["conduit"])
             key = (name, sy)
+            # A ZERO OR MISSING CONTROL DOES NOT RECONCILE — it goes
+            # UNRECONCILED, and that is recorded rather than skipped. The
+            # previous `if key in official and official[key] > 0` quietly
+            # dropped the check for any city-year whose published control
+            # is 0, so those years passed without ever being compared.
+            # Measured: 3 of 3,856 shipped city-years carry a published
+            # total of 0 (the zero-filled non-timely filings), and each
+            # must be counted as unreconciled, not as verified.
             if key in official and official[key] > 0:
+                reconciled += 1
                 drift = abs(ours - official[key])
                 if drift > max(1000.0, official[key] * 0.001):
                     errors.append(
                         f"{name} FY {fy_label(sy)}: our total ${ours:,.0f} vs "
                         f"official ${official[key]:,.0f} (drift ${drift:,.0f})")
-            elif key not in official:
-                warnings.append(f"{name} FY {fy_label(sy)}: no official total to "
-                                "reconcile against")
+            else:
+                unreconciled.append(f"{name} FY {fy_label(sy)}")
+                if ours > 0:
+                    errors.append(
+                        f"{name} FY {fy_label(sy)}: we report ${ours:,.0f} but "
+                        f"the published control is "
+                        f"{'0' if key in official else 'absent'} — the figure "
+                        "cannot be reconciled and must not ship as if it were")
+    # the reconciliation must actually have run on the overwhelming majority
+    gates.require_rows(reconciled, 3800,
+                       "city-years reconciled against a published control",
+                       f"{len(unreconciled)} were unreconciled: "
+                       f"{unreconciled[:5]}")
     latest = SOURCE_YEARS[-1]
     la = years_data[latest].get("Los Angeles")
     if not la:
@@ -670,6 +692,14 @@ def shape_gate(years_data):
     repeating its worst defect."""
     errors = []
     yrs = SOURCE_YEARS
+    # A shape gate that iterates nothing accumulates no failures and reports
+    # success. Every rule below loops over years_data, so an empty load — or
+    # a year that parsed to no cities — would pass silently.
+    gates.require_rows(len(years_data), len(yrs), "city-years to shape-check")
+    for _sy in yrs:
+        gates.require_rows(len(years_data.get(_sy) or {}), 400,
+                           f"cities in FY {fy_label(_sy)}",
+                           "the shape gate would check nothing for that year.")
     core = ("police", "fire", "admin", "streets", "parks")
     residual = (("safetyOther", ("police", "fire")),
                 ("cultureOther", ("parks", "library")))

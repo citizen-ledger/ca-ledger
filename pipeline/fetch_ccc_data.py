@@ -98,6 +98,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -310,10 +311,22 @@ def fetch_apportionment(refresh):
     appn, statewide = {}, {}
     for pg in range(len(r.pages)):
         t = r.pages[pg].extract_text()
-        m = re.match(r"\s*(.+?(?:CCD|District))\s*\nExhibit C - Page 1", t)
-        if not m:
+        # WHICH ENTITY THIS PAGE IS ABOUT is the line immediately BEFORE
+        # "Exhibit C - Page 1" — line 1 on a district page, line 3 on the
+        # statewide summary, which carries two masthead lines first. The
+        # previous matcher required the name to end in "CCD"/"District" on
+        # the very first line, so the statewide page was excluded BY
+        # CONSTRUCTION: the reconciliation target was never found,
+        # `statewide` stayed {}, and both comparisons below skipped
+        # themselves while the build reported success.
+        lines = [ln.strip() for ln in t.splitlines()]
+        try:
+            hdr = lines.index("Exhibit C - Page 1")
+        except ValueError:
             continue
-        name = m.group(1).strip()
+        name = next((lines[k] for k in range(hdr - 1, -1, -1) if lines[k]), "")
+        if not name:
+            continue
         if "Statewide" in name:  # statewide summary page → reconciliation totals
             mm = re.search(r"Funded FTES:\s+([\d,]+\.\d+)", t)
             if mm:
@@ -383,6 +396,9 @@ def build(refresh):
         fail.append(f"{n_colleges} accredited colleges across districts (expected 116)")
 
     # ── THE GATE: sum of per-district CE == printed statewide, exact ──
+    gates.require_target(tvi_statewide, "Table VI printed statewide totals",
+                         "the whole-dollar gate cannot run.")
+    gates.require_rows(len(tvi), 70, "Table VI districts")
     ce_sum = sum(v["ce"] for v in tvi.values())
     if ce_sum != tvi_statewide["ce"]:
         fail.append(f"WHOLE-DOLLAR GATE FAILED: 73 districts sum to {ce_sum:,} "
@@ -390,16 +406,41 @@ def build(refresh):
                     f"{tvi_statewide['ce']:,} (residual {ce_sum - tvi_statewide['ce']:+,})")
 
     # ── apportionment self-reconciliation (funded FTES, state GF) ────
+    # The target must EXIST before it is compared against. Guarding each
+    # comparison with `if appn_statewide.get(k) and ...` meant a missing
+    # control skipped the check and the build reported success — which is
+    # what happened for FY2022-23 until the parser above was fixed.
+    gates.require_target(
+        appn_statewide, "Exhibit C statewide totals",
+        "funded FTES and state General Fund would go unreconciled.")
+    gates.require_rows(len(code2app), 70,
+                       "apportionment districts matched to a district code")
+    for key, label in (("fundedFtes", "funded FTES"),
+                       ("stateGf", "state General Fund")):
+        gates.require_target(
+            appn_statewide.get(key), f"Exhibit C statewide {label}",
+            f"the {label} reconciliation cannot run.")
     ftes_sum = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
-    if appn_statewide.get("fundedFtes") and abs(ftes_sum - appn_statewide["fundedFtes"]) > 0.5:
+    if abs(ftes_sum - appn_statewide["fundedFtes"]) > 0.5:
         fail.append(f"funded FTES sum {ftes_sum} != Exhibit C statewide "
                     f"{appn_statewide['fundedFtes']}")
     gf_sum = round(sum(a["stateGf"] for a in code2app.values()))
-    if appn_statewide.get("stateGf") and gf_sum != round(appn_statewide["stateGf"]):
+    if gf_sum != round(appn_statewide["stateGf"]):
         fail.append(f"state GF sum {gf_sum:,} != Exhibit C statewide "
                     f"{round(appn_statewide['stateGf']):,}")
     basic_n = sum(1 for a in code2app.values() if a["ptaxExcess"] < -1)
-    if appn_statewide.get("communitySupported") and basic_n != appn_statewide["communitySupported"]:
+    # The control must EXIST, and a control of ZERO is a real published
+    # value — not a reason to skip the comparison. Truthiness conflated
+    # the two: a year in which the Chancellor's Office legitimately
+    # prints zero community-supported districts would have disabled the
+    # check entirely, and a missing control did so silently.
+    cs_control = appn_statewide.get("communitySupported")
+    if cs_control is None:
+        gates.require_target(
+            None, "Exhibit C statewide 'Fully Community Supported Districts'",
+            "meta.daggers.basicAid claims this count matches the "
+            "Chancellor's Office figure, so the claim cannot be made.")
+    if basic_n != cs_control:
         fail.append(f"{basic_n} community-supported districts derived but Exhibit C "
                     f"states {appn_statewide['communitySupported']}")
 

@@ -72,6 +72,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -585,10 +586,26 @@ def process_year(yy, fy):
                       "edp": float(rec["EDP 365"]),
                       "ada": float(rec["Current Expense ADA"]),
                       "type": str(rec["LEA Type"]).strip()}
+    # THE GATE TARGET MUST EXIST. `ce` is the published control this year's
+    # figures reconcile against, and it is built by locating a header row
+    # whose first cell reads exactly "CO". A vintage that labels that column
+    # "CO Code" leaves `header` None, `ce` EMPTY — and then every gate below
+    # iterates nothing, accumulates no failures and reports success.
+    # Measured on the FY2018-19 vintage: ce_rows=0, gate1_n=0, all green.
+    # A year nobody verified would have shipped looking verified.
+    gates.require_target(header,
+                         "the Current Expense header row (first cell 'CO')",
+                         "the published per-district control cannot be read.")
+    gates.require_rows(len(ce), 900, "Current Expense districts",
+                       "every per-district gate below would iterate nothing.")
+
     # THE CLASSIFICATION-SHAPE GATE (hard): per district, ADA>0 implies
     # instruction dollars > 0; statewide, the core function groups must
     # be nonzero. A function-code shift would keep the to-the-cent
     # totals gate green while gutting the classification.
+    gates.require_rows(len(edp_fn), 900,
+                       "districts with a function-coded ledger",
+                       "the classification-shape gate would check nothing.")
     shape_fail = []
     sw = defaultdict(float)
     for key, fn in edp_fn.items():
