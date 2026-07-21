@@ -67,6 +67,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from datetime import date
@@ -589,6 +590,16 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     if corr:
         batch["ours"] = True
         batch["note"] = corr["note"]
+    cov = coverage_for(layer, batch["built"])
+    if cov:
+        added = set(cov["added"])
+        entered = [e for e in batch["events"]
+                   if e["o"] is None and _fy_of(e["k"]) in added]
+        batch["events"] = [e for e in batch["events"] if e not in entered]
+        batch["ours"] = True
+        batch["coverageAdded"] = cov["added"]
+        batch["figuresEntered"] = len(entered)
+        batch["note"] = cov["note"]
     if source_signal:
         batch["sourceUpdated"] = source_signal
     rec["batches"].append(batch)
@@ -605,6 +616,60 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     rec["labels"] = merged
     write_record(layer, rec)
     return batch
+
+
+# ------------------------------------------------------- coverage changes
+#
+# EXTENDING THE WINDOW IS NOT A SET OF FIGURE CHANGES.
+#
+# When the Ledger loads years it did not load before, every figure in those
+# years is new to the record — but nothing MOVED. The source published them
+# all along; our coverage changed. Emitting one "appeared" event per figure
+# would bury any real change under thousands of entries that report no
+# change at all, which is the phantom-event failure the rank-keying fix
+# removed, in a different guise. Measured on the V15 state extension: three
+# added years produced 12,646 events and a 1.1 MB record against a 64 KB
+# budget.
+#
+# So a declared coverage change records ONE stated fact — which years
+# entered the record and how many figures came with them — and suppresses
+# the per-figure appearances for those years only. Changes to figures in
+# years the record ALREADY covered are unaffected and still reported one by
+# one, so a real restatement can never hide inside an extension.
+COVERAGE = [
+    {
+        "layer": "state",
+        "built": "2026-07-21",
+        "added": ["2017-18", "2018-19", "2019-20"],
+        "note": "Our own change of coverage, not a change at the source. The "
+                "record now begins at FY 2017-18, the earliest year the "
+                "Department of Finance's structured budget API serves: every "
+                "earlier year returns an empty result rather than an error. "
+                "The figures for these three years are newly IN the record, "
+                "but none of them moved \u2014 they were published all along "
+                "and the Ledger had not loaded them. They are counted here "
+                "rather than listed as thousands of individual appearances, "
+                "which would bury any real change. Every added year passes "
+                "the same gates as the years already shipped, including "
+                "FY 2019-20, whose agency rows reconcile to DOF's printed "
+                "Schedule 9 grand total rather than to the differing "
+                "stateGrandTotal the same API declares.",
+    },
+]
+
+
+def coverage_for(layer, built):
+    for c in COVERAGE:
+        if c["layer"] == layer and c["built"] == built:
+            return c
+    return None
+
+
+def _fy_of(key):
+    """The fiscal year a figure path begins with, or None."""
+    path = key.split("\t", 1)[1] if "\t" in key else key
+    head = path.split(".", 1)[0]
+    return head if re.match(r"^\d{4}-\d{2}$", head) else None
 
 
 # ------------------------------------------------------------ corrections

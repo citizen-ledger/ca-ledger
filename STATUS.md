@@ -2573,3 +2573,70 @@ permalink moved, and `data.js` differs from its predecessor only in the
 generated date and the digest that follows from it.
 
 **Assertions.** 1888 → 1916 (+28).
+
+## 2026-07-21 — Historical depth, part 1: the state record reaches its floor
+
+Per docs/V15_HISTORICAL_FINDING.md. Six fiscal years become **nine** —
+FY 2017-18 through FY 2025-26. The floor is the source's, not a choice:
+DOF's structured budget API returns 12 populated agency rows for
+FY 2017-18, FY 2018-19 and FY 2019-20, and an **empty array** for every
+earlier year. It does not 404, so an availability check written against
+status codes would have claimed coverage back to 2007-08.
+
+**Every added year passes every gate**, recomputed from the shipped file:
+
+| FY | agencies | depts | fund rows | programs | V8 class-sum | position guard | actuals |
+|---|---|---|---|---|---|---|---|
+| 2017-18 | 12 | 190 | 1,700 | 695 | PASS | PASS | gated |
+| 2018-19 | 12 | 192 | 1,715 | 661 | PASS | PASS | gated |
+| 2019-20 | 12 | 192 | 1,712 | 676 | PASS | PASS | gated |
+
+Actuals for the three years gate clean off Schedule 9 against Schedule 6
+(138/138/139 department rows), so the enacted-vs-actual view deepens too.
+FY 2020-21 actuals remain honestly absent, as before.
+
+**FY 2019-20 does not reconcile inside DOF's own data**, and the second
+source settles it. The API's `stateGrandTotal` exceeds the sum of its own
+twelve agency rows by 2,353k. DOF's *printed* Schedule 9 for that year
+gives General Fund 147,780,666 + Special 61,092,907 + Bond 5,904,388 =
+**214,777,961** — exactly our agency rows. Two DOF publications disagree
+with each other; the Ledger reports the agency rows as published and
+records the difference as an exact reviewed constant, never a tolerance
+band.
+
+**Per-resident stops at FY 2020-21, and says so.** The population series
+rests on the 2020 census benchmark; DOF's estimates for the three added
+years rest on the 2010 benchmark, and splicing them would put a
+denominator break inside a per-resident line. Dollar and percent figures
+cover all nine years.
+
+**Structural breaks are stated where the series crosses them** (M-9): COVID
+federal relief as a one-off inside the window, SB 1 stepping transportation
+up at its start — and, equally important, that the record stops *above*
+redevelopment dissolution, realignment, LCFF, the ACA expansion and
+GASB 68, so a reader is not left to assume none exist.
+
+**Cities and counties refused, visibly** (cities.html M-8). The source
+offers twenty-two years and the Ledger loads eight. The page now states
+why: the eight governmental categories carry 100% of the statewide total in
+FY 2013–16 and 50.6% in FY 2017; six of eight functions change meaning at
+the break (public utilities −99.5%, transportation −73.3%, health −70.2%)
+while the grand total moves 1.3%; and before FY 2016-17 police and fire are
+a single undifferentiated value, so the per-resident police figure the page
+is built on does not exist. Named as a choice, not left as a gap.
+
+**A new concept: coverage changes are not figure changes.** Extending the
+window made every figure in three years "appear" — 12,646 events and a
+1.1 MB record against a 64 KB budget. Nothing had moved; the Ledger looked
+further back. A declared COVERAGE entry now records one stated fact —
+**12,517 figures entered the record with FY 2017-18, FY 2018-19 and
+FY 2019-20** — and suppresses those appearances, while changes in years
+already covered are still reported one by one. **Zero** such changes
+occurred, so the extension moved nothing. The record is 17 KB.
+
+The note-attribution invariant is unchanged and still asserted: a note may
+come only from a constant declared in the pipeline. There are now two
+kinds — a correction and a coverage change — and the refresh path can apply
+either and invent neither.
+
+**Assertions.** 1916 → 2046 (+130).
