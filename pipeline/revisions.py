@@ -593,10 +593,15 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
         batch["sourceUpdated"] = source_signal
     rec["batches"].append(batch)
     # keep labels for every identity the record mentions, current or retired
+    # Carry forward every label already known — a RETIRED identity keeps the
+    # name it had, which is the whole point of labelling separately from
+    # keying. What must never happen is storing the machine key AS the
+    # label: revisions.html renders labels verbatim, so an identity with no
+    # known name was being shown to readers as "campus:Cal Poly Humboldt".
+    # An unknown identity has no name; the page says so rather than
+    # inventing one from the key.
     merged = dict(rec.get("labels") or {})
     merged.update({k: v for k, v in lab.items() if v})
-    for ev in events:
-        merged.setdefault(ev["e"], ev["e"])
     rec["labels"] = merged
     write_record(layer, rec)
     return batch
@@ -742,8 +747,6 @@ def main():
         payload = load_data_js(ROOT / "city-data.js")
         lab = dict(rec.get("labels") or {})
         lab.update({k: v for k, v in labels("city", payload).items() if v})
-        for ev in b["events"]:
-            lab.setdefault(ev["e"], ev["e"])
         rec["labels"] = lab
         write_record("city", rec)
         print(f"backfill: {len(b['events'])} events "
