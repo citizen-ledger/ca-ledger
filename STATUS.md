@@ -2885,3 +2885,53 @@ districts, county offices and charters, and the same 934 / 933 / 932
 gate counts.
 
 **Assertions.** 2118 → 2131 (+13).
+
+## 2026-07-21 — CCC: absence marks absence
+
+Four live defects in what ships today. No figure moved: every Current
+Expense, instructional-salary and 50-Percent-Law value is unchanged, and
+the statewide totals are identical.
+
+**1. A missing fact was published as a negative.** A district whose
+apportionment record is absent shipped `basicAid: false` — the claim that
+its property-tax position had been checked against the SCFF schedule and
+it is not community-supported. It had not been checked. The four sibling
+fields (`fundedFtes`, `stateGf`, `perFtes`, `noncreditShare`) already used
+`null`; `basicAid` was the outlier, and `noncreditHeavy`, derived as
+`bool(x and x >= t)`, collapsed a `None` share to `False` the same way.
+Calbright is the live case: it is not apportionment-funded at all, so the
+fact does not exist for it.
+
+**2. Two fallbacks removed.** `noncreditShare` fell back to `0.0` when the
+denominator was missing — "we measured zero noncredit" from a division we
+could not do. And the statewide `fundedFtes` / `stateGf` fell back to the
+pipeline's **own sum** when the published control was missing. That is the
+surviving mechanism behind the figure corrected on 2026-07-21: it produced
+1,100,664.62 where the Chancellor's Office prints 1,100,664.61. The parser
+fix made the control findable; the fallback that masked its absence was
+still there.
+
+**3. The page told every district Calbright's story.** `ccc.html` carried
+one hardcoded sentence — "Calbright is the state's online community
+college…" — rendered for *any* district whose apportionment was missing.
+On any other district that is a fabricated explanation, worse than a
+blank. The reason now travels **with the record**, declared per district,
+and a district whose absence has no declared reason fails the build rather
+than borrowing another's.
+
+**4. The CSV exported the same claim.** `community_supported` wrote the
+literal `no` where the fact is unknown. Unknown now exports as an empty
+cell, and the header states that an empty flag cell means *not known* — it
+does not mean no. The per-FTES bar also drew an unknown at zero width
+beside a cell reading "—"; unknowns are now excluded from the scale and
+draw no bar.
+
+**Two flaws in the change record itself, found while recording this.** A
+correction was keyed on `(layer, built)`, so a rebuild on the same day
+re-attached its note to a second, empty batch — which had already happened
+to the funded-FTES correction. And two corrections on one layer on one day
+could not be told apart. Corrections now carry a stable `id`, are applied
+once, and a batch written before ids existed is recognised by the note it
+already carries rather than by stamping an id onto a dated record.
+
+**Assertions.** 2131 → 2161 (+30).

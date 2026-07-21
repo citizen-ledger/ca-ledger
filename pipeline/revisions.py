@@ -586,9 +586,18 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     batch = {"built": date.today().isoformat(), "events": events,
              "figuresDigest": fdigest, "pipelineCommit": pipeline_commit(),
              "cells": len(new_flat)}
-    corr = correction_for(layer, batch["built"])
+    # A batch counts as carrying a correction if it has its id OR its exact
+    # note. Batches written before ids existed have only the note, and
+    # stamping an id onto a dated record afterwards would be editing the
+    # record to suit the code.
+    prior = rec.get("batches") or []
+    applied = {b.get("correctionId") for b in prior if b.get("correctionId")}
+    applied |= {c["id"] for c in CORRECTIONS
+                if any(b.get("note") == c["note"] for b in prior)}
+    corr = correction_for(layer, batch["built"], applied)
     if corr:
         batch["ours"] = True
+        batch["correctionId"] = corr["id"]
         batch["note"] = corr["note"]
     cov = coverage_for(layer, batch["built"])
     if cov and any(b.get("coverageAdded") == cov["added"]
@@ -694,6 +703,25 @@ def _fy_of(key):
 # step is introduced.
 CORRECTIONS = [
     {
+        "id": "ccc-absence-not-negative",
+        "layer": "ccc",
+        "built": "2026-07-21",
+        "note": "Our own correction, not a change at the source. A district "
+                "whose apportionment record is absent was published with "
+                "basicAid FALSE \u2014 the claim that its property-tax "
+                "position had been checked against the SCFF schedule and it "
+                "is not community-supported. It had not been checked. "
+                "Calbright is the live case: it is not apportionment-funded "
+                "at all, so the fact does not exist for it. Absence is now "
+                "marked as absence, alongside the four sibling fields that "
+                "already were, and the reason travels with the record "
+                "instead of the page carrying one institution's explanation "
+                "for every case. No figure moved: every Current Expense, "
+                "instructional-salary and 50-Percent-Law value is "
+                "unchanged, and the statewide totals are identical.",
+    },
+    {
+        "id": "ccc-statewide-funded-ftes",
         "layer": "ccc",
         "built": "2026-07-21",
         "note": "Our own correction, not a change at the source. The statewide "
@@ -714,6 +742,7 @@ CORRECTIONS = [
                 "figure are unchanged.",
     },
     {
+        "id": "state-fund-identity",
         "layer": "state",
         "built": "2026-07-20",
         "note": "Our own correction, not a change at the source. Department "
@@ -737,6 +766,7 @@ CORRECTIONS = [
                 "and what they are called.",
     },
     {
+        "id": "district-name-county-key",
         "layer": "district",
         "built": "2026-07-20",
         "note": "Our own correction, not a change at the source. The special "
@@ -759,10 +789,18 @@ CORRECTIONS = [
 ]
 
 
-def correction_for(layer, built):
-    """The declared correction for this layer and build date, or None."""
+def correction_for(layer, built, already):
+    """The declared correction for this layer and build date that has NOT
+    already been recorded.
+
+    Keyed on a stable `id`, not on (layer, built): two corrections can land
+    on one layer on one day, and a rebuild on the same day must not attach
+    a note a second time. Both happened — a rebuild re-applied the
+    statewide funded-FTES note to a later, empty batch.
+    """
     for c in CORRECTIONS:
-        if c["layer"] == layer and c["built"] == built:
+        if (c["layer"] == layer and c["built"] == built
+                and c["id"] not in already):
             return c
     return None
 
