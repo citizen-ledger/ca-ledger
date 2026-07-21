@@ -4473,6 +4473,119 @@ def test_revision_identity():
           "so re-keying rewrites no dated record", stale == 0, str(stale))
 
 
+def test_district_entity_key(page, base):
+    """GROUPED ON A COMPOUND KEY, STORED ON A SUBSET OF IT.
+
+    fetch_district_data.py grouped filings on (name, county) — correctly —
+    and then wrote both the directory and the amounts keyed on the NAME
+    alone. Three pairs of same-named districts in different counties
+    collided, and each pair shipped as one entity.
+
+    The grouping being right is what made it invisible: anyone reading the
+    aggregation concluded the code was correct, and no totals gate could
+    see it either, because the money was all present — attributed to one
+    entity instead of two.
+
+    Published wrong before this fix: Rural North Vacaville Water District
+    carried county "Sutter" and activity "Levee" while being a Solano
+    community-services district, and its FY 2017-18 expenditure read
+    $1,268,460 — the arithmetic sum of $1,101,223 (Solano) and $167,237
+    (Sutter, a levee district that merely shares the name)."""
+    ds = DIST["districts"]
+    YRS = DIST["years"]
+
+    # ---- no two entities may collide on the entity key
+    dupes = {}
+    for slug, r in ds.items():
+        k = (r.get("name"), (r.get("county") or "").lower())
+        dupes.setdefault(k, []).append(slug)
+    collided = {k: v for k, v in dupes.items() if len(v) > 1}
+    check("district key: no two entities share a (name, county) identity",
+          not collided, str(list(collided.items())[:3]))
+    check("district key: every slug is unique", len(set(ds)) == len(ds))
+
+    # ---- same-named districts survive as SEPARATE entities
+    same_name = {}
+    for slug, r in ds.items():
+        same_name.setdefault(r.get("name"), []).append(slug)
+    multi = {n: s for n, s in same_name.items() if len(s) > 1}
+    check("district key: same-named districts in different counties are kept "
+          "apart rather than collapsed", len(multi) >= 3, str(len(multi)))
+    for n, slugs in multi.items():
+        counties = [(ds[s].get("county") or "").lower() for s in slugs]
+        check(f"district key: {n!r} is split by county, not duplicated",
+              len(set(counties)) == len(counties), str(counties))
+
+    # ---- THE CASE, resolved against the source
+    CASES = [
+        ("rural-north-vacaville-water-district", "Solano", "Community Services"),
+        ("rural-north-vacaville-water-district-sutter", "Sutter", "Levee"),
+        ("hamilton-city-fire-protection-district", "Glenn", "Fire Protection"),
+        ("hamilton-city-fire-protection-district-sonoma", "Sonoma",
+         "Joint Powers Authority (JPA)"),
+        ("california-risk-management-authority-crma", "Fresno",
+         "Joint Powers Authority (JPA)"),
+        ("california-risk-management-authority-crma-madera", "Madera",
+         "Joint Powers Authority (JPA)"),
+    ]
+    for slug, county, activity in CASES:
+        r = ds.get(slug)
+        check(f"district key: {slug} exists", r is not None)
+        if not r:
+            continue
+        check(f"district key: {slug} carries county {county!r}",
+              r.get("county") == county, str(r.get("county")))
+        check(f"district key: {slug} carries activity {activity!r}",
+              r.get("activity") == activity, str(r.get("activity")))
+
+    # the de-merged figures. Sutter's levee dollars were landing in the
+    # governmental bucket of a Solano enterprise district.
+    v = ds["rural-north-vacaville-water-district"]
+    i = YRS.index("2017-18")
+    check("district key: the Solano district's FY 2017-18 expenditure is its "
+          "own $1,101,223, not the $1,268,460 sum of two agencies",
+          v["exp"][i] == [0, 1101223, 0, 0], str(v["exp"][i]))
+    check("district key: and its governmental bucket is empty, as an "
+          "enterprise water district's should be",
+          v["exp"][i][0] == 0)
+    su = ds["rural-north-vacaville-water-district-sutter"]
+    check("district key: the Sutter levee district carries its own $167,237",
+          su["exp"][i] == [167237, 0, 0, 0], str(su["exp"][i]))
+    check("district key: the Sutter district files only the three years it "
+          "actually filed", su["filings"] == "-FFF----", su["filings"])
+    check("district key: the Solano district files all eight",
+          v["filings"] == "FFLFFFFF", v["filings"])
+
+    # ---- the spurious list-only record is gone: once the Solano district is
+    #      keyed correctly, the delinquency row matches it instead of
+    #      inventing a second entity
+    check("district key: the phantom '-solano-list-only' entity no longer "
+          "exists — its delinquency marker now sits on the real district",
+          "rural-north-vacaville-water-district-solano-list-only" not in ds)
+    check("district key: and that marker is the 'L' in the real district's "
+          "filing string", "L" in v["filings"])
+
+    # ---- recorded as OUR OWN correction, the feed's one attributed type
+    rec = load_data_js(ROOT / "district-revisions.js")
+    ours = [b for b in rec["batches"] if b.get("ours")]
+    check("district key: the correction is recorded in the change feed",
+          len(ours) == 1, str(len(ours)))
+    if ours:
+        b = ours[0]
+        check("district key: attributed to us, not left to read as a source "
+              "restatement", "our own correction" in b.get("note", "").lower())
+        check("district key: the note names what was actually wrong",
+              "(name, county)" in b.get("note", ""))
+        check("district key: and it carries events", len(b.get("events") or []) > 0)
+    page.goto(f"{base}/revisions.html")
+    page.wait_for_selector(".batch-note")
+    body = page.inner_text("body")
+    check("district key: the attribution is visible on the record page",
+          "OUR CORRECTION" in body)
+    check("district key: and the note is legible to a reader there",
+          "Rural North Vacaville" in body)
+
+
 def test_revisions(page, base):
     """THE CHANGE RECORD (V13, option (b): mechanical only).
 
@@ -4563,10 +4676,14 @@ def test_revisions(page, base):
     check("revisions page: names the day the record begins",
           "2026-07-19" in body)
 
-    # --- the ONE attributed event is the backfilled one, and it says so
+    # --- attribution is the exception, and it can only come from a
+    #     DECLARED constant. The refresh path may APPLY a declared
+    #     correction; it can never invent one, so no per-refresh human
+    #     judgement step is introduced. That is the invariant, and it is
+    #     stronger than "only one batch is ever noted".
     city = records["city"]
     noted = [b for b in city["batches"] if b.get("note")]
-    check("revisions: exactly one batch carries a cause, and it is the "
+    check("revisions: exactly one CITY batch carries a cause, and it is the "
           "backfilled one", len(noted) == 1 and noted[0].get("backfilled"),
           str([b.get("built") for b in noted]))
     check("revisions: the backfilled batch is the FY2016-17 city "
@@ -4575,10 +4692,24 @@ def test_revisions(page, base):
           str(len(noted[0]["events"])) if noted else "none")
     check("revisions: it is labelled as OUR correction, not a source change",
           noted and "our own correction" in noted[0]["note"].lower())
-    # every other batch is silent about cause — that is the design
+
+    declared = {(c["layer"], c["built"]) for c in REV.CORRECTIONS}
+    declared.add((REV.BACKFILL["layer"], REV.BACKFILL["built"]))
     for layer in LAYERS:
         for b in records[layer]["batches"]:
-            if b.get("backfilled"):
+            if "note" not in b:
+                continue
+            check(f"revisions: {layer} batch {b['built']} carries a cause ONLY "
+                  f"because one is declared for it in the pipeline",
+                  (layer, b["built"]) in declared,
+                  f"{layer}/{b['built']} is noted but not declared")
+            check(f"revisions: {layer} batch {b['built']} attributes the cause "
+                  f"to US, never to the source",
+                  "our own correction" in b["note"].lower(), b["note"][:80])
+    # and every unnoted batch stays silent, which is the default
+    for layer in LAYERS:
+        for b in records[layer]["batches"]:
+            if (layer, b["built"]) in declared:
                 continue
             check(f"revisions: {layer} batch {b['built']} claims no cause",
                   "note" not in b, str(b.get("note"))[:80])
@@ -5178,6 +5309,7 @@ def main():
             test_precision(page, base)
             test_runtime_origins()
             test_revisions(page, base)
+            test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)
             test_print_sheet(page, base)
