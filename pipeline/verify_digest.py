@@ -24,9 +24,40 @@ def load_payload(path: Path):
     return json.loads(text[text.index("=") + 1: text.rindex(";")])
 
 
+def discover(root):
+    """Every shipped payload that CARRIES a digest.
+
+    This list used to be a hardcoded literal, and it had drifted: it named
+    ten files while twelve carried a digest, so deflator-data.js and
+    search-index.js were never verified and the run still printed a clean
+    sweep. A verifier that silently checks a subset is the empty-gate
+    defect wearing a different hat — the check passes, and the two files
+    it forgot could have said anything.
+    """
+    out = []
+    for path in sorted(root.glob("*.js")):
+        try:
+            payload = load_payload(path)
+        except Exception:                      # not a payload file
+            continue
+        if ((payload.get("meta") or {}).get("integrity") or {}).get("digest"):
+            out.append(path.name)
+    return out
+
+
 def main():
-    files = sys.argv[1:] or ["data.js", "city-data.js", "city-geo.js", "county-data.js", "county-geo.js", "district-data.js", "school-data.js", "csu-data.js", "ccc-data.js", "uc-data.js"]
     root = Path(__file__).resolve().parent.parent
+    discovered = discover(root)
+    files = sys.argv[1:] or discovered
+    if not files:
+        sys.exit("EMPTY GATE TARGET — refusing to report a pass: no shipped "
+                 "payload carrying a digest was found, so this run would "
+                 "verify nothing and exit clean.")
+    if not sys.argv[1:]:
+        missed = sorted(set(discovered) - set(files))
+        if missed:
+            sys.exit("EMPTY GATE TARGET — refusing to report a pass: these "
+                     f"files carry a digest but would not be checked: {missed}")
     failed = False
     for name in files:
         path = (root / name) if not Path(name).is_absolute() else Path(name)

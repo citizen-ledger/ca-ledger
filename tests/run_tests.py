@@ -2340,6 +2340,131 @@ def test_historical_state(page, base):
     check("cities refusal: names it as a choice, not a data gap",
           "the Ledger does not load them" in cbody)
 
+def test_empty_gate_guard():
+    """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
+
+    The dormant-assertion lesson, moved from the test suite into the
+    pipeline. A gate whose comparison target is empty passes vacuously:
+    it loops over nothing, accumulates no failures, and reports success.
+
+    THIS WAS SHIPPING. fetch_ccc_data.build() reconciled funded FTES and
+    state General Fund with
+
+        if appn_statewide.get("fundedFtes") and abs(...) > 0.5:
+
+    and fetch_apportionment() returned statewide == {} for FY2022-23,
+    because its page-identity regex required a heading ending in "CCD" or
+    "District" and the statewide summary is headed "Statewide Totals". The
+    `and` short-circuited, both comparisons were skipped, and the build
+    reported success. The figures turned out to be correct — reconciled
+    after the fix, funded FTES residual +0.01 on 1,100,664.61 and state GF
+    residual exactly $0 — but nobody had ever checked. A false assurance
+    is its own defect."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import gates
+
+    # ---- the guard itself refuses every shape of nothing
+    for empty, what in (({}, "empty dict"), ([], "empty list"),
+                        (None, "None"), ("", "empty string"), (0, "zero")):
+        try:
+            gates.require_target(empty, "a control total")
+            raised = False
+        except gates.VacuousGate:
+            raised = True
+        check(f"empty gate: require_target refuses {what}", raised, str(empty))
+    check("empty gate: and returns a real target unchanged",
+          gates.require_target({"a": 1}, "x") == {"a": 1})
+
+    try:
+        gates.require_rows(0, 1, "rows")
+        raised = False
+    except gates.VacuousGate:
+        raised = True
+    check("empty gate: require_rows refuses zero rows", raised)
+    check("empty gate: and accepts a sufficient count",
+          gates.require_rows(900, 900, "rows") == 900)
+    # "at least none" is not a check, and the guard says so
+    try:
+        gates.require_rows(0, 0, "rows")
+        rejected = False
+    except ValueError:
+        rejected = True
+    check("empty gate: a minimum of zero is itself refused — 'at least none' "
+          "would accept the very defect the guard exists to prevent", rejected)
+    check("empty gate: the refusal is a SystemExit, so it stops the build the "
+          "way every other gate failure does",
+          issubclass(gates.VacuousGate, SystemExit))
+
+    # ---- THE LIVE CASE: the target is found, and the reconciliation runs
+    import fetch_ccc_data as C
+    appn, statewide = C.fetch_apportionment(False)
+    check("empty gate: CCC's statewide reconciliation target is now found — "
+          "it was never found before, so the gate compared nothing",
+          bool(statewide), str(statewide))
+    for k in ("fundedFtes", "stateGf"):
+        check(f"empty gate: CCC statewide {k} is present", k in statewide,
+              str(sorted(statewide)))
+    check("empty gate: and the districts parsed", len(appn) >= 70, str(len(appn)))
+
+    # the reconciliation that never ran, run here
+    code2name = C.fetch_dropdown(False)
+    name2code = {v: k for k, v in code2name.items()}
+    canon = {C._norm(nm): c for nm, c in name2code.items()}
+    code2app = {}
+    for fn, d in appn.items():
+        k = C._norm(fn)
+        c = canon.get(C.APPN_ALIAS.get(k, k))
+        if c:
+            code2app[c] = d
+    ftes = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
+    gf = round(sum(a["stateGf"] for a in code2app.values()))
+    check("empty gate: CCC funded FTES reconciles against the published "
+          "statewide total", abs(ftes - statewide["fundedFtes"]) <= 0.5,
+          f"{ftes} vs {statewide['fundedFtes']}")
+    check("empty gate: CCC state General Fund reconciles exactly",
+          gf == round(statewide["stateGf"]),
+          f"{gf} vs {round(statewide['stateGf'])}")
+
+    # ---- MUTATION: empty the target and the gate must now REFUSE.
+    #      Before this change the same mutation produced a clean build.
+    src = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
+    check("empty gate: CCC guards its statewide target before comparing",
+          "require_target(\n            appn_statewide" in src
+          or "require_target(appn_statewide" in src
+          or "gates.require_target(\n        appn_statewide" in src
+          or "appn_statewide, \"Exhibit C statewide totals\"" in src, "")
+    check("empty gate: CCC no longer skips the comparison when the control is "
+          "missing", 'appn_statewide.get("fundedFtes") and' not in src)
+    check("empty gate: nor the state-GF one",
+          'appn_statewide.get("stateGf") and' not in src)
+    check("empty gate: CCC guards its Table VI target too",
+          'require_target(tvi_statewide' in src)
+
+    # ---- the K-12 case, which would have shipped a year nobody verified
+    ksrc = (ROOT / "pipeline" / "fetch_school_data.py").read_text(encoding="utf-8")
+    check("empty gate: K-12 refuses when the Current Expense header is not "
+          "found, instead of gating an empty table",
+          "require_target(header" in ksrc)
+    check("empty gate: and requires a real district count before gating",
+          "require_rows(len(ce)" in ksrc)
+    check("empty gate: and before the classification-shape gate, which loops "
+          "and so passes on nothing", "require_rows(len(edp_fn)" in ksrc)
+
+    # ---- coverage: every pipeline that gates must carry the guard
+    GATED = ["fetch_ccc_data.py", "fetch_school_data.py", "fetch_city_data.py",
+             "fetch_state_data.py"]
+    for f in GATED:
+        t = (ROOT / "pipeline" / f).read_text(encoding="utf-8")
+        check(f"empty gate: {f} imports the guard", "import gates" in t
+              or "EMPTY GATE TARGET" in t, f)
+    csrc = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
+    check("empty gate: the city shape gate requires city-years to check",
+          "require_rows(len(years_data)" in csrc)
+    ssrc = (ROOT / "pipeline" / "fetch_state_data.py").read_text(encoding="utf-8")
+    check("empty gate: a state department reporting funds cannot pass the "
+          "parent-sum gate with no fund rows parsed",
+          "EMPTY GATE TARGET" in ssrc)
+
 
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
@@ -5706,6 +5831,7 @@ def main():
             test_v1(page, base)
             test_shape()
             test_historical_state(page, base)
+            test_empty_gate_guard()
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
