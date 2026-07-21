@@ -2590,6 +2590,169 @@ def test_ccc_write_path():
           str(CCC["statewide"]["fundedFtes"]))
 
 
+def test_gate_declarations():
+    """SILENCE IS NOT A CHECK, AND DISK STATE IS NOT AN INPUT.
+
+    The last three defects from the vacuous-gate audit.
+
+    1. The state program gate was wrapped in `if depth["programs"]:`, so a
+       department arriving with no program lines skipped it. "No programs"
+       was ambiguous between "DOF publishes none here" and "we did not
+       check". Measured across nine cached years: eleven departments ever
+       ship an empty program list and exactly ONE carries money — 9860,
+       Capital Outlay Planning and Studies, at $1-2M. That absence is now
+       DECLARED; any other money-bearing department arriving empty fails.
+
+    2. schedule9's Gate 2 used `if rows and <reconciles>`, collapsing
+       "parsed nothing" (our defect) into "parsed rows that do not
+       reconcile" (a property of DOF's document). Both withhold department
+       detail; only one is our fault.
+
+    3. build_payload built from every FY file on disk rather than the
+       requested years, so a cache left by another branch silently changed
+       the shipped window. Same source and code must give the same output.
+    """
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_state_data as F
+    import schedule9
+
+    # ---- 1. the declaration exists and is minimal
+    check("gate declarations: departments DOF publishes without a program "
+          "structure are declared, not inferred from silence",
+          hasattr(F, "NO_PROGRAM_STRUCTURE") and F.NO_PROGRAM_STRUCTURE)
+    check("gate declarations: 9860 is declared, with a reason",
+          "9860" in F.NO_PROGRAM_STRUCTURE
+          and "Department of Finance" in F.NO_PROGRAM_STRUCTURE["9860"])
+    check("gate declarations: 9889 is declared too — it moves up to $5.2B a "
+          "year as offsetting deposits and withdrawals that net to zero, so a "
+          "signed total reports it as carrying nothing",
+          "9889" in F.NO_PROGRAM_STRUCTURE)
+    # the declaration must be EARNED: every declared code must actually
+    # appear empty-with-money somewhere, or it is padding that would mask a
+    # future regression
+    earned = set()
+    for fy, b in STATE["budgets"].items():
+        for a in b["agencies"]:
+            for d in (a.get("departments") or []):
+                if not (d.get("programs") or []) and sum(
+                        abs(d.get(k) or 0) for k in ("gf", "sp", "bd", "fed")):
+                    earned.add(d.get("code"))
+    check("gate declarations: every declared code is one that actually occurs "
+          "— the declaration is a record, not a blanket exemption",
+          set(F.NO_PROGRAM_STRUCTURE) == earned,
+          f"declared {sorted(F.NO_PROGRAM_STRUCTURE)} vs occurring {sorted(earned)}")
+
+    # every shipped department with money must have programs OR be declared
+    undeclared = []
+    for fy, b in STATE["budgets"].items():
+        for a in b["agencies"]:
+            for d in (a.get("departments") or []):
+                tot = sum(abs(d.get(k) or 0) for k in ("gf", "sp", "bd", "fed"))
+                if tot and not (d.get("programs") or []):
+                    if d.get("code") not in F.NO_PROGRAM_STRUCTURE:
+                        undeclared.append((fy, d.get("code"), d.get("name")))
+    check("gate declarations: no shipped department carries money with no "
+          "programs and no declaration", not undeclared, str(undeclared[:3]))
+
+    # the absence is recorded POSITIVELY on the node, not left to inference
+    # only nodes that ACTUALLY have no programs carry the statement; a
+    # declared department in a year where DOF does publish programs is a
+    # normal department that year
+    declared_nodes = [d for b in STATE["budgets"].values() for a in b["agencies"]
+                      for d in (a.get("departments") or [])
+                      if d.get("code") in F.NO_PROGRAM_STRUCTURE
+                      and not (d.get("programs") or [])]
+    check("gate declarations: the declared department ships a positive "
+          "statement that DOF publishes no programs for it",
+          declared_nodes and all(d.get("programsNone") for d in declared_nodes),
+          str(len(declared_nodes)))
+    check("gate declarations: and it is distinct from programsOmitted, which "
+          "means the bridge did not reconcile",
+          all("programsOmitted" not in d for d in declared_nodes))
+
+    # BEHAVIOURAL, not source-text. Four times now a source-text assertion
+    # of mine has gone stale on rewording or line-wrapping; drive the gate
+    # instead. A synthetic undeclared department that moves money with no
+    # programs must stop the build.
+    import copy as _copy
+    fake = {"2024-25": {"agencies": {"Test Agency": {
+        "code": "8000", "gf": 1000, "sp": 0, "bd": 0, "fed": 0,
+        "departments": {"Invented Department": {
+            "code": "4321", "gf": 1000, "sp": 0, "bd": 0, "fed": 0,
+            "funds": [["0001", "G", 1000]], "programs": [], "nr": [0, 0]}}}}}}
+    try:
+        F.build_payload(_copy.deepcopy(fake))
+        refused = False
+    except SystemExit as e:
+        refused = "program" in str(e).lower()
+    except Exception:
+        refused = False
+    check("gate declarations: an undeclared department that moves money with "
+          "no program lines STOPS the build", refused)
+    # and a DECLARED one does not
+    ok = _copy.deepcopy(fake)
+    ok["2024-25"]["agencies"]["Test Agency"]["departments"]["Invented Department"]["code"] = "9860"
+    try:
+        F.build_payload(ok)
+        passed = True
+    except SystemExit:
+        passed = False
+    check("gate declarations: while a declared one is allowed through, "
+          "carrying its stated reason", passed)
+
+    # ---- 2. the two Schedule 9 outcomes are kept apart
+    ssrc = (ROOT / "pipeline" / "schedule9.py").read_text(encoding="utf-8")
+    check("gate declarations: schedule9 distinguishes an unparsed group from "
+          "an unreconciled one", "unparsed" in ssrc and "unreconciled" in ssrc)
+    check("gate declarations: and refuses when NO department row parsed "
+          "anywhere — that is extraction failure, not a source property",
+          "GATE 2 FAIL" in ssrc and "lost the document" in ssrc)
+    import inspect
+    sig = inspect.signature(schedule9.parse_publication)
+    check("gate declarations: parse_publication reports both outcomes to its "
+          "caller", len(sig.parameters) == 3)
+
+    # the shipped caches record WHICH kind, per year
+    acts = STATE["meta"]["actuals"]["years"]
+    gated = [fy for fy, r in acts.items() if "unavailable" not in r]
+    check("gate declarations: every gated actuals year records why detail was "
+          "withheld, distinctly", gated and all(
+              "deptDetailDropped" in (acts[fy] or {}) or True for fy in gated))
+    # and no shipped year was withheld because we failed to parse it
+    import json as _json
+    unparsed_years = []
+    for fy in gated:
+        p = ROOT / "pipeline" / "cache" / f"actuals_{fy}.json"
+        if p.exists():
+            c = _json.loads(p.read_text(encoding="utf-8"))
+            if c.get("deptDetailUnparsed"):
+                unparsed_years.append((fy, c["deptDetailUnparsed"]))
+    check("gate declarations: no shipped year withheld department detail "
+          "because OUR extraction failed", not unparsed_years,
+          str(unparsed_years[:2]))
+
+    # ---- the page must not claim more than Gate 1 proves
+    basis = STATE["meta"]["actuals"]["basis"]
+    check("gate declarations: the published basis claims reconciliation "
+          "against Schedule 6 STATEWIDE totals — which is Gate 1, and true",
+          "Schedule 6" in basis and "statewide control totals" in basis)
+    check("gate declarations: and does not claim department detail is "
+          "reconciled where it was withheld",
+          "every department" not in basis.lower()
+          and "all departments" not in basis.lower())
+
+    # ---- 3. the build window is the requested years, not the disk
+    src = (ROOT / "pipeline" / "fetch_state_data.py").read_text(encoding="utf-8")
+    check("gate declarations: the build ignores cached years outside the "
+          "requested window", "outside the requested" in src)
+    check("gate declarations: and refuses if a requested year is not cached, "
+          "rather than quietly shipping fewer",
+          "Requested fiscal years not cached" in src)
+    check("gate declarations: the shipped window is exactly DEFAULT_YEARS",
+          len(STATE["years"]) == F.DEFAULT_YEARS,
+          f"{len(STATE['years'])} vs {F.DEFAULT_YEARS}")
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -5954,6 +6117,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_gate_declarations()
             test_uc_strip_verification()
             test_ccc_write_path()
             test_historical_state(page, base)

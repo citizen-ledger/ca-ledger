@@ -591,6 +591,12 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
         batch["ours"] = True
         batch["note"] = corr["note"]
     cov = coverage_for(layer, batch["built"])
+    if cov and any(b.get("coverageAdded") == cov["added"]
+                   for b in (rec.get("batches") or [])):
+        # A coverage change is a one-time fact, not a per-build one. Running
+        # the pipeline twice on the same day would otherwise declare the same
+        # extension twice.
+        cov = None
     if cov:
         added = set(cov["added"])
         entered = [e for e in batch["events"]
