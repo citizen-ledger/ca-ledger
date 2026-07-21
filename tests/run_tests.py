@@ -4172,6 +4172,167 @@ def test_search(page, base):
     page.set_viewport_size({"width": 1280, "height": 900})
 
 
+def test_revision_identity():
+    """AN IDENTIFIER DERIVED FROM SORT ORDER IS NOT AN IDENTIFIER.
+
+    The slug-instability lesson (PR #22) reappearing in the change feed.
+    Several payloads ship a figure as a row in an array SORTED BY AMOUNT —
+    city/county `lines`, state `funds` and `programs`, K-12
+    `byResource.n`. `_leaves` walks a list by enumeration index, so the key
+    a figure got was its RANK.
+
+    Two consequences, both measured against the shipped data before the
+    fix. `lineLabels` is sorted() over the observed label set, so ONE new
+    label anywhere in California renumbers up to 90 labels and shifts every
+    rank below it: the feed reported 76,114 events for a single real
+    change. And two lines swapping order — with neither value altered —
+    were reported as each other's change.
+
+    The feed makes no attribution claim. Reporting exactly what moved is
+    the whole of its value, so a phantom event is not a blemish; it is the
+    failure of the product. These assertions mutate the real shipped
+    payload and require the feed to report the real change and nothing
+    else."""
+    import bisect
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+
+    base_p = load_data_js(ROOT / "city-data.js")
+
+    # ---- MUTATION 1: one new line label appears at the source.
+    #      sorted() puts it in its slot and every index at or after it
+    #      shifts by one — exactly what a new SCO line description does.
+    mut = json.loads(json.dumps(base_p))
+    NEW = "AAA New Service"
+    labels = mut["meta"]["lineLabels"]
+    check("revision identity: the label legend is sorted, so an insertion "
+          "renumbers — this is the hazard being fixed, not an assumption",
+          labels == sorted(labels))
+    pos = bisect.bisect_left(labels, NEW)
+    labels.insert(pos, NEW)
+    shifted = 0
+    for city in mut["cities"].values():
+        for y in (city.get("years") or {}).values():
+            for arr in (y.get("lines") or {}).values():
+                for row in arr:
+                    if row[0] >= pos:
+                        row[0] += 1
+                        shifted += 1
+    check("revision identity: the mutation really does renumber a large "
+          "share of the corpus", shifted > 50_000, str(shifted))
+
+    victim = sorted(mut["cities"])[0]
+    fy = sorted(mut["cities"][victim]["years"])[0]
+    fam = mut["cities"][victim]["years"][fy]["lines"]
+    fn = sorted(fam)[0]
+    fam[fn].append([pos, 12345])
+    fam[fn].sort(key=lambda x: -abs(x[1]))
+
+    evs = REV.diff(REV.flatten("city", base_p), REV.flatten("city", mut))
+    check("revision identity: ONE new label plus ONE real line yields "
+          "exactly one event — zero phantoms", len(evs) == 1,
+          f"{len(evs)} events, e.g. {evs[:2]}")
+    if len(evs) == 1:
+        e = evs[0]
+        check("revision identity: and it is the real change, keyed on the "
+              "LABEL rather than on a rank",
+              e["e"] == victim and e["k"].endswith(NEW)
+              and e["o"] is None and e["n"] == 12345, str(e))
+
+    # ---- MUTATION 2: two lines swap rank; neither value changes.
+    swap = json.loads(json.dumps(base_p))
+    swapped_at = None
+    for name in sorted(swap["cities"]):
+        for yr in sorted((swap["cities"][name].get("years") or {})):
+            for f2, arr in sorted((swap["cities"][name]["years"][yr]
+                                   .get("lines") or {}).items()):
+                if len(arr) >= 2 and arr[0][1] != arr[1][1]:
+                    arr[0], arr[1] = arr[1], arr[0]
+                    swapped_at = (name, yr, f2)
+                    break
+            if swapped_at:
+                break
+        if swapped_at:
+            break
+    check("revision identity: found a real pair to reorder",
+          swapped_at is not None)
+    evs2 = REV.diff(REV.flatten("city", base_p), REV.flatten("city", swap))
+    check("revision identity: two lines swapping rank, with no value "
+          "altered, produces NO event", evs2 == [], str(evs2)[:200])
+
+    # ---- the label index must not be emitted as though it were a figure
+    flat = REV.flatten("city", base_p)
+    lines = {k: v for k, v in flat.items() if ".lines." in k}
+    check("revision identity: line figures are keyed on the label",
+          any(k.endswith("Police") or k.endswith("Fire") for k in lines))
+    check("revision identity: and the label INDEX is no longer emitted as a "
+          "value — a pure re-indexing cannot read as a changed figure",
+          not any(re.search(r"\.lines\.[A-Za-z]+\.\d+(\.\d+)?$", k)
+                  for k in lines))
+
+    # ---- the same class, on the other layers that carry sorted rows
+    st = load_data_js(ROOT / "data.js")
+    sflat = REV.flatten("state", st)
+    check("revision identity: state funds are keyed on the fund code",
+          any(re.search(r"\.funds\.\d{4}$", k) for k in sflat))
+    check("revision identity: state funds are NOT keyed on rank",
+          not any(re.search(r"\.funds\.\d+\.\d+$", k) for k in sflat))
+    check("revision identity: state programs are NOT keyed on rank",
+          not any(re.search(r"\.programs\.\d+\.\d+$", k) for k in sflat))
+    check("revision identity: the nonrecurring pair carries its declared "
+          "slot names, not ordinals",
+          any(k.endswith(".nr.N") for k in sflat)
+          and not any(re.search(r"\.nr\.\d+$", k) for k in sflat))
+
+    di = load_data_js(ROOT / "district-data.js")
+    dflat = REV.flatten("district", di)
+    check("revision identity: district fund buckets carry their names",
+          any(k.endswith(".exp.gov") for k in dflat)
+          and any(k.endswith(".rev.ent") for k in dflat))
+    check("revision identity: district buckets are NOT keyed on ordinal",
+          not any(re.search(r"\.(exp|rev)\.\d+$", k) for k in dflat))
+
+    sc = load_data_js(ROOT / "school-data.js")
+    scflat = REV.flatten("school", sc)
+    check("revision identity: K-12 named resources are keyed on the "
+          "resource code, not rank",
+          any(re.search(r"byResource\.[a-zA-Z]+\.n\.\d{4}\.v$", k)
+              for k in scflat))
+    check("revision identity: and their object split carries family keys",
+          any(".obj.certSalaries" in k or ".obj.classSalaries" in k
+              for k in scflat))
+
+    # ---- a duplicate intrinsic key must refuse rather than swallow a figure
+    dup = json.loads(json.dumps(st))
+    for b in dup["budgets"].values():
+        for a in b["agencies"]:
+            for d in (a.get("departments") or []):
+                if len(d.get("funds") or []) >= 2:
+                    d["funds"][1][0] = d["funds"][0][0]
+                    break
+    try:
+        REV.flatten("state", dup)
+        dup_refused = False
+    except ValueError:
+        dup_refused = True
+    check("revision identity: a duplicate fund code REFUSES rather than "
+          "letting one figure overwrite another", dup_refused)
+
+    # ---- no published event depended on the old keying, so the migration
+    #      cannot rewrite history
+    import glob as _glob
+    stale = 0
+    for f in _glob.glob(str(ROOT / "*-revisions.js")):
+        rec = load_data_js(Path(f))
+        for b in rec.get("batches") or []:
+            for e in b.get("events") or []:
+                if re.search(r"\.(lines|funds|programs|nr|exp|rev)\.\d+(\.|$)",
+                             e.get("k", "")):
+                    stale += 1
+    check("revision identity: no already-published event was keyed on rank, "
+          "so re-keying rewrites no dated record", stale == 0, str(stale))
+
+
 def test_revisions(page, base):
     """THE CHANGE RECORD (V13, option (b): mechanical only).
 
@@ -4876,6 +5037,7 @@ def main():
             test_precision(page, base)
             test_runtime_origins()
             test_revisions(page, base)
+            test_revision_identity()
             test_search(page, base)
             test_print_sheet(page, base)
             test_print_state(page, base)

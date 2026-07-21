@@ -160,6 +160,147 @@ def _entity(out, ident, label, years_obj):
         out.setdefault(f"{ident}\t__label__", None)
 
 
+# ------------------------------------------------- positional -> intrinsic
+#
+# THE SLUG-INSTABILITY LESSON, IN A SECOND SUBSYSTEM.
+#
+# Several payloads ship a figure as a row in an array that is SORTED BY
+# AMOUNT: city and county `lines`, state `funds` and `programs`, K-12
+# `byResource.n`. `_leaves` walks a list by enumeration index, so the key
+# a figure got was its RANK. Rank is not identity:
+#
+#   - two lines swapping order between builds are reported as each
+#     other's change, twice, with both figures wrong;
+#   - `lineLabels` is sorted() over the OBSERVED label set, so one new
+#     label anywhere in California renumbers up to 90 labels and shifts
+#     every rank below it — the feed would publish tens of thousands of
+#     phantom events;
+#   - city and county rows carry [labelIndex, dollars], and the label
+#     INDEX is itself numeric, so `_leaves` emitted the index as though
+#     it were a figure. A pure re-indexing read as a changed value.
+#
+# Measured before the fix: 576,953 of 825,331 keys (69.9%) were
+# rank-derived; the districts layer was 100%.
+#
+# The feed makes no attribution claim. Reporting exactly what moved is
+# the whole of its value, so a phantom event is not a blemish on it —
+# it is the failure of the entire product. Every figure is therefore
+# keyed on something intrinsic: the label, the fund code, the program
+# code, the resource code, or a NAMED fixed slot.
+
+def _intrinsic(rows, key_at, val_at, what):
+    """[[key, ..., value], ...] -> {str(key): value}, keyed on the row's
+    own identifier rather than on where it happens to sit. Refuses on a
+    duplicate rather than letting one figure silently overwrite another
+    (measured: no duplicate exists in any shipped payload)."""
+    out = {}
+    for r in rows or []:
+        if not isinstance(r, (list, tuple)) or len(r) <= max(key_at, val_at):
+            continue
+        k = str(r[key_at])
+        if k in out:
+            raise ValueError(
+                f"revisions: duplicate {what} key {k!r} — the identifier is "
+                "not unique in its scope, so keying on it would drop a "
+                "figure. Resolve deliberately; do not fall back to rank.")
+        out[k] = r[val_at]
+    return out
+
+
+def _slots(seq, names):
+    """A FIXED-LENGTH tuple whose positions have declared meanings ->
+    {name: value}. Position is meaning here, not rank, but naming it
+    means a future length change cannot silently re-point a key."""
+    return {n: seq[i] for i, n in enumerate(names)
+            if seq is not None and i < len(seq)}
+
+
+def _city_years(years, line_labels):
+    """city/county year records, with `lines` re-keyed from rank to the
+    line LABEL. The label is the intrinsic thing; its index is an
+    artefact of a sorted legend and is not emitted at all."""
+    out = {}
+    for fy, y in (years or {}).items():
+        if not isinstance(y, dict):
+            out[fy] = y
+            continue
+        rec = {k: v for k, v in y.items() if k != "lines"}
+        lines = {}
+        for fn, arr in (y.get("lines") or {}).items():
+            fam = {}
+            for row in arr or []:
+                if not isinstance(row, (list, tuple)) or len(row) < 2:
+                    continue
+                idx = row[0]
+                lbl = (line_labels[idx]
+                       if isinstance(idx, int) and 0 <= idx < len(line_labels)
+                       else str(idx))
+                if lbl in fam:
+                    raise ValueError(
+                        f"revisions: duplicate line label {lbl!r} in {fn!r}")
+                fam[lbl] = row[1]
+            if fam:
+                lines[fn] = fam
+        if lines:
+            rec["lines"] = lines
+        out[fy] = rec
+    return out
+
+
+def _school_years(years, fams):
+    """K-12 year records, with byResource named rows re-keyed from rank to
+    the RESOURCE CODE, and each row's object split re-keyed from position
+    to the object-family key. OBJ order is a fixed constant, so position
+    there is meaning; naming it keeps it that way."""
+    out = {}
+    for fy, y in (years or {}).items():
+        if not isinstance(y, dict):
+            out[fy] = y
+            continue
+        rec = {k: v for k, v in y.items() if k != "byResource"}
+        by = {}
+        for grp, blk in (y.get("byResource") or {}).items():
+            if not isinstance(blk, dict):
+                continue
+            nb = {k: v for k, v in blk.items() if k != "n"}
+            named = {}
+            for row in blk.get("n") or []:
+                if not isinstance(row, (list, tuple)) or len(row) < 2:
+                    continue
+                code = str(row[0])
+                if code in named:
+                    raise ValueError(
+                        f"revisions: duplicate resource code {code!r} in {grp!r}")
+                cell = {"v": row[1]}
+                if len(row) > 2 and isinstance(row[2], (list, tuple)):
+                    cell["obj"] = _slots(row[2], fams)
+                named[code] = cell
+            if named:
+                nb["n"] = named
+            by[grp] = nb
+        if by:
+            rec["byResource"] = by
+        out[fy] = rec
+    return out
+
+
+def _state_dept(d):
+    """A department record with funds/programs re-keyed on their own
+    codes and `nr` given its declared slot names."""
+    o = {x: d[x] for x in d
+         if x not in ("name", "code", "funds", "programs", "nr")}
+    if d.get("funds"):
+        o["funds"] = _intrinsic(d["funds"], 0, 2, "fund")
+    if d.get("programs"):
+        o["programs"] = _intrinsic(d["programs"], 0, 2, "program")
+    if d.get("nr"):
+        o["nr"] = _slots(d["nr"], ("N", "R"))
+    return o
+
+
+DISTRICT_SLOTS = ("gov", "ent", "isf", "cf")
+
+
 def flatten(layer, payload):
     """payload -> {stable_key: numeric value}. Keys are
     '<identity>\\t<figure path>'; the identity half is the source's own
@@ -178,14 +319,14 @@ def flatten(layer, payload):
                     out[f"agency:{aid}\t{fy}.{k}"] = v
                 for d in a.get("departments", []) or []:
                     code = d.get("code")
-                    for k, v in _leaves({x: d[x] for x in d
-                                         if x not in ("name", "code")},
-                                        "", {}).items():
+                    for k, v in _leaves(_state_dept(d), "", {}).items():
                         out[f"agency:{aid}/dept:{code}\t{fy}.{k}"] = v
     elif layer in ("city", "county"):
         coll = "cities" if layer == "city" else "counties"
+        lbls = ((payload.get("meta") or {}).get("lineLabels")) or []
         for slug, rec in (payload.get(coll) or {}).items():
-            for k, v in _leaves(rec.get("years") or {}, "", {}).items():
+            years = _city_years(rec.get("years") or {}, lbls)
+            for k, v in _leaves(years, "", {}).items():
                 out[f"{slug}\t{k}"] = v
     elif layer == "district":
         years = payload.get("years") or []
@@ -195,19 +336,22 @@ def flatten(layer, payload):
                     fy = years[i] if i < len(years) else str(i)
                     if slot is None:
                         continue
-                    for j, val in enumerate(slot):
+                    for nm, val in _slots(slot, DISTRICT_SLOTS).items():
                         if isinstance(val, (int, float)) and not isinstance(val, bool):
-                            out[f"{slug}\t{fy}.{field}.{j}"] = val
+                            out[f"{slug}\t{fy}.{field}.{nm}"] = val
     elif layer == "school":
+        fams = [f.get("key") for f in (payload.get("objectFamilies") or [])]
         for coll, idf in (("districts", "cds"), ("countyOffices", "cds")):
             for rec in (payload.get(coll) or {}).values():
                 ident = f"{coll}:{rec.get(idf)}"
-                for k, v in _leaves(rec.get("years") or {}, "", {}).items():
+                years = _school_years(rec.get("years") or {}, fams)
+                for k, v in _leaves(years, "", {}).items():
                     out[f"{ident}\t{k}"] = v
         for rec in (payload.get("charters") or {}).values():
             ident = ("charter:" + str(rec.get("charterNumber")) + "|"
                      + str(rec.get("name")) + "|" + str(rec.get("county")))
-            for k, v in _leaves(rec.get("years") or {}, "", {}).items():
+            years = _school_years(rec.get("years") or {}, fams)
+            for k, v in _leaves(years, "", {}).items():
                 out[f"{ident}\t{k}"] = v
     elif layer in ("csu", "uc"):
         top = "systemwide"
