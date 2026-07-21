@@ -2753,6 +2753,74 @@ def test_gate_declarations():
           f"{len(STATE['years'])} vs {F.DEFAULT_YEARS}")
 
 
+def test_k12_vintage_declaration():
+    """CDE'S VOCABULARY IS DECLARED PER YEAR, NOT SNIFFED.
+
+    FY2018-19's Current Expense workbook names its sheet
+    "District (by CDS)" and heads its first two columns "CO Code" and
+    "District Code", where every neighbouring vintage uses "CDS" / "CO" /
+    "CDS". The shipped detector tested `str(row[0]).strip() == "CO"`
+    exactly, so on that vintage the header was never found, the published
+    control table stayed EMPTY, and every downstream gate iterated
+    nothing — passing on zero districts.
+
+    The fix is a declaration, not a looser detector: a detector widened to
+    accept several spellings would also accept a vintage nobody has read.
+    Every entry was taken off the real published file."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_school_data as F
+
+    check("k12 vintage: a vocabulary is declared for every year the source "
+          "offers, not only the loaded ones",
+          set(F.CE_VINTAGE) >= {"1617", "1718", "1819", "1920", "2021",
+                                "2122", "2223", "2324", "2425"},
+          str(sorted(F.CE_VINTAGE)))
+
+    # THE VINTAGE THAT USED TO PASS ON NOTHING
+    v = F.vintage("1819")
+    check("k12 vintage: FY2018-19's sheet is declared as 'District (by CDS)'",
+          v["sheet"] == "District (by CDS)", v["sheet"])
+    check("k12 vintage: and its county column as 'CO Code' — the spelling "
+          "that defeated the detector", v["co"] == "CO Code", v["co"])
+    check("k12 vintage: and its district column as 'District Code'",
+          v["dcode"] == "District Code", v["dcode"])
+
+    # the neighbours differ, which is why one loosened rule would be wrong
+    check("k12 vintage: FY2017-18 and FY2019-20 use a DIFFERENT sheet, so no "
+          "single spelling covers the era",
+          F.vintage("1718")["sheet"] == "CDS"
+          and F.vintage("1920")["sheet"] == "CDS")
+    check("k12 vintage: and the current years use a third",
+          F.vintage("2425")["sheet"] == "District")
+
+    # the SACS era boundary
+    check("k12 vintage: the legacy SACS era names the charter school column "
+          "SchoolID", F.vintage("2122")["charterSchool"] == "SchoolID")
+    check("k12 vintage: the current era names it SchoolCode",
+          F.vintage("2223")["charterSchool"] == "SchoolCode")
+    check("k12 vintage: and the county-office spelling changes with it",
+          F.vintage("2122")["coeType"] == "CO OFFICE"
+          and F.vintage("2223")["coeType"] == "County Office")
+
+    # BEHAVIOURAL: an undeclared year is refused, not guessed at
+    try:
+        F.vintage("9999")
+        refused = False
+    except SystemExit as e:
+        refused = "no declared source vocabulary" in str(e)
+    check("k12 vintage: an undeclared year REFUSES rather than being parsed "
+          "on assumption", refused)
+
+    # and the loaded years all resolve
+    for yy, _fy in F.YEARS:
+        try:
+            F.vintage(yy)
+            ok = True
+        except SystemExit:
+            ok = False
+        check(f"k12 vintage: the loaded year {yy} has a declared vocabulary", ok)
+
+
 def test_shape():
     """THE CLASSIFICATION-SHAPE GATE, re-asserted from shipped data.
     Added 2026-07-14 after FY 2016-17 city functions shipped
@@ -6117,6 +6185,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_k12_vintage_declaration()
             test_gate_declarations()
             test_uc_strip_verification()
             test_ccc_write_path()

@@ -2844,3 +2844,44 @@ report was optimistic about a document it never held, the CCC report
 pessimistic about documents it failed to fetch once. The finding's own
 evidence standard — VERIFIED means *I fetched it* — was right; it was
 applied unevenly.
+
+## 2026-07-21 — K-12 groundwork: CDE's vocabulary, declared per vintage
+
+Prerequisite for the K-12 historical extension, landed on its own because
+it closes a live silent-failure mode whether or not the extension follows.
+
+CDE renames sheets and columns between vintages. **FY2018-19** names its
+Current Expense sheet `District (by CDS)` and heads its first two columns
+`CO Code` / `District Code`, where FY2017-18 and FY2019-20 both use `CDS` /
+`CO` / `CDS`. The shipped detector tested `str(row[0]).strip() == "CO"`
+exactly, so on that vintage the header was never found, the published
+control table stayed **empty**, and every downstream gate iterated nothing
+— passing on zero districts.
+
+The fix is a **declaration, not a looser detector**. A detector widened to
+accept several spellings would also accept a vintage nobody has read, which
+is the same failure with more steps. Every entry was read off the real
+published file:
+
+| FY | sheet | county col | district col | name col |
+|---|---|---|---|---|
+| 2016-17, 2017-18 | `CDS` | CO | CDS | DISTRICT |
+| **2018-19** | **`District (by CDS)`** | **CO Code** | **District Code** | **District** |
+| 2019-20 | `CDS` | CO | CDS | DISTRICT |
+| 2020-21, 2021-22 | `District` | CO | CDS | DISTRICT |
+| 2022-23 → | `District` | CO | CDS | District |
+
+SACS changes two names at the FY2021-22 / FY2022-23 boundary: the charter
+school column (`SchoolID` → `SchoolCode`) and the county-office type
+spelling (`CO OFFICE` → `County Office of Education`). The older side was
+verified by inspecting all six databases; the current side is proven by the
+running gate, which reads `SchoolCode` and counts 58 county offices.
+
+**An undeclared year now refuses the build** rather than being parsed on
+assumption.
+
+Behaviour-preserving: the three loaded years rebuild with identical
+districts, county offices and charters, and the same 934 / 933 / 932
+gate counts.
+
+**Assertions.** 2118 → 2131 (+13).
