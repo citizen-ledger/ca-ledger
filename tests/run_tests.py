@@ -5800,9 +5800,12 @@ def test_revisions(page, base):
     #     stronger than "only one batch is ever noted".
     city = records["city"]
     noted = [b for b in city["batches"] if b.get("note")]
-    check("revisions: exactly one CITY batch carries a cause, and it is the "
-          "backfilled one", len(noted) == 1 and noted[0].get("backfilled"),
-          str([b.get("built") for b in noted]))
+    # a layer accumulates corrections over time; identify the BACKFILL
+    # rather than assert it is the only noted batch
+    back = [b for b in noted if b.get("backfilled")]
+    check("revisions: exactly one CITY batch is the backfilled one",
+          len(back) == 1, str([b.get("built") for b in noted]))
+    noted = back
     check("revisions: the backfilled batch is the FY2016-17 city "
           "correction, 31 figures",
           noted and len(noted[0]["events"]) == 31,

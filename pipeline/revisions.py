@@ -703,6 +703,42 @@ def _fy_of(key):
 # step is introduced.
 CORRECTIONS = [
     {
+        "id": "county-unincorporated-not-clamped",
+        "layer": "county",
+        "built": "2026-07-21",
+        "note": "Our own correction, not a change at the source. The "
+                "unincorporated-population share was computed with "
+                "max(0.0, min(1.0, ...)), so a share that came out "
+                "impossible was published as a confident 0%. Siskiyou "
+                "County shipped \u201c0% of residents live in "
+                "unincorporated areas\u201d in five of eight years while "
+                "the other three carried the true ~55%. The cause is one "
+                "bad figure in the source: a city inside the county files a "
+                "population larger than the county\u2019s own, so the "
+                "arithmetic yields -137%. The share is now shown as NOT "
+                "KNOWN for those years, with the reason stated, and the "
+                "clamp is gone. No other figure moved: every county\u2019s "
+                "expenditures, revenues and per-resident totals are "
+                "unchanged and still reconcile to the Controller\u2019s "
+                "published control.",
+    },
+    {
+        "id": "city-population-contradicted",
+        "layer": "city",
+        "built": "2026-07-21",
+        "note": "Our own correction, not a change at the source. Five "
+                "city-years are now marked as carrying a population the "
+                "source contradicts: the city files more residents than its "
+                "own county reports for the same year in the same State "
+                "Controller dataset. The filed population is UNCHANGED \u2014 "
+                "a wrong source figure is recorded and footnoted, never "
+                "edited \u2014 but the per-resident figures derived from it "
+                "are withheld, because a denominator this source contradicts "
+                "measures nothing. Two service flags that fired only because "
+                "the inflated denominator made per-resident spending look "
+                "tiny are withdrawn with them. No dollar figure moved.",
+    },
+    {
         "id": "ccc-absence-not-negative",
         "layer": "ccc",
         "built": "2026-07-21",

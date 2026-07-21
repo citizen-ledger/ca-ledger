@@ -2984,4 +2984,8 @@ for a genuine non-filing; and `enterpriseShareExp` is the same shape as the
 Siskiyou defect and is safe **precisely because nobody wrapped it in
 max/min** — an out-of-range value would be visible rather than pinned.
 
-**Assertions.** 2161 → 2186 (+25).
+**Recorded as our own corrections**, one per layer: the county share
+(5 events, 0.0 → null for the five Siskiyou years) and the city
+contradiction flags (0 events — no dollar figure moved).
+
+**Assertions.** 2161 → 2188 (+27).
