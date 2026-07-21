@@ -688,6 +688,26 @@ def _fy_of(key):
 # step is introduced.
 CORRECTIONS = [
     {
+        "layer": "ccc",
+        "built": "2026-07-21",
+        "note": "Our own correction, not a change at the source. The statewide "
+                "funded-FTES figure was the pipeline's OWN SUM of the 72 "
+                "district pages (1,100,664.62), not the Chancellor's Office's "
+                "printed statewide control (1,100,664.61). The reconciliation "
+                "meant to catch that difference had never run: the Exhibit C "
+                "page matcher required a heading ending in \"CCD\" or "
+                "\"District\", the statewide summary page is headed "
+                "\"Statewide Totals\", so the comparison target was never "
+                "found and the gate skipped itself. The parser and the gate "
+                "were fixed on 2026-07-21, but the correction could not reach "
+                "the published file until a second defect was fixed the same "
+                "day \u2014 this layer's --write path raised NameError before "
+                "it could record anything, so no CCC refresh had ever written "
+                "a change. The figure now shown is the published control. "
+                "Nothing else moved: all 72 districts and every Table VI "
+                "figure are unchanged.",
+    },
+    {
         "layer": "state",
         "built": "2026-07-20",
         "note": "Our own correction, not a change at the source. Department "

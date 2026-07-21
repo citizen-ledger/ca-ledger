@@ -382,12 +382,53 @@ def build(refresh):
     if med_campuses != ["Davis", "Irvine", "Los Angeles", "San Diego", "San Francisco"]:
         fail.append(f"medical-center campus set changed: {med_campuses} — review required")
 
-    # strip (UC's own three lines; construction re-asserted)
+    # ── the strip ────────────────────────────────────────────────────
+    #
+    # WHAT WAS HERE BEFORE COULD NOT FAIL. `core_k` was DEFINED as
+    # auditedTotal - med - aux - doe and then asserted to sum back to
+    # auditedTotal. Substituting the definition gives auditedTotal ==
+    # auditedTotal: a tautology. Measured over 2,000 randomised trials,
+    # including components exceeding the total and negative components,
+    # it fired zero times. It contributed no assurance whatever.
+    #
+    # WHAT IS ACTUALLY TRUE, and is now checked:
+    #   - the three stripped lines are UC's own published functional
+    #     rows, and their VALUES are already proven by the column-sum
+    #     check inside _prove_assignment, which requires every campus
+    #     column's function lines to sum exactly to that column's
+    #     printed total. A row that fails to parse makes no assignment
+    #     tie and refuses the build (verified: removing the auxiliary
+    #     row yields "0 sparse-row assignments tie").
+    #   - a row the table omits ENTIRELY is caught by Gate 1 above,
+    #     where campuses + Systemwide must equal the audited total.
+    #   - so what remains to check here is PRESENCE — that each line was
+    #     actually found — and that the residual is sane.
+    #
+    # `core` IS NOT A UC-PUBLISHED FIGURE. UC publishes no "core
+    # academic operations" line; it is this pipeline's arithmetic
+    # remainder after the three strips. That is stated in meta.strip
+    # rather than implied by a gate that appears to verify it.
+    for label, val in (("Medical centers", med),
+                       ("Auxiliary enterprises",
+                        A["grid"].get("Auxiliary enterprises")),
+                       ("Department of Energy laboratories", doe_k)):
+        if not val and val != 0:
+            fail.append(f"strip component {label!r} was not found in the "
+                        "campus table — the strip cannot be built from "
+                        "UC's own lines")
     med_k = sum(med.values())
-    aux_k = sum(A["grid"].get("Auxiliary enterprises", {}).values())
+    aux_k = sum((A["grid"].get("Auxiliary enterprises") or {}).values())
     core_k = A["auditedTotal"] - med_k - aux_k - doe_k
-    if med_k + aux_k + doe_k + core_k != A["auditedTotal"]:
-        fail.append("strip identity broken (med + aux + DOE + core != audited total)")
+    # the residual is a remainder, so the only things that can be said
+    # about it are bounds — and a violated bound means one of the three
+    # stripped lines is wrong, which is exactly what we want to hear
+    if core_k < 0:
+        fail.append(f"strip residual is negative ({core_k:,}K): the three "
+                    "stripped lines exceed the audited total")
+    if not 0.30 <= core_k / A["auditedTotal"] <= 0.90:
+        fail.append(f"strip residual is {core_k / A['auditedTotal']:.1%} of the "
+                    "audited total, outside the 30-90% band a university's "
+                    "non-hospital, non-auxiliary operations must fall in")
 
     # FTE self-reconciliation: University row == Σ campuses, both pages
     if sum(gen_fte.get(c, 0) for c in CAMPUSES) != gen_fte.get("University"):
@@ -489,6 +530,15 @@ def build(refresh):
                     "\"Department of Energy laboratories\" — never by our judgment about "
                     "what counts as education. The stripped components are shown "
                     "separately, never deleted.",
+                "residual": "The three stripped lines are UC's own, and their values are "
+                    "proven by the column-sum check: every campus column's function lines "
+                    "sum exactly to that column's printed total. What is left after them — "
+                    "shown here as the core — is NOT a figure UC publishes. UC prints no "
+                    "\"core academic operations\" line; this is the arithmetic remainder "
+                    "of the audited total less the three strips, computed by the Ledger. "
+                    "It is bounded and sanity-checked, but it is a residual, not a "
+                    "published number, and it inherits any error in the three lines "
+                    "subtracted from it.",
                 "limit": "UC's segmentation strips the hospital ENTERPRISES, not the "
                     "schools of medicine. Health-sciences instruction, research, and "
                     "academic support remain inside the core — UC publishes no per-campus "
@@ -561,7 +611,6 @@ def build(refresh):
         },
         "campuses": campuses,
     }
-    prev = revisions.previous_payload(OUT_PATH)
     stamp(payload)
     return payload, gate_years
 
@@ -599,6 +648,12 @@ def main():
               "Systemwide column reproduce the audited total exactly, both years; every "
               "campus column proven by the column-sum check. (No equals sign may appear "
               "in this comment: the loader slices from the first one.) */\n")
+    # The previous payload must be read BEFORE the new one overwrites
+    # it. This was assigned inside build() and used here, in a
+    # different scope, so every --write raised NameError before it
+    # could record anything: this layer's change record has never
+    # been written by a real refresh.
+    prev = revisions.previous_payload(OUT_PATH)
     OUT_PATH.write_text(header + "window.CA_UC_DATA = " + body + ";\n", encoding="utf-8")
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size/1024:.0f} KB)")
 
