@@ -353,7 +353,16 @@
         body += '<div class="batch"><div class="batch-hd">BUILD ' + esc(b.built)
              + ' · ' + b.events.length + ' event' + (b.events.length===1?'':'s')
              + (b.backfilled ? ' · BACKFILLED' : '')
-             + (b.ours ? ' · OUR CORRECTION' : '') + '</div>';
+             + (b.ours && !b.coverageAdded ? ' · OUR CORRECTION' : '')
+             + (b.coverageAdded ? ' · COVERAGE EXTENDED' : '') + '</div>';
+        if (b.coverageAdded) body += '<p class="batch-note"><b>'
+             + esc(Number(b.figuresEntered || 0).toLocaleString("en-US"))
+             + ' figures entered the record</b> with FY '
+             + b.coverageAdded.map(esc).join(', FY ')
+             + '. They are counted, not listed: none of them moved \u2014 the '
+             + 'source published them all along and the Ledger had not loaded '
+             + 'them. Any figure that genuinely changed in a year already '
+             + 'covered is listed below as usual.</p>';
         if (b.note) body += '<p class="batch-note">' + esc(b.note) + '</p>';
         var rows = b.events.slice(0, SHOWN).map(function(e){
           return '<tr><td>' + labelHtml(r, e.e) + '</td>'

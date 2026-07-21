@@ -41,6 +41,18 @@ CACHE_DIR = Path(__file__).resolve().parent / "cache"
 
 # actuals fiscal year -> ordered candidate publications (label, sch9, sch6)
 SOURCES = {
+    # The three years added with the V15 historical extension. Each year's
+    # actuals appear in the Enacted Budget two years later, the same
+    # relationship the later entries use.
+    "2017-18": [("2019-20 Enacted Budget",
+                 "https://ebudget.ca.gov/2019-20/pdf/Enacted/BudgetSummary/BS_SCH9.pdf",
+                 "https://ebudget.ca.gov/2019-20/pdf/Enacted/BudgetSummary/BS_SCH6.pdf")],
+    "2018-19": [("2020-21 Enacted Budget",
+                 "https://ebudget.ca.gov/2020-21/pdf/Enacted/BudgetSummary/BS_SCH9.pdf",
+                 "https://ebudget.ca.gov/2020-21/pdf/Enacted/BudgetSummary/BS_SCH6.pdf")],
+    "2019-20": [("2021-22 Enacted Budget",
+                 "https://ebudget.ca.gov/2021-22/pdf/Enacted/BudgetSummary/BS_SCH9.pdf",
+                 "https://ebudget.ca.gov/2021-22/pdf/Enacted/BudgetSummary/BS_SCH6.pdf")],
     "2021-22": [("2023-24 Enacted Budget",
                  "https://ebudget.ca.gov/2023-24/pdf/Enacted/BudgetSummary/BS_SCH9.pdf",
                  "https://ebudget.ca.gov/2023-24/pdf/Enacted/BudgetSummary/BS_SCH6.pdf")],

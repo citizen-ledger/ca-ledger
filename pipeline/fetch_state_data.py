@@ -66,14 +66,38 @@ import schedule9  # noqa: E402  (pypdf loaded lazily, only when refreshing actua
 
 API_BASE = "https://ebudget.ca.gov/api/publication/e"
 
-# How many recent enacted fiscal years to load by default. The API
-# serves publications back to at least 2018-19.
-DEFAULT_YEARS = 6
+# How many recent enacted fiscal years to load by default.
+#
+# NINE — the API's own floor. Probed across every year back to 2007-08:
+# FY2017-18, FY2018-19 and FY2019-20 each return 12 populated agency rows
+# with a stateGrandTotal; FY2016-17 and every year before it return HTTP
+# 200 with an EMPTY ARRAY. The API does not 404 for years it lacks, and
+# /appInfo answers 200 with the sentinel date "Enacted on January 01,
+# 9999", so an availability check written against status codes alone would
+# conclude the API reaches 2007-08. It does not. See
+# docs/V15_HISTORICAL_FINDING.md.
+DEFAULT_YEARS = 9
 
 # DOF population estimates (millions), used only for the per-resident
 # figure: the January 1 estimate that falls inside each fiscal year,
 # from DOF report E-4 (2026 vintage, 2020 census benchmark). Update
 # annually from dof.ca.gov -> Demographics -> Estimates.
+#
+# THE BENCHMARK BOUNDARY. This series rests on the 2020 census. DOF's
+# estimates for FY2017-18 through FY2019-20 rest on the 2010 census
+# benchmark instead, and the two are not one series — splicing them would
+# put a denominator break inside a per-resident line and call it a trend.
+# Those three years therefore carry NO population, the per-resident unit
+# reads "—" for them, and the page says why. The dollar and percent units
+# are unaffected, and no GATE depends on population.
+POPULATION_BENCHMARK_NOTE = (
+    "Per-resident figures begin in FY 2020-21. The Department of Finance's "
+    "population estimates for the earlier years rest on the 2010 census "
+    "benchmark rather than the 2020 one, and the two series are not "
+    "continuous \u2014 splicing them would put a denominator break inside "
+    "a per-resident line. Dollar and percent-of-total figures cover every "
+    "year."
+)
 POPULATION = {
     "2020-21": 39.38, "2021-22": 39.16, "2022-23": 39.17,
     "2023-24": 39.45, "2024-25": 39.65, "2025-26": 39.59,
@@ -118,7 +142,16 @@ THOUSANDS_PER_BILLION = 1e6
 # The Ledger reports DOF's agency rows AS PUBLISHED and does not
 # reconcile the difference away — the same discipline as CSU's visible
 # reconciling row.
+# FY2019-20 is the same phenomenon, and it is corroborated by DOF's OWN
+# PRINTED DOCUMENT rather than only by our extraction. The Schedule 9 in
+# the 2019-20 Enacted Budget Summary prints, for its budget-year column,
+# General Fund 147,780,666 + Special 61,092,907 + Bond 5,904,388 =
+# GRAND TOTAL 214,777,961 — exactly the sum of the API's twelve agency
+# rows, and 2,353k below the stateGrandTotal the same API declares.
+# Two DOF publications disagree with each other; the Ledger reports the
+# agency rows as published and names the difference.
 SOURCE_RESIDUAL = {          # Σ(agency rows) − stateGrandTotal, in thousands
+    "2019-20": -2353,
     "2025-26": -1638,
 }
 #
@@ -636,6 +669,7 @@ def build_payload(cached):
                            "(California Department of Finance, ebudget.ca.gov)",
             "generated": date.today().isoformat(),
             "population": POPULATION,
+            "populationNote": POPULATION_BENCHMARK_NOTE,
             "fundNames": fund_names,
             "depth": "Per department: funds = [[fundCd, class, thousands, "
                      "legal title where one code carries more than one]] "

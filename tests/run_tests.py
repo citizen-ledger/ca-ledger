@@ -215,12 +215,17 @@ def test_v1(page, base):
                   r["agencyRowsK"] - r["publishedControlK"] == r["residualK"],
                   f"{r['agencyRowsK']} - {r['publishedControlK']} != {r['residualK']}")
         exact = [y for y, r in gate["years"].items() if r["residualK"] == 0]
-        check("V1 GATE: five of six years reconcile to DOF's control at zero residual",
-              len(exact) == 5, str(sorted(exact)))
-        check("V1 GATE: the one non-zero residual is FY2025-26 at exactly −1,638k "
-              "(DOF's own, not ours)",
-              gate["years"]["2025-26"]["residualK"] == -1638,
-              str(gate["years"]["2025-26"]))
+        check("V1 GATE: seven of nine years reconcile to DOF's control at "
+              "zero residual", len(exact) == 7, str(sorted(exact)))
+        # TWO years where DOF disagrees with itself. FY2019-20 is corroborated
+        # by DOF's OWN printed Schedule 9, whose grand total (147,780,666 +
+        # 61,092,907 + 5,904,388 = 214,777,961) equals our agency rows and is
+        # 2,353k below the stateGrandTotal the same API declares.
+        for y, want in (("2019-20", -2353), ("2025-26", -1638)):
+            check(f"V1 GATE: FY{y}'s non-zero residual is exactly {want:+,}k "
+                  f"(DOF's own, not ours)",
+                  gate["years"][y]["residualK"] == want,
+                  str(gate["years"][y]))
         check("V1 GATE: the residual is named as the source's, not reconciled away",
               "exceeds the sum of its own" in gate["sourceResidualNote"]
               and "as published" in gate["sourceResidualNote"])
@@ -230,10 +235,13 @@ def test_v1(page, base):
         # the pipeline's constant must match the shipped residual exactly
         sys.path.insert(0, str(ROOT / "pipeline"))
         from fetch_state_data import SOURCE_RESIDUAL
-        check("V1 GATE: the pipeline's SOURCE_RESIDUAL constant matches the shipped residual",
-              SOURCE_RESIDUAL.get("2025-26") == gate["years"]["2025-26"]["residualK"]
-              and set(SOURCE_RESIDUAL) == {"2025-26"},
-              f"{SOURCE_RESIDUAL} vs {gate['years']['2025-26']['residualK']}")
+        check("V1 GATE: the pipeline's SOURCE_RESIDUAL constants match the "
+              "shipped residuals exactly, and cover no year that reconciles",
+              set(SOURCE_RESIDUAL) == {"2019-20", "2025-26"}
+              and all(SOURCE_RESIDUAL[y] == gate["years"][y]["residualK"]
+                      for y in SOURCE_RESIDUAL),
+              f"{SOURCE_RESIDUAL} vs "
+              f"{ {y: gate['years'][y]['residualK'] for y in SOURCE_RESIDUAL} }")
         # the gate figures must be the UNROUNDED source of the rounded display
         for y, r in gate["years"].items():
             shipped = sum(a["gf"] + a["sp"] + a["bd"]
@@ -661,6 +669,7 @@ def test_v2(page, base):
 # tests/mutation_test.py applies — so accumulated float error can never
 # trip them and a tampered figure always does.
 ENACTED_PIN = {                # $B, gf+sp+bd as shipped. TAMPER PIN.
+    "2017-18": 183.255, "2018-19": 201.373, "2019-20": 214.778,
     "2020-21": 202.075,
     "2021-22": 262.587,
     "2022-23": 307.915,
@@ -1983,9 +1992,15 @@ def test_state_fund_identity(page, base):
     # ---- where DOF splits one code, we carry both, each named
     split = [(fy, d) for fy, ag, d in depts
              if len([r for r in (d.get("funds") or []) if r[0] == "0001"]) > 1]
+    # the count grows with the window; what must hold is that EVERY split is
+    # a genuine two-title case and that the split years are the ones DOF
+    # actually publishes two titles in
     check("state funds: fund 0001 is split wherever DOF publishes two titles "
-          "for it, rather than summed into one row", len(split) == 43,
+          "for it, rather than summed into one row", len(split) >= 43,
           str(len(split)))
+    check("state funds: every split is a real two-title case, not an artefact",
+          all(len({r[3] for r in d["funds"] if r[0] == "0001" and len(r) > 3}) == 2
+              for _fy, d in split), str(len(split)))
     titles = set()
     for fy, d in split:
         for r in (d.get("funds") or []):
@@ -2047,7 +2062,9 @@ def test_state_fund_identity(page, base):
 
     # ---- recorded as our own correction
     rec = load_data_js(ROOT / "state-revisions.js")
-    ours = [b for b in rec["batches"] if b.get("ours")]
+    ours = [b for b in rec["batches"]
+            if b.get("ours") and "fund" in (b.get("note") or "").lower()
+            and not b.get("coverageAdded")]
     check("state funds: the correction is recorded in the change feed",
           len(ours) == 1, str(len(ours)))
     if ours:
@@ -2193,6 +2210,135 @@ def test_identity_leaks(page, base):
           "the margin was thin", sum(1 for n in names if len(
               "".join(c if c.isalnum() else "-" for c in n.lower())
               .replace("--", "-").strip("-")) > 24) >= 4)
+
+
+def test_historical_state(page, base):
+    """THE STATE RECORD, EXTENDED TO THE API'S OWN FLOOR (V15).
+
+    Six years -> nine. FY2017-18 is where DOF's structured budget API
+    begins: every earlier year returns HTTP 200 with an EMPTY ARRAY rather
+    than an error, so a status-code availability check would have claimed
+    coverage back to 2007-08. The floor is the source's, not a choice.
+
+    Every new year passes the same gates as the current ones. FY2019-20
+    reconciles to DOF's PRINTED Schedule 9 grand total (147,780,666 +
+    61,092,907 + 5,904,388 = 214,777,961) rather than to the API's own
+    stateGrandTotal, which is 2,353k higher — two DOF publications
+    disagreeing with each other, recorded as an exact reviewed constant,
+    never smoothed into a tolerance band."""
+    YRS = STATE["years"]
+    check("historical state: nine fiscal years are loaded", len(YRS) == 9,
+          str(len(YRS)))
+    check("historical state: the record begins at the API's floor",
+          YRS[0] == "2017-18", YRS[0])
+
+    # ---- every year carries the same structure, not a thinner one
+    for fy in YRS:
+        ags = STATE["budgets"][fy]["agencies"]
+        depts = [d for a in ags for d in (a.get("departments") or [])]
+        check(f"historical state {fy}: twelve agencies", len(ags) == 12,
+              str(len(ags)))
+        check(f"historical state {fy}: department detail is present, not a "
+              f"thinner tier for older years", len(depts) > 180, str(len(depts)))
+        check(f"historical state {fy}: the fund drill is present",
+              sum(len(d.get("funds") or []) for d in depts) > 1000)
+        check(f"historical state {fy}: the program drill is present",
+              sum(len(d.get("programs") or []) for d in depts) > 500)
+
+    # ---- V8 parent-sum gate, recomputed per year from the shipped file
+    for fy in YRS:
+        bad = []
+        for a in STATE["budgets"][fy]["agencies"]:
+            for d in (a.get("departments") or []):
+                by = {}
+                for r in (d.get("funds") or []):
+                    by[r[1]] = by.get(r[1], 0) + r[2]
+                for cls, key in (("G", "gf"), ("S", "sp"), ("B", "bd")):
+                    if abs(by.get(cls, 0) - round((d.get(key) or 0) * 1e6)) > 1000:
+                        bad.append((d.get("code"), cls))
+        check(f"historical state {fy}: fund rows sum to their gated parent",
+              not bad, str(bad[:3]))
+
+    # ---- the position guard holds in every year, new ones included
+    for fy in YRS:
+        coll = []
+        for a in STATE["budgets"][fy]["agencies"]:
+            for d in (a.get("departments") or []):
+                seen = set()
+                for r in (d.get("funds") or []):
+                    i = (r[0], r[3] if len(r) > 3 else None)
+                    if i in seen:
+                        coll.append((d.get("code"), r[0]))
+                    seen.add(i)
+        check(f"historical state {fy}: no fund identity collides", not coll,
+              str(coll[:3]))
+
+    # ---- THE DOF DISAGREEMENT, recorded exactly and not smoothed
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fsd", str(ROOT / "pipeline" / "fetch_state_data.py"))
+    fsd = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_state_data.py"]
+    try:
+        spec.loader.exec_module(fsd)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+    check("historical state: FY2019-20's residual is recorded as an exact "
+          "reviewed constant", fsd.SOURCE_RESIDUAL.get("2019-20") == -2353,
+          str(fsd.SOURCE_RESIDUAL))
+    check("historical state: and it is a constant, never a tolerance band "
+          "that would swallow the next, different discrepancy",
+          all(isinstance(v, int) for v in fsd.SOURCE_RESIDUAL.values()))
+
+    # ---- actuals: the three new years are gated, not labelled 'not yet published'
+    acts = STATE["meta"]["actuals"]["years"]
+    for fy, vintage in (("2017-18", "2019-20"), ("2018-19", "2020-21"),
+                        ("2019-20", "2021-22")):
+        rec = acts.get(fy) or {}
+        check(f"historical state: FY{fy} actuals are published, not claimed "
+              f"unpublished", "unavailable" not in rec, str(rec)[:80])
+        check(f"historical state: FY{fy} actuals name their vintage",
+              vintage in (rec.get("vintage") or ""), str(rec.get("vintage")))
+    check("historical state: FY2020-21 actuals remain honestly absent — a "
+          "year that cannot be verified shows none",
+          "unavailable" in (acts.get("2020-21") or {}))
+
+    # ---- per-resident stops where the census benchmark does, and says so
+    pop = STATE["meta"]["population"]
+    check("historical state: population covers only the 2020-benchmark years",
+          set(pop) == {"2020-21", "2021-22", "2022-23", "2023-24", "2024-25",
+                       "2025-26"}, str(sorted(pop)))
+    check("historical state: and the boundary is stated in the payload",
+          "2010 census benchmark" in (STATE["meta"].get("populationNote") or ""))
+    page.goto(f"{base}/index.html#methodology")
+    body = page.inner_text("body")
+    check("historical state: the page explains why per-resident begins later",
+          "2020 census benchmark" in body and "Per-resident figures begin" in body)
+
+    # ---- the structural breaks the series actually crosses
+    check("historical state: the page names COVID relief as a one-off inside "
+          "the window", "COVID-19 federal relief" in body)
+    check("historical state: and SB 1, which steps transportation up at the "
+          "start of the window", "SB 1" in body)
+    check("historical state: and states which larger breaks it stops ABOVE, "
+          "rather than leaving a reader to assume none exist",
+          "realignment" in body and "LCFF" in body and "GASB 68" in body)
+
+    # ---- THE REFUSAL, visible on the layer that was refused
+    page.goto(f"{base}/cities.html#methodology")
+    cbody = page.inner_text("body")
+    check("cities refusal: the page says why the record begins at FY 2016-17",
+          "Why this record begins at FY 2016-17" in cbody)
+    for phrase, why in (("100%", "the share the old categories carried"),
+                        ("50.6%", "the share they carry after the break"),
+                        ("99.5%", "the largest single function discontinuity"),
+                        ("single undifferentiated", "police and fire are not "
+                         "separable before the break")):
+        check(f"cities refusal: states {why}", phrase in cbody, phrase)
+    check("cities refusal: names it as a choice, not a data gap",
+          "the Ledger does not load them" in cbody)
 
 
 def test_shape():
@@ -4955,7 +5101,12 @@ def test_revisions(page, base):
     check("revisions: it is labelled as OUR correction, not a source change",
           noted and "our own correction" in noted[0]["note"].lower())
 
+    # A note may come ONLY from a declared constant. There are now two
+    # kinds — a CORRECTION (we changed a figure) and a COVERAGE change (we
+    # changed which years we load). Both are declared in the pipeline; the
+    # refresh path can apply either and invent neither.
     declared = {(c["layer"], c["built"]) for c in REV.CORRECTIONS}
+    declared |= {(c["layer"], c["built"]) for c in REV.COVERAGE}
     declared.add((REV.BACKFILL["layer"], REV.BACKFILL["built"]))
     for layer in LAYERS:
         for b in records[layer]["batches"]:
@@ -4967,7 +5118,9 @@ def test_revisions(page, base):
                   f"{layer}/{b['built']} is noted but not declared")
             check(f"revisions: {layer} batch {b['built']} attributes the cause "
                   f"to US, never to the source",
-                  "our own correction" in b["note"].lower(), b["note"][:80])
+                  ("our own correction" in b["note"].lower()
+                   or "our own change of coverage" in b["note"].lower()),
+                  b["note"][:80])
     # and every unnoted batch stays silent, which is the default
     for layer in LAYERS:
         for b in records[layer]["batches"]:
@@ -5552,6 +5705,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_historical_state(page, base)
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
