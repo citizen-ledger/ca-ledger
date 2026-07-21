@@ -2572,7 +2572,10 @@ def test_ccc_write_path():
 
     # the correction that could not ship until the write path worked
     rec = load_data_js(ROOT / "ccc-revisions.js")
-    ours = [b for b in rec["batches"] if b.get("ours")]
+    # identify THIS correction by its content, not by being the only one —
+    # a layer can carry several corrections over time
+    ours = [b for b in rec["batches"]
+            if b.get("ours") and "OWN SUM" in (b.get("note") or "")]
     check("ccc write path: the funded-FTES correction is recorded",
           len(ours) == 1, str(len(ours)))
     if ours:
@@ -2819,6 +2822,122 @@ def test_k12_vintage_declaration():
         except SystemExit:
             ok = False
         check(f"k12 vintage: the loaded year {yy} has a declared vocabulary", ok)
+
+
+def test_ccc_absence(page, base):
+    """ABSENCE MUST MARK ABSENCE, NOT CLAIM A NEGATIVE.
+
+    A district whose apportionment record is missing was published with
+    `basicAid: false` — the claim that its property-tax position had been
+    checked against the SCFF schedule and it is not community-supported.
+    It had not been checked. Its four sibling fields (fundedFtes, stateGf,
+    perFtes, noncreditShare) already used null; basicAid was the outlier.
+
+    Calbright is the live case: it is not apportionment-funded at all, so
+    the fact does not exist for it. The page compounded this by rendering
+    ONE hardcoded sentence — Calbright's — for any district with a missing
+    apportionment record, which on any other district would have told a
+    reader that district is the state's online college."""
+    cal = next((d for d in CCC["districts"] if d["code"] == "210"), None)
+    check("ccc absence: the live no-apportionment district is present",
+          cal is not None)
+
+    # ---- the payload marks absence, on every apportionment-derived field
+    for f in ("fundedFtes", "stateGf", "perFtes", "noncreditShare", "basicAid"):
+        check(f"ccc absence: {f} is null, not a value that reads as measured",
+              cal[f] is None, f"{f}={cal[f]!r}")
+    check("ccc absence: and the flags say unknown rather than no",
+          cal["flags"]["basicAid"] is None
+          and cal["flags"]["noncreditHeavy"] is None,
+          str(cal["flags"]))
+    check("ccc absence: while the fact that it is absent is still asserted",
+          cal["flags"]["noApportionment"] is True)
+
+    # ---- the REASON travels with the record
+    check("ccc absence: the record carries its own reason",
+          bool(cal.get("noApportionmentReason")))
+    check("ccc absence: and it is Calbright's actual reason",
+          "online community college" in cal["noApportionmentReason"])
+    src = (ROOT / "ccc.html").read_text(encoding="utf-8")
+    check("ccc absence: the page no longer stores one institution's "
+          "explanation to render for a class",
+          "Calbright is the state's online community college; it is not "
+          "funded through the apportionment formula" not in src)
+    check("ccc absence: it reads the reason off the record",
+          "noApportionmentReason" in src)
+
+    # ---- districts WITH apportionment still carry real booleans
+    known = [d for d in CCC["districts"] if not d["flags"]["noApportionment"]]
+    check("ccc absence: every other district still has a measured basicAid",
+          all(isinstance(d["flags"]["basicAid"], bool) for d in known),
+          str(len(known)))
+    check("ccc absence: and the community-supported count is unchanged at 8",
+          sum(1 for d in known if d["flags"]["basicAid"]) == 8,
+          str(sum(1 for d in known if d["flags"]["basicAid"])))
+
+    # ---- BEHAVIOURAL: the page shows unknown as unknown, and the CSV
+    #      exports it as empty rather than "no"
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_selector(".r .nm")
+    page.wait_for_timeout(400)
+    body = page.inner_text("body")
+    check("ccc absence: the district is on the page", "CALBRIGHT" in body.upper())
+
+    csv = page.evaluate("() => csvText()")
+    header = csv.splitlines()[-2].split(",") if False else None
+    rows = [l for l in csv.splitlines() if l.upper().startswith("CALBRIGHT")]
+    check("ccc absence: the CSV carries a row for it", len(rows) == 1, str(rows[:1]))
+    if rows:
+        cells = rows[0].split(",")
+        check("ccc absence: its community_supported cell is EMPTY, not 'no' — "
+              "unknown must not export as a measured negative",
+              cells[-2] == "", repr(cells[-2]))
+        check("ccc absence: and its noncredit_heavy cell likewise",
+              cells[-1] == "", repr(cells[-1]))
+    check("ccc absence: the CSV says what an empty flag cell means",
+          "does NOT mean no" in csv or "It does NOT mean no" in csv)
+
+    # a district WITH the fact still exports yes/no
+    other = [l for l in csv.splitlines()
+             if l and not l.startswith("#") and not l.upper().startswith("CALBRIGHT")
+             and not l.startswith("district,") and not l.startswith("Statewide")]
+    check("ccc absence: measured districts still export yes/no",
+          any(l.split(",")[-2] in ("yes", "no") for l in other))
+
+    # ---- the statewide figures are the published control, never our sum
+    psrc = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
+    check("ccc absence: the statewide figures no longer fall back to the "
+          "pipeline's own sum — the mechanism behind the corrected "
+          "1,100,664.62", 'appn_statewide.get("fundedFtes", ftes_sum)' not in psrc
+          and 'appn_statewide.get("stateGf", gf_sum)' not in psrc)
+    check("ccc absence: the shipped statewide FTES is the published control",
+          CCC["statewide"]["fundedFtes"] == 1100664.61,
+          str(CCC["statewide"]["fundedFtes"]))
+
+    # ---- BEHAVIOURAL: an undeclared absence refuses the build
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_ccc_data as C
+    check("ccc absence: the reason for a missing apportionment record is "
+          "DECLARED per district", hasattr(C, "NO_APPORTIONMENT")
+          and "210" in C.NO_APPORTIONMENT)
+    check("ccc absence: and only for the district it is true of",
+          len(C.NO_APPORTIONMENT) == 1, str(sorted(C.NO_APPORTIONMENT)))
+
+    # ---- a correction is recorded once, and identified
+    import revisions as REV
+    check("ccc absence: corrections carry a stable id so two on one day are "
+          "distinguishable and neither repeats",
+          all("id" in c for c in REV.CORRECTIONS))
+    ids = [c["id"] for c in REV.CORRECTIONS]
+    check("ccc absence: the ids are unique", len(set(ids)) == len(ids))
+    rec = load_data_js(ROOT / "ccc-revisions.js")
+    notes = [b for b in rec["batches"] if b.get("note")]
+    check("ccc absence: the correction is recorded exactly once",
+          sum(1 for b in notes if "basicAid FALSE" in b["note"]) == 1,
+          str(len(notes)))
+    check("ccc absence: and no note is attached to two batches",
+          len({b["note"] for b in notes}) == len(notes),
+          f"{len(notes)} noted batches, {len({b['note'] for b in notes})} distinct")
 
 
 def test_shape():
@@ -6185,6 +6304,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_ccc_absence(page, base)
             test_k12_vintage_declaration()
             test_gate_declarations()
             test_uc_strip_verification()

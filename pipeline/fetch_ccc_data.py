@@ -354,10 +354,31 @@ def fetch_apportionment(refresh):
             if mm:
                 cats[cat] = lastnum(mm.group(1))
         nc = cats.get("Noncredit", 0) + cats.get("CDCP", 0)
-        d["noncreditShare"] = round(nc / d["fundedFtes"], 4) if d["fundedFtes"] else 0.0
+        # A missing denominator is not a measurement of zero noncredit.
+        d["noncreditShare"] = (round(nc / d["fundedFtes"], 4)
+                               if d["fundedFtes"] else None)
         appn[name] = d
     (CACHE / "_exc_tmp.pdf").unlink(missing_ok=True)
     return appn, statewide
+
+
+# ---------------------------------------------------- declared absences
+#
+# WHY A DISTRICT HAS NO APPORTIONMENT RECORD, stated per district.
+#
+# The page used to carry ONE hardcoded sentence for every district whose
+# apportionment was missing — Calbright's sentence, about being the state's
+# online college. That is true of exactly one district. Rendered for any
+# other, it would tell a reader that Los Angeles CCD is the state's online
+# community college: a fabricated explanation, which is worse than a blank.
+#
+# The reason now travels WITH the record, and a district whose absence has
+# no declared reason fails the build rather than borrowing someone else's.
+NO_APPORTIONMENT = {
+    "210": "Calbright is the state\u2019s online community college and is not "
+           "funded through the apportionment formula, so it has no "
+           "funded-FTES denominator and no per-FTES figure.",
+}
 
 
 # ── join + gate ──────────────────────────────────────────────────────
@@ -472,16 +493,31 @@ def build(refresh):
             rec["perFtes"] = round(cev["ce"] / a["fundedFtes"]) if a["fundedFtes"] else None
             rec["noncreditShare"] = a["noncreditShare"]
             rec["basicAid"] = a["ptaxExcess"] < -1
-        else:  # Calbright — not SCFF-funded
+        else:
+            # ABSENCE MARKS ABSENCE. `basicAid = False` used to publish
+            # "we checked the property-tax-excess schedule and this is not
+            # a community-supported district" about a district whose
+            # apportionment we never had. Unknown is None, like its four
+            # siblings, and the reason travels with the record.
+            reason = NO_APPORTIONMENT.get(rec["code"])
+            if not reason:
+                raise SystemExit(
+                    f"CCC: {rec['name']} ({rec['code']}) has no apportionment "
+                    "record and no declared reason. An unexplained absence is "
+                    "a parse failure until it is shown otherwise; declare it "
+                    "in NO_APPORTIONMENT deliberately. Nothing written.")
             rec["fundedFtes"] = None
             rec["stateGf"] = None
             rec["perFtes"] = None
             rec["noncreditShare"] = None
-            rec["basicAid"] = False
+            rec["basicAid"] = None
+            rec["noApportionmentReason"] = reason
         rec["flags"] = {
             "multiCollege": rec["nColleges"] > 1,
             "basicAid": rec["basicAid"],
-            "noncreditHeavy": bool(rec["noncreditShare"] and rec["noncreditShare"] >= nc_threshold),
+            # None (unknown) is distinct from False (measured, and it isn't)
+            "noncreditHeavy": (None if rec["noncreditShare"] is None
+                               else rec["noncreditShare"] >= nc_threshold),
             "noApportionment": a is None,
         }
         districts.append(rec)
@@ -568,8 +604,15 @@ def build(refresh):
             "ce": tvi_statewide["ce"],
             "instrSal": tvi_statewide["instrSal"],
             "pct50": tvi_statewide["pct50"],
-            "fundedFtes": round(appn_statewide.get("fundedFtes", ftes_sum), 2),
-            "stateGf": round(appn_statewide.get("stateGf", gf_sum)),
+            # THE PUBLISHED CONTROL, NEVER OUR OWN SUM. These used to fall
+            # back to ftes_sum / gf_sum — the pipeline's own totals — if the
+            # Chancellor's Office control was missing, which is exactly how
+            # 1,100,664.62 came to be published where the printed control
+            # says 1,100,664.61 (corrected 2026-07-21). The gate above now
+            # requires the control to exist, so the fallback can only ever
+            # have masked its absence.
+            "fundedFtes": round(appn_statewide["fundedFtes"], 2),
+            "stateGf": round(appn_statewide["stateGf"]),
             "nDistricts": len(districts),
             "nColleges": n_colleges,
             "communitySupported": basic_n,

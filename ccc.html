@@ -317,15 +317,30 @@
     if (f.multiCollege) notes.push(["MULTI-COLLEGE",
       "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege]);
     if (f.basicAid) notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
+    // unknown is not "no": say so rather than showing the same blank a
+    // measured negative shows
+    else if (f.basicAid == null) notes.push(["COMMUNITY-SUPPORTED: NOT KNOWN",
+      "Whether this district is community-supported (basic aid) is derived "
+      + "from the apportionment schedule, which is absent for this record, "
+      + "so it has not been determined either way."]);
     if (f.noncreditHeavy) notes.push(["NONCREDIT-HEAVY",
       Math.round(r.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
     if (f.multiCollege && f.basicAid) notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
+    // The reason travels WITH the record. This used to be one hardcoded
+    // sentence about Calbright, rendered for any district whose
+    // apportionment was missing — which would have told a reader that
+    // whichever district they were viewing is the state's online college.
     if (f.noApportionment) notes.push(["NO APPORTIONMENT FTES",
-      "Calbright is the state's online community college; it is not funded through the apportionment formula, so it has no funded-FTES denominator and no per-FTES figure."]);
+      r.noApportionmentReason
+        || "This district has no apportionment record for this year, so it "
+           + "has no funded-FTES denominator and no per-FTES figure. The "
+           + "reason is not recorded."]);
     return notes;
   }
 
-  function unitVal(r){ return S.unit === "perFtes" ? (r.perFtes||0) : r.ce; }
+  // an unknown per-FTES has no bar at all; `||0` used to draw it at the
+  // bottom of the range beside a cell reading "—"
+  function unitVal(r){ return S.unit === "perFtes" ? r.perFtes : r.ce; }
   function fmtUnit(r){
     if (S.unit === "perFtes") return r.perFtes==null ? "—" : money0(r.perFtes);
     return money0(r.ce);
@@ -438,7 +453,9 @@
       if (S.sort === "perFtes"){ const av=a.perFtes==null?-1:a.perFtes, bv=b.perFtes==null?-1:b.perFtes; return bv-av; }
       return a.name.localeCompare(b.name);
     });
-    const max = Math.max(...D.districts.map(unitVal));
+    // unknowns are excluded from the scale rather than counted as zero
+    const vals = D.districts.map(unitVal).filter(v => v != null);
+    const max = vals.length ? Math.max(...vals) : 0;
     const sortH = k => 'class="hd-sort'+(S.sort===k?' on':'')+'" data-sort="'+k+'"';
     let html = '<div class="r hd"><button '+sortH('name')+'>DISTRICT'+(S.sort==='name'?' ▾':'')+'</button>'
       + '<span></span><span class="v dim">FUNDED FTES</span>'
@@ -510,13 +527,16 @@
       "# Basis is modified-accrual (CCC Budget and Accounting Manual), NOT the state budget's enacted budgetary-legal figure; never add the two.",
       "# Per-FTES uses apportionment funded FTES (SCFF Exhibit C), NOT the CCCCO Data Mart derived count. Calbright is not apportionment-funded (no per-FTES).",
       "# Flags: multi_college (runs >1 college), community_supported (basic-aid, property-tax funded), noncredit_heavy (>= 2x statewide noncredit share). Districts are never ranked.",
+      "# An EMPTY flag cell means the fact is not known for that district — it is derived from the apportionment schedule, which is absent for some records. It does NOT mean no.",
       "# Source: " + M.sourceLabel + ". Generated: " + M.generated,
       "# Permalink: " + location.href,
       "district,colleges,current_expense_of_education_dollars,instructional_salaries_dollars,pct_50_law,funded_ftes,current_expense_per_ftes,state_general_fund_apportionment_dollars,multi_college,community_supported,noncredit_heavy"];
     D.districts.forEach(r => { lines.push([
       titlecase(r.name), r.nColleges, r.ce, r.instrSal, r.pct50,
       r.fundedFtes==null?"":r.fundedFtes, r.perFtes==null?"":r.perFtes, r.stateGf==null?"":r.stateGf,
-      r.flags.multiCollege?"yes":"no", r.flags.basicAid?"yes":"no", r.flags.noncreditHeavy?"yes":"no"
+      r.flags.multiCollege?"yes":"no",
+      r.flags.basicAid==null?"":(r.flags.basicAid?"yes":"no"),
+      r.flags.noncreditHeavy==null?"":(r.flags.noncreditHeavy?"yes":"no")
     ].map(esc2).join(",")); });
     lines.push(["Statewide total (Table VI)", SW.nColleges, SW.ce, SW.instrSal, SW.pct50, Math.round(SW.fundedFtes), Math.round(SW.ce/SW.fundedFtes), SW.stateGf, "", "", ""].map(esc2).join(","));
     return lines.join("\r\n");
