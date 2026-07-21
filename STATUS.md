@@ -2809,3 +2809,38 @@ in all nine years is unchanged. Digest coverage measured: 12 discovered, 12
 verified.
 
 **Assertions.** 2099 → 2118 (+19).
+
+## 2026-07-21 — V15 corrected: CSU is unreachable, CCC is deeper than claimed
+
+Before building on docs/V15_HISTORICAL_FINDING.md, each layer's
+recommendation was re-probed by running the real parser against the real
+source. Two of the finding's claims were wrong. They are corrected in the
+document itself rather than left for the next reader.
+
+**CSU cannot be extended at all** — the finding recommended +5 years. That
+rested on a report that older CSU PDFs carry a uniform −29 character shift,
+"readable once known". It could not be verified, for a reason that
+supersedes it: `calstate.edu` returns **HTTP 403** with an Imperva
+interstitial to every scripted request, and `extract_from_pdfs()` is a
+documented stub that returns nothing. The control total for every proposed
+year is **uncomputable, not merely unreconciled**. CSU stays at its single
+gated year. The FY2012-13 structural floor is not refuted — it is
+unreachable, which is stronger.
+
+**CCC is deeper than the finding claimed.** It stated FY2015-16 through
+FY2017-18 were "unretrievable and must be shown as absent". All three fetch
+real, year-labelled data and reconcile at whole-dollar resolution with a
+residual of exactly $0, using the shipped parser unchanged. The in-scope
+Table VI core is **FY2009-10 through FY2022-23 — 14 years, every one
+gate-verified at $0**.
+
+One new limit found in the same pass: **FY2018-19 apportionment has no
+published control** — "Funded FTES" appears nowhere in that year's R1
+document. That year ships its Table VI core with the apportionment fields
+absent, never interpolated.
+
+Both errors ran in the direction of the agent that produced them: the CSU
+report was optimistic about a document it never held, the CCC report
+pessimistic about documents it failed to fetch once. The finding's own
+evidence standard — VERIFIED means *I fetched it* — was right; it was
+applied unevenly.
