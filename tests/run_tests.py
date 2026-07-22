@@ -1963,6 +1963,170 @@ def test_position_guard():
           "failing bare", "NO LINE DETAIL IN THIS SOURCE VINTAGE" in src)
 
 
+def test_county_position_guard():
+    """THE COUNTY SIBLING'S COPY OF THE POSITION GUARD.
+
+    The city refused a row whose line position echoed its group. Its
+    county twin, with the same exposure, tested only the VALUE of
+    subcategory_1 through startswith(). Measured against classify()
+    before this guard existed:
+
+        ('Public Protection', 'Public Protection') -> ('gov','protectionOther')
+        ('Public Protection', None)                -> ('gov','protectionOther')
+        ('Education and Recreation…', echoed)      -> ('gov','education')
+
+    The first two file every police, detention, judicial and fire dollar
+    into the residual bucket. The third is worse: startswith('Education')
+    is satisfied by the echoed CATEGORY itself, so all recreation and
+    cultural spending is misfiled as education. Totals gates stay green
+    throughout — conservation cannot see classification.
+
+    Counties file (category=GROUP, subcategory_1=SUB-GROUP, line), so the
+    echo lands one column left of the city's. The guard is the same idea
+    at the county's own geometry."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fcod", str(ROOT / "pipeline" / "fetch_county_data.py"))
+    fcod = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_county_data.py"]
+    try:
+        spec.loader.exec_module(fcod)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    def refuses(cat, s1):
+        try:
+            fcod.classify(cat, s1)
+            return False
+        except SystemExit:
+            return True
+
+    # Every GOVERNMENTAL (category, subcategory_1) shape SCO publishes,
+    # verbatim from the source, enumerated across all eight loaded years.
+    # The source carries 55 distinct shapes in total; the other 24 are
+    # enterprise, internal-service and conduit rows, which classify()
+    # decides on category alone and which are checked separately below.
+    # Of all 55, zero echo their category and zero have an empty
+    # sub-group — which is why this guard is latent today.
+    SHAPES = {
+        "Public Protection": [
+            "Police Protection", "Detention and Correction", "Judicial",
+            "Fire Protection", "Protection - Other", "Protection – Other",
+            "Protective Inspection",
+            "Flood Control - Soil and Water Conservation"],
+        "Public Ways and Facilities, Health, and Sanitation": [
+            "Public Ways and Facilities", "Health", "Sanitation"],
+        "Education and Recreation and Cultural Services": [
+            "Education", "Recreation and Cultural Services"],
+        "Debt Service and Capital Outlay": ["Debt Service", "Capital Outlay"],
+        "Public Assistance": [
+            "Social Services", "Welfare", "General Relief",
+            "Care of Court Wards", "Veterans Services",
+            "Public Assistance - Other"],
+        "General Government": [
+            "Legislative and Administrative", "Finance", "Counsel",
+            "Elections", "Personnel", "Communications", "Promotion",
+            "Property Management", "Plant Acquisition",
+            "Other General Government"],
+    }
+
+    # ---- POSITIVE CONTROL, first: every shipped shape still classifies.
+    #      Without this the refusal assertions below would be satisfied by
+    #      a guard that refused everything.
+    accepted, refused_live = 0, []
+    for cat, subs in SHAPES.items():
+        for s1 in subs:
+            try:
+                kind, key = fcod.classify(cat, s1)
+                assert kind == "gov" and key
+                accepted += 1
+            except SystemExit:
+                refused_live.append((cat, s1))
+    expected = sum(len(v) for v in SHAPES.values())
+    check("county position guard: every governmental shape SCO actually "
+          "publishes is still classified — the guard refuses nothing that "
+          "ships", not refused_live and accepted == expected,
+          f"{accepted}/{expected} accepted, refused {refused_live[:2]}")
+
+    # enterprise / ISF / conduit are decided on category alone
+    for cat, kind in (("Water Enterprise Fund", "ent"),
+                      ("Hospital Enterprise Fund Fund", "ent"),
+                      ("Internal Service Fund", "isf"),
+                      ("Conduit Financing", "conduit")):
+        check(f"county position guard: {cat!r} still routes to {kind!r}",
+              fcod.classify(cat, None)[0] == kind)
+
+    # ---- THE REFUSALS. The vintage shift this exists for.
+    for cat in ("Public Protection",
+                "Public Ways and Facilities, Health, and Sanitation",
+                "Education and Recreation and Cultural Services",
+                "Debt Service and Capital Outlay"):
+        check(f"county position guard: refuses {cat[:34]!r} echoed into its "
+              f"own sub-group column", refuses(cat, cat))
+        check(f"county position guard: refuses {cat[:34]!r} with no sub-group "
+              f"at all", refuses(cat, None) and refuses(cat, ""))
+
+    check("county position guard: THE RESIDUAL-BUCKET CASE — an echoed "
+          "'Public Protection' is refused, not filed under protectionOther",
+          refuses("Public Protection", "Public Protection"))
+    check("county position guard: THE EDUCATION CASE — the echo no longer "
+          "satisfies startswith('Education') and misfile recreation",
+          refuses("Education and Recreation and Cultural Services",
+                  "Education and Recreation and Cultural Services"))
+
+    # ---- NOT A BLUNT INSTRUMENT. A sub-group that is a PREFIX of its own
+    #      category is legitimate and must still classify: SCO publishes
+    #      'Public Ways and Facilities' under 'Public Ways and Facilities,
+    #      Health, and Sanitation'. A startswith test would refuse it.
+    kind, key = fcod.classify(
+        "Public Ways and Facilities, Health, and Sanitation",
+        "Public Ways and Facilities")
+    check("county position guard: a sub-group that is a prefix of its own "
+          "category is still accepted — the test is equality, not prefix",
+          kind == "gov" and key == "streets", f"{kind}/{key}")
+
+    # ---- and where the sub-group is NOT load-bearing, an echo is harmless
+    #      and must not be refused: classify() never reads it there.
+    for cat, want in (("Public Assistance", "assistance"),
+                      ("General Government", "admin")):
+        k, v = fcod.classify(cat, cat)
+        check(f"county position guard: {cat!r} does not read its sub-group, "
+              f"so an echo there is accepted, not refused",
+              k == "gov" and v == want, f"{k}/{v}")
+
+    # ---- THE TABLE CANNOT DRIFT FROM THE BRANCHES. reads_subgroup() is a
+    #      declared list; the branches are code. Derive which categories
+    #      ACTUALLY discriminate by calling classify() with two different
+    #      sub-groups and seeing whether the answer moves, then require the
+    #      declaration to match exactly. A branch that starts or stops
+    #      reading its sub-group without updating the table fails here.
+    derived = set()
+    for cat, subs in SHAPES.items():
+        results = set()
+        for s1 in subs:
+            try:
+                results.add(fcod.classify(cat, s1)[1])
+            except SystemExit:
+                pass
+        if len(results) > 1:
+            derived.add(cat)
+    declared = {c for c in SHAPES if fcod.reads_subgroup(c)}
+    check("county position guard: the guard covers exactly the categories "
+          "whose classification really does depend on the sub-group — "
+          "derived from behaviour, not from the declaration",
+          derived == declared,
+          f"derived={sorted(derived)} declared={sorted(declared)}")
+    check("county position guard: and that set is non-empty, so the "
+          "comparison above has something to compare",
+          len(derived) == 4, str(sorted(derived)))
+
+    # ---- an unrecognised layout is still refused outright, as before
+    check("county position guard: an unknown category is still refused",
+          refuses("Something New", "Also New"))
+
+
 def test_state_fund_identity(page, base):
     """A FUND IS (CODE, LEGAL TITLE, CLASS), NOT A CODE.
 
@@ -6428,6 +6592,7 @@ def main():
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
+            test_county_position_guard()
             test_identifier_stability()
             test_actuals_view(page, base)
             test_v2(page, base)

@@ -95,7 +95,59 @@ def fy_label(source_year):
     return f"{y - 1}-{str(y)[-2:]}"
 
 
+def reads_subgroup(cat):
+    """Does classify() DISCRIMINATE on the sub-group for this category?
+
+    Declared once and asserted against behaviour by the test suite, which
+    calls classify() with two different sub-groups per category and checks
+    that the answer changes exactly for the categories named here. So this
+    table cannot silently drift out of step with the branches below."""
+    return (cat == "Public Protection"
+            or cat.startswith("Public Ways")
+            or cat.startswith("Education and Recreation")
+            or cat == "Debt Service and Capital Outlay")
+
+
 def classify(category, sub1):
+    """Counties file (category, subcategory_1, line_description): the GROUP
+    in `category`, the SUB-GROUP in `subcategory_1`, the line beneath it.
+
+    THE SUB-GROUP'S POSITION MUST BE ESTABLISHED, NOT MERELY ITS VALUE
+    RECOGNIZED — the city's guard, ported.
+
+    Testing only the VALUE of subcategory_1 cannot tell a filing that
+    carries a real sub-group from one whose sub-group column has collapsed
+    into an echo of the category. Both look like strings. Measured against
+    this function before the guard existed:
+
+        classify('Public Protection', 'Public Protection')
+            -> ('gov', 'protectionOther')
+        classify('Public Protection', None)
+            -> ('gov', 'protectionOther')
+        classify('Education and Recreation…', 'Education and Recreation…')
+            -> ('gov', 'education')
+
+    The first two file every police, detention, judicial and fire dollar
+    into the residual bucket. The third is worse: startswith('Education')
+    is satisfied by the echoed CATEGORY itself, so all recreation and
+    cultural spending is misfiled as education. In every case the totals
+    gate stays green, because CONSERVATION CANNOT SEE CLASSIFICATION —
+    the same blindness that shipped FY 2016-17 city functions wrong.
+
+    So where the sub-group is load-bearing it must be PROVEN to carry a
+    sub-group. If it is empty, or is the category over again, position
+    carries no information and the row is refused.
+
+    Note the test is exact equality, not a prefix: under
+    'Public Ways and Facilities, Health, and Sanitation' the SCO publishes
+    a legitimate sub-group 'Public Ways and Facilities', which is a prefix
+    of its own category. A startswith test would refuse real data.
+
+    Verified against every published county year: 55 distinct
+    (category, subcategory_1) shapes across FY 2016-17..2023-24, zero
+    echoes and zero empties, so this refuses nothing that ships today. It
+    is the vintage shift it exists for — the county equivalent of the
+    column move SCO made to the city files in FY 2016-17."""
     cat = norm(category)
     if cat in ENTERPRISE_BY_CATEGORY:
         return "ent", ENTERPRISE_BY_CATEGORY[cat]
@@ -104,6 +156,19 @@ def classify(category, sub1):
     if cat == "Conduit Financing":
         return "conduit", None
     g = norm(sub1)
+    if reads_subgroup(cat) and (not g or g == cat):
+        raise SystemExit(
+            "NO SUB-GROUP DETAIL IN THIS SOURCE VINTAGE — refusing to "
+            f"classify: category={category!r} subcategory_1={sub1!r}. "
+            f"The function group {cat!r} occupies the sub-group position "
+            "too, so nothing establishes which field the sub-group came "
+            "from. Classifying it would file every police, detention, "
+            "judicial and fire dollar under 'protectionOther' — and "
+            "recreation under 'education' — while every totals gate "
+            "passed, because conservation cannot see classification. "
+            "This is the county form of the pre-FY 2016-17 city layout. "
+            "Extend classify() deliberately if such a vintage is ever to "
+            "be loaded.")
     if cat == "Public Protection":
         if g.startswith("Police"):
             return "gov", "police"
