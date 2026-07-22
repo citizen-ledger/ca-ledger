@@ -221,6 +221,7 @@ def main():
     years_data = {y: fetch_year(y) for y in SOURCE_YEARS}
 
     errors, notes = [], []
+    reconciled, unreconciled = 0, []
     # THE CLASSIFICATION-SHAPE GATE (hard): statewide, every function
     # must be nonzero in every year (measured clean on all 8 shipped
     # vintages); a column shift zeroes whole functions while totals
@@ -244,19 +245,51 @@ def main():
             ours = (sum(c["byFunction"].values()) + sum(c["enterprise"].values())
                     + c["isf"] + c["conduit"])
             ctrl = official.get((name, sy))
+            # A ZERO OR MISSING CONTROL DOES NOT RECONCILE.
+            #
+            # The city pipeline received this guard; its county sibling did
+            # not, and the identical comparison shipped three county-years
+            # as "reconciled" on a vacuous test: abs(0 - 0) > max(1000, 0)
+            # is false, so a year with nothing filed passed exactly as a
+            # year that matched to the dollar. Verified at source - SCO
+            # publishes total_expenditures = '0' for Humboldt FY2019-20,
+            # Humboldt FY2020-21 and Mendocino FY2021-22 - so the FIGURES
+            # are right and the ASSURANCE was never earned. Those years are
+            # counted as unreconciled and named, not passed.
             if ctrl is None:
                 errors.append(f"{name} FY {fy_label(sy)}: no control total")
+                unreconciled.append(f"{name} FY {fy_label(sy)} (no control)")
+            elif ctrl == 0:
+                unreconciled.append(f"{name} FY {fy_label(sy)} (control is zero)")
+                if ours > 0:
+                    errors.append(
+                        f"{name} FY {fy_label(sy)}: we report ${ours:,.0f} but "
+                        "the published control is 0 - the figure cannot be "
+                        "reconciled and must not ship as if it were")
             elif abs(ours - ctrl) > max(GATE_DOLLARS, ctrl * 0.001):
                 errors.append(f"{name} FY {fy_label(sy)}: ${ours:,.0f} vs control "
                               f"${ctrl:,.0f} (drift ${abs(ours - ctrl):,.0f})")
+            else:
+                reconciled += 1
             if c["pop"] <= 0:
                 errors.append(f"{name} FY {fy_label(sy)}: population 0")
+    if reconciled < 440:
+        errors.append(
+            f"only {reconciled} county-years reconciled against a published "
+            f"control ({len(unreconciled)} did not: {unreconciled[:5]}) - a "
+            "gate that verified this few has not verified this layer")
     if errors:
         for e in errors[:30]:
             print("  FAIL:", e, file=sys.stderr)
         sys.exit(f"{len(errors)} gate failure(s) — county-data.js left untouched.")
-    print("All gates passed (57 counties × 8 years, every county-year "
-          "reconciles against the official SCO control totals).", file=sys.stderr)
+    if unreconciled:
+        print(f"  {len(unreconciled)} county-year(s) NOT reconciled - the "
+              "Controller publishes no usable control for them: "
+              + ", ".join(unreconciled), file=sys.stderr)
+    print(f"All gates passed (57 counties × 8 years; {reconciled} county-years "
+          f"reconcile against the official SCO control totals, "
+          f"{len(unreconciled)} have no usable control and are not claimed "
+          f"as reconciled).", file=sys.stderr)
 
     def slugify(name):
         s = "".join(ch if ch.isalnum() else "-" for ch in name.lower())
@@ -364,10 +397,14 @@ def main():
                      "county's annual report to the State Controller. "
                      "Governmental activities by function; ratepayer-funded "
                      "enterprise activities separate; internal service funds "
-                     "and conduit financing excluded from both blocks. Every "
+                     "and conduit financing excluded from both blocks. Each "
                      "county-year reconciles against the Controller's "
-                     "published per-capita dataset totals (stored per year as "
-                     "scoTotal).",
+                     "published per-capita dataset total (stored per year as "
+                     "scoTotal), except where the Controller publishes a total "
+                     "of zero because the county did not file: those "
+                     "county-years are marked absent and are not claimed as "
+                     "reconciled, since reproducing a published zero would "
+                     "prove nothing.",
             "sanFrancisco": "San Francisco is a consolidated city and county "
                             "and files as a city; it appears only in the "
                             "Cities layer (with a consolidation footnote) and "
