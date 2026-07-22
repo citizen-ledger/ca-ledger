@@ -397,7 +397,21 @@
   };
   // live counts for the basic-aid note — never hardcoded
   const latest = YEARS[YEARS.length-1];
-  const BA_COUNT = Object.values(D.districts).filter(d => (d.years[latest]||{}).basicAid).length;
+  // counts only districts whose status is KNOWN to be basic aid; a year
+  // where the source does not publish it contributes nothing either way
+  /* AN UNKNOWN FACT IS UNKNOWN, NOT A NO AND NOT A ZERO.
+     basicAidStatus is three-valued; there is no bare `basicAid` in any
+     year, so a consumer cannot read it right in one year and be lied to
+     in another. A number that is not published is ABSENT, because zero
+     is a real answer for funded ADA and cannot carry "unknown". */
+  const UNPUB = (D.meta && D.meta.unpublished) || {};
+  const unpubWhy = (fy, fact) => (UNPUB[fy] || {})[fact] || null;
+  const isBasicAid    = v => v && v.basicAidStatus === "basic-aid";
+  const baKnown       = v => v && v.basicAidStatus !== "not-published";
+  const adaKnown      = v => v && typeof v.fundedADA === "number";
+
+  const BA_COUNT = Object.values(D.districts)
+    .filter(d => isBasicAid(d.years[latest])).length;
   const D_COUNT = Object.keys(D.districts).length;
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
@@ -469,7 +483,12 @@
     const d = D.districts[id], v = d.years[y];
     if (!v) return [];
     const notes = [];
-    if (v.basicAid) notes.push({key:"basicAid", text:
+    if (!baKnown(v)) notes.push({key:"basicAid", text:
+      "Basic-aid status is not known for FY " + S.year + ". "
+      + (unpubWhy(S.year, "basicAid") || "The source does not publish it for this year.")
+      + " This is not a finding that the district is state-funded \u2014 the "
+      + "fact is unavailable, not negative."});
+    else if (isBasicAid(v)) notes.push({key:"basicAid", text:
       "Basic aid: local property tax exceeds this district's LCFF entitlement and the district keeps the excess — per-ADA spending partly reflects local tax-base geography, not spending choices. "
       + BA_COUNT + " of " + D_COUNT + " districts (" + (BA_COUNT/D_COUNT*100).toFixed(1) + "%) are in this position."});
     if (v.smallNSS) notes.push({key:"smallNSS", text:
@@ -878,7 +897,9 @@
     $("recordBody").innerHTML =
       '<div class="rec-big num">' + moneyExact(v.expenditures) + '</div>'
       + '<div class="rec-biglbl">GENERAL FUND EXPENDITURES · UNAUDITED ACTUALS</div>'
-      + '<div class="rec-meta">FUNDED ADA (LCFF): ' + (v.fundedADA ? fmt(Math.round(v.fundedADA)) : "—")
+      + '<div class="rec-meta">FUNDED ADA (LCFF): '
+      + (adaKnown(v) ? fmt(Math.round(v.fundedADA))
+         : "not published for FY " + S.year)
       + ' · SHOWN AS CONTEXT ONLY — COE PROGRAMS SERVE POPULATIONS NO DISTRICT SERVES</div>'
       + '<div style="margin-top:16px">'
       + rows.map(([name, x]) =>
@@ -1012,7 +1033,9 @@
       } else if (S.type === "coes"){
         h += '<div class="rs-figs">Expenditures '
           + esc(moneyExact(adjV(v.expenditures, S.year)))
-          + ' \u00b7 funded ADA ' + esc(fmt(Math.round(v.fundedADA)))
+          + ' \u00b7 funded ADA '
+          + esc(adaKnown(v) ? fmt(Math.round(v.fundedADA))
+                : "not published for FY " + S.year)
           + ' \u00b7 RECORDS ONLY, never compared and no per-ADA figure</div>';
       } else {
         h += '<div class="rs-figs">Expenditures '
@@ -1182,7 +1205,8 @@
           // no denominator, no rate: an empty field, never Infinity
           (perAda(v.currentExpense, v.ada) === null
             ? "" : Math.round(perAda(v.currentExpense, v.ada))),
-          v.basicAid, v.smallNSS, v.sponsoredCharterADA,
+          // an unknown fact exports its own word, never a bare false
+          v.basicAidStatus, v.smallNSS, v.sponsoredCharterADA,
           // a function the filing never reported exports empty, not 0.00
           ...FN.map(f => { const fv = fnVal(v, f.key);
                            return fv === null ? "" : fv.toFixed(2); })]

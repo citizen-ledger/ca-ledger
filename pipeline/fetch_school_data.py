@@ -124,6 +124,43 @@ CE_VINTAGE = {
     "2425": ("District",          "CO",      "CDS",           "District"),
 }
 
+# WHAT THE LCFF SUMMARY PUBLISHES, PER YEAR — declared, never sniffed.
+#
+# Verified by fetching every candidate year: CDE publishes no LCFF summary
+# at all for FY2016-17, FY2017-18 or FY2018-19 (404), and the FY2019-20
+# workbook exists but carries 12 columns with no Local Revenue column,
+# where FY2020-21 onward carry 20 including "Total Local Revenue or
+# In-Lieu of Property Taxes". Basic aid is derived from local revenue
+# against entitlement, so FY2019-20 can give funded ADA but not basic aid.
+#
+# The unknown set therefore DIFFERS PER FACT, which is why this is a table
+# of facts and not a list of bad years.
+LCFF_PUBLISHES = {
+    "1617": {"basicAid": False, "fundedADA": False},
+    "1718": {"basicAid": False, "fundedADA": False},
+    "1819": {"basicAid": False, "fundedADA": False},
+    "1920": {"basicAid": False, "fundedADA": True},
+}
+LCFF_UNPUBLISHED_REASON = {
+    "1617": "CDE publishes no LCFF funding summary for this fiscal year.",
+    "1718": "CDE publishes no LCFF funding summary for this fiscal year.",
+    "1819": "CDE publishes no LCFF funding summary for this fiscal year.",
+    "1920": "CDE's LCFF funding summary for this fiscal year does not "
+            "publish a local revenue column, and basic-aid status is "
+            "local revenue measured against the LCFF entitlement.",
+}
+
+
+def lcff_status(yy, fact, compute):
+    """A fact the LCFF summary does not publish is said so, never guessed.
+
+    `compute` is only called when the source publishes the fact, so a
+    missing workbook can never fall through to a default."""
+    if not LCFF_PUBLISHES.get(yy, {}).get(fact, True):
+        return "not-published"
+    return compute()
+
+
 # The SACS database changed two names between FY2021-22 and FY2022-23.
 # Verified by inspection on every year FY2016-17..FY2021-22, and by the
 # shipped gate on the current years: the running pipeline reads
@@ -941,7 +978,17 @@ def main():
                 "byResource": slim_by_resource(by_res, named_year),
                 "unrestricted": round(yd["edp_restr"][key][0], 2),
                 "restricted": round(yd["edp_restr"][key][1], 2),
-                "basicAid": bool(yd["basic_aid"].get(key, False)),
+                # THREE-VALUED, AND NEVER A BARE BOOLEAN. `false` is a real
+                # answer here, so a boolean has no room left to say "not
+                # published" — .get(key, False) turned a missing LCFF file
+                # into the positive claim that the district is state-funded.
+                # The bare `basicAid` key is gone from EVERY year, so no
+                # consumer can read it correctly in one year and be lied to
+                # in another.
+                "basicAidStatus": lcff_status(
+                    yy, "basicAid",
+                    lambda: ("basic-aid" if yd["basic_aid"].get(key)
+                             else "state-funded")),
                 "smallNSS": pub["ada"] < 250,
                 "sponsoredCharterADA": round(yd["sponsored"].get(key, 0.0), 2),
                 "commingledCharters": ({"count": com[0], "ada": round(com[1], 2)}
@@ -974,8 +1021,14 @@ def main():
             yd = years[fy]
             if key not in yd["coe_tot"]:
                 continue
+            # A NUMBER IS PUBLISHED ONLY WHEN IT IS KNOWN. Zero is a real
+            # answer for funded ADA, so zero cannot carry "not published";
+            # absence of the key yields NaN downstream, which is not a
+            # valid answer and cannot be mistaken for one.
             entry["years"][fy] = {
-                "fundedADA": round(yd["coe_ada"].get(key, 0.0), 2),
+                **({"fundedADA": round(yd["coe_ada"][key], 2)}
+                   if LCFF_PUBLISHES.get(yy, {}).get("fundedADA", True)
+                   and key in yd["coe_ada"] else {}),
                 "expenditures": round(yd["coe_tot"][key], 2),
                 "byFunction": {k: round(v, 2) for k, v in yd["coe_fn"][key].items()},
             }
@@ -1166,6 +1219,16 @@ def main():
                     "unrestricted Lottery — largely STATE money the district "
                     "may spend without a categorical restriction. Local "
                     "restricted is a separate group.",
+                # WHY a fact is unknown, keyed by (year, fact) — a
+                # property of the source's publication, not of each of
+                # 940 districts, so it is stated once and looked up.
+                "unpublished": {
+                    fy: {fact: LCFF_UNPUBLISHED_REASON[yy]
+                         for fact, published
+                         in LCFF_PUBLISHES.get(yy, {}).items() if not published}
+                    for yy, fy in YEARS
+                    if not all(LCFF_PUBLISHES.get(yy, {}).values())
+                },
                 "lcffNote": "LCFF is accounted for as a single unrestricted "
                     "resource. Base, supplemental, and concentration grants "
                     "are NOT tracked separately in any district's general "
