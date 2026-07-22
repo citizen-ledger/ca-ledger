@@ -316,16 +316,19 @@
     const f = r.flags, notes = [];
     if (f.multiCollege) notes.push(["MULTI-COLLEGE",
       "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege]);
-    if (f.basicAid) notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
-    // unknown is not "no": say so rather than showing the same blank a
-    // measured negative shows
-    else if (f.basicAid == null) notes.push(["COMMUNITY-SUPPORTED: NOT KNOWN",
+    // three-valued, matching the K-12 encoding: a status string, never a
+    // bare boolean, because "not community-supported" is a real answer
+    if (f.basicAidStatus === "basic-aid") notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
+    else if (f.basicAidStatus === "not-published") notes.push(["COMMUNITY-SUPPORTED: NOT KNOWN",
       "Whether this district is community-supported (basic aid) is derived "
       + "from the apportionment schedule, which is absent for this record, "
       + "so it has not been determined either way."]);
-    if (f.noncreditHeavy) notes.push(["NONCREDIT-HEAVY",
+    if (f.noncreditHeavyStatus === "noncredit-heavy") notes.push(["NONCREDIT-HEAVY",
       Math.round(r.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
-    if (f.multiCollege && f.basicAid) notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
+    else if (f.noncreditHeavyStatus === "not-published") notes.push(["NONCREDIT SHARE: NOT KNOWN",
+      "The noncredit and adult-education share is taken from the "
+      + "apportionment schedule, which is absent for this record."]);
+    if (f.multiCollege && f.basicAidStatus === "basic-aid") notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
     // The reason travels WITH the record. This used to be one hardcoded
     // sentence about Calbright, rendered for any district whose
     // apportionment was missing — which would have told a reader that
@@ -342,7 +345,7 @@
   // bottom of the range beside a cell reading "—"
   function unitVal(r){ return S.unit === "perFtes" ? r.perFtes : r.ce; }
   function fmtUnit(r){
-    if (S.unit === "perFtes") return r.perFtes==null ? "—" : money0(r.perFtes);
+    if (S.unit === "perFtes") return typeof r.perFtes === "number" ? money0(r.perFtes) : "not published";
     return money0(r.ce);
   }
 
@@ -450,7 +453,8 @@
     $("basisStrip").textContent = "BASIS: modified-accrual on the CCC Budget and Accounting Manual — the same shape as K-12's SACS. NOT the state budget page's enacted, budgetary-legal figure. The two are never added.";
 
     const rows = D.districts.slice().sort((a,b) => {
-      if (S.sort === "perFtes"){ const av=a.perFtes==null?-1:a.perFtes, bv=b.perFtes==null?-1:b.perFtes; return bv-av; }
+      if (S.sort === "perFtes"){ const av=typeof a.perFtes==="number"?a.perFtes:-1,
+                                       bv=typeof b.perFtes==="number"?b.perFtes:-1; return bv-av; }
       return a.name.localeCompare(b.name);
     });
     // unknowns are excluded from the scale rather than counted as zero
@@ -531,12 +535,15 @@
       "# Source: " + M.sourceLabel + ". Generated: " + M.generated,
       "# Permalink: " + location.href,
       "district,colleges,current_expense_of_education_dollars,instructional_salaries_dollars,pct_50_law,funded_ftes,current_expense_per_ftes,state_general_fund_apportionment_dollars,multi_college,community_supported,noncredit_heavy"];
+    const num = v => typeof v === "number" ? v : "";
     D.districts.forEach(r => { lines.push([
       titlecase(r.name), r.nColleges, r.ce, r.instrSal, r.pct50,
-      r.fundedFtes==null?"":r.fundedFtes, r.perFtes==null?"":r.perFtes, r.stateGf==null?"":r.stateGf,
+      // a fact the page calls unknown exports EMPTY, never a value and
+      // never "no"; a known status exports its own word
+      num(r.fundedFtes), num(r.perFtes), num(r.stateGf),
       r.flags.multiCollege?"yes":"no",
-      r.flags.basicAid==null?"":(r.flags.basicAid?"yes":"no"),
-      r.flags.noncreditHeavy==null?"":(r.flags.noncreditHeavy?"yes":"no")
+      r.flags.basicAidStatus,
+      r.flags.noncreditHeavyStatus
     ].map(esc2).join(",")); });
     lines.push(["Statewide total (Table VI)", SW.nColleges, SW.ce, SW.instrSal, SW.pct50, Math.round(SW.fundedFtes), Math.round(SW.ce/SW.fundedFtes), SW.stateGf, "", "", ""].map(esc2).join(","));
     return lines.join("\r\n");
