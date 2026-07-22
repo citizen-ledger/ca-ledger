@@ -2352,6 +2352,107 @@ def test_historical_state(page, base):
     check("cities refusal: names it as a choice, not a data gap",
           "the Ledger does not load them" in cbody)
 
+def test_no_vacuous_assertions():
+    """A CHECK THAT CANNOT FAIL IS NOT A CHECK — enforced on this file.
+
+    gates.py moved the dormant-assertion lesson into the pipeline. This
+    moves it into the suite. Three shapes have shipped here, each proven
+    by mutation to report success while the thing it guards was broken:
+
+      1. CATCH-ALL SELECTOR. `wait_for_selector(".r .nm, .rec, body")` —
+         `body` always matches, so the wait returns instantly and
+         guarantees nothing about the subject.
+      2. WRONG LAYER ADDRESS. `#l=counties` when the parser reads
+         `l=county`; the page silently falls back to another layer and
+         selects nothing. Measured: the entity's name never appeared.
+      3. SELF-GUARDED ASSERTION. `if x.count(): check(<about x>)` — when
+         x goes missing, the assertions vanish instead of failing.
+
+    This is a lint over the test file's own syntax, which is the fragile
+    source-text shape this repo distrusts. It is used here deliberately:
+    the subject IS syntax, and each pattern below was confirmed present
+    before the guard was written, so none of them is hypothetical.
+
+    It scans CODE ONLY. On first run it flagged the three examples quoted
+    in this very docstring — the self-matching failure it exists to
+    prevent, caught by the guard against itself. Docstrings and comments
+    are excised structurally (ast + tokenize), never by a text heuristic,
+    so prose may name these patterns without becoming one."""
+    import ast
+    import io
+    import tokenize
+    src = (ROOT / "tests" / "run_tests.py").read_text(encoding="utf-8")
+    lines = src.split("\n")
+
+    # blank every docstring and every comment, so only executable code is
+    # scanned. A test that matches its own example proves nothing.
+    tree = ast.parse(src)
+    blanked = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef,
+                                 ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = getattr(node, "body", None)
+        if not body or not isinstance(body[0], ast.Expr):
+            continue
+        val = body[0].value
+        if isinstance(val, ast.Constant) and isinstance(val.value, str):
+            blanked.update(range(val.lineno, (val.end_lineno or val.lineno) + 1))
+    check("vacuous: the scan excised this file's prose — otherwise it "
+          "matches its own examples", len(blanked) > 50, str(len(blanked)))
+    lines = ["" if n in blanked else l for n, l in enumerate(lines, 1)]
+    # a trailing comment is truncated at its own column, never by blanking
+    # the whole line — that would hide code sharing the line with prose
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type == tokenize.COMMENT:
+            n, col = tok.start
+            if n - 1 < len(lines) and lines[n - 1]:
+                lines[n - 1] = lines[n - 1][:col]
+    src = "\n".join(lines)
+
+    # 1 — no selector may include an always-present element
+    ALWAYS = {"body", "html", ":root", "*", "main"}
+    sel_re = re.compile(
+        r'(?:wait_for_selector|locator|query_selector)\(\s*[\'"]([^\'"]*)[\'"]')
+    catchall = [(i, s) for i, l in enumerate(lines, 1)
+                for s in sel_re.findall(l)
+                if any(p.strip() in ALWAYS for p in s.split(","))]
+    check("vacuous: no selector falls back to an always-present element",
+          not catchall, str(catchall[:3]))
+
+    # 2 — every layer address the tests use is one the parser accepts
+    cities = (ROOT / "cities.html").read_text(encoding="utf-8")
+    accepted = set(re.findall(r'p\.get\("l"\)\s*===\s*"([a-z]+)"', cities))
+    used = set(re.findall(r'#l=([a-z]+)', src))
+    check("vacuous: the parser declares at least one layer value, so this "
+          "comparison has a target", accepted, str(accepted))
+    check("vacuous: every #l= the tests address is a value cities.html "
+          "actually accepts — l=counties selected nothing for five months",
+          used <= accepted, f"used={sorted(used)} accepted={sorted(accepted)}")
+
+    # 3 — an assertion may not be guarded on its own subject unless the
+    #     subject's presence is asserted first
+    guarded = []
+    for i, l in enumerate(lines):
+        m = re.match(r'(\s*)if ([A-Za-z_][A-Za-z0-9_]*)\.count\(\):\s*$', l)
+        if not m:
+            continue
+        ind, var = m.group(1), m.group(2)
+        body = []
+        for j in range(i + 1, min(i + 15, len(lines))):
+            if lines[j].strip() and not lines[j].startswith(ind + " "):
+                break
+            body.append(lines[j])
+        if not any("check(" in b for b in body):
+            continue                      # a bare guard asserts nothing
+        prior = "\n".join(lines[max(0, i - 6):i])
+        if f"{var}.count()" not in prior or "check(" not in prior:
+            guarded.append((i + 1, var))
+    check("vacuous: no check() is guarded on the very element it is "
+          "asserting about without that element's presence asserted first",
+          not guarded, str(guarded[:3]))
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -6487,6 +6588,7 @@ def main():
             test_ccc_write_path()
             test_historical_state(page, base)
             test_empty_gate_guard()
+            test_no_vacuous_assertions()
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
