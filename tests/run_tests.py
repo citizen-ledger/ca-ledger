@@ -2946,6 +2946,109 @@ def test_ccc_absence(page, base):
           f"{len(notes)} noted batches, {len({b['note'] for b in notes})} distinct")
 
 
+def test_county_zero_control(page, base):
+    """A ZERO CONTROL DOES NOT RECONCILE — THE COUNTY SIBLING'S COPY.
+
+    The city pipeline received this guard; its county sibling, with the
+    identical comparison, did not. `abs(0 - 0) > max(1000, 0)` is false, so
+    a county-year with nothing filed passed exactly as one that matched to
+    the dollar. Three shipped that way — Humboldt FY2019-20 and FY2020-21,
+    Mendocino FY2021-22.
+
+    Verified at source: SCO publishes total_expenditures = '0' for each, so
+    the FIGURES are right and the ASSURANCE was never earned. Reproducing a
+    published zero proves nothing that a total parse failure would not also
+    satisfy."""
+    zero_years = [(slug, fy) for slug, c in COUNTY["counties"].items()
+                  for fy, y in (c.get("years") or {}).items()
+                  if not (y.get("byFunction") or {})]
+    check("county zero: the three empty county-years are still present — the "
+          "fix reports them, it does not delete them",
+          sorted(zero_years) == [("humboldt", "2019-20"), ("humboldt", "2020-21"),
+                                 ("mendocino", "2021-22")], str(sorted(zero_years)))
+
+    # ---- the pipeline no longer counts them as reconciled
+    src = (ROOT / "pipeline" / "fetch_county_data.py").read_text(encoding="utf-8")
+    check("county zero: the county gate carries the same rule as its city "
+          "sibling", "A ZERO OR MISSING CONTROL DOES NOT RECONCILE" in src)
+    check("county zero: it counts what it actually reconciled",
+          "reconciled += 1" in src and "unreconciled" in src)
+    check("county zero: and requires a floor, so a gate that verified almost "
+          "nothing cannot report success", "reconciled < 440" in src)
+
+    csrc = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
+    check("county zero: the city sibling still carries it too — the pair is "
+          "back in sync", "DOES NOT RECONCILE" in csrc)
+
+    # ---- BEHAVIOURAL: an empty county-year says so on the page.
+    # The layer param is `county`, singular, and the county record renders
+    # into #recordBody — an earlier draft of this test used `l=counties`
+    # and `.r .nm`, selected nothing, and would have passed on a blank page.
+    def county_record(cid, yr):
+        page.goto(f"{base}/cities.html#l=county&c={cid}&y={yr}")
+        page.wait_for_selector("#recordBody .det-row")
+        page.wait_for_timeout(250)
+        return page.inner_text("#recordBody")
+
+    ABSENT = [("humboldt", "2019-20"), ("humboldt", "2020-21"),
+              ("mendocino", "2021-22")]
+    for cid, yr in ABSENT:
+        body = county_record(cid, yr)
+        check(f"county zero: FY{yr} {cid} says the filing is absent, not "
+              f"that the county spent nothing",
+              "reported no governmental expenditure" in body
+              and "absent filing" in body)
+        check(f"county zero: FY{yr} {cid} names the published zero as the "
+              f"reason there is nothing to reconcile",
+              "nothing to reconcile" in body)
+
+    # the note must be earned by the absence, not printed on every county
+    for cid, yr in [("humboldt", "2018-19"), ("los-angeles", "2019-20")]:
+        body = county_record(cid, yr)
+        check(f"county zero: FY{yr} {cid} filed, so it carries no absence "
+              f"note", "reported no governmental expenditure" not in body)
+
+    # ---- the published claim no longer overstates what was checked
+    csrc2 = (ROOT / "cities.html").read_text(encoding="utf-8")
+    check("county zero: the method note no longer claims EVERY county-year "
+          "reproduces the control",
+          "every county-year reproduces the Controller's published control "
+          "total before publication." not in csrc2)
+    page.goto(f"{base}/cities.html#methodology")
+    mbody = page.inner_text("body")
+    check("county zero: it states the exception on the page",
+          "Reproducing a published zero would prove nothing" in mbody)
+
+    # the PRINT RECORD SHEET carries the claim a fourth time, on paper,
+    # for every layer it serves
+    page.goto(f"{base}/cities.html#l=county&c=humboldt&y=2019-20")
+    page.wait_for_selector("#recordBody .det-row")
+    page.wait_for_timeout(250)
+    sheet = page.inner_text("#recordSheet")
+    check("county zero: the record sheet's GATE paragraph does not claim "
+          "EVERY county-year reconciles",
+          "Every county-year in this layer reconciles" not in sheet)
+    check("county zero: the record sheet states the exception",
+          "not claimed as reconciled" in sheet, sheet[:0])
+    check("county zero: and the absent filing is named on the printed sheet",
+          "reported no governmental expenditure" in sheet)
+    # the same paragraph serves the city layer; it must be true there too
+    page.goto(f"{base}/cities.html#c=oakland")
+    page.wait_for_selector("#recordBody .det-row")
+    page.wait_for_timeout(250)
+    csheet = page.inner_text("#recordSheet")
+    check("county zero: the city layer's record sheet carries the same "
+          "qualified claim, not the unqualified one",
+          "Every city-year in this layer reconciles" not in csheet
+          and "not claimed as reconciled" in csheet)
+
+    # the payload carries its own published claim, and it overstated too
+    cbasis = COUNTY["meta"]["basis"]
+    check("county zero: the payload's own basis no longer claims EVERY "
+          "county-year reconciles",
+          "Every county-year reconciles" not in cbasis, cbasis[-90:])
+    check("county zero: the payload states the zero-control exception",
+          "not claimed as reconciled" in cbasis, cbasis[-90:])
 def test_clamped_impossibility(page, base):
     """A SHARE OUTSIDE [0,1] IS PROOF THE INPUTS DISAGREE, NOT AN EXTREME.
 
@@ -6417,6 +6520,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_county_zero_control(page, base)
             test_clamped_impossibility(page, base)
             test_ccc_absence(page, base)
             test_k12_vintage_declaration()
