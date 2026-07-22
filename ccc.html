@@ -217,18 +217,23 @@
   <div class="po" id="recordSheet"></div>
   <div class="hero">
     <div>
-      <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2022-23</div>
+      <div class="kicker" id="kicker">THE PUBLIC RECORD</div>
       <h1>California Community Colleges</h1>
       <p class="dek">Every district's Current Expense of Education (ECS 84362), reconciled exactly — to the dollar — against the Chancellor's Office's own statewide total. Seventy-three districts running 116 colleges; modified-accrual figures, not the state budget's enacted basis.</p>
     </div>
     <div class="hero-right">
       <div class="hero-num num" id="heroNum">—</div>
       <div class="hero-sub" id="heroSub"></div>
-      <div class="hero-lbl" id="heroLbl">CURRENT EXPENSE OF EDUCATION · ECS 84362 · FY 2022-23</div>
+      <div class="hero-lbl" id="heroLbl">CURRENT EXPENSE OF EDUCATION · ECS 84362</div>
     </div>
   </div>
 
   <div class="controls np">
+    <div class="pillgroup stepper">
+      <button id="yearPrev" aria-label="Previous fiscal year">&#9666;</button>
+      <select id="yearSel" aria-label="Select fiscal year"></select>
+      <button id="yearNext" aria-label="Next fiscal year">&#9656;</button>
+    </div>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="total" class="on">Current Expense of Education</button>
       <button data-unit="perFtes">Per FTES</button>
@@ -289,31 +294,41 @@
   const D = window.CA_CCC_DATA;
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const M = D.meta, SW = D.statewide;
+  const M = D.meta;
+  /* MULTI-YEAR, on the shape cities, counties and K-12 already use: a
+     top-level `years` axis, and everything that varies by year inside
+     each district's `years` map. `yr(r)` and `sw()` are the only two
+     places that know the selected year, so a read site cannot silently
+     go on addressing a single year. */
+  const YEARS = D.years;
+  const yr = r => (r.years || {})[S.year] || {};
+  const sw = () => (D.statewide || {})[S.year] || {};
   const money0 = v => "$" + Math.round(v).toLocaleString("en-US");
   const moneyB = v => "$" + (v/1e9).toFixed(2) + "B";              // v in dollars
   const titlecase = s => s.replace(/\w[^\s\-\/]*/g, w => w[0] + w.slice(1).toLowerCase())
                           .replace(/\bCcd\b/,"CCD").replace(/\bLa\b/,"LA");
 
-  const DEFAULTS = {unit: "total", sort: "name"};
+  const DEFAULTS = {unit: "total", sort: "name", year: D.years[D.years.length-1]};
   const S = {...DEFAULTS};
 
   function applyHash(){
     const p = new URLSearchParams(location.hash.replace(/^#/,""));
     S.unit = p.get("u") === "perFtes" ? "perFtes" : "total";
     S.sort = p.get("s") === "perFtes" ? "perFtes" : "name";
+    S.year = YEARS.includes(p.get("y")) ? p.get("y") : DEFAULTS.year;
   }
   function syncHash(){
     const p = new URLSearchParams();
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
     if (S.sort !== DEFAULTS.sort) p.set("s", S.sort);
+    if (S.year !== DEFAULTS.year) p.set("y", S.year);
     const h = p.toString();
     history.replaceState(null, "", h ? "#"+h : location.pathname);
   }
 
   // structural-comparability daggers, data-derived from the flags in ccc-data.js
   function districtNotes(r){
-    const f = r.flags, notes = [];
+    const v = yr(r), f = v.flags || {}, notes = [];
     if (f.multiCollege) notes.push(["MULTI-COLLEGE",
       "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege]);
     // three-valued, matching the K-12 encoding: a status string, never a
@@ -324,7 +339,7 @@
       + "from the apportionment schedule, which is absent for this record, "
       + "so it has not been determined either way."]);
     if (f.noncreditHeavyStatus === "noncredit-heavy") notes.push(["NONCREDIT-HEAVY",
-      Math.round(r.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
+      Math.round(v.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
     else if (f.noncreditHeavyStatus === "not-published") notes.push(["NONCREDIT SHARE: NOT KNOWN",
       "The noncredit and adult-education share is taken from the "
       + "apportionment schedule, which is absent for this record."]);
@@ -334,7 +349,7 @@
     // apportionment was missing — which would have told a reader that
     // whichever district they were viewing is the state's online college.
     if (f.noApportionment) notes.push(["NO APPORTIONMENT FTES",
-      r.noApportionmentReason
+      v.noApportionmentReason
         || "This district has no apportionment record for this year, so it "
            + "has no funded-FTES denominator and no per-FTES figure. The "
            + "reason is not recorded."]);
@@ -347,7 +362,7 @@
   // returned undefined, and `undefined / max * 100` is NaN, which reached
   // the bar as width:NaN%. A figure that does not exist gets no bar.
   function unitVal(r){
-    const v = S.unit === "perFtes" ? r.perFtes : r.ce;
+    const d = yr(r), v = S.unit === "perFtes" ? d.perFtes : d.ce;
     return typeof v === "number" ? v : null;
   }
   const barWidth = (r, max) => {
@@ -355,8 +370,9 @@
     return (v == null || !max) ? 0 : (v / max * 100);
   };
   function fmtUnit(r){
-    if (S.unit === "perFtes") return typeof r.perFtes === "number" ? money0(r.perFtes) : "not published";
-    return money0(r.ce);
+    const d = yr(r);
+    if (S.unit === "perFtes") return typeof d.perFtes === "number" ? money0(d.perFtes) : "not published";
+    return money0(d.ce);
   }
 
 
@@ -452,12 +468,14 @@
   function render(){
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderRecordSheet();
-    $("heroNum").textContent = moneyB(SW.ce);
-    $("heroSub").textContent = SW.nDistricts + " DISTRICTS · " + SW.nColleges + " COLLEGES · " + Math.round(SW.fundedFtes).toLocaleString() + " FUNDED FTES";
+    $("heroNum").textContent = moneyB(sw().ce);
+    $("kicker").textContent = "THE PUBLIC RECORD \u00b7 FY " + S.year;
+    $("heroLbl").textContent = "CURRENT EXPENSE OF EDUCATION \u00b7 ECS 84362 \u00b7 FY " + S.year;
+    $("heroSub").textContent = sw().nDistricts + " DISTRICTS · " + sw().nColleges + " COLLEGES · " + Math.round(sw().fundedFtes).toLocaleString() + " FUNDED FTES";
     $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION BY DISTRICT · "
-      + (S.unit==="perFtes" ? "PER FUNDED FTES (APPORTIONMENT, NOT DATA MART)" : "TOTAL, WHOLE DOLLARS") + " · FY 2022-23";
-    $("gateStrip").textContent = "GATED · WHOLE DOLLARS, EXACT: the " + SW.nDistricts
-      + " districts' Current Expense of Education (ECS 84362) sum to " + money0(SW.ce)
+      + (S.unit==="perFtes" ? "PER FUNDED FTES (APPORTIONMENT, NOT DATA MART)" : "TOTAL, WHOLE DOLLARS") + " · FY " + S.year;
+    $("gateStrip").textContent = "GATED · WHOLE DOLLARS, EXACT: the " + sw().nDistricts
+      + " districts' Current Expense of Education (ECS 84362) sum to " + money0(sw().ce)
       + " — the Chancellor's Office's own printed statewide total, to the dollar. Independently"
       + " validated off the portal by each district's mandatory CPA audit (Ed Code 84040).";
     $("basisStrip").textContent = "BASIS: modified-accrual on the CCC Budget and Accounting Manual — the same shape as K-12's SACS. NOT the state budget page's enacted, budgetary-legal figure. The two are never added.";
@@ -481,18 +499,18 @@
       const w = barWidth(r, max).toFixed(1);
       html += '<div class="r"><span class="nm">'+esc(titlecase(r.name))+dag+'</span>'
         + '<span class="bar"><i style="width:'+w+'%"></i></span>'
-        + '<span class="v dim">'+(r.fundedFtes==null?'—':Math.round(r.fundedFtes).toLocaleString())+'</span>'
+        + '<span class="v dim">'+(typeof yr(r).fundedFtes!=='number'?'\u2014':Math.round(yr(r).fundedFtes).toLocaleString())+'</span>'
         + '<span class="v">'+fmtUnit(r)+'</span></div>';
       if (S.openNote === r.name)
         html += '<div class="note-row">'+notes.map(n => '<span class="tag">† '+esc(n[0])+'</span>'+esc(n[1])).join('')+'</div>';
     });
     html += '<div class="r foot"><span class="nm">Statewide total (Table VI)</span><span></span>'
-      + '<span class="v dim">'+Math.round(SW.fundedFtes).toLocaleString()+'</span>'
-      + '<span class="v">'+(S.unit==='perFtes' ? money0(Math.round(SW.ce/SW.fundedFtes)) : money0(SW.ce))+'</span></div>';
+      + '<span class="v dim">'+Math.round(sw().fundedFtes).toLocaleString()+'</span>'
+      + '<span class="v">'+(S.unit==='perFtes' ? money0(Math.round(sw().ce/sw().fundedFtes)) : money0(sw().ce))+'</span></div>';
     $("tbl").innerHTML = html;
 
     $("recordCaps").innerHTML = "<span>DISTRICTS ARE NEVER RANKED — PER-FTES REFLECTS MISSION, STRUCTURE, AND LOCAL FUNDING, NOT PERFORMANCE</span>"
-      + "<span>"+SW.communitySupported+" COMMUNITY-SUPPORTED · "+D.districts.filter(r=>r.flags.multiCollege).length+" MULTI-COLLEGE · † = COMPARABILITY NOTE</span>";
+      + "<span>"+sw().communitySupported+" COMMUNITY-SUPPORTED · "+D.districts.filter(r=>yr(r).flags && yr(r).flags.multiCollege).length+" MULTI-COLLEGE · † = COMPARABILITY NOTE</span>";
 
     $("auxBox").innerHTML = '<div class="microlbl">WHAT THE FIGURE ALREADY EXCLUDES</div>'
       + '<div style="font-size:var(--fs-note);line-height:1.6;color:var(--graphite)">' + esc(M.daggers.auxiliary) + '</div>';
@@ -525,8 +543,8 @@
 
   function citationText(){
     return 'Citizen Ledger, "California Community Colleges — Current Expense of Education by District, '
-      + 'FY 2022-23 (CCFS-311, ECS 84362)." Statewide Current Expense of Education ' + money0(SW.ce)
-      + '; ' + SW.nDistricts + ' districts reconcile to that Chancellor’s Office statewide total exactly, '
+      + 'FY \' + S.year + \' (CCFS-311, ECS 84362)." Statewide Current Expense of Education ' + money0(sw().ce)
+      + '; ' + sw().nDistricts + ' districts reconcile to that Chancellor’s Office statewide total exactly, '
       + 'to the dollar (independently validated by the districts’ mandatory CPA audits, Ed Code 84040). '
       + 'This is modified-accrual (BAM) spending, not the state budget’s enacted community-college '
       + 'appropriation, and the two are never added. Per-FTES uses apportionment funded FTES (SCFF Exhibit C), '
@@ -537,7 +555,7 @@
     const esc2 = x => /[",\n]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x;
     const lines = [
       "# Citizen Ledger — California Community Colleges, FY 2022-23 (CCFS-311, Current Expense of Education ECS 84362, whole dollars)",
-      "# WHOLE-DOLLAR, EXACT: the "+SW.nDistricts+" districts' Current Expense of Education sum to "+money0(SW.ce)+", the Chancellor's Office printed statewide Table VI total, to the dollar.",
+      "# WHOLE-DOLLAR, EXACT: the "+sw().nDistricts+" districts' Current Expense of Education sum to "+money0(sw().ce)+", the Chancellor's Office printed statewide Table VI total, to the dollar.",
       "# Basis is modified-accrual (CCC Budget and Accounting Manual), NOT the state budget's enacted budgetary-legal figure; never add the two.",
       "# Per-FTES uses apportionment funded FTES (SCFF Exhibit C), NOT the CCCCO Data Mart derived count. Calbright is not apportionment-funded (no per-FTES).",
       "# Flags: multi_college (runs >1 college), community_supported (basic-aid, property-tax funded), noncredit_heavy (>= 2x statewide noncredit share). Districts are never ranked.",
@@ -547,15 +565,15 @@
       "district,colleges,current_expense_of_education_dollars,instructional_salaries_dollars,pct_50_law,funded_ftes,current_expense_per_ftes,state_general_fund_apportionment_dollars,multi_college,community_supported,noncredit_heavy"];
     const num = v => typeof v === "number" ? v : "";
     D.districts.forEach(r => { lines.push([
-      titlecase(r.name), r.nColleges, r.ce, r.instrSal, r.pct50,
+      titlecase(r.name), r.nColleges, yr(r).ce, yr(r).instrSal, yr(r).pct50,
       // a fact the page calls unknown exports EMPTY, never a value and
       // never "no"; a known status exports its own word
-      num(r.fundedFtes), num(r.perFtes), num(r.stateGf),
-      r.flags.multiCollege?"yes":"no",
-      r.flags.basicAidStatus,
-      r.flags.noncreditHeavyStatus
+      num(yr(r).fundedFtes), num(yr(r).perFtes), num(yr(r).stateGf),
+      (yr(r).flags||{}).multiCollege?"yes":"no",
+      (yr(r).flags||{}).basicAidStatus,
+      (yr(r).flags||{}).noncreditHeavyStatus
     ].map(esc2).join(",")); });
-    lines.push(["Statewide total (Table VI)", SW.nColleges, SW.ce, SW.instrSal, SW.pct50, Math.round(SW.fundedFtes), Math.round(SW.ce/SW.fundedFtes), SW.stateGf, "", "", ""].map(esc2).join(","));
+    lines.push(["Statewide total (Table VI)", sw().nColleges, sw().ce, sw().instrSal, sw().pct50, Math.round(sw().fundedFtes), Math.round(sw().ce/sw().fundedFtes), sw().stateGf, "", "", ""].map(esc2).join(","));
     return lines.join("\r\n");
   }
 
@@ -597,11 +615,31 @@
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = "ca-ledger-ccc-" + M.year + ".csv"; a.click(); URL.revokeObjectURL(a.href);
   });
+  // ---- year, wired the same way as schools.html and cities.html
+  function stepYear(d){
+    const i = YEARS.indexOf(S.year) + d;
+    if (i >= 0 && i < YEARS.length){
+      S.year = YEARS[i]; $("yearSel").value = S.year; syncHash(); render();
+    }
+  }
+  $("yearPrev").addEventListener("click", () => stepYear(-1));
+  $("yearNext").addEventListener("click", () => stepYear(1));
+  $("yearSel").addEventListener("change", e => {
+    S.year = e.target.value; syncHash(); render(); });
+
   window.addEventListener("hashchange", ()=>{ applyHash();
     $("unitGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.unit===S.unit));
+    $("yearSel").value = S.year;
     render(); });
 
   applyHash();
+  $("yearSel").innerHTML = YEARS.map(y => '<option value="'+y+'">FY '+y+'</option>').join("");
+  $("yearSel").value = S.year;
+  // a stepper with nowhere to step is inert, and says so rather than
+  // looking broken — the same contract the other layers' controls use
+  $("yearPrev").disabled = $("yearNext").disabled = YEARS.length < 2;
+  if (YEARS.length < 2)
+    $("yearSel").title = "This layer carries one fiscal year; there is nothing to step to.";
   $("unitGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.unit===S.unit));
   render();
 </script>

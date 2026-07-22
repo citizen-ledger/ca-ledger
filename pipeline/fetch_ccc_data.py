@@ -536,20 +536,30 @@ def build(refresh):
         code = name2code[nm]
         colleges = roster[code]["colleges"]
         a = code2app.get(code)
+        # MULTI-YEAR SHAPE, matching cities, counties and K-12: identity
+        # at the entity, everything that varies by year inside `years`,
+        # keyed by fiscal-year label. A reader moving between layers meets
+        # the same structure, and a maintainer meets one convention.
+        #
+        # `colleges`/`nColleges` stay at the entity for now because the
+        # roster source (DistrictCollegeCodes.pdf) is current-vintage only
+        # and is not year-scoped yet — that is the next PR, and putting it
+        # here would assert a current roster about older years.
         rec = {
             "name": nm, "code": code,
-            "ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"],
             "colleges": colleges, "nColleges": len(colleges),
+            "years": {},
         }
+        yr = {"ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"]}
         if a:
-            rec["fundedFtes"] = round(a["fundedFtes"], 2)
-            rec["stateGf"] = round(a["stateGf"])
+            yr["fundedFtes"] = round(a["fundedFtes"], 2)
+            yr["stateGf"] = round(a["stateGf"])
             # a rate with no denominator is not published, rather than null
             if a["fundedFtes"]:
-                rec["perFtes"] = round(cev["ce"] / a["fundedFtes"])
-            rec["noncreditShare"] = a["noncreditShare"]
-            rec["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
-                                     else "state-funded")
+                yr["perFtes"] = round(cev["ce"] / a["fundedFtes"])
+            yr["noncreditShare"] = a["noncreditShare"]
+            yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
+                                    else "state-funded")
         else:
             # ABSENCE MARKS ABSENCE. `basicAid = False` used to publish
             # "we checked the property-tax-excess schedule and this is not
@@ -571,26 +581,29 @@ def build(refresh):
             # yields NaN, which is not a valid answer. A boolean that is
             # not known is a THREE-VALUED STATUS, because false is a valid
             # answer and has no room left to mean "unknown".
-            rec["basicAidStatus"] = "not-published"
-            rec["noApportionmentReason"] = reason
-        rec["flags"] = {
+            yr["basicAidStatus"] = "not-published"
+            yr["noApportionmentReason"] = reason
+        yr["flags"] = {
             "multiCollege": rec["nColleges"] > 1,
-            "basicAidStatus": rec["basicAidStatus"],
+            "basicAidStatus": yr["basicAidStatus"],
             "noncreditHeavyStatus": (
-                "not-published" if "noncreditShare" not in rec
+                "not-published" if "noncreditShare" not in yr
                 or nc_threshold is None
-                else "noncredit-heavy" if rec["noncreditShare"] >= nc_threshold
+                else "noncredit-heavy" if yr["noncreditShare"] >= nc_threshold
                 else "not-noncredit-heavy"),
             "noApportionment": a is None,
         }
+        rec["years"][FY] = yr
         districts.append(rec)
     districts.sort(key=lambda r: r["name"])
 
     dangerous = sorted(r["name"] for r in districts
-                       if r["flags"]["multiCollege"]
-                       and r["flags"]["basicAidStatus"] == "basic-aid")
+                       if r["years"][FY]["flags"]["multiCollege"]
+                       and r["years"][FY]["flags"]["basicAidStatus"] == "basic-aid")
 
     payload = {
+        # the year axis every multi-year layer publishes
+        "years": [FY],
         "meta": {
             "source": "fiscalportal.cccco.edu",
             "sourceLabel": "California Community Colleges Chancellor's Office — CCFS-311 "
@@ -664,7 +677,7 @@ def build(refresh):
             },
             "overlap": _overlap(),
         },
-        "statewide": {
+        "statewide": {FY: {
             "ce": tvi_statewide["ce"],
             "instrSal": tvi_statewide["instrSal"],
             "pct50": tvi_statewide["pct50"],
@@ -683,7 +696,7 @@ def build(refresh):
             "noncreditThreshold": nc_threshold,
             "statewideNoncreditShare": (round(sw_nc_share, 4)
                                             if sw_nc_share is not None else None),
-        },
+        }},
         "districts": districts,
     }
     stamp(payload)
@@ -702,11 +715,13 @@ def main():
     print(f"FY {FY}: WHOLE-DOLLAR GATE PASSED — {len(d)} districts' Current Expense of "
           f"Education sum to ${ce_sum:,} = the Chancellor's Office printed Statewide total "
           f"(exact, to the dollar).", file=sys.stderr)
-    print(f"  {payload['statewide']['nColleges']} accredited colleges · "
-          f"{sum(1 for r in d if r['flags']['multiCollege'])} multi-college · "
-          f"{payload['statewide']['communitySupported']} community-supported · "
-          f"{sum(1 for r in d if r['flags']['noncreditHeavyStatus'] == 'noncredit-heavy')} noncredit-heavy · "
-          f"funded FTES {payload['statewide']['fundedFtes']:,.0f}", file=sys.stderr)
+    sw = payload["statewide"][FY]
+    fl = [r["years"][FY]["flags"] for r in d]
+    print(f"  {sw['nColleges']} accredited colleges · "
+          f"{sum(1 for f in fl if f['multiCollege'])} multi-college · "
+          f"{sw['communitySupported']} community-supported · "
+          f"{sum(1 for f in fl if f['noncreditHeavyStatus'] == 'noncredit-heavy')} noncredit-heavy · "
+          f"funded FTES {sw['fundedFtes']:,.0f}", file=sys.stderr)
 
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     print(f"  payload {len(body) / 1024:.0f} KB", file=sys.stderr)
