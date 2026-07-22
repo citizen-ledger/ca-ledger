@@ -933,6 +933,15 @@ def test_county(page, base):
     # a CITY slug is meaningless in the county layer
     page.goto(f"{base}/cities.html#l=county&c=lakewood")
     page.wait_for_selector("#pickLbl")
+    # "no chips" is true of about:blank too — measured. So the layer must
+    # be shown to have rendered before its emptiness means anything.
+    # (The wait itself is fine: #pickLbl already reads COUNTIES by the time
+    # it resolves. It is the unanchored negative that was the defect.)
+    check("county: the county layer really did render before we conclude "
+          "anything from what is absent",
+          page.inner_text("#pickLbl") == "COUNTIES"
+          and "57 COUNTIES" in page.inner_text("#heroNum"),
+          page.inner_text("#pickLbl") + " / " + page.inner_text("#heroNum"))
     check("county: city slugs are ignored in the county layer",
           page.locator("#cityChips .chip").count() == 0)
 
