@@ -713,8 +713,9 @@ def process_year(yy, fy):
                     if h.startswith("Total LCFF Entitlement"): col["ent"] = i
                     elif "Local Revenue" in h: col["local"] = i
                     elif h.startswith("Total Funded ADA"): col["ada"] = i
-                if len(col) < 3:
-                    raise SystemExit(f"FY {fy}: LCFF columns not found ({header})")
+                gates.require_rows(
+                    len(col), 3, f"FY {fy} LCFF header columns located",
+                    f"header was {header}.")
             continue
         if row[0] is None:
             continue

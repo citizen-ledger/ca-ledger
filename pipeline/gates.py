@@ -67,6 +67,37 @@ def require_target(target, what, consequence=""):
         f"pass; nothing written.")
 
 
+def check_rows(n, minimum, what, consequence=""):
+    """The floor test itself, returning a message instead of raising.
+
+    TWO DISPOSITIONS, ONE RULE. Some pipelines refuse at the first bad
+    thing they see; others COLLECT every failure and print them together
+    before exiting, so an operator learns all of what broke in one run
+    rather than one item per attempt. Both are legitimate, and the
+    difference is disposition, not semantics.
+
+    Before this existed the collecting pipelines could not use
+    require_rows — it raises — so each hand-rolled its own floor inline.
+    Those floors were then invisible to the coverage test, which is how
+    the county's floor came to sit outside the guard the repo built for
+    exactly this. Callers that batch use check_rows and append; callers
+    that stop use require_rows. Same rule, same message, both visible.
+
+    Returns the failure message, or None when the floor is met.
+    """
+    if minimum < 1:
+        raise ValueError(
+            "check_rows: a minimum of zero would accept an empty gate, "
+            "which is the defect this guard exists to prevent")
+    if n >= minimum:
+        return None
+    tail = f" {consequence}" if consequence else ""
+    return (f"EMPTY GATE TARGET — refusing to report a pass: {what} yielded "
+            f"{n:,} row(s), below the {minimum:,} this source must produce. A "
+            f"gate that iterates nothing accumulates no failures and reports "
+            f"success.{tail}")
+
+
 def require_rows(n, minimum, what, consequence=""):
     """A gate must actually check rows. `n` is how many it will check and
     `minimum` the fewest that can be legitimate for this source.
@@ -74,16 +105,46 @@ def require_rows(n, minimum, what, consequence=""):
     A minimum of zero is not accepted: 'at least none' is not a check.
     Callers state the real floor, so a vintage that parses to a handful
     of rows fails as loudly as one that parses to none.
+
+    The stopping disposition of check_rows.
     """
-    if minimum < 1:
-        raise ValueError(
-            "require_rows: a minimum of zero would accept an empty gate, "
-            "which is the defect this guard exists to prevent")
-    if n >= minimum:
+    msg = check_rows(n, minimum, what, consequence)
+    if msg is None:
         return n
+    raise VacuousGate(msg + " Nothing written.")
+
+
+def check_exact(n, expected, what, consequence=""):
+    """An entity count the source publishes as a FIXED number — 57
+    counties, 23 CSU campuses, 73 CCC districts — is a stronger statement
+    than a floor, and is stated as one.
+
+    Not a floor with the bar set high: 58 counties is as wrong as 56, and
+    a floor would accept it silently. Where a layer knows its own roster
+    size, saying 'at least' throws away a fact.
+
+    An expected of zero is refused for the same reason require_rows
+    refuses a minimum of zero: a gate expecting nothing cannot fail.
+
+    Returns the failure message, or None when the count matches.
+    """
+    if expected < 1:
+        raise ValueError(
+            "check_exact: an expected count of zero would accept an empty "
+            "gate, which is the defect this guard exists to prevent")
+    if n == expected:
+        return None
     tail = f" {consequence}" if consequence else ""
-    raise VacuousGate(
-        f"EMPTY GATE TARGET — refusing to report a pass: {what} yielded "
-        f"{n:,} row(s), below the {minimum:,} this source must produce. A "
-        f"gate that iterates nothing accumulates no failures and reports "
-        f"success.{tail} Nothing written.")
+    return (f"ENTITY COUNT WRONG — refusing to report a pass: {what} yielded "
+            f"{n:,}, and this source publishes exactly {expected:,}. A count "
+            f"that has moved means the roster changed or the parse did; "
+            f"either way the figures beneath it are not the ones the gate "
+            f"was written against.{tail}")
+
+
+def require_exact(n, expected, what, consequence=""):
+    """The stopping disposition of check_exact."""
+    msg = check_exact(n, expected, what, consequence)
+    if msg is None:
+        return n
+    raise VacuousGate(msg + " Nothing written.")

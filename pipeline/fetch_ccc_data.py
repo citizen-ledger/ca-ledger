@@ -403,8 +403,9 @@ def build(refresh):
         fail.append("Table VI has a district name not in the portal dropdown: "
                     + ", ".join(nm for nm in tvi if nm not in name2code))
         tvi_codes.discard(None)
-    if len(tvi) != 73:
-        fail.append(f"{len(tvi)} Table VI districts (expected 73)")
+    bad = gates.check_exact(len(tvi), 73, "Table VI district roster")
+    if bad:
+        fail.append(bad)
     missing_roster = tvi_codes - set(roster)
     if missing_roster:
         fail.append(f"districts with no college roster: {sorted(missing_roster)}")

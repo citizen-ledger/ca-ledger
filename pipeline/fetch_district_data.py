@@ -59,6 +59,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -434,6 +435,15 @@ def main():
                      "never attached to a district",
         },
     }
+
+    # AN ENTITY FLOOR. This is a NEW guard, not a moved one: the district
+    # layer had none, while both its siblings did. The shape gate below
+    # cannot stand in for it — it sums over districts.values(), so it
+    # fires on an EMPTY roster but passes on a truncated one. Five
+    # districts with nonzero governmental and enterprise buckets satisfy
+    # it exactly as 5,241 do.
+    gates.require_rows(len(districts), 4000, "special districts loaded",
+                       "SCO publishes upward of five thousand.")
 
     # THE CLASSIFICATION-SHAPE GATE (hard): statewide, governmental and
     # enterprise buckets must both be nonzero in every year (unknown
