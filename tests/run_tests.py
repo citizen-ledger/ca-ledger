@@ -887,7 +887,13 @@ def test_county(page, base):
             if abs(total - yr["scoTotal"]) > 0.02:   # $20k on $M rounding
                 bad_gate.append(f"{slug} {fy}")
             u = yr.get("unincorporated")
-            if u is None or not (0 <= u <= 1) or yr["population"] <= 0:
+            # a share may legitimately be UNKNOWN — when the filed city
+            # populations contradict the county's own it cannot be computed,
+            # and the year must say so rather than carry a clamped value
+            if u is None:
+                if not yr.get("unincorporatedUnknown"):
+                    bad_uninc.append(f"{slug} {fy} (null with no reason)")
+            elif not (0 <= u <= 1) or yr["population"] <= 0:
                 bad_uninc.append(f"{slug} {fy}")
     check("county: every county-year reconciles to its stored control total",
           not bad_gate, str(bad_gate[:4]))
@@ -903,8 +909,8 @@ def test_county(page, base):
         check(f"county PIN {y}: statewide scoTotal sum matches the pinned snapshot "
               f"(tamper evidence, not a published control)",
               abs(sw_y - control) <= 0.005, f"{sw_y:.3f} vs {control}")
-    check("county: unincorporated share present and sane for every county-year",
-          not bad_uninc, str(bad_uninc[:4]))
+    check("county: every county-year has a sane unincorporated share, or "
+          "states why it has none", not bad_uninc, str(bad_uninc[:4]))
     # geometry: 58 features, exactly one SF pointer, no financial fields
     check("county geo: 58 boundaries", len(CGEO["features"]) == 58)
     pointers = [f for f in CGEO["features"] if f["properties"].get("pointer")]
@@ -2938,6 +2944,110 @@ def test_ccc_absence(page, base):
     check("ccc absence: and no note is attached to two batches",
           len({b["note"] for b in notes}) == len(notes),
           f"{len(notes)} noted batches, {len({b['note'] for b in notes})} distinct")
+
+
+def test_clamped_impossibility(page, base):
+    """A SHARE OUTSIDE [0,1] IS PROOF THE INPUTS DISAGREE, NOT AN EXTREME.
+
+    `max(0.0, min(1.0, (county_pop - city_pop)/county_pop))` turned an
+    impossible share into a confident 0%. Siskiyou shipped "0% of residents
+    live in unincorporated areas" in five of eight years while the other
+    three carried the true ~55% — the same county flipping between 55% and
+    0% along its own trend line.
+
+    Root cause is one bad source figure: Mt. Shasta files a population near
+    86,000 against its county's own ~43,000. THE FIGURE IS NOT CORRECTED —
+    it ships exactly as filed, because that is what the source says. What
+    is withheld is the DERIVATION from it, which measures nothing."""
+    SK = COUNTY["counties"]["siskiyou"]["years"]
+
+    # ---- the impossible years are unknown, not zero
+    unknown = [fy for fy, y in SK.items() if y.get("unincorporated") is None]
+    known = {fy: y["unincorporated"] for fy, y in SK.items()
+             if y.get("unincorporated") is not None}
+    check("clamp: Siskiyou's uncomputable years are NULL, never 0",
+          len(unknown) == 5, str(sorted(unknown)))
+    check("clamp: and none of them ships a zero",
+          not any(SK[fy].get("unincorporated") == 0 for fy in unknown))
+    check("clamp: while the computable years keep their real share (~55%), "
+          "so the fix did not flatten the good data",
+          known and all(0.50 <= v <= 0.60 for v in known.values()),
+          str(known))
+    for fy in unknown:
+        check(f"clamp: {fy} states WHY it is unknown",
+              "impossible" in (SK[fy].get("unincorporatedUnknown") or ""),
+              str(SK[fy].get("unincorporatedUnknown"))[:60])
+
+    # ---- no county anywhere ships a clamped bound
+    allv = [(s2, fy, y.get("unincorporated"))
+            for s2, c in COUNTY["counties"].items()
+            for fy, y in (c.get("years") or {}).items()]
+    # 0.0 is what the removed clamp produced at its low end and is never
+    # legitimate here. 1.0 IS legitimate — Alpine, Mariposa and Trinity have
+    # no incorporated city — so it is checked against that fact rather than
+    # forbidden, and the pipeline refuses a 1.0 from a county that has cities.
+    check("clamp: no county-year ships 0.0 — the value the clamp produced",
+          not [t for t in allv if t[2] == 0.0],
+          str([t for t in allv if t[2] == 0.0][:3]))
+    ones = {s2 for s2, _fy, v in allv if v == 1.0}
+    cities_by_county = {}
+    for _n, c in CITY["cities"].items():
+        if c.get("county"):
+            cities_by_county.setdefault(c["county"].lower().replace(" ", "-"), 0)
+            cities_by_county[c["county"].lower().replace(" ", "-")] += 1
+    check("clamp: every county at exactly 1.0 genuinely has no incorporated "
+          "city — a 1.0 from a join failure would look identical",
+          all(not cities_by_county.get(s2) for s2 in ones), str(sorted(ones)))
+
+    # ---- the source figure is NOT edited
+    ms = CITY["cities"]["mt-shasta"]["years"]
+    bad = [fy for fy, y in ms.items() if "populationContradicted" in (y.get("notes") or [])]
+    check("clamp: the contradicted city-years are flagged", len(bad) == 5, str(sorted(bad)))
+    check("clamp: and their population still ships AS FILED — a wrong source "
+          "figure is a dagger, not an edit",
+          all(ms[fy]["population"] > 80000 for fy in bad),
+          str({fy: ms[fy]["population"] for fy in bad}))
+    check("clamp: the note names both figures so a reader can see the "
+          "contradiction", all("more than the" in ms[fy]["populationContradicted"]
+                               for fy in bad))
+
+    # the detector is a contradiction INSIDE the source, needing no external truth
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    check("clamp: every flagged year really does exceed its county",
+          all(ms[fy]["population"]
+              > COUNTY["counties"]["siskiyou"]["years"][fy]["population"]
+              for fy in bad))
+    # and it fires nowhere else
+    flagged = [(n, fy) for n, c in CITY["cities"].items()
+               for fy, y in (c.get("years") or {}).items()
+               if "populationContradicted" in (y.get("notes") or [])]
+    check("clamp: and it fires on nothing else across 3,856 city-years — no "
+          "false positives", {n for n, _ in flagged} == {"mt-shasta"},
+          str(sorted({n for n, _ in flagged})))
+
+    # ---- the spurious service flags are gone from those years
+    for fy in bad:
+        n = ms[fy].get("notes") or []
+        check(f"clamp: {fy} no longer claims low police/fire spending — those "
+              f"flags fired only because the denominator was inflated",
+              "lowPolice" not in n and "lowFire" not in n, str(n))
+
+    # ---- BEHAVIOURAL: the pages never state a percentage they do not have
+    page.goto(f"{base}/cities.html#l=counties&c=siskiyou&y=2023-24")
+    page.wait_for_selector(".r .nm, .rec, body")
+    page.wait_for_timeout(600)
+    body = page.inner_text("body")
+    check("clamp: the county page does not tell a reader 0% unincorporated",
+          "0% of Siskiyou" not in body, body[:0])
+
+    page.goto(f"{base}/address.html#c=mt-shasta")
+    page.wait_for_timeout(600)
+    abody = page.inner_text("body")
+    check("clamp: the address view does not tell a resident 0% either",
+          "0% of Siskiyou" not in abody)
+    asrc = (ROOT / "address.html").read_text(encoding="utf-8")
+    check("clamp: and it no longer coerces a null share to zero",
+          "(yr.unincorporated||0)" not in asrc)
 
 
 def test_shape():
@@ -5690,9 +5800,12 @@ def test_revisions(page, base):
     #     stronger than "only one batch is ever noted".
     city = records["city"]
     noted = [b for b in city["batches"] if b.get("note")]
-    check("revisions: exactly one CITY batch carries a cause, and it is the "
-          "backfilled one", len(noted) == 1 and noted[0].get("backfilled"),
-          str([b.get("built") for b in noted]))
+    # a layer accumulates corrections over time; identify the BACKFILL
+    # rather than assert it is the only noted batch
+    back = [b for b in noted if b.get("backfilled")]
+    check("revisions: exactly one CITY batch is the backfilled one",
+          len(back) == 1, str([b.get("built") for b in noted]))
+    noted = back
     check("revisions: the backfilled batch is the FY2016-17 city "
           "correction, 31 figures",
           noted and len(noted[0]["events"]) == 31,
@@ -6304,6 +6417,7 @@ def main():
             page.on("pageerror", lambda e: errors.append(str(e)))
             test_v1(page, base)
             test_shape()
+            test_clamped_impossibility(page, base)
             test_ccc_absence(page, base)
             test_k12_vintage_declaration()
             test_gate_declarations()

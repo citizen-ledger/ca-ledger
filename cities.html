@@ -618,10 +618,20 @@
           + c.name + " County's residents live in unincorporated areas the county "
           + "serves directly as the local government — per-resident differences "
           + "partly reflect this responsibility share, not spending choices."});
+      // an unknown share is SAID, not silently omitted: a reader should be
+      // able to tell "we could not compute this" from "we did not mention it"
+      else if (yr.unincorporatedUnknown)
+        notes.push({key:"unincUnknown",
+          text: "Unincorporated share not known for this year. "
+                + yr.unincorporatedUnknown});
       if (yr.notes && yr.notes.includes("bigSwing"))
         notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
       return notes;
     }
+    // the filed population contradicts the county's own — say so where the
+    // per-resident figures derived from it are read
+    if (yr.populationContradicted)
+      notes.push({key:"popContradicted", pinned: true, text: yr.populationContradicted});
     if (c.flags && c.flags.consolidated)
       notes.push({key:"consolidated", text: c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."});
     const vin = D.meta.servicesChecklistVintage;

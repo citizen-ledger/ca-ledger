@@ -94,6 +94,9 @@ DS_EXPEND = "ju3w-4gxp"
 DS_REVEN = "rrtv-rsj9"
 DS_PERCAP = "ykhf-vfsr"
 DS_SERVICES = "tsz3-29gc"
+DS_COUNTY_PERCAP = "miui-wb29"   # SCO's COUNTY per-capita totals — used only
+                                 # to detect a city reporting more residents
+                                 # than the county containing it
 
 SOURCE_YEARS = [str(y) for y in range(2017, 2025)]   # "2017".."2024"
 SERVICES_VINTAGE_SOURCE_YEAR = "2016"                 # FY 2015-16
@@ -448,6 +451,28 @@ def fetch_official_totals():
 # ----------------------------------------------------------------------
 # Sanity checks — the file is not written unless every one passes
 # ----------------------------------------------------------------------
+def county_populations():
+    """SCO's own reported population per county-year.
+
+    Used for one check: a city cannot contain more residents than its
+    county. That is a contradiction INSIDE SCO's filings — same publisher,
+    same year — so it needs no external estimate to detect, and it is the
+    only kind of population error this pipeline is willing to assert.
+    """
+    out = {}
+    for r in soda(DS_COUNTY_PERCAP,
+                  **{"$select": "entity_name,fiscal_year,estimated_population",
+                     "$where": f"fiscal_year >= '{SOURCE_YEARS[0]}' "
+                               f"and fiscal_year <= '{SOURCE_YEARS[-1]}'"}):
+        try:
+            pop = int(float(r.get("estimated_population") or 0))
+        except (TypeError, ValueError):
+            continue
+        if pop:
+            out[(norm(r.get("entity_name") or ""), r.get("fiscal_year"))] = pop
+    return out
+
+
 def sanity_check(years_data, official):
     errors, warnings = [], []
     reconciled = 0
@@ -517,7 +542,7 @@ def m(v):  # dollars -> millions, 3 decimals
     return round(v / 1e6, 3)
 
 
-def build_payload(years_data, services, gaz):
+def build_payload(years_data, services, gaz, county_pops):
     # V8 line dictionary + PARENT-SUM GATE: per city-year-function, the
     # line rows must sum to the UNROUNDED function total exactly
     line_labels = sorted({lbl for cities in years_data.values()
@@ -590,7 +615,32 @@ def build_payload(years_data, services, gaz):
             if round(c["conduit"] / 1e6, 3):
                 yr["conduitFinancing"] = m(c["conduit"])
             notes = []
-            if c["pop"] > 0:
+            # A CITY CANNOT CONTAIN MORE RESIDENTS THAN ITS COUNTY.
+            #
+            # When SCO's own filings say it does, the city's population is
+            # wrong — and every per-resident figure derived from it is not a
+            # measurement of anything. The figure is NOT corrected: the
+            # population ships exactly as filed, because that is what the
+            # source says. What is withheld is the per-resident DERIVATION,
+            # which the page must not present as measured.
+            #
+            # Measured across 3,856 city-years: five violations, all
+            # Mt. Shasta (FY2017-18, FY2020-21..FY2023-24), which files a
+            # population near 86,000 against a real ~3,200 and against its
+            # county's own ~43,000. Those five years are also what drove
+            # Siskiyou's unincorporated share to an impossible -137%.
+            county_pop = county_pops.get((norm(c["county"]), sy))
+            if c["pop"] and county_pop and c["pop"] > county_pop:
+                notes.append("populationContradicted")
+                yr["populationContradicted"] = (
+                    f"This city's filing reports {c['pop']:,} residents, more "
+                    f"than the {county_pop:,} its own county reports for the "
+                    f"same year in the same State Controller dataset. One of "
+                    f"the two is wrong; both are shown as filed. Per-resident "
+                    f"figures are not derived for this year, because a "
+                    f"denominator this source contradicts would not measure "
+                    f"anything.")
+            if c["pop"] > 0 and "populationContradicted" not in notes:
                 if c["byFunction"].get("police", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
                     notes.append("lowPolice")
                 if c["byFunction"].get("fire", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
@@ -796,7 +846,9 @@ def main():
     print("All sanity checks passed (every city-year reconciles against the "
           "official SCO per-capita dataset totals).", file=sys.stderr)
 
-    payload = build_payload(years_data, services, gaz)
+    print("Fetching county populations (contradiction check)…", file=sys.stderr)
+    county_pops = county_populations()
+    payload = build_payload(years_data, services, gaz, county_pops)
     if not args.write:
         latest = payload["years"][-1]
         la = payload["cities"]["los-angeles"]["years"][latest]
