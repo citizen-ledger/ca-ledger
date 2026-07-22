@@ -933,6 +933,15 @@ def test_county(page, base):
     # a CITY slug is meaningless in the county layer
     page.goto(f"{base}/cities.html#l=county&c=lakewood")
     page.wait_for_selector("#pickLbl")
+    # "no chips" is true of about:blank too — measured. So the layer must
+    # be shown to have rendered before its emptiness means anything.
+    # (The wait itself is fine: #pickLbl already reads COUNTIES by the time
+    # it resolves. It is the unanchored negative that was the defect.)
+    check("county: the county layer really did render before we conclude "
+          "anything from what is absent",
+          page.inner_text("#pickLbl") == "COUNTIES"
+          and "57 COUNTIES" in page.inner_text("#heroNum"),
+          page.inner_text("#pickLbl") + " / " + page.inner_text("#heroNum"))
     check("county: city slugs are ignored in the county layer",
           page.locator("#cityChips .chip").count() == 0)
 
@@ -1681,6 +1690,12 @@ def test_schools(page, base):
     page.fill("#schoolSearch", dep["name"][:24])
     page.wait_for_timeout(250)
     depbtn = page.locator('#schoolList button[data-dep]')
+    # The pointer IS the subject here. Guarding the assertions on its
+    # presence made them dormant the moment it went missing — the exact
+    # failure they exist to catch.
+    check("schools charter: the dependent-charter pointer is on screen at "
+          "all — searching a known dependent must surface one",
+          depbtn.count() >= 1, f'{dep["name"]!r} -> {depbtn.count()} pointers')
     if depbtn.count():
         before = page.evaluate("location.hash")
         depbtn.first.click()
@@ -2089,14 +2104,48 @@ def test_state_fund_identity(page, base):
         check("state funds: and no figure is reported as merely CHANGED, "
               "because none was", kinds.get("changed", 0) == 0, str(kinds))
 
-    # ---- the page renders the era-correct name, not the latest one
-    page.goto(f"{base}/index.html#y=2020-21&a=health-and-human-service")
-    page.wait_for_selector("#allocView:not([hidden])")
-    page.wait_for_timeout(400)
-    body = page.inner_text("body")
-    check("state funds: the FY 2020-21 page does not show a fund under a name "
-          "it did not have until FY 2025-26",
-          "Behavioral Health Services Fund" not in body)
+    # ---- the page renders the era-correct name, not the latest one.
+    #
+    # This addressed the AGENCY page, which renders fund CLASSES only —
+    # "General Fund", "Special Funds", "Bond Funds". Measured: of the 544
+    # names in the FY 2020-21 legend, exactly one appears there, and only
+    # because "General Fund" is also a class label. Per-fund names render
+    # one level deeper, at the department drill. So the negative was true
+    # of a page that could never have shown the string, and would have
+    # stayed true with the legend completely broken.
+    #
+    # Fund 3085 is asserted in BOTH directions across the rename, so each
+    # year's negative is anchored by the other year's positive: a blank
+    # render fails the positives rather than passing the negatives.
+    OLD_NAME = "Mental Health Services Fund"
+    NEW_NAME = "Behavioral Health Services Fund"
+    DHCS = "index.html#y={}&a=health-and-human-service&dd=4260"
+
+    def dept_drill(fy):
+        page.goto(f"{base}/" + DHCS.format(fy))
+        # #allocView ships WITHOUT a hidden attribute, so :not([hidden])
+        # reads like a state gate and gates nothing. .depth-row is the
+        # element that exists only once fund rows render.
+        page.wait_for_selector(".depth-row")
+        page.wait_for_timeout(250)
+        return page.inner_text("body"), page.locator(".depth-row").count()
+
+    b20, n20 = dept_drill("2020-21")
+    check("state funds: the FY 2020-21 department drill really renders fund "
+          "rows — the depth at which names exist", n20 > 20, str(n20))
+    check("state funds: and names fund 3085 as it was named THEN",
+          OLD_NAME in b20)
+    check("state funds: not under a name it would not carry for five more "
+          "years", NEW_NAME not in b20)
+
+    b25, n25 = dept_drill("2025-26")
+    check("state funds: the FY 2025-26 drill renders fund rows too",
+          n25 > 20, str(n25))
+    check("state funds: where the SAME fund carries its post-Proposition 1 "
+          "name — so the page reads a per-year legend, not one global dict",
+          NEW_NAME in b25)
+    check("state funds: and no longer shows the pre-rename name there",
+          OLD_NAME not in b25)
 
 
 def test_identity_leaks(page, base):
@@ -2345,6 +2394,131 @@ def test_historical_state(page, base):
         check(f"cities refusal: states {why}", phrase in cbody, phrase)
     check("cities refusal: names it as a choice, not a data gap",
           "the Ledger does not load them" in cbody)
+
+def test_no_vacuous_assertions():
+    """A CHECK THAT CANNOT FAIL IS NOT A CHECK — enforced on this file.
+
+    gates.py moved the dormant-assertion lesson into the pipeline. This
+    moves it into the suite. Three shapes have shipped here, each proven
+    by mutation to report success while the thing it guards was broken:
+
+      1. CATCH-ALL SELECTOR. `wait_for_selector(".r .nm, .rec, body")` —
+         `body` always matches, so the wait returns instantly and
+         guarantees nothing about the subject.
+      2. WRONG LAYER ADDRESS. `#l=counties` when the parser reads
+         `l=county`; the page silently falls back to another layer and
+         selects nothing. Measured: the entity's name never appeared.
+      3. SELF-GUARDED ASSERTION. `if x.count(): check(<about x>)` — when
+         x goes missing, the assertions vanish instead of failing.
+
+    This is a lint over the test file's own syntax, which is the fragile
+    source-text shape this repo distrusts. It is used here deliberately:
+    the subject IS syntax, and each pattern below was confirmed present
+    before the guard was written, so none of them is hypothetical.
+
+    It scans CODE ONLY. On first run it flagged the three examples quoted
+    in this very docstring — the self-matching failure it exists to
+    prevent, caught by the guard against itself. Docstrings and comments
+    are excised structurally (ast + tokenize), never by a text heuristic,
+    so prose may name these patterns without becoming one."""
+    import ast
+    import io
+    import tokenize
+    src = (ROOT / "tests" / "run_tests.py").read_text(encoding="utf-8")
+    lines = src.split("\n")
+
+    # blank every docstring and every comment, so only executable code is
+    # scanned. A test that matches its own example proves nothing.
+    tree = ast.parse(src)
+    blanked = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef,
+                                 ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = getattr(node, "body", None)
+        if not body or not isinstance(body[0], ast.Expr):
+            continue
+        val = body[0].value
+        if isinstance(val, ast.Constant) and isinstance(val.value, str):
+            blanked.update(range(val.lineno, (val.end_lineno or val.lineno) + 1))
+    check("vacuous: the scan excised this file's prose — otherwise it "
+          "matches its own examples", len(blanked) > 50, str(len(blanked)))
+    lines = ["" if n in blanked else l for n, l in enumerate(lines, 1)]
+    # a trailing comment is truncated at its own column, never by blanking
+    # the whole line — that would hide code sharing the line with prose
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type == tokenize.COMMENT:
+            n, col = tok.start
+            if n - 1 < len(lines) and lines[n - 1]:
+                lines[n - 1] = lines[n - 1][:col]
+    src = "\n".join(lines)
+
+    # 1 — no selector may include an always-present element
+    ALWAYS = {"body", "html", ":root", "*", "main"}
+    sel_re = re.compile(
+        r'(?:wait_for_selector|locator|query_selector)\(\s*[\'"]([^\'"]*)[\'"]')
+    catchall = [(i, s) for i, l in enumerate(lines, 1)
+                for s in sel_re.findall(l)
+                if any(p.strip() in ALWAYS for p in s.split(","))]
+    check("vacuous: no selector falls back to an always-present element",
+          not catchall, str(catchall[:3]))
+
+    # 2 — every layer address the tests use is one the parser accepts
+    cities = (ROOT / "cities.html").read_text(encoding="utf-8")
+    accepted = set(re.findall(r'p\.get\("l"\)\s*===\s*"([a-z]+)"', cities))
+    used = set(re.findall(r'#l=([a-z]+)', src))
+    check("vacuous: the parser declares at least one layer value, so this "
+          "comparison has a target", accepted, str(accepted))
+    check("vacuous: every #l= the tests address is a value cities.html "
+          "actually accepts — l=counties selected nothing for five months",
+          used <= accepted, f"used={sorted(used)} accepted={sorted(accepted)}")
+
+    # 3 — a wait for an element to become UNHIDDEN must be waiting on an
+    #     element that ships hidden. `#allocView:not([hidden])` reads as a
+    #     state gate, but that div carries no hidden attribute in the
+    #     static markup, so the selector matches before any script runs.
+    #
+    #     Restricted to `hidden` deliberately. `#citePanel:not([open])` on
+    #     a <dialog> is the opposite semantic — a wait for the dialog to
+    #     RETURN to its default closed state after Escape — and is sound.
+    decorative = []
+    for i, l in enumerate(lines, 1):
+        for sel in re.findall(
+                r'wait_for_selector\(\s*[\'"](#[A-Za-z0-9_-]+:not\(\[hidden\]\))'
+                r'[\'"]', l):
+            idv = sel[1:sel.index(":")]
+            for name, txt in ((p.name, p.read_text(encoding="utf-8"))
+                              for p in ROOT.glob("*.html")):
+                tag = re.search(
+                    r'<[^<>]*id=["\']' + re.escape(idv) + r'["\'][^<>]*>', txt)
+                if tag and "hidden" not in tag.group(0):
+                    decorative.append((i, sel, name))
+    check("vacuous: every wait for an element to become unhidden names an "
+          "element that actually ships hidden", not decorative,
+          str(decorative[:3]))
+
+    # 4 — an assertion may not be guarded on its own subject unless the
+    #     subject's presence is asserted first
+    guarded = []
+    for i, l in enumerate(lines):
+        m = re.match(r'(\s*)if ([A-Za-z_][A-Za-z0-9_]*)\.count\(\):\s*$', l)
+        if not m:
+            continue
+        ind, var = m.group(1), m.group(2)
+        body = []
+        for j in range(i + 1, min(i + 15, len(lines))):
+            if lines[j].strip() and not lines[j].startswith(ind + " "):
+                break
+            body.append(lines[j])
+        if not any("check(" in b for b in body):
+            continue                      # a bare guard asserts nothing
+        prior = "\n".join(lines[max(0, i - 6):i])
+        if f"{var}.count()" not in prior or "check(" not in prior:
+            guarded.append((i + 1, var))
+    check("vacuous: no check() is guarded on the very element it is "
+          "asserting about without that element's presence asserted first",
+          not guarded, str(guarded[:3]))
+
 
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
@@ -3135,19 +3309,70 @@ def test_clamped_impossibility(page, base):
               f"flags fired only because the denominator was inflated",
               "lowPolice" not in n and "lowFire" not in n, str(n))
 
-    # ---- BEHAVIOURAL: the pages never state a percentage they do not have
-    page.goto(f"{base}/cities.html#l=counties&c=siskiyou&y=2023-24")
-    page.wait_for_selector(".r .nm, .rec, body")
-    page.wait_for_timeout(600)
-    body = page.inner_text("body")
-    check("clamp: the county page does not tell a reader 0% unincorporated",
-          "0% of Siskiyou" not in body, body[:0])
+    # ---- BEHAVIOURAL: the pages never state a percentage they do not have.
+    #
+    # The negative here ("no percentage is claimed") is only worth something
+    # if the page provably rendered and provably WOULD have claimed one had
+    # it had the figure. So each negative is anchored twice: on the entity
+    # being named on screen, and on a positive control — a county whose share
+    # IS computable, which must still print it. Without the control this
+    # asserts nothing: a blank page states no percentage either.
+    #
+    # The shipped version of this test addressed the layer as `l=counties`
+    # (the parser reads `l=county`, singular), waited on ".r .nm, .rec, body"
+    # — `body` always matches — and then asserted a NEGATIVE. It selected
+    # nothing: "Siskiyou" never appeared on the page at all, so
+    # "0% of Siskiyou" not in body was true of an empty render.
+    PCT_OF_COUNTY = re.compile(r"\d+% of [A-Z][a-zA-Z .']+ County")
 
-    page.goto(f"{base}/address.html#c=mt-shasta")
-    page.wait_for_timeout(600)
-    abody = page.inner_text("body")
-    check("clamp: the address view does not tell a resident 0% either",
-          "0% of Siskiyou" not in abody)
+    def county_page(cid, fy):
+        page.goto(f"{base}/cities.html#l=county&c={cid}&y={fy}")
+        page.wait_for_selector("#recordBody .det-row")
+        page.wait_for_timeout(250)
+        return page.inner_text("#scheduleLabel"), page.inner_text("#recordBody")
+
+    label, sk_body = county_page("siskiyou", "2023-24")
+    check("clamp: the county page really is showing Siskiyou — the anchor "
+          "that the shipped test lacked", "SISKIYOU COUNTY" in label, label)
+    check("clamp: and it states no unincorporated percentage at all, not "
+          "merely no zero", not PCT_OF_COUNTY.search(sk_body),
+          str(PCT_OF_COUNTY.findall(sk_body)))
+    check("clamp: it says instead that the share is not computable, and "
+          "shows both contradicting figures",
+          "Not computable" in sk_body and "102,945" in sk_body
+          and "43,409" in sk_body)
+
+    # POSITIVE CONTROL: a county whose share IS computable must still print
+    # it. If this fails, the negative above is measuring a blank page.
+    al_label, al_body = county_page("alameda", "2023-24")
+    check("clamp: a county with a computable share still states it — so "
+          "Siskiyou's silence is a decision, not an empty render",
+          "ALAMEDA COUNTY" in al_label
+          and bool(PCT_OF_COUNTY.search(al_body)),
+          al_label + " | " + str(PCT_OF_COUNTY.findall(al_body)))
+
+    def address_view(cid):
+        page.goto(f"{base}/address.html#c={cid}")
+        page.wait_for_selector("#records .record")
+        page.wait_for_timeout(250)
+        names = [page.locator(".rec-name").nth(i).inner_text()
+                 for i in range(page.locator(".rec-name").count())]
+        return names, page.inner_text("#records")
+
+    names, ms_body = address_view("mt-shasta")
+    check("clamp: the address view resolved Mt. Shasta and its county",
+          "Mt. Shasta" in names and "Siskiyou County" in names, str(names))
+    check("clamp: and states no unincorporated percentage to a resident",
+          not PCT_OF_COUNTY.search(ms_body),
+          str(PCT_OF_COUNTY.findall(ms_body)))
+
+    ok_names, ok_body = address_view("oakland")
+    check("clamp: while a resident of a computable county is still told the "
+          "share — the address view's positive control",
+          "Alameda County" in ok_names
+          and bool(PCT_OF_COUNTY.search(ok_body)),
+          str(ok_names) + " | " + str(PCT_OF_COUNTY.findall(ok_body)))
+
     asrc = (ROOT / "address.html").read_text(encoding="utf-8")
     check("clamp: and it no longer coerces a null share to zero",
           "(yr.unincorporated||0)" not in asrc)
@@ -3312,10 +3537,27 @@ def test_depth(page, base):
     check("depth UI: bridge asserts completeness in words",
           "nothing is missing and nothing is double-counted" in panel
           and "Both totals are correct" in panel)
-    # a $0-parent department still renders programs sanely (STRS)
+    # a $0-parent department still renders sanely (STRS). These three lines
+    # navigated, read the body into `body`, and then asserted NOTHING —
+    # `body` was never referenced again. The scenario has been unchecked
+    # since it was written; this is the intent the comment states.
+    #
+    # STRS 7920 carries gf/sp/bd/fed all 0.0 against nr of $22.2B: its
+    # governmental parent really is zero, because nongovernmental-cost
+    # funds are already counted in the budgets that pay them. Sane means
+    # it is still LISTED at an explicit $0M, not dropped for summing to
+    # nothing.
     page.goto(f"{base}/index.html#a=government-operations")
-    page.wait_for_timeout(400)
-    body = page.inner_text("body")
+    # .arow, not #allocView:not([hidden]) — that div is never hidden,
+    # so the qualifier gates nothing
+    page.wait_for_selector(".arow")
+    strs_row = page.locator(".arow", has_text="State Teachers' Retirement")
+    check("depth UI: a department whose governmental total is $0 is still "
+          "listed, not dropped for summing to nothing",
+          strs_row.count() == 1, str(strs_row.count()))
+    check("depth UI: and it states that zero explicitly rather than blank",
+          "$0M" in strs_row.first.inner_text(),
+          strs_row.first.inner_text().replace("\n", " | ")[:80])
     # ---- UI: honest negatives at depth
     page.goto(f"{base}/cities.html#l=county&c=santa-clara")
     page.wait_for_selector("#recordBody .det-row")
@@ -4273,6 +4515,11 @@ def test_resource(page, base):
     page.locator('#recordBody .det-row[data-grp="state"]').click()
     page.wait_for_timeout(150)
     strs = page.locator('#recordBody .src-code[data-res="state:7690"]')
+    # asserted, not assumed — its sibling `ti` above is checked with
+    # count() == 1, and this one was merely guarded, so a vanished STRS
+    # cell removed the assertion instead of failing it
+    check("V10a UI: the STRS on-behalf source cell is present to drill",
+          strs.count() == 1, str(strs.count()))
     if strs.count():
         strs.click()
         page.wait_for_timeout(150)
@@ -6529,6 +6776,7 @@ def main():
             test_ccc_write_path()
             test_historical_state(page, base)
             test_empty_gate_guard()
+            test_no_vacuous_assertions()
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
             test_position_guard()
