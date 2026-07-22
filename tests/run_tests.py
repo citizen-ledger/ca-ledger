@@ -2123,7 +2123,9 @@ def test_state_fund_identity(page, base):
 
     def dept_drill(fy):
         page.goto(f"{base}/" + DHCS.format(fy))
-        page.wait_for_selector("#allocView:not([hidden])")
+        # #allocView ships WITHOUT a hidden attribute, so :not([hidden])
+        # reads like a state gate and gates nothing. .depth-row is the
+        # element that exists only once fund rows render.
         page.wait_for_selector(".depth-row")
         page.wait_for_timeout(250)
         return page.inner_text("body"), page.locator(".depth-row").count()
@@ -2471,7 +2473,31 @@ def test_no_vacuous_assertions():
           "actually accepts — l=counties selected nothing for five months",
           used <= accepted, f"used={sorted(used)} accepted={sorted(accepted)}")
 
-    # 3 — an assertion may not be guarded on its own subject unless the
+    # 3 — a wait for an element to become UNHIDDEN must be waiting on an
+    #     element that ships hidden. `#allocView:not([hidden])` reads as a
+    #     state gate, but that div carries no hidden attribute in the
+    #     static markup, so the selector matches before any script runs.
+    #
+    #     Restricted to `hidden` deliberately. `#citePanel:not([open])` on
+    #     a <dialog> is the opposite semantic — a wait for the dialog to
+    #     RETURN to its default closed state after Escape — and is sound.
+    decorative = []
+    for i, l in enumerate(lines, 1):
+        for sel in re.findall(
+                r'wait_for_selector\(\s*[\'"](#[A-Za-z0-9_-]+:not\(\[hidden\]\))'
+                r'[\'"]', l):
+            idv = sel[1:sel.index(":")]
+            for name, txt in ((p.name, p.read_text(encoding="utf-8"))
+                              for p in ROOT.glob("*.html")):
+                tag = re.search(
+                    r'<[^<>]*id=["\']' + re.escape(idv) + r'["\'][^<>]*>', txt)
+                if tag and "hidden" not in tag.group(0):
+                    decorative.append((i, sel, name))
+    check("vacuous: every wait for an element to become unhidden names an "
+          "element that actually ships hidden", not decorative,
+          str(decorative[:3]))
+
+    # 4 — an assertion may not be guarded on its own subject unless the
     #     subject's presence is asserted first
     guarded = []
     for i, l in enumerate(lines):
@@ -3419,7 +3445,8 @@ def test_depth(page, base):
     # it is still LISTED at an explicit $0M, not dropped for summing to
     # nothing.
     page.goto(f"{base}/index.html#a=government-operations")
-    page.wait_for_selector("#allocView:not([hidden])")
+    # .arow, not #allocView:not([hidden]) — that div is never hidden,
+    # so the qualifier gates nothing
     page.wait_for_selector(".arow")
     strs_row = page.locator(".arow", has_text="State Teachers' Retirement")
     check("depth UI: a department whose governmental total is $0 is still "
