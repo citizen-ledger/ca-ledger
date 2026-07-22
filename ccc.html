@@ -343,7 +343,17 @@
 
   // an unknown per-FTES has no bar at all; `||0` used to draw it at the
   // bottom of the range beside a cell reading "—"
-  function unitVal(r){ return S.unit === "perFtes" ? r.perFtes : r.ce; }
+  // An apportionment-less district has no per-FTES figure at all. This
+  // returned undefined, and `undefined / max * 100` is NaN, which reached
+  // the bar as width:NaN%. A figure that does not exist gets no bar.
+  function unitVal(r){
+    const v = S.unit === "perFtes" ? r.perFtes : r.ce;
+    return typeof v === "number" ? v : null;
+  }
+  const barWidth = (r, max) => {
+    const v = unitVal(r);
+    return (v == null || !max) ? 0 : (v / max * 100);
+  };
   function fmtUnit(r){
     if (S.unit === "perFtes") return typeof r.perFtes === "number" ? money0(r.perFtes) : "not published";
     return money0(r.ce);
@@ -468,7 +478,7 @@
     rows.forEach(r => {
       const notes = districtNotes(r);
       const dag = notes.length ? ' <button class="dag" data-note="'+esc(r.name)+'" aria-label="Comparability notes">†'+(notes.length>1?notes.length:'')+'</button>' : '';
-      const w = max ? (unitVal(r)/max*100).toFixed(1) : 0;
+      const w = barWidth(r, max).toFixed(1);
       html += '<div class="r"><span class="nm">'+esc(titlecase(r.name))+dag+'</span>'
         + '<span class="bar"><i style="width:'+w+'%"></i></span>'
         + '<span class="v dim">'+(r.fundedFtes==null?'—':Math.round(r.fundedFtes).toLocaleString())+'</span>'
