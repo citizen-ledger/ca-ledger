@@ -3013,6 +3013,29 @@ def test_county_zero_control(page, base):
     check("county zero: it states the exception on the page",
           "Reproducing a published zero would prove nothing" in mbody)
 
+    # the PRINT RECORD SHEET carries the claim a fourth time, on paper,
+    # for every layer it serves
+    page.goto(f"{base}/cities.html#l=county&c=humboldt&y=2019-20")
+    page.wait_for_selector("#recordBody .det-row")
+    page.wait_for_timeout(250)
+    sheet = page.inner_text("#recordSheet")
+    check("county zero: the record sheet's GATE paragraph does not claim "
+          "EVERY county-year reconciles",
+          "Every county-year in this layer reconciles" not in sheet)
+    check("county zero: the record sheet states the exception",
+          "not claimed as reconciled" in sheet, sheet[:0])
+    check("county zero: and the absent filing is named on the printed sheet",
+          "reported no governmental expenditure" in sheet)
+    # the same paragraph serves the city layer; it must be true there too
+    page.goto(f"{base}/cities.html#c=oakland")
+    page.wait_for_selector("#recordBody .det-row")
+    page.wait_for_timeout(250)
+    csheet = page.inner_text("#recordSheet")
+    check("county zero: the city layer's record sheet carries the same "
+          "qualified claim, not the unqualified one",
+          "Every city-year in this layer reconciles" not in csheet
+          and "not claimed as reconciled" in csheet)
+
     # the payload carries its own published claim, and it overstated too
     cbasis = COUNTY["meta"]["basis"]
     check("county zero: the payload's own basis no longer claims EVERY "
