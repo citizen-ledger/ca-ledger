@@ -732,7 +732,10 @@
     const vin = CITY.meta.servicesChecklistVintage;
     [["police","Police"],["fire","Fire"]].forEach(([k,label])=>{
       const svc = c.services && c.services[k];
-      const zero = ((yr.byFunction||{})[k] || 0) === 0;
+      // absent and reported-as-zero are different facts about the filing
+      const bf = yr.byFunction || {};
+      const reported = Object.prototype.hasOwnProperty.call(bf, k);
+      const zero = reported ? bf[k] === 0 : true;
       if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
         notes.push(label + " service is " + svc.label
           + (zero ? (svc.code === "D"
@@ -776,16 +779,32 @@
     // other, and telling a resident "0% of your county lives in
     // unincorporated areas" — while telling them in the same paragraph that
     // the county IS their local government — is the falsehood this replaces.
+    // A COUNTY-YEAR WITH NOTHING FILED MUST SAY SO, as the county record
+    // on cities.html already does. Latent today: this view pins to
+    // CITY_FY, the latest year, and none of the three county-years the
+    // Controller publishes as zero (Humboldt FY2019-20 and FY2020-21,
+    // Mendocino FY2021-22) is the latest. It would be live the moment
+    // this view gained a year control.
+    const noFiling = !yr.byFunction || !Object.keys(yr.byFunction).length;
     const unincKnown = yr.unincorporated != null;
     const unincPct = unincKnown ? Math.round(yr.unincorporated*100) : null;
     return miniRecord({
       kicker: asLocal ? "YOUR LOCAL GOVERNMENT — THE COUNTY" : "YOUR COUNTY",
       sched: "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · PER RESIDENT · FY " + CITY_FY,
       name: c.name + " County", sub: "population " + fmt(yr.population),
-      big: money0(perRes(yr.expenditures, yr.population)),
-      biglbl: "GOVERNMENTAL SPENDING PER RESIDENT · REPORTED ACTUALS · RECONCILED",
+      big: noFiling ? "\u2014" : money0(perRes(yr.expenditures, yr.population)),
+      biglbl: noFiling
+        ? "NO GOVERNMENTAL EXPENDITURE REPORTED FOR THIS YEAR"
+        : "GOVERNMENTAL SPENDING PER RESIDENT · REPORTED ACTUALS · RECONCILED",
       fns: topFunctions(yr.byFunction, CTY.functions, yr.population),
-      note: (asLocal
+      note: (noFiling
+        ? c.name + " County reported no governmental expenditure for FY "
+          + CITY_FY + ". The State Controller publishes a total of zero for "
+          + "this county-year, so there is nothing to reconcile against and "
+          + "nothing to compare \u2014 this is an absent filing, not a county "
+          + "that spent nothing. "
+        : "")
+        + (asLocal
         ? "This address is outside every incorporated city, so the county is its local government. "
         : "")
         + (unincKnown

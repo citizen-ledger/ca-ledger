@@ -401,6 +401,22 @@
   const D_COUNT = Object.keys(D.districts).length;
   const OL = D.meta.overlap.years[D.meta.overlap.latest];
 
+  /* A RATE NEEDS A DENOMINATOR. Forks of Salmon Elementary reports
+     ADA 0.0 for FY 2022-23; dividing by it yields Infinity, which three
+     read sites printed straight out. An unknown rate is unknown, not
+     infinite and not zero. */
+  const perAda = (amount, ada) =>
+    (ada && amount != null) ? amount / ada : null;
+  const fmtPerAda = (amount, ada) => {
+    const r = perAda(amount, ada);
+    return r === null ? "\u2014" : money0(r);
+  };
+  /* a function the filing never reported is absent, not zero */
+  const fnVal = (v, key) => {
+    const bf = v && v.byFunction;
+    return (bf && Object.prototype.hasOwnProperty.call(bf, key)) ? bf[key] : null;
+  };
+
   const DEFAULTS = {type: "districts", year: latest, unit: "perAda", basis: "nominal", sel: [], q: ""};
   const BASES = ["nominal","real"];
   const S = {...DEFAULTS, sel: [], openFn: null, openGrp: null, openRes: null,
@@ -992,7 +1008,7 @@
         h += '<div class="rs-figs">Current Expense of Education '
           + esc(moneyExact(adjV(v.currentExpense, S.year))) + ' \u00b7 ADA '
           + esc(fmt(Math.round(v.ada))) + ' \u00b7 '
-          + esc(money0(adjV(v.currentExpense, S.year)/v.ada)) + ' per ADA</div>';
+          + esc(fmtPerAda(adjV(v.currentExpense, S.year), v.ada)) + ' per ADA</div>';
       } else if (S.type === "coes"){
         h += '<div class="rs-figs">Expenditures '
           + esc(moneyExact(adjV(v.expenditures, S.year)))
@@ -1101,7 +1117,7 @@
     let figure = "";
     if (S.type === "districts" && sel.length){
       figure = sel.map(id => { const v = yr(id);
-        return ent(id).name + " " + money0(v.currentExpense / v.ada) + " per ADA"; }).join("; ") + ". ";
+        return ent(id).name + " " + fmtPerAda(v.currentExpense, v.ada) + " per ADA"; }).join("; ") + ". ";
       if (sel.length === 1){
         const v = yr(sel[0]);
         figure += "By funding source: unrestricted " + moneyExact(v.unrestricted||0)
@@ -1162,9 +1178,14 @@
       S.sel.forEach(id => { const d = D.districts[id], v = d.years[S.year];
         if (!v) return;
         lines.push([d.name, d.county, d.type, S.year, v.ada, v.currentExpense.toFixed(2),
-          v.cePublished.toFixed(2), Math.round(v.currentExpense / v.ada),
+          v.cePublished.toFixed(2),
+          // no denominator, no rate: an empty field, never Infinity
+          (perAda(v.currentExpense, v.ada) === null
+            ? "" : Math.round(perAda(v.currentExpense, v.ada))),
           v.basicAid, v.smallNSS, v.sponsoredCharterADA,
-          ...FN.map(f => (v.byFunction[f.key]||0).toFixed(2))]
+          // a function the filing never reported exports empty, not 0.00
+          ...FN.map(f => { const fv = fnVal(v, f.key);
+                           return fv === null ? "" : fv.toFixed(2); })]
           .map(x => /[",]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x).join(","));
       });
       // funding-source breakout for a single district (the current view)

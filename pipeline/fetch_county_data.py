@@ -446,8 +446,21 @@ def main():
                 **({"unincorporatedUnknown": uninc_note} if uninc_note else {}),
                 "revenues": m(c["revenues"]),
                 "expenditures": m(gov),
-                "byFunction": {k: m(v) for k, v in c["byFunction"].items()
-                               if round(v / 1e6, 3) != 0},
+                                # THE THREE STATES. This filter used to drop any function
+                # whose value rounds to $0.000M, which erased the difference
+                # between a function the filing REPORTED AS ZERO and one it
+                # never mentioned. Measured at source for FY 2023-24 alone:
+                # 2,492 functions reported as exactly zero, plus 6 carrying a
+                # real amount under $500 (La Habra Heights health $221,
+                # Roseville health $12). All were dropped and then read back
+                # as a measured $0 by every renderer.
+                #
+                # The key now exists whenever the filing reported the
+                # function, so absence in this dict means absence in the
+                # filing, and nothing else. No published figure moves: every
+                # value restored is 0.000 at this precision, and the totals
+                # were always summed BEFORE this filter.
+                "byFunction": {k: m(v) for k, v in c["byFunction"].items()},
                 "lines": {k: sorted(
                               ([line_idx[lbl], int(round(v))]
                                for lbl, v in fam.items() if round(v) != 0),

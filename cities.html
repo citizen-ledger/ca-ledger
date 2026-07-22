@@ -551,6 +551,22 @@
   }
   const unadjusted = () => realOn() && !defOK(S.year);
 
+  /* THE THREE STATES A FILING CAN BE IN FOR A FUNCTION.
+     A number  — the filing REPORTED this function. Zero is one of the
+                 numbers it can report, and is a real measurement.
+     null      — the filing NEVER MENTIONS this function.
+     Every read site went through `(yr.byFunction||{})[key]||0`, which
+     turned the second into the first. Measured across 3,856 city-years:
+     library absent 2,372, sanitation 2,923, utilities 3,604, fire 1,160.
+     Agoura Hills exported "Fire,0.0,0,0.0" while served by Los Angeles
+     County Fire. A city that did not report a function is not a city
+     that spent nothing on it. */
+  const fnVal = (yr, key) => {
+    const bf = yr && yr.byFunction;
+    return (bf && Object.prototype.hasOwnProperty.call(bf, key)) ? bf[key] : null;
+  };
+  const fnReported = (yr, key) => fnVal(yr, key) !== null;
+
   function toUnit(vM, yr){
     if (vM==null) return null;
     // percent is a ratio of two same-year figures and is invariant under
@@ -636,7 +652,12 @@
       // then print only for counties that DID file, and never for the ones
       // it exists to explain. A note silently changing its condition during
       // a merge is the mistake #48 already made once.
-      if (!yr.byFunction || !Object.keys(yr.byFunction).length)
+      // Keys alone no longer answer this: a county that filed nothing
+      // still carries all fourteen functions at zero, now that a reported
+      // zero is kept instead of erased. The Controller's own control total
+      // for these county-years is zero, which is what "nothing filed"
+      // means here.
+      if (!yr.expenditures)
         notes.push({key:"noFiling", pinned: true,
           text: c.name + " County reported no governmental expenditure for FY "
                 + S.year + ". The State Controller publishes a total of zero "
@@ -657,7 +678,9 @@
     [["police","Police","lowPolice"],["fire","Fire","lowFire"]].forEach(([k,label,lowKey])=>{
       const svc = c.services && c.services[k];
       const low = yr.notes && yr.notes.includes(lowKey);
-      const zero = ((yr.byFunction||{})[k] || 0) === 0;
+      const reported = fnReported(yr, k);
+      const zero = reported ? yr.byFunction[k] === 0 : true;
+      const notReported = !reported;
       if (svc && svc.code && svc.code!=="A" && svc.code!=="B" && svc.label){
         // a zero or near-zero figure is not "no spending" — the spending
         // sits in the provider's record; say so on the face, county named
@@ -669,9 +692,14 @@
           + (zero || low ? " — that spending appears " + dest : "")
           + " (FY " + vin + " services checklist, the most recent published — arrangements may have changed since)."});
       } else if (zero){
-        notes.push({key:k, pinned: true, text: label + " expenditure is not reported in this "
-          + "city's filing for FY " + S.year + " — the Ledger cannot confirm from the services "
-          + "checklist how the service is provided, only that no spending appears here."});
+        notes.push({key:k, pinned: true, text: label + " expenditure is "
+          + (notReported
+              ? "not reported in this city's filing for FY " + S.year
+                + " — the function does not appear in the filing at all"
+              : "reported as zero in this city's filing for FY " + S.year
+                + " — the city filed the function and entered nothing against it")
+          + ". The Ledger cannot confirm from the services checklist how the "
+          + "service is provided, only what the filing does and does not say."});
       } else if (low){
         notes.push({key:k, text:"Reports under $5 per resident of municipal " + k + " expenditure in FY " + S.year + "; the service may be provided or financed outside the city budget. This flag is a heuristic, not a survey."});
       }
@@ -1350,7 +1378,7 @@
     $("scheduleLabel").textContent = "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · " + dispName(id).toUpperCase() + " · " + unitLabel();
     $("scheduleNote").textContent = (c.county ? c.county.toUpperCase() + " COUNTY · " : "")
       + "POP " + fmtPop(yr.population) + " · GOVERNMENTAL " + fmtM(yr.expenditures) + " · REVENUES " + fmtM(yr.revenues);
-    const rows = FUNCS.map(f=>({ f, vM: (yr.byFunction||{})[f.key]||0 }));
+    const rows = FUNCS.map(f=>({ f, vM: fnVal(yr, f.key) }));
     const maxU = Math.max(...rows.map(r=>toUnit(r.vM,yr)||0), 0.001);
     let html = '<div class="tblwrap"><div class="tblmin">';
     const LBL = D.meta.lineLabels || [];
@@ -1386,7 +1414,12 @@
         + daggerHtml(id,r.f.key)+'</span>'
         + '<span class="cellbar" style="margin-top:0"><i style="width:'+w.toFixed(1)+'%;background:#242424"></i></span>'
         + '<span class="num" style="text-align:right">'+fmtUnit(u)+'</span>'
-        + '<span class="num dim" style="text-align:right;font-size:12.5px">'+(yr.expenditures?(r.vM/yr.expenditures*100).toFixed(1):"0.0")+'%</span></div>';
+        // an unreported function has no share of the total either: null
+        // divided by anything is 0 in JavaScript, which would print 0.0%
+        + '<span class="num dim" style="text-align:right;font-size:12.5px">'
+        + (r.vM === null ? "&mdash;"
+           : (yr.expenditures ? (r.vM/yr.expenditures*100).toFixed(1) : "0.0") + "%")
+        + '</span></div>';
       if (open && expandable) html += lineBlock(r.f.key);
       const pinnedNote = cityNotes(id).find(n=>n.key===r.f.key && n.pinned);
       if (pinnedNote)
@@ -1423,7 +1456,7 @@
     let maxU = 0.001;
     FUNCS.forEach(f=>sel.forEach(id=>{
       const yr = cityYear(id,S.year);
-      const u = toUnit((yr.byFunction||{})[f.key]||0, yr);
+      const u = toUnit(fnVal(yr, f.key), yr);
       if (u!=null && u>maxU) maxU = u;
     }));
     let html = '<div class="tblwrap"><div class="tblmin cmpmin" style="'+grid+'">'
@@ -1442,7 +1475,7 @@
         + '<span style="font-size:14px">'+esc(f.name)+'</span>'
         + sel.map(id=>{
             const yr = cityYear(id,S.year);
-            const u = toUnit((yr.byFunction||{})[f.key]||0, yr);
+            const u = toUnit(fnVal(yr, f.key), yr);
             return '<div><div style="display:flex;align-items:baseline;gap:6px"><span class="num">'+fmtUnit(u)+'</span>'+daggerHtml(id,f.key)+'</div>'
               + '<div class="cellbar"><i style="width:'+(u==null?0:Math.max(0,u/maxU*100)).toFixed(1)+'%;background:'+colors[id]+'"></i></div></div>';
           }).join("")
@@ -1582,9 +1615,13 @@
       lines.push("# Dollar basis: " + csvBasisLine());
       lines.push("Function,Governmental expenditures ($M),Per resident ($),Share (%)");
       FUNCS.forEach(f=>{
-        const v = (yr.byFunction||{})[f.key]||0;
-        lines.push([csvEscape(f.name), v.toFixed(1), Math.round(perCap(v,yr.population)),
-          (yr.expenditures?(v/yr.expenditures*100):0).toFixed(1)].join(","));
+        const v = fnVal(yr, f.key);
+        // an unreported function exports EMPTY fields, never 0.0 — a
+        // spreadsheet cannot tell a typed zero from a measured one
+        lines.push(v === null
+          ? [csvEscape(f.name), "", "", ""].join(",")
+          : [csvEscape(f.name), v.toFixed(1), Math.round(perCap(v,yr.population)),
+             (yr.expenditures?(v/yr.expenditures*100):0).toFixed(1)].join(","));
       });
       lines.push(["All governmental functions", yr.expenditures.toFixed(1),
         Math.round(perCap(yr.expenditures,yr.population)), "100.0"].join(","));
@@ -1605,7 +1642,8 @@
       FUNCS.forEach(f=>{
         lines.push([csvEscape(f.name)].concat(sel.map(id=>{
           const yr = cityYear(id,S.year);
-          return Math.round(perCap((yr.byFunction||{})[f.key]||0, yr.population));
+          const v = fnVal(yr, f.key);
+          return v === null ? "" : Math.round(perCap(v, yr.population));
         })).join(","));
       });
       lines.push(["All governmental functions"].concat(sel.map(id=>{
