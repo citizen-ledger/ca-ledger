@@ -43,11 +43,14 @@ THE GATE — EXACT TO THE THOUSAND, not to the cent (no write on failure):
   named tier from K-12's to-the-cent, not a looser version of it:
     1. The audited combining identity holds exactly, to the thousand:
        University + component units - eliminations == combined total.
-    2. The 23 campuses plus a VISIBLE "Systemwide (Chancellor's Office)
-       & eliminations" reconciling line sum exactly to the University
-       total (the reconciling line is computed live and shown as a row,
-       never a hidden plug); it must be non-negative and a small share
-       of the total (a large or negative value means a mis-extraction).
+    2. The "Systemwide (Chancellor's Office) & eliminations" line is
+       DERIVED as University total - sum of campuses, and shown as a
+       visible row rather than a hidden plug. CSU publishes no separate
+       Chancellor's Office expense figure, so there is nothing to
+       reconcile it against and this is not claimed as a reconciliation.
+       What IS checked: every campus figure was really extracted, and
+       the residual is strictly positive and a small share of the total
+       (zero, negative, or large means a mis-extraction).
     3. Structural: 23 campuses, each with positive operating expense
        and positive enrollment.
 
@@ -120,18 +123,62 @@ def gate(campuses, univ, comp, combined_combined, eliminations):
         fail.append(f"combining identity off: {univ['opexpK']} + "
                     f"{comp['opexpK']} - {eliminations} = {lhs} != "
                     f"{combined_combined}")
-    # 2. campuses + reconciling == University total, reconciling sane
+    # 2. THE RECONCILING LINE IS DEFINITIONAL, AND IS CHECKED IN THE WAYS
+    #    THAT CAN ACTUALLY FAIL.
+    #
+    #    This block used to end with `if camp_sum + reconciling !=
+    #    univ["opexpK"]`, the same tautology UC removed. `reconciling` is
+    #    DEFINED one line above as univ - camp_sum, so the sum returns the
+    #    total it was derived from, always. Measured over 200,000
+    #    randomised trials — including components exceeding the total and
+    #    negative components — it fired 0 times, while the two checks
+    #    beside it fired 86,190 and 109,546 times.
+    #
+    #    There is no independent figure to reconcile it against: the CSU
+    #    statements publish no Chancellor's Office expense line, which is
+    #    why the extraction marks that row =RECONCILE. So the honest move
+    #    is to state that it is derived and to test the things that are
+    #    not: that every component it is derived FROM was really read, and
+    #    that the residual it produces is plausible.
     camp_sum = sum(c["opexpK"] for c in campuses)
     reconciling = univ["opexpK"] - camp_sum
+
+    # (a) PRESENCE PER COMPONENT. A =RECONCILE anywhere in a campus row
+    #     makes the sum meaningless, and only opexpK was being checked.
+    for c in campuses:
+        for field in ("opexpK", "stateAppropK", "opRevK"):
+            if c.get(field) is None:
+                fail.append(f"{c['name']}: {field} was not extracted "
+                            "(=RECONCILE) — only the systemwide row may be "
+                            "derived")
+    if univ["opexpK"] is None:
+        fail.append("University total was not extracted — the residual would "
+                    "be derived from nothing")
+
+    # (b) NON-NEGATIVE. A negative residual means the campuses sum to more
+    #     than the audited University total: an over-extraction.
     if reconciling < 0:
         fail.append(f"reconciling line negative ({reconciling}k) — a campus "
                     "figure is likely over-extracted")
+
+    # (c) STRICTLY POSITIVE. The Chancellor's Office and systemwide
+    #     programs do spend money — 1,207 people work there. A residual of
+    #     exactly zero would mean those costs had been absorbed into the
+    #     campus rows, which is a mis-extraction that a non-negative test
+    #     alone accepts.
+    elif reconciling == 0:
+        fail.append("reconciling line is exactly zero — the Chancellor's "
+                    "Office and systemwide programs cannot cost nothing; a "
+                    "campus row has likely absorbed them")
+
+    # (d) A BAND DERIVED FROM THE OBSERVED VALUE. FY2023-24 measures
+    #     2.584% (300,486k of 11,630,059k). The bound is set at roughly
+    #     double that, so a year of ordinary movement passes and a
+    #     mis-extraction of campus scale does not.
     if reconciling > univ["opexpK"] * RECONCILE_MAX_SHARE:
         fail.append(f"reconciling line {reconciling}k exceeds "
                     f"{RECONCILE_MAX_SHARE:.0%} of the University total — "
                     "likely a mis-extraction")
-    if camp_sum + reconciling != univ["opexpK"]:
-        fail.append("campuses + reconciling != University total")
     # 3. structural
     bad = gates.check_exact(len(campuses), 23, "CSU campus roster")
     if bad:
@@ -205,13 +252,19 @@ def main():
                      "each other, and are never summed.",
             "gate": "EXACT TO THE THOUSAND, not to the cent — CSU's audited "
                     "statements are denominated in thousands, the finest unit "
-                    "CSU publishes. The audited combining identity (University "
-                    "+ component units - eliminations = combined) holds "
-                    "exactly to the thousand, and the 23 campuses plus the "
-                    "visible Systemwide & eliminations line sum exactly to the "
-                    "University total. Exact fidelity at the source's own "
-                    "resolution — a different, accurately-named tier from "
-                    "K-12's to-the-cent, no write on failure.",
+                    "CSU publishes. WHAT IS RECONCILED: the audited combining "
+                    "identity, University + component units - eliminations = "
+                    "combined total, holds exactly to the thousand between "
+                    "four independently extracted figures. WHAT IS NOT: the "
+                    "Systemwide (Chancellor's Office) & eliminations line is "
+                    "DERIVED as the University total minus the 23 campuses, "
+                    "because CSU publishes no separate figure for it. That "
+                    "line therefore sums back to the total by construction "
+                    "and is not evidence the campus figures are right; it is "
+                    "shown as a visible row so a reader can see its size. It "
+                    "is checked for what can fail — every campus figure "
+                    "extracted, residual strictly positive and under 5% of "
+                    "the total (FY2023-24: 2.58%). No write on failure.",
             "reproducibility": "NOT auto-reproducible: the CSU source PDFs are "
                     "on the bot-gated calstate.edu site (a browser Human Check "
                     "blocks scripted download), so refreshing this layer "

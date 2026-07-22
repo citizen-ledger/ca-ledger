@@ -216,7 +216,7 @@
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2023-24</div>
       <h1>California State University</h1>
-      <p class="dek">Every campus's operating spending, reconciled exactly — to the thousand, the finest unit CSU publishes — against CSU's own audited systemwide total. Twenty-three campuses; audited GAAP figures, not the state budget's enacted basis.</p>
+      <p class="dek">Every campus's operating spending as CSU's audited statements report it, to the thousand — the finest unit CSU publishes. The audited combining identity is reconciled exactly; the Chancellor's Office line is derived, and shown as a row rather than reconciled away. Twenty-three campuses; audited GAAP figures, not the state budget's enacted basis.</p>
     </div>
     <div class="hero-right">
       <div class="hero-num num" id="heroNum">—</div>
@@ -337,7 +337,7 @@
       + 'CITIZEN LEDGER \u00b7 RECORD SHEET \u00b7 ' + "CSU CAMPUSES"
       + ' \u00b7 FY ' + esc(M.year) + '</div>'
       + '<div class="rs-basis"><b>ACCOUNTING BASIS</b>' + esc("Audited GAAP / GASB full-accrual, as published in CSU's systemwide financial statements. This is NOT the state budget's enacted Budgetary-Legal basis; the two are measured differently and are never added.") + '</div>'
-      + '<div class="rs-basis"><b>GATE</b>' + esc("The 23 campuses plus a visible systemwide (Chancellor's Office) and eliminations line reconcile to CSU's audited University total EXACTLY, TO THE THOUSAND - the finest resolution CSU publishes.") + '</div>'
+      + '<div class="rs-basis"><b>GATE</b>' + esc("CSU's audited combining identity - University total plus component units less eliminations - reconciles EXACTLY, TO THE THOUSAND, the finest resolution CSU publishes. The systemwide (Chancellor's Office) and eliminations line is DERIVED as the University total less the 23 campuses, because CSU publishes no separate figure for it; it is shown as a visible row and is not evidence the campus figures are right.") + '</div>'
       + '<div class="rs-basis"><b>RESOLUTION AND DENOMINATOR</b>' + esc("Figures are stated in thousands of dollars, the finest unit CSU's audited statements publish. Per-student figures use enrolment HEADCOUNT, not FTES.") + '</div>'
       + '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as published. Not adjusted for '
       + 'inflation: this layer is a single fiscal year, so there is no trend to restate.'
@@ -417,11 +417,17 @@
     $("heroSub").textContent = "23 CAMPUSES · " + SW.systemwideHeadcount.toLocaleString() + " SYSTEMWIDE-PROGRAM STUDENTS BEYOND THE CAMPUSES";
     $("scheduleLabel").textContent = "OPERATING EXPENSES BY CAMPUS · "
       + (S.unit==="perStudent" ? "PER ENROLLED STUDENT (HEADCOUNT, NOT FTES)" : "TOTAL, IN THOUSANDS") + " · FY 2023-24";
-    $("gateStrip").textContent = "GATED · EXACT TO THE THOUSAND: the 23 campuses ("
-      + moneyK(D.campuses.reduce((s,c)=>s+c.opexpK,0)) + ") plus the Systemwide (Chancellor's Office) & eliminations line ("
-      + moneyK(SW.reconcilingK) + ") sum to CSU's audited University total, " + moneyK(SW.universityOpexpK)
-      + ". The audited combining identity holds exactly: " + moneyK(SW.universityOpexpK) + " + " + moneyK(SW.componentUnitsK)
-      + " − " + moneyK(SW.eliminationsK) + " = " + moneyK(SW.combinedK) + ".";
+    // The campuses-plus-reconciling sum is DEFINITIONAL — that line is
+    // derived as the difference — so it is described, never presented as
+    // a reconciliation. What IS reconciled is the combining identity,
+    // between four independently extracted figures.
+    $("gateStrip").textContent = "GATED · EXACT TO THE THOUSAND: the audited combining identity holds exactly — "
+      + moneyK(SW.universityOpexpK) + " + " + moneyK(SW.componentUnitsK)
+      + " − " + moneyK(SW.eliminationsK) + " = " + moneyK(SW.combinedK)
+      + ". The 23 campuses total " + moneyK(D.campuses.reduce((s,c)=>s+c.opexpK,0))
+      + "; the remaining " + moneyK(SW.reconcilingK) + " is shown as the Systemwide "
+      + "(Chancellor's Office) & eliminations row. CSU publishes no separate figure for "
+      + "that line, so it is derived rather than reconciled.";
     $("basisStrip").textContent = "BASIS: audited GAAP / GASB accrual — NOT the state budget page's enacted, budgetary-legal figure. The two are measured differently and are never added.";
 
     const rows = D.campuses.slice().sort((a,b) =>
