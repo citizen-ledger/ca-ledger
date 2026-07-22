@@ -315,6 +315,7 @@ def main():
                              "nothing written")
 
     counties_out = {}
+    unincorporated_unknown = []
     all_names = sorted({n for cs in years_data.values() for n in cs})
     for name in all_names:
         entry = {"name": name, "years": {}}
@@ -328,10 +329,53 @@ def main():
             gov = sum(c["byFunction"].values())
             ent = sum(c["enterprise"].values())
             city_pop = (city_pops.get(name) or {}).get(fy, 0)
-            uninc = max(0.0, min(1.0, (c["pop"] - city_pop) / c["pop"])) if c["pop"] else None
+            # A SHARE OUTSIDE [0,1] IS NOT AN EXTREME VALUE — IT IS PROOF
+            # THE INPUTS DISAGREE, and it must not be clamped.
+            #
+            # `max(0.0, min(1.0, ...))` used to turn an impossible share into
+            # a confident 0%. Siskiyou shipped "0% of residents live in
+            # unincorporated areas" in five of eight years while the other
+            # three carried the true ~55%, so the county flipped between 55%
+            # and 0% along its own trend line. The cause is one bad source
+            # figure: Mt. Shasta's filing reports ~86,500 residents against a
+            # real ~3,200, so the county's cities outnumber the county and
+            # the raw share is -1.372.
+            #
+            # The share is now UNKNOWN when it cannot be computed, and the
+            # reason travels with the year. The county's other figures are
+            # unaffected — they gate independently — so refusing the whole
+            # build over a denominator the source got wrong would withhold
+            # correct data to punish an error we do not control.
+            uninc, uninc_note = None, None
+            if c["pop"]:
+                raw = (c["pop"] - city_pop) / c["pop"]
+                if 0.0 <= raw <= 1.0:
+                    # A share of exactly 1.0 is legitimate for a county with
+                    # no incorporated city (Alpine, Mariposa, Trinity) — and
+                    # is ALSO what a total join failure produces. The two are
+                    # indistinguishable from the number alone, so confirm the
+                    # county really has no cities rather than trusting it.
+                    if raw == 1.0 and name in city_pops and city_pops[name]:
+                        raise SystemExit(
+                            f"{name} County FY {fy}: unincorporated share is "
+                            "exactly 1.000, but this county HAS cities in the "
+                            "city dataset — the join returned no population "
+                            "for them rather than the county genuinely having "
+                            "none. Nothing written.")
+                    uninc = raw
+                else:
+                    uninc_note = (
+                        f"Not computable for this year: the cities inside this "
+                        f"county report {city_pop:,} residents between them "
+                        f"against the county's own reported {c['pop']:,}, so "
+                        f"the unincorporated share works out at {raw:.1%} — "
+                        f"impossible, and a sign the filed populations "
+                        f"disagree rather than a measurement of the county.")
+                    unincorporated_unknown.append((name, fy))
             yr = {
                 "population": c["pop"],
                 "unincorporated": None if uninc is None else round(uninc, 3),
+                **({"unincorporatedUnknown": uninc_note} if uninc_note else {}),
                 "revenues": m(c["revenues"]),
                 "expenditures": m(gov),
                 "byFunction": {k: m(v) for k, v in c["byFunction"].items()
@@ -447,6 +491,12 @@ def main():
     revisions.record_revision("county", prev, payload,
                               source_signal=revisions.socrata_updated(
                                   ["uctr-c2j8", "emxv-k8xv", "miui-wb29"]))
+    if unincorporated_unknown:
+        print(f"  unincorporated share NOT COMPUTABLE for "
+              f"{len(unincorporated_unknown)} county-year(s) — the filed city "
+              f"populations exceed the county's own: "
+              + ", ".join(f"{n} {fy}" for n, fy in unincorporated_unknown),
+              file=sys.stderr)
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB, "
           f"{len(counties_out)} counties)")
 

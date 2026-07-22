@@ -2935,3 +2935,57 @@ once, and a batch written before ids existed is recognised by the note it
 already carries rather than by stamping an id onto a dated record.
 
 **Assertions.** 2131 → 2161 (+30).
+
+## 2026-07-21 — A clamped impossibility is not a measurement
+
+`max(0.0, min(1.0, (county_pop - city_pop) / county_pop))` turned a share
+that came out impossible into a confident 0%. Siskiyou County shipped
+**"0% of residents live in unincorporated areas"** in five of eight years
+while the other three carried the true ~55% — the same county flipping
+between 55% and 0% along its own trend line. On address.html an
+unincorporated Siskiyou resident was told, in one paragraph, that the
+county is their local government and that 0% of the county lives in
+unincorporated areas.
+
+**Unknown, not refused.** A share outside [0,1] proves the inputs
+disagree, so it must never be clamped — but refusing the build would
+withhold the county's correct, independently gated figures to punish a
+denominator the source got wrong. The share is now `null` with the reason
+attached to the year, the build names the affected county-years on stderr,
+and both pages state the absence instead of printing a number.
+
+**The bad figure is daggered, not edited.** Mt. Shasta's filing reports
+~86,500 residents against a real ~3,200. It still ships **exactly as
+filed** — a wrong source figure is a dagger, not an edit. What is withheld
+is the derivation: its per-resident figures read ~$100 where its own good
+years read ~$1,700, wrong by a factor of about 25 on the unit the page
+compares cities by.
+
+The detector needs no external truth: **a city cannot contain more
+residents than its county**, and both figures come from the same publisher
+in the same year. Across 3,856 city-years it fires five times, all
+Mt. Shasta, exactly the years that broke Siskiyou — and nowhere else.
+Those five years also carried spurious `lowPolice` / `lowFire` flags,
+because the inflated denominator made per-resident spending look tiny;
+they are gone.
+
+**A second bound, from the audit.** A share of exactly 1.000 is legitimate
+for Alpine, Mariposa and Trinity, which have no incorporated city — and is
+also exactly what a total join failure produces. The two were
+indistinguishable from the number alone. The build now refuses a 1.000
+from a county that does have cities.
+
+**The wider clamp audit.** Every `max`/`min`/clamping ternary in the
+pipelines and pages was examined against one question: out of range, would
+the world be unusual or the inputs wrong? Only the second is a defect. The
+gate tolerances (`max(floor, ctrl*0.001)`) widen a gate rather than clamp a
+measurement and publish nothing; the district `or [0,0,0,0]` is a default
+for a genuine non-filing; and `enterpriseShareExp` is the same shape as the
+Siskiyou defect and is safe **precisely because nobody wrapped it in
+max/min** — an out-of-range value would be visible rather than pinned.
+
+**Recorded as our own corrections**, one per layer: the county share
+(5 events, 0.0 → null for the five Siskiyou years) and the city
+contradiction flags (0 events — no dollar figure moved).
+
+**Assertions.** 2161 → 2188 (+27).

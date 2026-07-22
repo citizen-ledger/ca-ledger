@@ -618,10 +618,24 @@
           + c.name + " County's residents live in unincorporated areas the county "
           + "serves directly as the local government — per-resident differences "
           + "partly reflect this responsibility share, not spending choices."});
+      // an unknown share is SAID, not silently omitted: a reader should be
+      // able to tell "we could not compute this" from "we did not mention it"
+      else if (yr.unincorporatedUnknown)
+        notes.push({key:"unincUnknown",
+          text: "Unincorporated share not known for this year. "
+                + yr.unincorporatedUnknown});
       // A COUNTY-YEAR WITH NOTHING FILED MUST SAY SO. The city branch below
       // prints "expenditure is not reported in this city's filing"; the
       // county branch had no absence note at all, so a year the Controller
       // published as zero read as a measured $0 of county spending.
+      //
+      // This is an INDEPENDENT condition and must stay below the else-if
+      // above, not between it and its `if`. Placing it in the middle would
+      // rebind `else if (yr.unincorporatedUnknown)` to this test instead of
+      // to `if (yr.unincorporated != null)` — the unknown-share note would
+      // then print only for counties that DID file, and never for the ones
+      // it exists to explain. A note silently changing its condition during
+      // a merge is the mistake #48 already made once.
       if (!yr.byFunction || !Object.keys(yr.byFunction).length)
         notes.push({key:"noFiling", pinned: true,
           text: c.name + " County reported no governmental expenditure for FY "
@@ -633,6 +647,10 @@
         notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
       return notes;
     }
+    // the filed population contradicts the county's own — say so where the
+    // per-resident figures derived from it are read
+    if (yr.populationContradicted)
+      notes.push({key:"popContradicted", pinned: true, text: yr.populationContradicted});
     if (c.flags && c.flags.consolidated)
       notes.push({key:"consolidated", text: c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."});
     const vin = D.meta.servicesChecklistVintage;

@@ -772,7 +772,12 @@
   }
   function countyRecord(slug, asLocal){
     const c = CTY.counties[slug], yr = c.years[CITY_FY];
-    const unincPct = Math.round((yr.unincorporated||0)*100);
+    // NEVER `||0`. A null share means the filed populations contradict each
+    // other, and telling a resident "0% of your county lives in
+    // unincorporated areas" — while telling them in the same paragraph that
+    // the county IS their local government — is the falsehood this replaces.
+    const unincKnown = yr.unincorporated != null;
+    const unincPct = unincKnown ? Math.round(yr.unincorporated*100) : null;
     return miniRecord({
       kicker: asLocal ? "YOUR LOCAL GOVERNMENT — THE COUNTY" : "YOUR COUNTY",
       sched: "SCHEDULE 2 — GOVERNMENTAL EXPENDITURES BY FUNCTION · PER RESIDENT · FY " + CITY_FY,
@@ -783,9 +788,14 @@
       note: (asLocal
         ? "This address is outside every incorporated city, so the county is its local government. "
         : "")
-        + unincPct + "% of " + c.name + " County's residents live in unincorporated areas the "
-        + "county serves directly as the local government — per-resident differences partly "
-        + "reflect this responsibility share, not spending choices."
+        + (unincKnown
+            ? unincPct + "% of " + c.name + " County's residents live in unincorporated "
+              + "areas the county serves directly as the local government — per-resident "
+              + "differences partly reflect this responsibility share, not spending choices."
+            : "The share of " + c.name + " County's residents living in unincorporated "
+              + "areas is not known for this year: the cities inside it report more "
+              + "residents between them than the county reports in total, so the share "
+              + "cannot be computed from the filings.")
         + (asLocal ? "" : " Part of this county record is spending on unincorporated areas; "
         + "city residents' county services are chiefly countywide functions (courts, jails, "
         + "elections, public health)."),
