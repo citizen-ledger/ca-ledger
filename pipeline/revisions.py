@@ -598,6 +598,20 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     if corr:
         batch["ours"] = True
         batch["correctionId"] = corr["id"]
+        # A KEY THAT APPEARED CARRYING ZERO MOVED NO FIGURE. Listing every
+        # one individually pushed this record past 1.4 MB, which every page
+        # showing the change feed would pay to load. They are counted here
+        # instead, and the correction's note says what happened.
+        #
+        # Only ever inside a DECLARED correction: a source change can never
+        # be collapsed this way, because there would be no correction to
+        # attach it to.
+        appeared = [e for e in batch["events"]
+                    if e.get("o") is None and e.get("n") == 0]
+        if appeared:
+            batch["events"] = [e for e in batch["events"]
+                               if not (e.get("o") is None and e.get("n") == 0)]
+            batch["appearedAsZero"] = len(appeared)
         batch["note"] = corr["note"]
     cov = coverage_for(layer, batch["built"])
     if cov and any(b.get("coverageAdded") == cov["added"]
@@ -702,6 +716,18 @@ def _fy_of(key):
 # correction, but it can never invent one, so no per-refresh judgement
 # step is introduced.
 CORRECTIONS = [
+    {
+        "id": "reported-zero-not-erased",
+        "layer": "city",
+        "built": "2026-07-22",
+        "note": "Our own correction, not a change at the source. A function the filing REPORTED AS ZERO was being dropped from the payload, because the emit step skipped any value rounding to $0.000M. That erased the difference between a function reported at zero and one never reported at all, and every read site then turned the gap back into a measured $0. Measured at the source for FY 2023-24 alone, 2,492 city functions are reported as exactly zero — Agoura Hills files a fire line of $0, being served by Los Angeles County Fire, and that zero is a real statement about the filing rather than a missing one. The keys are now kept, so the record shows what the city filed. NO FIGURE MOVED: no value changed and none was removed; 20,335 keys carrying zero were restored to the city layer, and every total, per-resident figure and reconciliation is identical.",
+    },
+    {
+        "id": "reported-zero-not-erased-county",
+        "layer": "county",
+        "built": "2026-07-22",
+        "note": "Our own correction, not a change at the source. A function the filing REPORTED AS ZERO was being dropped from the payload, because the emit step skipped any value rounding to $0.000M. That erased the difference between a function reported at zero and one never reported at all, and every read site then turned the gap back into a measured $0. Measured at the source for FY 2023-24 alone, 2,492 city functions are reported as exactly zero — Agoura Hills files a fire line of $0, being served by Los Angeles County Fire, and that zero is a real statement about the filing rather than a missing one. The keys are now kept, so the record shows what the city filed. NO FIGURE MOVED: no value changed and none was removed; 561 keys carrying zero were restored to the county layer, and every total, per-resident figure and reconciliation is identical.",
+    },
     {
         "id": "county-unincorporated-not-clamped",
         "layer": "county",

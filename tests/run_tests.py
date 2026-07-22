@@ -2714,6 +2714,91 @@ def test_no_vacuous_assertions():
           not guarded, str(guarded[:3]))
 
 
+def test_absent_not_zero(page, base):
+    """A RATE NEEDS A DENOMINATOR, AND AN UNREPORTED FUNCTION IS NOT A ZERO.
+
+    Two different shapes of the same defect.
+
+    schools.html divided Current Expense by ADA at three sites with no
+    guard. Forks of Salmon Elementary reports ADA 0.0 for FY 2022-23 — the
+    only such district-year in the payload — so those sites computed
+    Infinity and printed it.
+
+    cities.html read every function through `(yr.byFunction||{})[k]||0`.
+    That read is now three-valued, and the investigation behind it changed
+    what the fix had to be: the SCO filings carry a row for EVERY function,
+    so what looked like 20,335 absent city-year cells were functions the
+    cities REPORTED AS ZERO, which the pipeline was dropping. Agoura Hills
+    files a fire line of $0, being served by Los Angeles County Fire. The
+    payload now keeps that zero, so the record says what the city filed."""
+    # ---- schools: the zero denominator
+    FS = SCHOOL["districts"]["forks-of-salmon-elementary"]["years"]["2022-23"]
+    check("absent: Forks of Salmon FY2022-23 really does report ADA 0 — the "
+          "case these guards exist for", FS.get("ada") == 0, str(FS.get("ada")))
+    zero_ada = [(d, fy) for d, dd in SCHOOL["districts"].items()
+                for fy, y in (dd.get("years") or {}).items() if not y.get("ada")]
+    check("absent: and it is the only one, so the guard is aimed at a real "
+          "and bounded case", len(zero_ada) == 1, str(zero_ada))
+
+    page.goto(f"{base}/schools.html#c=forks-of-salmon-elementary&y=2022-23")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_timeout(300)
+    sheet = page.inner_text("#recordSheet")
+    # The unguarded division renders "$\u221e per ADA" — the CHARACTER, not
+    # the word "Infinity". A first draft of this assertion searched for
+    # "Infinity" and could never have failed.
+    check("absent: the printed sheet states no per-ADA rate rather than an "
+          "infinite one",
+          "\u221e" not in sheet and "Infinity" not in sheet and "NaN" not in sheet,
+          sheet[:0])
+    check("absent: and says so with a dash where the rate would be",
+          "\u2014 per ADA" in sheet, sheet[:0])
+    # POSITIVE CONTROL: a district WITH ADA still prints a real rate, so the
+    # dash above is a decision and not a page that failed to render
+    page.goto(f"{base}/schools.html#c=los-angeles-unified&y=2022-23")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_timeout(300)
+    ok = page.inner_text("#recordSheet")
+    check("absent: a district with ADA still prints a per-ADA figure",
+          re.search(r"\$[\d,]+ per ADA", ok) is not None, ok[:0])
+
+    # ---- cities: the three states, and what the data actually contains
+    absent = zero = nonzero = 0
+    for c in CITY["cities"].values():
+        for yr in (c.get("years") or {}).values():
+            bf = yr.get("byFunction") or {}
+            for f in CITY["functions"]:
+                k = f["key"]
+                if k not in bf:
+                    absent += 1
+                elif bf[k] == 0:
+                    zero += 1
+                else:
+                    nonzero += 1
+    check("absent: a function the city REPORTED AS ZERO is kept, not dropped "
+          "— 20,335 cells the emit filter used to erase", zero == 20335,
+          f"absent={absent} zero={zero} nonzero={nonzero}")
+    check("absent: and nothing was lost doing it — every nonzero figure is "
+          "still there", nonzero == 37505, str(nonzero))
+    ag = CITY["cities"]["agoura-hills"]["years"][CITY["years"][-1]]["byFunction"]
+    check("absent: Agoura Hills' fire line is present and zero, which is what "
+          "its filing says", "fire" in ag and ag["fire"] == 0, str(ag.get("fire")))
+
+    # ---- the CSV distinguishes the states it is given
+    page.goto(f"{base}/schools.html#c=forks-of-salmon-elementary&y=2022-23")
+    page.wait_for_selector("#csvBtn")
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    body = Path(dl.value.path()).read_text(encoding="utf-8")
+    check("absent: the schools CSV exports no per-ADA rate where there is no "
+          "ADA, and never an infinity",
+          "\u221e" not in body and "Infinity" not in body and "NaN" not in body,
+          body[:0])
+    # POSITIVE CONTROL: the file is real and carries this district
+    check("absent: and the export really is that district's row",
+          "Forks of Salmon" in body, body[:200])
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -3476,13 +3561,27 @@ def test_county_zero_control(page, base):
     the FIGURES are right and the ASSURANCE was never earned. Reproducing a
     published zero proves nothing that a total parse failure would not also
     satisfy."""
+    # An unfiled county-year is no longer recognisable by having no
+    # function keys: keeping a reported zero means it now carries all
+    # fourteen, at zero. The Controller's own control total is what says
+    # nothing was filed.
     zero_years = [(slug, fy) for slug, c in COUNTY["counties"].items()
                   for fy, y in (c.get("years") or {}).items()
-                  if not (y.get("byFunction") or {})]
+                  if not y.get("expenditures")]
     check("county zero: the three empty county-years are still present — the "
           "fix reports them, it does not delete them",
           sorted(zero_years) == [("humboldt", "2019-20"), ("humboldt", "2020-21"),
                                  ("mendocino", "2021-22")], str(sorted(zero_years)))
+    check("county zero: and they carry their functions AS FILED — fourteen "
+          "keys of zero, not an absent block",
+          all(len(COUNTY["counties"][s]["years"][f].get("byFunction") or {}) == 14
+              and all(v == 0 for v in
+                      COUNTY["counties"][s]["years"][f]["byFunction"].values())
+              for s, f in zero_years))
+    # POSITIVE CONTROL: a county-year that DID file is not swept up
+    hb = COUNTY["counties"]["humboldt"]["years"]["2018-19"]
+    check("county zero: a county-year that filed is not counted as unfiled",
+          hb["expenditures"] > 0 and ("humboldt", "2018-19") not in zero_years)
 
     # ---- the pipeline no longer counts them as reconciled
     src = (ROOT / "pipeline" / "fetch_county_data.py").read_text(encoding="utf-8")
@@ -4062,10 +4161,16 @@ def test_zero_service(page, base):
     # checklist-contradicted zero gets the honest fallback, no implied zero
     page.goto(f"{base}/cities.html#c=kingsburg&y=2016-17")
     page.wait_for_selector("#recordBody .det-row")
-    check("zero-service: unconfirmed zero says 'not reported', never "
-          "implies no spending",
-          "not reported in this city's filing"
-          in page.inner_text("#recordBody"))
+    # Measured across every city-year: the SCO filings carry a row for
+    # every function, so a zero here is REPORTED, not missing. The note
+    # says which of the two it is rather than implying no spending.
+    kb = page.inner_text("#recordBody")
+    check("zero-service: an unconfirmed zero names it as REPORTED at zero, "
+          "which is what the filing actually says",
+          "reported as zero in this city's filing" in kb, kb[:0])
+    check("zero-service: and never claims the service was not provided",
+          "no spending" not in kb.lower()
+          or "cannot confirm" in kb.lower(), kb[:0])
     # the note travels: comparison and the address mini-record
     page.goto(f"{base}/cities.html#c=lakewood,downey")
     page.wait_for_selector("#recordBody .cmp-row")
@@ -7123,6 +7228,7 @@ def main():
             test_uc_strip_verification()
             test_ccc_write_path()
             test_historical_state(page, base)
+            test_absent_not_zero(page, base)
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
