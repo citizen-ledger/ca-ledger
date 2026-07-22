@@ -3189,6 +3189,116 @@ def test_ccc_apportionment_availability(page, base):
           "not published" in body, body[:0])
 
 
+def test_ccc_fourteen_year_gates():
+    """EVERY PORTAL YEAR GATES AT EXACTLY $0, MEASURED, ONE AT A TIME.
+
+    The CCFS-311 portal publishes fourteen fiscal years, FY2009-10
+    through FY2022-23, as consecutive dropdown values read off the
+    portal's own <option> list rather than guessed. Each year's 72 or 73
+    districts' Current Expense of Education must sum to the Chancellor's
+    Office's own printed Table VI statewide total, to the dollar.
+
+    Also pins the roster change: 72 districts through FY2017-18, 73 from
+    FY2018-19 — a structural break inside the window, not a parse error."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fccc14", str(ROOT / "pipeline" / "fetch_ccc_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_ccc_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    check("ccc 14y: the portal year list is derived from the portal's own "
+          "dropdown, and runs fourteen consecutive years",
+          len(m.PORTAL_YEARS) == 14
+          and m.PORTAL_YEARS[0] == ("1", "2009-10")
+          and m.PORTAL_YEARS[-1] == ("14", "2022-23"),
+          str(m.PORTAL_YEARS[:2]))
+
+    results, counts = {}, {}
+    for pv, fy in m.PORTAL_YEARS:
+        try:
+            tvi, sw = m.fetch_table_vi(False, pv, fy)
+            results[fy] = sum(d["ce"] for d in tvi.values()) - sw["ce"]
+            counts[fy] = len(tvi)
+        except SystemExit as e:
+            results[fy] = str(e)
+    check("ccc 14y: every one of the fourteen years parsed",
+          all(isinstance(v, int) for v in results.values()),
+          str({k: v for k, v in results.items() if not isinstance(v, int)}))
+    for fy in [f for _, f in m.PORTAL_YEARS]:
+        check(f"ccc 14y: FY{fy} sums to the printed statewide control "
+              f"EXACTLY, to the dollar", results.get(fy) == 0,
+              f"residual {results.get(fy)}")
+    # POSITIVE CONTROL: the gate is comparing real money, not zero to zero
+    check("ccc 14y: and the sums are real — the earliest year is billions, "
+          "not an empty parse",
+          all(v > 20 for v in counts.values()), str(counts))
+
+    # THE ROSTER CHANGE, pinned as a structural break rather than smoothed
+    early = {fy: n for fy, n in counts.items() if fy < "2018-19"}
+    late = {fy: n for fy, n in counts.items() if fy >= "2018-19"}
+    check("ccc 14y: 72 districts through FY2017-18",
+          set(early.values()) == {72}, str(early))
+    check("ccc 14y: and 73 from FY2018-19 — a roster change inside the "
+          "window, which the series must state rather than smooth",
+          set(late.values()) == {73}, str(late))
+
+
+def test_ccc_source_identity():
+    """THE PDF DECLARES ITS OWN YEAR; THE URL IS NEVER TRUSTED.
+
+    The file archived under a 2021-22 path is named
+    202021-Exhibit-C-July-2021-Revision.pdf and its first page reads
+    "2020-21 Second Principal" — FY2020-21 data. Reading it as FY2021-22
+    would have shipped one year's apportionment under another's label."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fcccid", str(ROOT / "pipeline" / "fetch_ccc_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_ccc_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    exc = ROOT / "pipeline" / "cache" / "ccc" / "exhibitc"
+    if not exc.exists():
+        check("ccc identity: the verified Exhibit C cache is present",
+              False, "cache missing — run the pipeline with --refresh")
+        return
+    # POSITIVE CONTROL FIRST: a year whose PDF DOES declare itself parses
+    ok = None
+    try:
+        m.fetch_apportionment(False, "2019-20")
+        ok = True
+    except SystemExit as e:
+        ok = str(e)
+    check("ccc identity: FY2019-20's Exhibit C declares itself and is "
+          "accepted", ok is True, str(ok)[:90])
+    # and a year whose document does NOT say what it is, is refused
+    bad = None
+    try:
+        m.fetch_apportionment(False, "2023-24")
+        bad = "ACCEPTED"
+    except SystemExit as e:
+        bad = str(e)
+    check("ccc identity: FY2023-24's file does not declare the year on the "
+          "page the parser reads, and is REFUSED rather than assumed",
+          "does not declare itself" in str(bad), str(bad)[:90])
+    check("ccc identity: an unavailable year refuses on the missing file "
+          "rather than inventing one",
+          "nothing written" in str(
+              _raised(lambda: m.fetch_apportionment(False, "2011-12"))),
+          str(_raised(lambda: m.fetch_apportionment(False, "2011-12")))[:80])
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7657,6 +7767,8 @@ def main():
             test_csu_reconciling_not_tautological(page, base)
             test_unknown_facts_render(page, base)
             test_ccc_apportionment_availability(page, base)
+            test_ccc_fourteen_year_gates()
+            test_ccc_source_identity()
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
