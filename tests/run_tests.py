@@ -3408,10 +3408,26 @@ def test_depth(page, base):
     check("depth UI: bridge asserts completeness in words",
           "nothing is missing and nothing is double-counted" in panel
           and "Both totals are correct" in panel)
-    # a $0-parent department still renders programs sanely (STRS)
+    # a $0-parent department still renders sanely (STRS). These three lines
+    # navigated, read the body into `body`, and then asserted NOTHING —
+    # `body` was never referenced again. The scenario has been unchecked
+    # since it was written; this is the intent the comment states.
+    #
+    # STRS 7920 carries gf/sp/bd/fed all 0.0 against nr of $22.2B: its
+    # governmental parent really is zero, because nongovernmental-cost
+    # funds are already counted in the budgets that pay them. Sane means
+    # it is still LISTED at an explicit $0M, not dropped for summing to
+    # nothing.
     page.goto(f"{base}/index.html#a=government-operations")
-    page.wait_for_timeout(400)
-    body = page.inner_text("body")
+    page.wait_for_selector("#allocView:not([hidden])")
+    page.wait_for_selector(".arow")
+    strs_row = page.locator(".arow", has_text="State Teachers' Retirement")
+    check("depth UI: a department whose governmental total is $0 is still "
+          "listed, not dropped for summing to nothing",
+          strs_row.count() == 1, str(strs_row.count()))
+    check("depth UI: and it states that zero explicitly rather than blank",
+          "$0M" in strs_row.first.inner_text(),
+          strs_row.first.inner_text().replace("\n", " | ")[:80])
     # ---- UI: honest negatives at depth
     page.goto(f"{base}/cities.html#l=county&c=santa-clara")
     page.wait_for_selector("#recordBody .det-row")
