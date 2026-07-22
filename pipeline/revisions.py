@@ -606,6 +606,23 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
         # Only ever inside a DECLARED correction: a source change can never
         # be collapsed this way, because there would be no correction to
         # attach it to.
+        # A SHAPE-ONLY CORRECTION MUST EARN ITS COLLAPSE. The events are
+        # fields changing address, not value, so listing 1,034 of them
+        # would publish a restructure as though the source had moved. The
+        # collapse is allowed only when the multiset of values before and
+        # after is identical — proven here, not asserted in the note.
+        if corr.get("shapeOnly"):
+            def _vals(flat):
+                return sorted(repr(v) for v in flat.values())
+            if _vals(old_flat) == _vals(new_flat):
+                batch["shapeOnly"] = True
+                batch["relocated"] = len(batch["events"])
+                batch["events"] = []
+            else:
+                raise SystemExit(
+                    "SHAPE-ONLY CORRECTION CLAIMS NO VALUE MOVED, BUT ONE "
+                    f"DID: {len(old_flat)} -> {len(new_flat)} cells and the "
+                    "value multisets differ. Nothing written.")
         appeared = [e for e in batch["events"]
                     if e.get("o") is None and e.get("n") == 0]
         if appeared:
@@ -716,6 +733,25 @@ def _fy_of(key):
 # correction, but it can never invent one, so no per-refresh judgement
 # step is introduced.
 CORRECTIONS = [
+    {
+        "id": "ccc-multi-year-shape",
+        "layer": "ccc",
+        # collapse the per-field events ONLY if the pipeline can prove no
+        # value moved — see shapeOnly handling in record_revision
+        "shapeOnly": True,
+        "built": "2026-07-22",
+        "note": "Our own correction, not a change at the source. The "
+                "community-college layer carried one fiscal year in a flat "
+                "record; it now uses the multi-year shape cities, counties "
+                "and K-12 already publish — a top-level `years` axis, with "
+                "every year-varying field inside each district's `years` "
+                "map. STRUCTURE ONLY: no year was added and no figure "
+                "moved. Verified cell by cell across all 73 districts — "
+                "1,165 values compared, 0 changed — and the statewide "
+                "block is identical once read at its fiscal year. The "
+                "events in this batch are fields changing ADDRESS, not "
+                "value.",
+    },
     {
         "id": "reported-zero-not-erased",
         "layer": "city",

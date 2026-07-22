@@ -125,6 +125,16 @@ def _raised(fn):
     return None
 
 
+def ccc_yr(d, fy=None):
+    """A CCC district's record for a fiscal year.
+
+    The layer became multi-year on the shape cities, counties and K-12
+    already use, so every year-varying field moved from the district into
+    district["years"][fy]. This is the test-side twin of the page's yr()."""
+    fy = fy or CCC["years"][-1]
+    return d["years"][fy]
+
+
 def guard_args(pipeline_name, fn):
     """Every gates.<fn>(...) call in a pipeline, rendered back to source.
 
@@ -3125,15 +3135,16 @@ def test_ccc_apportionment_availability(page, base):
           (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8"))
     check("ccc avail: and the live year still HAS a derived threshold, so "
           "the guard did not flatten it",
-          isinstance(CCC["statewide"].get("noncreditThreshold"), float)
-          and CCC["statewide"]["noncreditThreshold"] > 0,
-          str(CCC["statewide"].get("noncreditThreshold")))
+          isinstance(CCC["statewide"][CCC["years"][-1]]
+                     .get("noncreditThreshold"), float)
+          and CCC["statewide"][CCC["years"][-1]]["noncreditThreshold"] > 0,
+          str(CCC["statewide"][CCC["years"][-1]].get("noncreditThreshold")))
     check("ccc avail: derived as twice the measured statewide share, not "
           "a constant",
-          abs(CCC["statewide"]["noncreditThreshold"]
-              - 2 * CCC["statewide"]["statewideNoncreditShare"]) < 1e-3,
-          f'{CCC["statewide"]["noncreditThreshold"]} vs '
-          f'{CCC["statewide"]["statewideNoncreditShare"]}')
+          abs(CCC["statewide"][CCC["years"][-1]]["noncreditThreshold"]
+              - 2 * CCC["statewide"][CCC["years"][-1]]["statewideNoncreditShare"]) < 1e-3,
+          f'{CCC["statewide"][CCC["years"][-1]]["noncreditThreshold"]} vs '
+          f'{CCC["statewide"][CCC["years"][-1]]["statewideNoncreditShare"]}')
 
     # ---- unitVal: an absent per-FTES gets no bar, not a NaN-wide one
     page.goto(f"{base}/ccc.html#u=perFtes")
@@ -3142,14 +3153,37 @@ def test_ccc_apportionment_availability(page, base):
     body = page.inner_text("body")
     check("ccc avail: the per-FTES view renders with no NaN anywhere",
           "NaN" not in body, body[:0])
-    widths = page.evaluate(
-        "() => [...document.querySelectorAll('.r .bar i, .r i')]"
-        ".map(e => e.style.width).filter(Boolean)")
-    check("ccc avail: and no bar carries a NaN width",
-          not [w for w in widths if "NaN" in w], str(widths[:3]))
-    check("ccc avail: while bars ARE drawn for districts that have the "
-          "figure — the absence is a decision, not an empty page",
-          len([w for w in widths if w and w != "0.0%"]) > 10, str(len(widths)))
+    # ANCHORED ON THE ROW, NOT THE BAR. #57 asserted over bar elements,
+    # and the apportionment-less district renders no bar at all (73 <i>
+    # for 75 rows) — so reintroducing the NaN width failed nothing. Each
+    # row is inspected for its own bar, so a row that HAS one is checked
+    # and a row that has none is asserted to have none deliberately.
+    rows = page.evaluate("""() => [...document.querySelectorAll('.r')]
+        .filter(r => r.querySelector('.nm'))
+        .map(r => ({ name: r.querySelector('.nm').textContent.trim(),
+                     width: (r.querySelector('.bar i') || {style:{}}).style.width || null,
+                     text: r.textContent }))""")
+    check("ccc avail: the per-FTES table rendered its rows",
+          len(rows) > 60, str(len(rows)))
+    bad = [r for r in rows if r["width"] and
+           ("NaN" in r["width"] or "undefined" in r["width"])]
+    check("ccc avail: no ROW carries a NaN or undefined bar width",
+          not bad, str([(r["name"], r["width"]) for r in bad[:3]]))
+    cal = [r for r in rows if "Calbright" in r["name"]]
+    check("ccc avail: the apportionment-less row is present and says not "
+          "published", len(cal) == 1 and "not published" in cal[0]["text"],
+          str([r["name"] for r in rows[:3]]))
+    # It draws a ZERO-width bar, which is the honest length for a figure
+    # that does not exist. What it must never draw is NaN — measured: with
+    # the guard removed this cell reads "NaN%".
+    check("ccc avail: and its bar is zero-width, never NaN-width",
+          cal and cal[0]["width"] in ("0%", "0.0%"),
+          str(cal[0]["width"]) if cal else "no row")
+    # POSITIVE CONTROL: rows that HAVE the figure do draw real bars
+    drawn = [r for r in rows if r["width"] and r["width"] not in ("0%", "0.0%")]
+    check("ccc avail: while rows WITH a per-FTES figure draw real bars, so "
+          "the absence above is a decision and not an empty table",
+          len(drawn) > 60, str(len(drawn)))
     check("ccc avail: the apportionment-less district says not published "
           "rather than showing a number",
           "not published" in body, body[:0])
@@ -3553,8 +3587,8 @@ def test_ccc_write_path():
         check("ccc write path: attributed to us, not to the source",
               "our own correction" in ours[0]["note"].lower())
     check("ccc write path: the shipped figure is now the published control",
-          CCC["statewide"]["fundedFtes"] == 1100664.61,
-          str(CCC["statewide"]["fundedFtes"]))
+          CCC["statewide"][CCC["years"][-1]]["fundedFtes"] == 1100664.61,
+          str(CCC["statewide"][CCC["years"][-1]]["fundedFtes"]))
 
 
 def test_gate_declarations():
@@ -3814,26 +3848,28 @@ def test_ccc_absence(page, base):
     # three-valued status, because false is a valid answer.
     for f in ("fundedFtes", "stateGf", "perFtes", "noncreditShare"):
         check(f"ccc absence: {f} is ABSENT, not null — null sums as zero",
-              f not in cal, f"{f}={cal.get(f)!r}")
+              f not in ccc_yr(cal), f"{f}={ccc_yr(cal).get(f)!r}")
     check("ccc absence: no field anywhere in the layer is null",
           not [(d["name"], k) for d in CCC["districts"]
-               for k, v in list(d.items()) + list(d["flags"].items())
+               for k, v in list(d.items()) + list(ccc_yr(d).items())
+               + list(ccc_yr(d)["flags"].items())
                if v is None],
           str([(d["name"], k) for d in CCC["districts"]
-               for k, v in list(d.items()) + list(d["flags"].items())
+               for k, v in list(d.items()) + list(ccc_yr(d).items())
+               + list(ccc_yr(d)["flags"].items())
                if v is None][:3]))
     check("ccc absence: and the flags say unknown in a word, not a null",
-          cal["flags"]["basicAidStatus"] == "not-published"
-          and cal["flags"]["noncreditHeavyStatus"] == "not-published",
-          str(cal["flags"]))
+          ccc_yr(cal)["flags"]["basicAidStatus"] == "not-published"
+          and ccc_yr(cal)["flags"]["noncreditHeavyStatus"] == "not-published",
+          str(ccc_yr(cal)["flags"]))
     check("ccc absence: while the fact that it is absent is still asserted",
-          cal["flags"]["noApportionment"] is True)
+          ccc_yr(cal)["flags"]["noApportionment"] is True)
 
     # ---- the REASON travels with the record
     check("ccc absence: the record carries its own reason",
-          bool(cal.get("noApportionmentReason")))
+          bool(ccc_yr(cal).get("noApportionmentReason")))
     check("ccc absence: and it is Calbright's actual reason",
-          "online community college" in cal["noApportionmentReason"])
+          "online community college" in ccc_yr(cal)["noApportionmentReason"])
     src = (ROOT / "ccc.html").read_text(encoding="utf-8")
     check("ccc absence: the page no longer stores one institution's "
           "explanation to render for a class",
@@ -3843,21 +3879,23 @@ def test_ccc_absence(page, base):
           "noApportionmentReason" in src)
 
     # ---- districts WITH apportionment still carry real booleans
-    known = [d for d in CCC["districts"] if not d["flags"]["noApportionment"]]
+    known = [d for d in CCC["districts"]
+             if not ccc_yr(d)["flags"]["noApportionment"]]
     # POSITIVE CONTROL: the conversion must not have flattened the known
     # answers into the unknown word
     check("ccc absence: every other district still carries a MEASURED status",
-          all(d["flags"]["basicAidStatus"] in ("basic-aid", "state-funded")
+          all(ccc_yr(d)["flags"]["basicAidStatus"] in ("basic-aid", "state-funded")
               for d in known), str(len(known)))
     check("ccc absence: and the community-supported count is unchanged at 8 "
           "— still matching the Exhibit C control",
           sum(1 for d in known
-              if d["flags"]["basicAidStatus"] == "basic-aid") == 8,
+              if ccc_yr(d)["flags"]["basicAidStatus"] == "basic-aid") == 8,
           str(sum(1 for d in known
-                  if d["flags"]["basicAidStatus"] == "basic-aid")))
+                  if ccc_yr(d)["flags"]["basicAidStatus"] == "basic-aid")))
     check("ccc absence: and their numeric fields are present, so absence "
           "means absence rather than everything having vanished",
-          all("fundedFtes" in d and "stateGf" in d for d in known))
+          all("fundedFtes" in ccc_yr(d) and "stateGf" in ccc_yr(d)
+              for d in known))
 
     # ---- BEHAVIOURAL: the page shows unknown as unknown, and the CSV
     #      exports it as empty rather than "no"
@@ -3899,8 +3937,8 @@ def test_ccc_absence(page, base):
           "1,100,664.62", 'appn_statewide.get("fundedFtes", ftes_sum)' not in psrc
           and 'appn_statewide.get("stateGf", gf_sum)' not in psrc)
     check("ccc absence: the shipped statewide FTES is the published control",
-          CCC["statewide"]["fundedFtes"] == 1100664.61,
-          str(CCC["statewide"]["fundedFtes"]))
+          CCC["statewide"][CCC["years"][-1]]["fundedFtes"] == 1100664.61,
+          str(CCC["statewide"][CCC["years"][-1]]["fundedFtes"]))
 
     # ---- BEHAVIOURAL: an undeclared absence refuses the build
     sys.path.insert(0, str(ROOT / "pipeline"))
@@ -4807,10 +4845,14 @@ def test_ccc(page, base):
     Mart derived count); the multi-college and community-supported rosters
     are data-derived and reconcile to source; the state overlap does-not-add;
     and — unlike CSU — the layer is AUTO-reproducible."""
-    ds, sw, meta = CCC["districts"], CCC["statewide"], CCC["meta"]
+    # multi-year: statewide is keyed by fiscal year, and every
+    # year-varying district field lives in district["years"][fy]
+    FY_C = CCC["years"][-1]
+    ds, sw, meta = CCC["districts"], CCC["statewide"][FY_C], CCC["meta"]
+    Y = lambda d: ccc_yr(d, FY_C)
     # ---- data gate: whole-dollar, exact, sum == printed statewide
     check("ccc: 73 districts", len(ds) == 73)
-    ce_sum = sum(d["ce"] for d in ds)
+    ce_sum = sum(Y(d)["ce"] for d in ds)
     check("ccc gate: districts' Current Expense of Education sum to the printed statewide, to the dollar",
           ce_sum == sw["ce"], f"{ce_sum} vs {sw['ce']}")
     # pinned published control (mutation-hardening: sw.ce is pipeline-written;
@@ -4820,25 +4862,25 @@ def test_ccc(page, base):
     check("ccc gate: statewide figure equals the pinned published Table VI total",
           sw["ce"] == CCC_STATEWIDE_CE, f"{sw['ce']} vs {CCC_STATEWIDE_CE}")
     check("ccc gate: every figure is a whole-dollar integer (no cents)",
-          all(isinstance(d["ce"], int) for d in ds) and isinstance(sw["ce"], int))
+          all(isinstance(Y(d)["ce"], int) for d in ds) and isinstance(sw["ce"], int))
     check("ccc: 116 accredited colleges across the districts (reconciles to the official count)",
           sum(d["nColleges"] for d in ds) == 116 and sw["nColleges"] == 116)
     # rosters, data-derived, verified against source counts
-    multi = [d for d in ds if d["flags"]["multiCollege"]]
-    basic = [d for d in ds if d["flags"]["basicAidStatus"] == "basic-aid"]
+    multi = [d for d in ds if Y(d)["flags"]["multiCollege"]]
+    basic = [d for d in ds if Y(d)["flags"]["basicAidStatus"] == "basic-aid"]
     check("ccc: 23 multi-college districts", len(multi) == 23)
     check("ccc: community-supported count matches the Chancellor's Office figure (8)",
           len(basic) == sw["communitySupported"] == 8)
     dangerous = sorted(d["name"] for d in ds
-                       if d["flags"]["multiCollege"]
-                       and d["flags"]["basicAidStatus"] == "basic-aid")
+                       if Y(d)["flags"]["multiCollege"]
+                       and Y(d)["flags"]["basicAidStatus"] == "basic-aid")
     check("ccc: the dangerous cell (multi-college AND community-supported) is verified — includes San Mateo",
           "SAN MATEO" in dangerous and len(dangerous) == 4, str(dangerous))
     # per-FTES = Current Expense / apportionment funded FTES; Calbright has none
     check("ccc: per-FTES derived from apportionment funded FTES (ce/fundedFtes)",
-          all(d["perFtes"] == round(d["ce"] / d["fundedFtes"])
+          all(Y(d)["perFtes"] == round(Y(d)["ce"] / Y(d)["fundedFtes"])
               for d in ds if d.get("fundedFtes")))
-    cal = [d for d in ds if d["flags"]["noApportionment"]]
+    cal = [d for d in ds if Y(d)["flags"]["noApportionment"]]
     check("ccc: the online district (no apportionment FTES) carries no "
           "per-FTES figure — the key is ABSENT, so arithmetic on it yields "
           "NaN rather than zero",
