@@ -1641,10 +1641,11 @@ def test_schools(page, base):
     al = SCHOOL["districts"]["alpine-county-unified"]["years"][latest]
     nj = SCHOOL["districts"]["new-jerusalem-elementary"]["years"][latest]
     check("schools daggers: Palo Alto basic aid, Alpine small, New Jerusalem "
-          "charter-sponsor", pa["basicAid"] and al["smallNSS"]
+          "charter-sponsor", pa["basicAidStatus"] == "basic-aid" and al["smallNSS"]
           and nj["sponsoredCharterADA"] > 100 * nj["ada"])
     ba_count = sum(1 for d in SCHOOL["districts"].values()
-                   if d["years"].get(latest, {}).get("basicAid"))
+                   if d["years"].get(latest, {}).get("basicAidStatus")
+                      == "basic-aid")
     check("schools: basic-aid population is material (the K-12 contract-city "
           "problem)", 100 < ba_count < 200, str(ba_count))
 

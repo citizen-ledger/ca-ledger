@@ -354,7 +354,7 @@
   Object.entries(SCH.districts).forEach(([slug, d]) =>
     (d.nces || []).forEach(id => { ncesToSlug[id] = slug; }));
   const BA_COUNT = Object.values(SCH.districts)
-    .filter(d => (d.years[SCH_FY]||{}).basicAid).length;
+    .filter(d => ((d.years[SCH_FY]||{}).basicAidStatus === "basic-aid")).length;
   const SD_COUNT = Object.keys(SCH.districts).length;
 
   const geoidToSlug = {};
@@ -823,7 +823,11 @@
   }
   function schoolNotes(d, v){
     const notes = [];
-    if (v.basicAid) notes.push("Basic aid: local property tax exceeds this district's "
+    if (v.basicAidStatus === "not-published")
+      notes.push("Basic-aid status is not published by CDE for FY " + SCH_FY
+        + " \u2014 the fact is unavailable, not negative.");
+    else if (v.basicAidStatus === "basic-aid")
+      notes.push("Basic aid: local property tax exceeds this district's "
       + "LCFF entitlement and it keeps the excess — per-ADA spending partly reflects "
       + "tax-base geography, not choices (" + BA_COUNT + " of " + SD_COUNT
       + " districts are in this position).");
