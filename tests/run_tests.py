@@ -2799,6 +2799,122 @@ def test_absent_not_zero(page, base):
           "Forks of Salmon" in body, body[:200])
 
 
+def test_csu_reconciling_not_tautological(page, base):
+    """A LINE DEFINED AS A RESIDUAL CANNOT TEST THE SUM IT CAME FROM.
+
+    fetch_csu_data.gate() computed
+        reconciling = univ["opexpK"] - camp_sum
+    and then asserted
+        camp_sum + reconciling != univ["opexpK"]
+    which is false for every input, by construction. UC removed the same
+    shape in #43. Measured here over 200,000 randomised trials — including
+    components exceeding the total and negative components — it fired 0
+    times, while the two checks beside it fired 86,190 and 109,546.
+
+    Unlike UC's, this one was LOAD-BEARING: three published claims said
+    the campuses reconcile to the audited University total, when any
+    error in a campus figure is silently absorbed by the residual."""
+    import copy
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fcsu", str(ROOT / "pipeline" / "fetch_csu_data.py"))
+    fcsu = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_csu_data.py"]
+    try:
+        spec.loader.exec_module(fcsu)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    campuses, sysrow, univ, comp = fcsu.parse_tsv(fcsu.TSV)
+    ELIM = 186982
+    def run(**over):
+        a = dict(campuses=copy.deepcopy(campuses), univ=copy.deepcopy(univ),
+                 comp=copy.deepcopy(comp),
+                 combined_combined=univ["opexpK"] + comp["opexpK"] - ELIM,
+                 eliminations=ELIM)
+        a.update(over)
+        return fcsu.gate(a["campuses"], a["univ"], a["comp"],
+                         a["combined_combined"], a["eliminations"])[0]
+
+    # POSITIVE CONTROL FIRST: the real figures pass. Without this, every
+    # rejection below would be satisfied by a gate that refuses everything.
+    check("csu tautology: the real FY2023-24 figures still pass the gate",
+          run() == [], str(run()[:2]))
+
+    # THE SHAPES IT MUST REJECT
+    over = copy.deepcopy(campuses); over[0]["opexpK"] = univ["opexpK"]
+    check("csu tautology: a campus figure exceeding the University total is "
+          "rejected", run(campuses=over) != [])
+    neg = copy.deepcopy(campuses); neg[3]["opexpK"] = -500_000
+    check("csu tautology: a negative campus figure is rejected",
+          run(campuses=neg) != [])
+    exact = copy.deepcopy(campuses)
+    exact[0]["opexpK"] += univ["opexpK"] - sum(c["opexpK"] for c in campuses)
+    check("csu tautology: a residual driven to EXACTLY ZERO is rejected — "
+          "1,207 people work at the Chancellor's Office, so nothing is not a "
+          "plausible cost", run(campuses=exact) != [])
+    under = copy.deepcopy(campuses)
+    for c in under:
+        c["opexpK"] = int(c["opexpK"] * 0.80)
+    check("csu tautology: campuses under-extracted by 20% blow the band",
+          run(campuses=under) != [])
+    unext = copy.deepcopy(campuses); unext[7]["stateAppropK"] = None
+    check("csu tautology: a campus field left unextracted (=RECONCILE) is "
+          "rejected — only the systemwide row may be derived",
+          run(campuses=unext) != [])
+    check("csu tautology: a broken combining identity is still rejected",
+          run(combined_combined=univ["opexpK"] + comp["opexpK"] - ELIM + 1) != [])
+    check("csu tautology: a short roster is still rejected",
+          run(campuses=copy.deepcopy(campuses)[:22]) != [])
+
+    # THE MEASUREMENT, encoded: the removed assertion cannot fail
+    fired = 0
+    rnd = __import__("random").Random(20260722)
+    for _ in range(20000):
+        n = rnd.randint(1, 30)
+        u = rnd.randint(1, 10_000_000)
+        cs = [rnd.randint(-u, u * 3) for _ in range(n)]
+        csum = sum(cs)
+        if csum + (u - csum) != u:
+            fired += 1
+    check("csu tautology: the removed identity fires on none of 20,000 "
+          "randomised shapes, including components over the total and "
+          "negative ones", fired == 0, str(fired))
+    src = (ROOT / "pipeline" / "fetch_csu_data.py").read_text(encoding="utf-8")
+    check("csu tautology: and it is gone from the pipeline",
+          "camp_sum + reconciling != univ" not in src)
+
+    # ---- THE PUBLISHED CLAIMS, corrected
+    check("csu tautology: meta no longer says the campuses plus the derived "
+          "line sum to the University total as though that were checked",
+          "the 23 campuses plus the visible Systemwide & eliminations line "
+          "sum exactly to the University total" not in CSU["meta"]["gate"])
+    check("csu tautology: meta says plainly which half is reconciled and "
+          "which is derived",
+          "WHAT IS RECONCILED" in CSU["meta"]["gate"]
+          and "DERIVED" in CSU["meta"]["gate"], CSU["meta"]["gate"][:0])
+    check("csu tautology: and that CSU publishes no separate figure for it",
+          "publishes no separate figure" in CSU["meta"]["gate"])
+
+    page.goto(f"{base}/csu.html")
+    page.wait_for_selector("#gateStrip")
+    page.wait_for_timeout(300)
+    strip = page.inner_text("#gateStrip")
+    check("csu tautology: the page states the combining identity as the "
+          "thing that reconciles — a POSITIVE claim it still earns",
+          "combining identity holds exactly" in strip, strip[:0])
+    check("csu tautology: and calls the Chancellor's Office line derived, "
+          "not reconciled", "derived rather than reconciled" in strip, strip[:0])
+    body = page.inner_text("body")
+    check("csu tautology: the page no longer tells a reader the campuses are "
+          "reconciled against the systemwide total",
+          "reconciled exactly \u2014 to the thousand, the finest unit CSU "
+          "publishes \u2014 against CSU's own audited systemwide total"
+          not in body)
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7229,6 +7345,7 @@ def main():
             test_ccc_write_path()
             test_historical_state(page, base)
             test_absent_not_zero(page, base)
+            test_csu_reconciling_not_tautological(page, base)
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
