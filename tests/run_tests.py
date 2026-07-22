@@ -2095,14 +2095,46 @@ def test_state_fund_identity(page, base):
         check("state funds: and no figure is reported as merely CHANGED, "
               "because none was", kinds.get("changed", 0) == 0, str(kinds))
 
-    # ---- the page renders the era-correct name, not the latest one
-    page.goto(f"{base}/index.html#y=2020-21&a=health-and-human-service")
-    page.wait_for_selector("#allocView:not([hidden])")
-    page.wait_for_timeout(400)
-    body = page.inner_text("body")
-    check("state funds: the FY 2020-21 page does not show a fund under a name "
-          "it did not have until FY 2025-26",
-          "Behavioral Health Services Fund" not in body)
+    # ---- the page renders the era-correct name, not the latest one.
+    #
+    # This addressed the AGENCY page, which renders fund CLASSES only —
+    # "General Fund", "Special Funds", "Bond Funds". Measured: of the 544
+    # names in the FY 2020-21 legend, exactly one appears there, and only
+    # because "General Fund" is also a class label. Per-fund names render
+    # one level deeper, at the department drill. So the negative was true
+    # of a page that could never have shown the string, and would have
+    # stayed true with the legend completely broken.
+    #
+    # Fund 3085 is asserted in BOTH directions across the rename, so each
+    # year's negative is anchored by the other year's positive: a blank
+    # render fails the positives rather than passing the negatives.
+    OLD_NAME = "Mental Health Services Fund"
+    NEW_NAME = "Behavioral Health Services Fund"
+    DHCS = "index.html#y={}&a=health-and-human-service&dd=4260"
+
+    def dept_drill(fy):
+        page.goto(f"{base}/" + DHCS.format(fy))
+        page.wait_for_selector("#allocView:not([hidden])")
+        page.wait_for_selector(".depth-row")
+        page.wait_for_timeout(250)
+        return page.inner_text("body"), page.locator(".depth-row").count()
+
+    b20, n20 = dept_drill("2020-21")
+    check("state funds: the FY 2020-21 department drill really renders fund "
+          "rows — the depth at which names exist", n20 > 20, str(n20))
+    check("state funds: and names fund 3085 as it was named THEN",
+          OLD_NAME in b20)
+    check("state funds: not under a name it would not carry for five more "
+          "years", NEW_NAME not in b20)
+
+    b25, n25 = dept_drill("2025-26")
+    check("state funds: the FY 2025-26 drill renders fund rows too",
+          n25 > 20, str(n25))
+    check("state funds: where the SAME fund carries its post-Proposition 1 "
+          "name — so the page reads a per-year legend, not one global dict",
+          NEW_NAME in b25)
+    check("state funds: and no longer shows the pre-rename name there",
+          OLD_NAME not in b25)
 
 
 def test_identity_leaks(page, base):
