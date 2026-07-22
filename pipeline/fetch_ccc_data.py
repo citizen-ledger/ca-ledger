@@ -120,6 +120,50 @@ UA = {"User-Agent": "Mozilla/5.0 (Citizen Ledger data pipeline)", "Referer": POR
 # Current Expense of Education. Its MIS district code:
 ALLAN_HANCOCK_CODE = "610"
 
+# ── APPORTIONMENT AVAILABILITY, DECLARED FROM VERIFIED EXISTENCE ──────
+#
+# cccco.edu SOFT-404s. Every guessed path returns HTTP 200 with an
+# identical 40,100-byte HTML page: measured, 90 of 90 nonsense URLs
+# "found", including impossible dates (FY2021-22 dated February 2021)
+# and corrupt paths (ocs/apportionment/). STATUS IS NEVER CONSULTED.
+# Existence here means the fetched bytes start with %PDF- AND the
+# response content-type is application/pdf. Nothing in this table was
+# extrapolated from a filename pattern.
+#
+# Located via the Wayback CDX index (the live apportionments index page
+# genuinely 404s), then each candidate opened and read.
+#
+# THE URL IS NOT THE YEAR. The archived file under a 2021-22 path is
+# named 202021-Exhibit-C-July-2021-Revision.pdf and its first page
+# declares "2020-21 Second Principal" — FY2020-21 data. Every entry
+# below is keyed on the fiscal year the PDF states about ITSELF, which
+# is the position-guard rule applied to source identity. FY2021-22 has
+# no verified Exhibit C and is recorded as absent, not inferred present.
+#
+# ROUNDS DIFFER and are recorded, because P1, P2 and R1 are different
+# stages of the same year's apportionment and are not interchangeable.
+APPORTIONMENT_AVAILABLE = {
+    "2018-19": {"round": "P2", "declares": "2018-19 Second Principal Apportionment"},
+    "2019-20": {"round": "R1", "declares": "2019-20 Recalculation Apportionment"},
+    "2020-21": {"round": "P1", "declares": "2020-21 First Principal"},
+    "2021-22": None,   # no Exhibit C verified — facts are not-published
+    "2022-23": {"round": "R1", "declares": "2022-23 Recalculation"},
+    "2023-24": {"round": "P2", "declares": "2023-24 Second Principal"},
+}
+APPORTIONMENT_UNVERIFIED_REASON = (
+    "The Chancellor's Office publishes no Exhibit C for this fiscal year "
+    "that the Ledger could verify. cccco.edu returns HTTP 200 for paths "
+    "that do not exist, so a file is treated as present only when the "
+    "bytes it returns are a PDF; none was found for this year."
+)
+
+
+def apportionment_published(fy):
+    """Whether a verified Exhibit C exists for this fiscal year.
+
+    Declared, never sniffed, and never inferred from a URL that responds."""
+    return APPORTIONMENT_AVAILABLE.get(fy) is not None
+
 # apportionment-name → portal-canonical-name normalized aliases (the
 # three sources spell a handful of merged/renamed districts differently)
 APPN_ALIAS = {
@@ -472,10 +516,19 @@ def build(refresh):
         raise SystemExit(f"FY {FY}: {len(fail)} gate failure(s) — nothing written")
 
     # statewide noncredit share → the data-derived "noncredit-heavy" threshold (2× statewide)
-    sw_nc_num = sum((code2app[c]["noncreditShare"]) * code2app[c]["fundedFtes"]
-                    for c in code2app)
-    sw_nc_share = sw_nc_num / ftes_sum
-    nc_threshold = round(2 * sw_nc_share, 4)
+    # THE THRESHOLD IS DERIVED FROM THE APPORTIONMENT SET, so a year with
+    # no apportionment has no threshold to derive — and dividing by an
+    # empty set's FTES is a ZeroDivisionError, not a zero. The flag then
+    # becomes not-published for every district, which is the truth: it is
+    # 2x a statewide share that was never measured.
+    if code2app and ftes_sum:
+        sw_nc_num = sum((code2app[c]["noncreditShare"]) * code2app[c]["fundedFtes"]
+                        for c in code2app)
+        sw_nc_share = sw_nc_num / ftes_sum
+        nc_threshold = round(2 * sw_nc_share, 4)
+    else:
+        sw_nc_share = None
+        nc_threshold = None
 
     # ── assemble districts ───────────────────────────────────────────
     districts = []
@@ -525,6 +578,7 @@ def build(refresh):
             "basicAidStatus": rec["basicAidStatus"],
             "noncreditHeavyStatus": (
                 "not-published" if "noncreditShare" not in rec
+                or nc_threshold is None
                 else "noncredit-heavy" if rec["noncreditShare"] >= nc_threshold
                 else "not-noncredit-heavy"),
             "noApportionment": a is None,
@@ -627,7 +681,8 @@ def build(refresh):
             "nColleges": n_colleges,
             "communitySupported": basic_n,
             "noncreditThreshold": nc_threshold,
-            "statewideNoncreditShare": round(sw_nc_share, 4),
+            "statewideNoncreditShare": (round(sw_nc_share, 4)
+                                            if sw_nc_share is not None else None),
         },
         "districts": districts,
     }

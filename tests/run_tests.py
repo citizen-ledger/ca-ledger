@@ -3068,6 +3068,93 @@ def test_unknown_facts_render(page, base):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_ccc_apportionment_availability(page, base):
+    """EXISTENCE IS TESTED ON BYTES, NEVER ON STATUS.
+
+    cccco.edu soft-404s: measured, 90 of 90 guessed URLs returned HTTP
+    200 with an identical 40,100-byte HTML page, including impossible
+    dates and corrupt paths. A table built from status codes would have
+    declared every year available and fed 40 KB of HTML to the parser.
+
+    And the URL is not the year: the archived file under a 2021-22 path
+    is named 202021-Exhibit-C-July-2021-Revision.pdf and its first page
+    declares "2020-21 Second Principal". Every entry is keyed on what
+    the PDF says about itself."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fccc", str(ROOT / "pipeline" / "fetch_ccc_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_ccc_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    A = m.APPORTIONMENT_AVAILABLE
+    check("ccc avail: the table is declared, not derived at runtime",
+          isinstance(A, dict) and len(A) >= 6, str(sorted(A)))
+    # POSITIVE CONTROL: the year the layer actually ships is available,
+    # so the absence below is a distinction and not a blanket refusal
+    check("ccc avail: FY2022-23 — the shipped year — is available",
+          m.apportionment_published("2022-23"), str(A.get("2022-23")))
+    check("ccc avail: and it records WHICH round, because P1, P2 and R1 "
+          "are different stages of the same year",
+          A["2022-23"]["round"] == "R1", str(A["2022-23"]))
+    # THE CORRECTION: a path said 2021-22, the document said 2020-21
+    check("ccc avail: FY2021-22 is recorded ABSENT — the file under its "
+          "path declares itself FY2020-21",
+          m.apportionment_published("2021-22") is False, str(A.get("2021-22")))
+    check("ccc avail: FY2020-21 is present, which is the year that file "
+          "actually carries", m.apportionment_published("2020-21"))
+    check("ccc avail: every available year names the round it came from",
+          all(v and v.get("round") and v.get("declares")
+              for k, v in A.items() if v is not None), str(A))
+    check("ccc avail: an unknown year is not silently available",
+          m.apportionment_published("1999-00") is False)
+    check("ccc avail: the reason names the soft-404, so a later reader "
+          "does not repeat the guess",
+          "returns HTTP 200 for paths that do not exist"
+          in m.APPORTIONMENT_UNVERIFIED_REASON)
+
+    # ---- the empty-set threshold no longer divides by nothing
+    check("ccc avail: a threshold derived from an empty apportionment set "
+          "is None, not a ZeroDivisionError",
+          "if code2app and ftes_sum:" in
+          (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8"))
+    check("ccc avail: and the live year still HAS a derived threshold, so "
+          "the guard did not flatten it",
+          isinstance(CCC["statewide"].get("noncreditThreshold"), float)
+          and CCC["statewide"]["noncreditThreshold"] > 0,
+          str(CCC["statewide"].get("noncreditThreshold")))
+    check("ccc avail: derived as twice the measured statewide share, not "
+          "a constant",
+          abs(CCC["statewide"]["noncreditThreshold"]
+              - 2 * CCC["statewide"]["statewideNoncreditShare"]) < 1e-3,
+          f'{CCC["statewide"]["noncreditThreshold"]} vs '
+          f'{CCC["statewide"]["statewideNoncreditShare"]}')
+
+    # ---- unitVal: an absent per-FTES gets no bar, not a NaN-wide one
+    page.goto(f"{base}/ccc.html#u=perFtes")
+    page.wait_for_selector(".r")
+    page.wait_for_timeout(400)
+    body = page.inner_text("body")
+    check("ccc avail: the per-FTES view renders with no NaN anywhere",
+          "NaN" not in body, body[:0])
+    widths = page.evaluate(
+        "() => [...document.querySelectorAll('.r .bar i, .r i')]"
+        ".map(e => e.style.width).filter(Boolean)")
+    check("ccc avail: and no bar carries a NaN width",
+          not [w for w in widths if "NaN" in w], str(widths[:3]))
+    check("ccc avail: while bars ARE drawn for districts that have the "
+          "figure — the absence is a decision, not an empty page",
+          len([w for w in widths if w and w != "0.0%"]) > 10, str(len(widths)))
+    check("ccc avail: the apportionment-less district says not published "
+          "rather than showing a number",
+          "not published" in body, body[:0])
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7527,6 +7614,7 @@ def main():
             test_absent_not_zero(page, base)
             test_csu_reconciling_not_tautological(page, base)
             test_unknown_facts_render(page, base)
+            test_ccc_apportionment_availability(page, base)
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
