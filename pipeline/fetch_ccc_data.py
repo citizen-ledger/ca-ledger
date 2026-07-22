@@ -99,6 +99,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates  # noqa: E402
+import cache_guard                              # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -249,11 +250,9 @@ def _cached(name, fetch, refresh, binary=False):
         return path.read_bytes() if binary else path.read_text(encoding="utf-8")
     CACHE.mkdir(parents=True, exist_ok=True)
     blob = fetch()
-    if binary:
-        path.write_bytes(blob)
-    else:
-        path.write_text(blob, encoding="utf-8")
-    return blob
+    # through the guard: the cached sources are read-only, so a stray
+    # write cannot reach them and a refresh unlocks only its own file
+    return cache_guard.write_cached(path, blob, binary=binary)
 
 
 # ── source 1: CCFS-311 portal ────────────────────────────────────────

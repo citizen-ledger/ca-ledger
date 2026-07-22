@@ -3189,6 +3189,106 @@ def test_ccc_apportionment_availability(page, base):
           "not published" in body, body[:0])
 
 
+def test_source_cache_unwritable():
+    """THE SOURCE CACHE CANNOT BE REACHED BY A TEST.
+
+    pipeline/cache/ holds the fetched documents every gate is measured
+    against. In PR #59 a mutation test wrote a corrupted statewide
+    control into pipeline/cache/ccc/tablevi-2014-15.txt: the scratch
+    harness had symlinked the real cache in so the pipeline could find
+    it, and a write meant for a throwaway copy landed on the original.
+    It was noticed only because the next run happened to fail. Applied
+    before the digest was taken, it would have gated clean against a
+    poisoned source.
+
+    The control is not "the harness is careful". Every cached file is
+    mode 0o444, so the write fails at the moment it is attempted."""
+    import hashlib
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import cache_guard
+    cache = ROOT / "pipeline" / "cache"
+    if not cache.exists():
+        check("cache guard: the source cache is present to protect", False,
+              "no pipeline/cache — run a pipeline with --refresh")
+        return
+
+    files = [p for p in cache.rglob("*") if p.is_file() and not p.is_symlink()]
+    check("cache guard: there are cached sources to protect at all",
+          len(files) > 20, str(len(files)))
+    writable = [p.relative_to(cache) for p in files if not cache_guard.is_locked(p)]
+    check("cache guard: EVERY cached source file is read-only",
+          not writable, str([str(p) for p in writable[:4]]))
+
+    # ---- BEHAVIOURAL: the write that poisoned the cache is refused now
+    probe = cache / "ccc" / "tablevi-fy2223.txt"
+    if probe.exists():
+        before_bytes = probe.read_bytes()
+        before = hashlib.sha256(before_bytes).hexdigest()
+
+        def attempt(write_to, payload):
+            """Try a destructive write and ALWAYS put the file back.
+
+            The first draft of this assumed the write would fail, and so
+            never restored on success. Running it with the guard off —
+            which is exactly the mutation that proves the guard works —
+            left "POISON" in tablevi-fy2223.txt. A probe for a
+            destructive operation has to be safe in the case where the
+            operation SUCCEEDS, which is the case it exists to detect.
+            """
+            try:
+                write_to.write_bytes(payload)
+            except (PermissionError, OSError):
+                return True                      # refused, nothing to undo
+            finally:
+                if probe.read_bytes() != before_bytes:
+                    os.chmod(probe, 0o644)
+                    probe.write_bytes(before_bytes)
+                    os.chmod(probe, 0o444)
+            return False
+
+        check("cache guard: a direct write to a cached source is REFUSED",
+              attempt(probe, b"MUTATION-TEST-PROBE"))
+        check("cache guard: and the file is byte-identical afterwards",
+              hashlib.sha256(probe.read_bytes()).hexdigest() == before)
+
+        # THROUGH A SYMLINK — the exact shape of the #59 accident
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as td:
+            view = Path(td) / "cache"
+            view.symlink_to(cache, target_is_directory=True)
+            check("cache guard: and a write THROUGH a symlinked view of the "
+                  "cache — how #59 reached it — is refused too",
+                  attempt(view / "ccc" / "tablevi-fy2223.txt", b"POISON"))
+        check("cache guard: still byte-identical after the symlink attempt",
+              hashlib.sha256(probe.read_bytes()).hexdigest() == before)
+
+        # POSITIVE CONTROL: a deliberate refresh can still write, and the
+        # guard re-locks afterwards. Without this the assertions above
+        # would be satisfied by a cache nothing can ever write.
+        with cache_guard.unlocked(probe):
+            wrote = False
+            try:
+                probe.write_bytes(probe.read_bytes())
+                wrote = True
+            except OSError:
+                pass
+        check("cache guard: a deliberate refresh CAN still write through "
+              "cache_guard.unlocked()", wrote)
+        check("cache guard: and the file is re-locked on the way out, so a "
+              "refresh cannot leave the cache open behind it",
+              cache_guard.is_locked(probe))
+        check("cache guard: the round trip left the bytes unchanged",
+              hashlib.sha256(probe.read_bytes()).hexdigest() == before)
+
+    # ---- the safe sandbox helper exists, so the unsafe pattern is not
+    #      the convenient one
+    sbx = (ROOT / "tests" / "sandbox.py")
+    check("cache guard: a sandbox helper is committed, so a future harness "
+          "does not hand-roll the symlink again", sbx.exists())
+    check("cache guard: and it names the incident it exists to prevent",
+          "tablevi-2014-15.txt" in sbx.read_text(encoding="utf-8"))
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7657,6 +7757,7 @@ def main():
             test_csu_reconciling_not_tautological(page, base)
             test_unknown_facts_render(page, base)
             test_ccc_apportionment_availability(page, base)
+            test_source_cache_unwritable()
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
