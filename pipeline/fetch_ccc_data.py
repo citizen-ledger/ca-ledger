@@ -491,9 +491,12 @@ def build(refresh):
         if a:
             rec["fundedFtes"] = round(a["fundedFtes"], 2)
             rec["stateGf"] = round(a["stateGf"])
-            rec["perFtes"] = round(cev["ce"] / a["fundedFtes"]) if a["fundedFtes"] else None
+            # a rate with no denominator is not published, rather than null
+            if a["fundedFtes"]:
+                rec["perFtes"] = round(cev["ce"] / a["fundedFtes"])
             rec["noncreditShare"] = a["noncreditShare"]
-            rec["basicAid"] = a["ptaxExcess"] < -1
+            rec["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
+                                     else "state-funded")
         else:
             # ABSENCE MARKS ABSENCE. `basicAid = False` used to publish
             # "we checked the property-tax-excess schedule and this is not
@@ -507,25 +510,31 @@ def build(refresh):
                     "record and no declared reason. An unexplained absence is "
                     "a parse failure until it is shown otherwise; declare it "
                     "in NO_APPORTIONMENT deliberately. Nothing written.")
-            rec["fundedFtes"] = None
-            rec["stateGf"] = None
-            rec["perFtes"] = None
-            rec["noncreditShare"] = None
-            rec["basicAid"] = None
+            # THE CONFORMING ENCODING (see fetch_school_data.LCFF_PUBLISHES).
+            # These were null. null is falsy and coerces to 0 in a sum, so
+            # it is the shape the rule exists to forbid: a consumer doing
+            # `if (d.basicAid)` or `total += d.stateGf` gets a confident
+            # wrong answer. A number that is not known is ABSENT — absence
+            # yields NaN, which is not a valid answer. A boolean that is
+            # not known is a THREE-VALUED STATUS, because false is a valid
+            # answer and has no room left to mean "unknown".
+            rec["basicAidStatus"] = "not-published"
             rec["noApportionmentReason"] = reason
         rec["flags"] = {
             "multiCollege": rec["nColleges"] > 1,
-            "basicAid": rec["basicAid"],
-            # None (unknown) is distinct from False (measured, and it isn't)
-            "noncreditHeavy": (None if rec["noncreditShare"] is None
-                               else rec["noncreditShare"] >= nc_threshold),
+            "basicAidStatus": rec["basicAidStatus"],
+            "noncreditHeavyStatus": (
+                "not-published" if "noncreditShare" not in rec
+                else "noncredit-heavy" if rec["noncreditShare"] >= nc_threshold
+                else "not-noncredit-heavy"),
             "noApportionment": a is None,
         }
         districts.append(rec)
     districts.sort(key=lambda r: r["name"])
 
     dangerous = sorted(r["name"] for r in districts
-                       if r["flags"]["multiCollege"] and r["flags"]["basicAid"])
+                       if r["flags"]["multiCollege"]
+                       and r["flags"]["basicAidStatus"] == "basic-aid")
 
     payload = {
         "meta": {
@@ -641,7 +650,7 @@ def main():
     print(f"  {payload['statewide']['nColleges']} accredited colleges · "
           f"{sum(1 for r in d if r['flags']['multiCollege'])} multi-college · "
           f"{payload['statewide']['communitySupported']} community-supported · "
-          f"{sum(1 for r in d if r['flags']['noncreditHeavy'])} noncredit-heavy · "
+          f"{sum(1 for r in d if r['flags']['noncreditHeavyStatus'] == 'noncredit-heavy')} noncredit-heavy · "
           f"funded FTES {payload['statewide']['fundedFtes']:,.0f}", file=sys.stderr)
 
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)

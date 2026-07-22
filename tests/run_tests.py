@@ -2916,6 +2916,158 @@ def test_csu_reconciling_not_tautological(page, base):
           not in body)
 
 
+def test_unknown_facts_render(page, base):
+    """THE UNKNOWN-FACT MACHINERY, DRIVEN ON A SYNTHETIC PAYLOAD.
+
+    #55 built the representation but shipped it unexercised: all three
+    loaded years publish everything, so meta.unpublished is empty and no
+    "not published" row has ever rendered. The extension depends on this
+    machinery; it should not first run in production.
+
+    A synthetic school-data.js is served in place of the real one, with
+    one district in each unknown state — basicAidStatus not-published,
+    fundedADA absent, and both at once — and every read site is driven
+    against it."""
+    import http.server
+    import shutil
+    import socketserver
+    import tempfile
+    import threading
+
+    real = json.loads(re.search(
+        r"=\s*(\{.*\})\s*;?\s*$",
+        (ROOT / "school-data.js").read_text(encoding="utf-8"), re.S).group(1))
+    FY = real["years"][-1]
+    ids = list(real["districts"])
+    KNOWN, NO_BA, NO_BOTH = ids[0], ids[1], ids[2]
+    # POSITIVE CONTROL district keeps everything; the other two lose facts
+    real["districts"][NO_BA]["years"][FY]["basicAidStatus"] = "not-published"
+    d3 = real["districts"][NO_BOTH]["years"][FY]
+    d3["basicAidStatus"] = "not-published"
+    real["districts"][KNOWN]["years"][FY]["basicAidStatus"] = "basic-aid"
+    coe_id = list(real["countyOffices"])[0]
+    real["countyOffices"][coe_id]["years"][FY].pop("fundedADA", None)
+    coe_ok = list(real["countyOffices"])[1]
+    real["countyOffices"][coe_ok]["years"][FY]["fundedADA"] = 4321.0
+    REASON = ("CDE publishes no LCFF funding summary for this fiscal year.")
+    real["meta"]["unpublished"] = {FY: {"basicAid": REASON, "fundedADA": REASON}}
+
+    tmp = tempfile.mkdtemp()
+    for f in ROOT.glob("*.js"):
+        shutil.copy(f, Path(tmp) / f.name)
+    for f in ROOT.glob("*.html"):
+        shutil.copy(f, Path(tmp) / f.name)
+    (Path(tmp) / "school-data.js").write_text(
+        "window.CA_SCHOOL_DATA = " + json.dumps(real) + ";\n", encoding="utf-8")
+
+    class H(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, directory=tmp, **kw)
+        def log_message(self, *a):
+            pass
+    httpd = socketserver.TCPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    b2 = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        WANT = "not published for FY " + FY
+        # ---- THE RECORD
+        page.goto(f"{b2}/schools.html#c={NO_BA}&y={FY}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        rec = page.inner_text("#recordBody")
+        check("unknown: the record says basic-aid status is not known",
+              "not known for FY " + FY in rec, rec[:0])
+        check("unknown: and gives the source's reason, not a bare 'unknown'",
+              "publishes no LCFF funding summary" in rec, rec[:0])
+        check("unknown: and says the fact is unavailable rather than negative",
+              "unavailable, not negative" in rec, rec[:0])
+        check("unknown: the record is NOT blank — a blank cell reads as a bug",
+              len(rec) > 200, str(len(rec)))
+        # POSITIVE CONTROL: the known district still states its status
+        page.goto(f"{b2}/schools.html#c={KNOWN}&y={FY}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        kn = page.inner_text("#recordBody")
+        check("unknown: a district whose status IS known still says so, so "
+              "the unknown wording is a distinction and not the only output",
+              "not known for FY" not in kn, kn[:0])
+
+        # ---- THE COMPARISON
+        page.goto(f"{b2}/schools.html#c={KNOWN},{NO_BA}&y={FY}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        cmp_txt = page.inner_text("#recordBody")
+        check("unknown: the comparison carries the unknown district's note",
+              "not known for FY " + FY in cmp_txt, cmp_txt[:0])
+
+        # ---- THE COUNTY-OFFICE RECORD and PRINT SHEET (fundedADA absent)
+        page.goto(f"{b2}/schools.html#t=coes&c={coe_id}&y={FY}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        co = page.inner_text("#recordBody")
+        sheet = page.inner_text("#recordSheet")
+        check("unknown: an absent funded ADA reads as not published, never 0",
+              WANT in co, co[:0])
+        check("unknown: and never renders NaN or an infinity from the gap",
+              "NaN" not in co and "\u221e" not in co
+              and "NaN" not in sheet and "\u221e" not in sheet)
+        check("unknown: the PRINT SHEET says it too — the sheet is the "
+              "artefact a reader keeps", WANT in sheet, sheet[:0])
+        # POSITIVE CONTROL: the COE that has ADA still prints the number
+        page.goto(f"{b2}/schools.html#t=coes&c={coe_ok}&y={FY}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        okco = page.inner_text("#recordBody")
+        check("unknown: a county office WITH funded ADA still prints it",
+              "4,321" in okco and WANT not in okco, okco[:0])
+
+        # ---- THE CSV: nothing knowable-and-wrong where the page says unknown
+        page.goto(f"{b2}/schools.html#c={NO_BA}&y={FY}")
+        page.wait_for_selector("#csvBtn")
+        page.wait_for_timeout(300)
+        # Driven through the real download, not a page.evaluate on an
+        # internal: an earlier draft probed `csvText`, which is not global,
+        # got null, and skipped both assertions behind `if csv:` — the
+        # self-guarded dormant assertion this suite already refuses.
+        with page.expect_download() as dl:
+            page.click("#csvBtn")
+        csv = Path(dl.value.path()).read_text(encoding="utf-8")
+        row = [l for l in csv.splitlines()
+               if l.startswith(real["districts"][NO_BA]["name"])]
+        check("unknown: the export really contains the district's row, so "
+              "the two assertions below have something to read",
+              len(row) == 1, str(len(row)))
+        check("unknown: the CSV exports the unknown status word, never an "
+              "empty cell and never 'false'",
+              row and "not-published" in row[0], str(row[:1])[:120])
+        # narrowed to the basic-aid CELL: the `false` beside it is smallNSS,
+        # a genuinely measured boolean, and forbidding it wholesale would
+        # have been an assertion about the wrong column
+        cells = row[0].split(",") if row else []
+        i = cells.index("not-published") if "not-published" in cells else -1
+        check("unknown: the basic-aid cell itself carries the unknown word, "
+              "not a measured false", i >= 0 and cells[i] == "not-published",
+              str(cells[:12]))
+        check("unknown: and the cell beside it is a REAL measured boolean, "
+              "so the export still distinguishes measured from unknown",
+              i >= 0 and cells[i + 1] in ("true", "false"),
+              str(cells[i:i + 2] if i >= 0 else cells[:6]))
+
+        # ---- THE CITATION
+        page.goto(f"{b2}/schools.html#c={NO_BA}&y={FY}")
+        page.wait_for_selector("#citeToggle")
+        page.click("#citeToggle")
+        page.wait_for_selector("#citeText:visible")
+        cite = page.inner_text("#citeText")
+        check("unknown: the citation states no figure the page calls unknown",
+              "NaN" not in cite and "\u221e" not in cite, cite[:0])
+        check("unknown: and the citation is real, not empty",
+              len(cite) > 60, str(len(cite)))
+    finally:
+        httpd.shutdown()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -3568,12 +3720,24 @@ def test_ccc_absence(page, base):
           cal is not None)
 
     # ---- the payload marks absence, on every apportionment-derived field
-    for f in ("fundedFtes", "stateGf", "perFtes", "noncreditShare", "basicAid"):
-        check(f"ccc absence: {f} is null, not a value that reads as measured",
-              cal[f] is None, f"{f}={cal[f]!r}")
-    check("ccc absence: and the flags say unknown rather than no",
-          cal["flags"]["basicAid"] is None
-          and cal["flags"]["noncreditHeavy"] is None,
+    # THE CONFORMING ENCODING. These were null. null is falsy and coerces
+    # to 0 in a sum, so a consumer doing `total += d.stateGf` got a
+    # confident wrong answer — the shape the rule forbids. A number that
+    # is not known is now ABSENT; a boolean that is not known is a
+    # three-valued status, because false is a valid answer.
+    for f in ("fundedFtes", "stateGf", "perFtes", "noncreditShare"):
+        check(f"ccc absence: {f} is ABSENT, not null — null sums as zero",
+              f not in cal, f"{f}={cal.get(f)!r}")
+    check("ccc absence: no field anywhere in the layer is null",
+          not [(d["name"], k) for d in CCC["districts"]
+               for k, v in list(d.items()) + list(d["flags"].items())
+               if v is None],
+          str([(d["name"], k) for d in CCC["districts"]
+               for k, v in list(d.items()) + list(d["flags"].items())
+               if v is None][:3]))
+    check("ccc absence: and the flags say unknown in a word, not a null",
+          cal["flags"]["basicAidStatus"] == "not-published"
+          and cal["flags"]["noncreditHeavyStatus"] == "not-published",
           str(cal["flags"]))
     check("ccc absence: while the fact that it is absent is still asserted",
           cal["flags"]["noApportionment"] is True)
@@ -3593,12 +3757,20 @@ def test_ccc_absence(page, base):
 
     # ---- districts WITH apportionment still carry real booleans
     known = [d for d in CCC["districts"] if not d["flags"]["noApportionment"]]
-    check("ccc absence: every other district still has a measured basicAid",
-          all(isinstance(d["flags"]["basicAid"], bool) for d in known),
-          str(len(known)))
-    check("ccc absence: and the community-supported count is unchanged at 8",
-          sum(1 for d in known if d["flags"]["basicAid"]) == 8,
-          str(sum(1 for d in known if d["flags"]["basicAid"])))
+    # POSITIVE CONTROL: the conversion must not have flattened the known
+    # answers into the unknown word
+    check("ccc absence: every other district still carries a MEASURED status",
+          all(d["flags"]["basicAidStatus"] in ("basic-aid", "state-funded")
+              for d in known), str(len(known)))
+    check("ccc absence: and the community-supported count is unchanged at 8 "
+          "— still matching the Exhibit C control",
+          sum(1 for d in known
+              if d["flags"]["basicAidStatus"] == "basic-aid") == 8,
+          str(sum(1 for d in known
+                  if d["flags"]["basicAidStatus"] == "basic-aid")))
+    check("ccc absence: and their numeric fields are present, so absence "
+          "means absence rather than everything having vanished",
+          all("fundedFtes" in d and "stateGf" in d for d in known))
 
     # ---- BEHAVIOURAL: the page shows unknown as unknown, and the CSV
     #      exports it as empty rather than "no"
@@ -3614,11 +3786,14 @@ def test_ccc_absence(page, base):
     check("ccc absence: the CSV carries a row for it", len(rows) == 1, str(rows[:1]))
     if rows:
         cells = rows[0].split(",")
-        check("ccc absence: its community_supported cell is EMPTY, not 'no' — "
-              "unknown must not export as a measured negative",
-              cells[-2] == "", repr(cells[-2]))
+        # An EMPTY cell is itself ambiguous in a spreadsheet — it reads as
+        # blank, or zero, or no. The status WORD cannot be misread, so the
+        # export now carries it. What must never appear is "no".
+        check("ccc absence: its community_supported cell says not-published, "
+              "never 'no' — unknown must not export as a measured negative",
+              cells[-2] == "not-published", repr(cells[-2]))
         check("ccc absence: and its noncredit_heavy cell likewise",
-              cells[-1] == "", repr(cells[-1]))
+              cells[-1] == "not-published", repr(cells[-1]))
     check("ccc absence: the CSV says what an empty flag cell means",
           "does NOT mean no" in csv or "It does NOT mean no" in csv)
 
@@ -3626,8 +3801,9 @@ def test_ccc_absence(page, base):
     other = [l for l in csv.splitlines()
              if l and not l.startswith("#") and not l.upper().startswith("CALBRIGHT")
              and not l.startswith("district,") and not l.startswith("Statewide")]
-    check("ccc absence: measured districts still export yes/no",
-          any(l.split(",")[-2] in ("yes", "no") for l in other))
+    check("ccc absence: measured districts export their measured status, so "
+          "the unknown word above is a distinction and not the only value",
+          any(l.split(",")[-2] in ("basic-aid", "state-funded") for l in other))
 
     # ---- the statewide figures are the published control, never our sum
     psrc = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
@@ -4562,21 +4738,24 @@ def test_ccc(page, base):
           sum(d["nColleges"] for d in ds) == 116 and sw["nColleges"] == 116)
     # rosters, data-derived, verified against source counts
     multi = [d for d in ds if d["flags"]["multiCollege"]]
-    basic = [d for d in ds if d["flags"]["basicAid"]]
+    basic = [d for d in ds if d["flags"]["basicAidStatus"] == "basic-aid"]
     check("ccc: 23 multi-college districts", len(multi) == 23)
     check("ccc: community-supported count matches the Chancellor's Office figure (8)",
           len(basic) == sw["communitySupported"] == 8)
     dangerous = sorted(d["name"] for d in ds
-                       if d["flags"]["multiCollege"] and d["flags"]["basicAid"])
+                       if d["flags"]["multiCollege"]
+                       and d["flags"]["basicAidStatus"] == "basic-aid")
     check("ccc: the dangerous cell (multi-college AND community-supported) is verified — includes San Mateo",
           "SAN MATEO" in dangerous and len(dangerous) == 4, str(dangerous))
     # per-FTES = Current Expense / apportionment funded FTES; Calbright has none
     check("ccc: per-FTES derived from apportionment funded FTES (ce/fundedFtes)",
           all(d["perFtes"] == round(d["ce"] / d["fundedFtes"])
-              for d in ds if d["fundedFtes"]))
+              for d in ds if d.get("fundedFtes")))
     cal = [d for d in ds if d["flags"]["noApportionment"]]
-    check("ccc: the online district (no apportionment FTES) carries no per-FTES figure",
-          len(cal) == 1 and cal[0]["perFtes"] is None)
+    check("ccc: the online district (no apportionment FTES) carries no "
+          "per-FTES figure — the key is ABSENT, so arithmetic on it yields "
+          "NaN rather than zero",
+          len(cal) == 1 and "perFtes" not in cal[0])
     # basis / denominator / gate wording
     check("ccc: basis is modified-accrual (BAM), explicitly NOT budgetary-legal",
           "modified-accrual" in meta["basis"].lower()
@@ -7347,6 +7526,7 @@ def main():
             test_historical_state(page, base)
             test_absent_not_zero(page, base)
             test_csu_reconciling_not_tautological(page, base)
+            test_unknown_facts_render(page, base)
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
