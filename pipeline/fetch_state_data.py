@@ -60,6 +60,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 import schedule9  # noqa: E402  (pypdf loaded lazily, only when refreshing actuals)
@@ -373,12 +374,12 @@ def fetch_year(year: str):
             # whose parents are also 0 would then "reconcile" against
             # nothing. Departments legitimately have no fund rows only when
             # they have no state funds at all — require one or the other.
-            if not depth["funds"] and any(node.get(k) for k in ("gf", "sp", "bd")):
-                raise SystemExit(
-                    f"EMPTY GATE TARGET {year} {d['legalTitl'].strip()!r}: the "
-                    "department reports state funds but parsed no fund rows, so "
-                    "the parent-sum gate would compare 0 against 0 and pass; "
-                    "nothing written")
+            if any(node.get(k) for k in ("gf", "sp", "bd")):
+                gates.require_target(
+                    depth["funds"],
+                    f"{year} {d['legalTitl'].strip()!r} fund rows",
+                    "The department reports state funds, so the parent-sum "
+                    "gate would compare 0 against 0 and pass.")
             by_cls = {}
             for row in depth["funds"]:            # [cd, class, thousands, title?]
                 cl, v = row[1], row[2]

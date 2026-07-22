@@ -97,6 +97,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -258,9 +259,8 @@ def parse_afr(path, fy):
     texts = [(p.extract_text() or "") for p in r.pages]
 
     facts_pages = [i for i, t in enumerate(texts) if "Campus Financial Facts" in t]
-    if len(facts_pages) != 2:
-        raise SystemExit(f"UC {fy}: expected 2 Campus Financial Facts pages, "
-                         f"found {len(facts_pages)} — nothing written")
+    gates.require_exact(len(facts_pages), 2,
+                        f"UC {fy} Campus Financial Facts pages")
     grids, totals = {}, {}
     for pageidx, columns in zip(facts_pages, (PAGE1, PAGE2)):
         # the column order is verified against the table's own printed

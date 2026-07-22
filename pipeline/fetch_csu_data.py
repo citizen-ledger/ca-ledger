@@ -75,6 +75,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -132,8 +133,9 @@ def gate(campuses, univ, comp, combined_combined, eliminations):
     if camp_sum + reconciling != univ["opexpK"]:
         fail.append("campuses + reconciling != University total")
     # 3. structural
-    if len(campuses) != 23:
-        fail.append(f"{len(campuses)} campuses (expected 23)")
+    bad = gates.check_exact(len(campuses), 23, "CSU campus roster")
+    if bad:
+        fail.append(bad)
     for c in campuses:
         if not (c["opexpK"] and c["opexpK"] > 0):
             fail.append(f"{c['name']}: nonpositive operating expense")

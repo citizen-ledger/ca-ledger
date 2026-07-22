@@ -81,6 +81,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -193,10 +194,8 @@ def parse(blob):
         series.pop(fy, None)
         forecast.discard(fy)
 
-    if len(series) < 60:
-        raise SystemExit(f"deflator: only {len(series)} fiscal years parsed "
-                         "— DOF's file is much longer than that. Nothing "
-                         "written.")
+    gates.require_rows(len(series), 60, "deflator fiscal years parsed",
+                       "DOF's file is much longer than that.")
 
     actuals = [fy for fy in series if fy not in forecast]
     last_actual = max(actuals)

@@ -115,6 +115,36 @@ def state_agency_total(a, fed=False):
 # ----------------------------------------------------------------------
 PASS, FAIL = 0, []
 
+def _raised(fn):
+    """The exception a callable raises, or None. Lets an assertion name the
+    exception TYPE rather than merely observing that something went wrong."""
+    try:
+        fn()
+    except BaseException as e:      # noqa: BLE001 - the object is the answer
+        return e
+    return None
+
+
+def guard_args(pipeline_name, fn):
+    """Every gates.<fn>(...) call in a pipeline, rendered back to source.
+
+    Structural, not textual. Assertions about guards used to search the
+    pipeline for a substring, and went stale four separate times — most
+    recently when moving the state guard onto gates.require_target
+    deleted the literal "EMPTY GATE TARGET" from the pipeline while
+    making the protection stronger. An AST walk survives rewrapping,
+    renaming and relocation; a substring does not.
+    """
+    import ast
+    tree = ast.parse(
+        (ROOT / "pipeline" / pipeline_name).read_text(encoding="utf-8"))
+    return [ast.unparse(n) for n in ast.walk(tree)
+            if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute)
+            and isinstance(n.func.value, ast.Name)
+            and n.func.value.id == "gates" and n.func.attr == fn]
+
+
 def check(desc, cond, detail=""):
     global PASS
     if cond:
@@ -2739,6 +2769,49 @@ def test_empty_gate_guard():
           "way every other gate failure does",
           issubclass(gates.VacuousGate, SystemExit))
 
+    # ---- THE COLLECTING DISPOSITION. Pipelines that batch their failures
+    #      could not use require_rows, because it raises — so each
+    #      hand-rolled its own floor, invisible to coverage. check_rows is
+    #      the same rule returning a message instead of raising.
+    check("empty gate: check_rows returns a message below the floor",
+          isinstance(gates.check_rows(439, 440, "county-years"), str))
+    check("empty gate: and returns None when the floor is met — so a "
+          "collecting caller appends nothing on success",
+          gates.check_rows(440, 440, "county-years") is None)
+    check("empty gate: the two dispositions carry the SAME message, so a "
+          "reader cannot tell which pipeline batched and which stopped",
+          gates.check_rows(1, 900, "rows") in
+          str(_raised(lambda: gates.require_rows(1, 900, "rows"))))
+    rejected = False
+    try:
+        gates.check_rows(5, 0, "rows")
+    except ValueError:
+        rejected = True
+    check("empty gate: check_rows refuses a minimum of zero too — the "
+          "non-raising sibling is not the lenient one", rejected)
+
+    # ---- EXACT COUNTS. A roster the source publishes as a fixed number is
+    #      a stronger statement than a floor, and 58 counties is as wrong
+    #      as 56 — which a floor would accept in silence.
+    check("empty gate: check_exact accepts the published roster size",
+          gates.check_exact(57, 57, "counties") is None)
+    check("empty gate: and rejects a count that is too HIGH, which no floor "
+          "would catch", isinstance(gates.check_exact(58, 57, "counties"), str))
+    check("empty gate: as well as one too low",
+          isinstance(gates.check_exact(56, 57, "counties"), str))
+    check("empty gate: require_exact is its stopping disposition",
+          isinstance(_raised(lambda: gates.require_exact(58, 57, "counties")),
+                     gates.VacuousGate))
+    check("empty gate: require_exact passes the count through on success",
+          gates.require_exact(23, 23, "campuses") == 23)
+    rejected = False
+    try:
+        gates.check_exact(0, 0, "nothing")
+    except ValueError:
+        rejected = True
+    check("empty gate: an expected count of zero is refused — a gate "
+          "expecting nothing cannot fail", rejected)
+
     # ---- THE LIVE CASE: the target is found, and the reconciliation runs
     import fetch_ccc_data as C
     appn, statewide = C.fetch_apportionment(False)
@@ -2795,19 +2868,125 @@ def test_empty_gate_guard():
           "and so passes on nothing", "require_rows(len(edp_fn)" in ksrc)
 
     # ---- coverage: every pipeline that gates must carry the guard
-    GATED = ["fetch_ccc_data.py", "fetch_school_data.py", "fetch_city_data.py",
-             "fetch_state_data.py"]
-    for f in GATED:
-        t = (ROOT / "pipeline" / f).read_text(encoding="utf-8")
-        check(f"empty gate: {f} imports the guard", "import gates" in t
-              or "EMPTY GATE TARGET" in t, f)
-    csrc = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
+    # ---- COVERAGE IS DISCOVERED, NOT ENUMERATED.
+    #
+    # This was a literal list of four pipelines. It omitted county,
+    # district, UC and CSU — so the county's hand-rolled floor sat
+    # outside the guard the repo built for exactly that, and the test
+    # meant to catch the omission was not looking at the file. That is
+    # the same defect verify_digest.discover() was written to end, where
+    # a hardcoded list of ten named files while twelve carried a digest.
+    #
+    # A list has to be remembered. This is derived from what actually
+    # SHIPS: every payload carrying an integrity digest names its
+    # generator in its own header, so a new pipeline is covered the
+    # moment it ships a payload, not when someone remembers to add it.
+    generators = {}
+    for js in sorted(ROOT.glob("*.js")):
+        head = js.read_text(encoding="utf-8", errors="replace")[:400]
+        m = re.search(r"GENERATED by (pipeline/[A-Za-z0-9_]+\.py)", head)
+        if m and '"digest"' in js.read_text(encoding="utf-8", errors="replace"):
+            generators.setdefault(m.group(1), []).append(js.name)
+    check("empty gate: the coverage sweep discovered the shipped payloads "
+          "rather than being handed a list", len(generators) >= 9,
+          f"{len(generators)} generators: {sorted(generators)}")
+
+    # A generator is exempt only for a STRUCTURAL reason, stated here.
+    # An exemption means "this pipeline has no gate that could pass
+    # vacuously", not "we have not got to it".
+    EXEMPT = {
+        "pipeline/make_city_boundaries.py":
+            "derives geometry from city-data.js, which is itself gated; it "
+            "introduces no figure and reconciles against no control",
+        "pipeline/make_county_boundaries.py":
+            "same — geometry derived from an already-gated payload",
+        "pipeline/build_search_index.py":
+            "an index over payloads that are each gated upstream; it counts "
+            "nothing the source publishes a control for",
+    }
+    import ast as _ast
+
+    def gate_calls(tree):
+        """Calls to gates.<fn>(...) — structural, so rewrapping a line or
+        renaming a variable cannot make this go stale the way a substring
+        search does. Three assertions in this suite broke that way while
+        this very change was being made."""
+        out = []
+        for node in _ast.walk(tree):
+            if (isinstance(node, _ast.Call)
+                    and isinstance(node.func, _ast.Attribute)
+                    and isinstance(node.func.value, _ast.Name)
+                    and node.func.value.id == "gates"):
+                out.append(node.func.attr)
+        return out
+
+    def refusing_floor(tree):
+        """A HAND-ROLLED FLOOR is `if len(x) <op> N:` whose body REFUSES —
+        raises, exits, or records a failure. A body that `continue`s or
+        `return`s is filtering, not gating.
+
+        The first draft of this ignored the body and flagged
+        make_city_boundaries' `if len(kept) < 4: continue`, which is the
+        minimum vertex count of a closed polygon ring — not a gate at
+        all. A detector that cannot tell a floor from a filter would have
+        forced a false exemption."""
+        out = []
+        for node in _ast.walk(tree):
+            if not isinstance(node, _ast.If):
+                continue
+            t = node.test
+            if not (isinstance(t, _ast.Compare)
+                    and isinstance(t.left, _ast.Call)
+                    and isinstance(t.left.func, _ast.Name)
+                    and t.left.func.id == "len"
+                    and any(isinstance(o, (_ast.Lt, _ast.LtE, _ast.NotEq))
+                            for o in t.ops)
+                    and all(isinstance(c, _ast.Constant) for c in t.comparators)):
+                continue
+            refuses = any(
+                isinstance(b, _ast.Raise)
+                or (isinstance(b, _ast.Expr) and isinstance(b.value, _ast.Call)
+                    and _ast.unparse(b.value.func).endswith(
+                        ("exit", "append")))
+                for b in _ast.walk(node) if isinstance(b, (_ast.Raise, _ast.Expr)))
+            if refuses:
+                out.append(_ast.unparse(t))
+        return out
+
+    for gen, payloads in sorted(generators.items()):
+        tree = _ast.parse((ROOT / gen).read_text(encoding="utf-8"))
+        calls = gate_calls(tree)
+        if gen in EXEMPT:
+            check(f"empty gate: {gen} is exempt for a stated structural "
+                  f"reason", bool(EXEMPT[gen].strip()), gen)
+            # THE EXEMPTION IS SELF-POLICING. A pipeline claiming it has
+            # nothing to floor must not contain a refusing floor. If one
+            # appears the exemption is stale, and this fails rather than
+            # quietly covering it up.
+            hand = refusing_floor(tree)
+            check(f"empty gate: {gen} claims nothing to floor and really "
+                  f"has no hand-rolled refusing floor", not hand, str(hand[:2]))
+        else:
+            # COVERED means it CALLS the guard, not merely imports it. An
+            # unused import is the hollow form of this check.
+            check(f"empty gate: {gen} (ships {', '.join(payloads)}) calls "
+                  f"the shared guard, not merely imports it",
+                  bool(calls), f"gates.* calls: {calls}")
+            check(f"empty gate: {gen} has no floor left hand-rolled beside "
+                  f"the shared one", not refusing_floor(tree),
+                  str(refusing_floor(tree)[:2]))
+    # These two were substring searches for "require_rows(len(years_data)"
+    # and for the literal "EMPTY GATE TARGET". Moving the state guard onto
+    # gates.require_target broke the second one immediately: the message
+    # now lives in gates.py, so the string vanished from the pipeline
+    # while the protection got STRONGER. Asserted structurally instead.
+    city_rows = guard_args("fetch_city_data.py", "require_rows")
     check("empty gate: the city shape gate requires city-years to check",
-          "require_rows(len(years_data)" in csrc)
-    ssrc = (ROOT / "pipeline" / "fetch_state_data.py").read_text(encoding="utf-8")
+          any("years_data" in c for c in city_rows), str(city_rows[:3]))
+    state_targets = guard_args("fetch_state_data.py", "require_target")
     check("empty gate: a state department reporting funds cannot pass the "
           "parent-sum gate with no fund rows parsed",
-          "EMPTY GATE TARGET" in ssrc)
+          any("funds" in c for c in state_targets), str(state_targets[:2]))
 
 
 def test_uc_strip_verification():
@@ -3311,8 +3490,13 @@ def test_county_zero_control(page, base):
           "sibling", "A ZERO OR MISSING CONTROL DOES NOT RECONCILE" in src)
     check("county zero: it counts what it actually reconciled",
           "reconciled += 1" in src and "unreconciled" in src)
+    # was: "reconciled < 440" in src — which my own move of this floor
+    # onto gates.check_rows broke, because the literal no longer appears
     check("county zero: and requires a floor, so a gate that verified almost "
-          "nothing cannot report success", "reconciled < 440" in src)
+          "nothing cannot report success",
+          any("440" in c and "reconciled" in c
+              for c in guard_args("fetch_county_data.py", "check_rows")),
+          str(guard_args("fetch_county_data.py", "check_rows")))
 
     csrc = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
     check("county zero: the city sibling still carries it too — the pair is "

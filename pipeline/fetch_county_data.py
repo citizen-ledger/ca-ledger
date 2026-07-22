@@ -41,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp                      # noqa: E402
+import gates                                     # noqa: E402
 from fetch_city_data import soda, norm           # noqa: E402
 import revisions                                 # noqa: E402
 
@@ -301,8 +302,10 @@ def main():
                 errors.append(f"SHAPE FY {fy_label(sy)}: statewide "
                               f"{key!r} is zero — classification broke")
     for sy, counties in years_data.items():
-        if len(counties) != 57:
-            errors.append(f"FY {fy_label(sy)}: {len(counties)} counties (expected 57)")
+        bad = gates.check_exact(len(counties), 57,
+                                f"FY {fy_label(sy)} county roster")
+        if bad:
+            errors.append(bad)
         if "San Francisco" in counties:
             errors.append(f"FY {fy_label(sy)}: San Francisco present in county data "
                           "— it must live only in the city layer")
@@ -338,11 +341,11 @@ def main():
                 reconciled += 1
             if c["pop"] <= 0:
                 errors.append(f"{name} FY {fy_label(sy)}: population 0")
-    if reconciled < 440:
-        errors.append(
-            f"only {reconciled} county-years reconciled against a published "
-            f"control ({len(unreconciled)} did not: {unreconciled[:5]}) - a "
-            "gate that verified this few has not verified this layer")
+    bad = gates.check_rows(
+        reconciled, 440, "county-years reconciled against a published control",
+        f"{len(unreconciled)} did not: {unreconciled[:5]}")
+    if bad:
+        errors.append(bad)
     if errors:
         for e in errors[:30]:
             print("  FAIL:", e, file=sys.stderr)

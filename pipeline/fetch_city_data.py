@@ -478,8 +478,11 @@ def sanity_check(years_data, official):
     reconciled = 0
     unreconciled = []
     for sy, cities in years_data.items():
-        if len(cities) < 450:
-            errors.append(f"FY {fy_label(sy)}: only {len(cities)} cities (expected ~482)")
+        bad = gates.check_rows(len(cities), 450,
+                               f"FY {fy_label(sy)} city roster",
+                               "the source publishes about 482")
+        if bad:
+            errors.append(bad)
         for name, c in cities.items():
             if c["pop"] <= 0:
                 warnings.append(f"{name} FY {fy_label(sy)}: population 0")
