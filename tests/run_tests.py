@@ -1681,6 +1681,12 @@ def test_schools(page, base):
     page.fill("#schoolSearch", dep["name"][:24])
     page.wait_for_timeout(250)
     depbtn = page.locator('#schoolList button[data-dep]')
+    # The pointer IS the subject here. Guarding the assertions on its
+    # presence made them dormant the moment it went missing — the exact
+    # failure they exist to catch.
+    check("schools charter: the dependent-charter pointer is on screen at "
+          "all — searching a known dependent must surface one",
+          depbtn.count() >= 1, f'{dep["name"]!r} -> {depbtn.count()} pointers')
     if depbtn.count():
         before = page.evaluate("location.hash")
         depbtn.first.click()
@@ -4221,6 +4227,11 @@ def test_resource(page, base):
     page.locator('#recordBody .det-row[data-grp="state"]').click()
     page.wait_for_timeout(150)
     strs = page.locator('#recordBody .src-code[data-res="state:7690"]')
+    # asserted, not assumed — its sibling `ti` above is checked with
+    # count() == 1, and this one was merely guarded, so a vanished STRS
+    # cell removed the assertion instead of failing it
+    check("V10a UI: the STRS on-behalf source cell is present to drill",
+          strs.count() == 1, str(strs.count()))
     if strs.count():
         strs.click()
         page.wait_for_timeout(150)
