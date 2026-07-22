@@ -3032,19 +3032,70 @@ def test_clamped_impossibility(page, base):
               f"flags fired only because the denominator was inflated",
               "lowPolice" not in n and "lowFire" not in n, str(n))
 
-    # ---- BEHAVIOURAL: the pages never state a percentage they do not have
-    page.goto(f"{base}/cities.html#l=counties&c=siskiyou&y=2023-24")
-    page.wait_for_selector(".r .nm, .rec, body")
-    page.wait_for_timeout(600)
-    body = page.inner_text("body")
-    check("clamp: the county page does not tell a reader 0% unincorporated",
-          "0% of Siskiyou" not in body, body[:0])
+    # ---- BEHAVIOURAL: the pages never state a percentage they do not have.
+    #
+    # The negative here ("no percentage is claimed") is only worth something
+    # if the page provably rendered and provably WOULD have claimed one had
+    # it had the figure. So each negative is anchored twice: on the entity
+    # being named on screen, and on a positive control — a county whose share
+    # IS computable, which must still print it. Without the control this
+    # asserts nothing: a blank page states no percentage either.
+    #
+    # The shipped version of this test addressed the layer as `l=counties`
+    # (the parser reads `l=county`, singular), waited on ".r .nm, .rec, body"
+    # — `body` always matches — and then asserted a NEGATIVE. It selected
+    # nothing: "Siskiyou" never appeared on the page at all, so
+    # "0% of Siskiyou" not in body was true of an empty render.
+    PCT_OF_COUNTY = re.compile(r"\d+% of [A-Z][a-zA-Z .']+ County")
 
-    page.goto(f"{base}/address.html#c=mt-shasta")
-    page.wait_for_timeout(600)
-    abody = page.inner_text("body")
-    check("clamp: the address view does not tell a resident 0% either",
-          "0% of Siskiyou" not in abody)
+    def county_page(cid, fy):
+        page.goto(f"{base}/cities.html#l=county&c={cid}&y={fy}")
+        page.wait_for_selector("#recordBody .det-row")
+        page.wait_for_timeout(250)
+        return page.inner_text("#scheduleLabel"), page.inner_text("#recordBody")
+
+    label, sk_body = county_page("siskiyou", "2023-24")
+    check("clamp: the county page really is showing Siskiyou — the anchor "
+          "that the shipped test lacked", "SISKIYOU COUNTY" in label, label)
+    check("clamp: and it states no unincorporated percentage at all, not "
+          "merely no zero", not PCT_OF_COUNTY.search(sk_body),
+          str(PCT_OF_COUNTY.findall(sk_body)))
+    check("clamp: it says instead that the share is not computable, and "
+          "shows both contradicting figures",
+          "Not computable" in sk_body and "102,945" in sk_body
+          and "43,409" in sk_body)
+
+    # POSITIVE CONTROL: a county whose share IS computable must still print
+    # it. If this fails, the negative above is measuring a blank page.
+    al_label, al_body = county_page("alameda", "2023-24")
+    check("clamp: a county with a computable share still states it — so "
+          "Siskiyou's silence is a decision, not an empty render",
+          "ALAMEDA COUNTY" in al_label
+          and bool(PCT_OF_COUNTY.search(al_body)),
+          al_label + " | " + str(PCT_OF_COUNTY.findall(al_body)))
+
+    def address_view(cid):
+        page.goto(f"{base}/address.html#c={cid}")
+        page.wait_for_selector("#records .record")
+        page.wait_for_timeout(250)
+        names = [page.locator(".rec-name").nth(i).inner_text()
+                 for i in range(page.locator(".rec-name").count())]
+        return names, page.inner_text("#records")
+
+    names, ms_body = address_view("mt-shasta")
+    check("clamp: the address view resolved Mt. Shasta and its county",
+          "Mt. Shasta" in names and "Siskiyou County" in names, str(names))
+    check("clamp: and states no unincorporated percentage to a resident",
+          not PCT_OF_COUNTY.search(ms_body),
+          str(PCT_OF_COUNTY.findall(ms_body)))
+
+    ok_names, ok_body = address_view("oakland")
+    check("clamp: while a resident of a computable county is still told the "
+          "share — the address view's positive control",
+          "Alameda County" in ok_names
+          and bool(PCT_OF_COUNTY.search(ok_body)),
+          str(ok_names) + " | " + str(PCT_OF_COUNTY.findall(ok_body)))
+
     asrc = (ROOT / "address.html").read_text(encoding="utf-8")
     check("clamp: and it no longer coerces a null share to zero",
           "(yr.unincorporated||0)" not in asrc)
