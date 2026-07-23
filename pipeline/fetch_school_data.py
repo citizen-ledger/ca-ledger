@@ -73,6 +73,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates  # noqa: E402
+import cache_guard                              # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -135,6 +136,31 @@ CE_VINTAGE = {
 #
 # The unknown set therefore DIFFERS PER FACT, which is why this is a table
 # of facts and not a list of bad years.
+# THE ALTERNATIVE FORM'S SCHOOL COLUMN, declared per vintage.
+#
+# Measured across all nine years: the charter Alternative Form calls it
+# SchoolID through FY2021-22 and SchoolCode from FY2022-23 — the same
+# boundary as the SACS rename already recorded in SACS_ERA. Reading it
+# with a "try both" fallback would hide the next rename; the vintage is
+# declared, and a year outside the table refuses rather than guessing.
+ALT_SCHOOL_COL = {
+    "1617": "SchoolID", "1718": "SchoolID", "1819": "SchoolID",
+    "1920": "SchoolID", "2021": "SchoolID", "2122": "SchoolID",
+    "2223": "SchoolCode", "2324": "SchoolCode", "2425": "SchoolCode",
+}
+
+
+def alt_school_col(yy):
+    """The Alternative Form's school-code column for this vintage."""
+    if yy not in ALT_SCHOOL_COL:
+        raise SystemExit(
+            f"FY {yy}: the Alternative Form's school column is not declared "
+            "for this vintage. CDE renamed it SchoolID -> SchoolCode at "
+            "FY2022-23; add this year to ALT_SCHOOL_COL deliberately after "
+            "checking the file. Nothing written.")
+    return ALT_SCHOOL_COL[yy]
+
+
 LCFF_PUBLISHES = {
     "1617": {"basicAid": False, "fundedADA": False},
     "1718": {"basicAid": False, "fundedADA": False},
@@ -187,7 +213,13 @@ def vintage(yy):
     return {"sheet": sheet, "co": co, "dcode": dcode, "dname": dname, **era}
 
 
-YEARS = [("2223", "2022-23"), ("2324", "2023-24"), ("2425", "2024-25")]
+# THE WINDOW. Extended to nine years; SACS and the Current Expense
+# workbook are published for every one of them (verified by fetch, on
+# PK magic bytes rather than status). The LCFF summary is NOT — see
+# LCFF_PUBLISHES, where the unknown set differs per FACT, not per year.
+YEARS = [("1617", "2016-17"), ("1718", "2017-18"), ("1819", "2018-19"),
+         ("1920", "2019-20"), ("2021", "2020-21"), ("2122", "2021-22"),
+         ("2223", "2022-23"), ("2324", "2023-24"), ("2425", "2024-25")]
 GATE_TOL = 0.05          # per-district vs published EDP 365
 ROLLUP_TOL = 0.05        # per fund×object cell vs CDE's own totals
 
@@ -230,7 +262,10 @@ def download(url, dest):
         return
     print(f"  downloading {url}", file=sys.stderr)
     req = urllib.request.Request(url, headers={"User-Agent": "ca-ledger-pipeline/1.0"})
-    dest.write_bytes(urllib.request.urlopen(req, timeout=600).read())
+    # through the guard (#60): a fetched source lands read-only, so a test
+    # cannot overwrite it afterwards
+    cache_guard.write_cached(dest, urllib.request.urlopen(req, timeout=600).read(),
+                             binary=True)
 
 
 def ensure_year_files(yy, fy_dashed):
@@ -245,8 +280,12 @@ def ensure_year_files(yy, fy_dashed):
         "lcff": (f"https://www.cde.ca.gov/fg/aa/pa/documents/lcffsummary{yy}.xlsx",
                  CACHE / f"lcffsummary{yy}.xlsx"),
     }
-    for key in ("ce", "lcff"):
-        download(*files[key])
+    download(*files["ce"])
+    # A YEAR DECLARED TO HAVE NO LCFF WORKBOOK IS NOT FETCHED. Asking for
+    # it would 404 and stop the build; the absence is already recorded in
+    # LCFF_PUBLISHES and travels to the payload as not-published.
+    if any(LCFF_PUBLISHES.get(yy, {}).values()) or yy not in LCFF_PUBLISHES:
+        download(*files["lcff"])
     for key, mdb_name in (("sacs_exe", f"sacs{yy}.mdb"), ("alt_exe", f"alt{yy}data.mdb")):
         mdb = CACHE / mdb_name
         if not mdb.exists():
@@ -254,7 +293,7 @@ def ensure_year_files(yy, fy_dashed):
             download(url, exe)
             with zipfile.ZipFile(exe) as z:   # the .exe is ZIP-compatible
                 inner = [n for n in z.namelist() if n.lower().endswith(".mdb")][0]
-                mdb.write_bytes(z.read(inner))
+                cache_guard.write_cached(mdb, z.read(inner), binary=True)
     return CACHE / f"sacs{yy}.mdb", CACHE / f"alt{yy}data.mdb", files["ce"][1], files["lcff"][1]
 
 
@@ -506,6 +545,7 @@ def rev_group(n):
 def process_year(yy, fy):
     V = vintage(yy)          # the declared vocabulary for THIS source year
     sacs, alt, ce_path, lcff_path = ensure_year_files(yy, fy)
+    _alt_col = alt_school_col(yy)   # declared per vintage, never sniffed
     import openpyxl
 
     # ---- LEA + charter registries
@@ -552,7 +592,7 @@ def process_year(yy, fy):
     rev_detail = defaultdict(float)          # epa 8012, strs 8590, lottery 8560, passthrough
     rollup = defaultdict(float)              # ("99" or ccode, fund, object) -> value
     for r in mdb_rows(sacs, "UserGL"):
-        c, d, s = r["Ccode"], r["Dcode"], r["SchoolCode"]
+        c, d, s = r["Ccode"], r["Dcode"], r["SchoolCode"]  # SACS UserGL: stable across vintages, measured FY1617 and FY2223
         obj_s, fund = r["Object"], r["Fund"]
         v = float(r["Value"] or 0)
         rollup[("99", fund, obj_s)] += v
@@ -639,8 +679,8 @@ def process_year(yy, fy):
         alt_by_obj[o] += v
         n = int(o) if o.isdigit() else -1
         if 1000 <= n <= 7999:
-            alt_data[(r["Ccode"], r["Dcode"], r["SchoolCode"])][obj_family(n)] += v
-            alt_tot[(r["Ccode"], r["Dcode"], r["SchoolCode"])] += v
+            alt_data[(r["Ccode"], r["Dcode"], r[_alt_col])][obj_family(n)] += v
+            alt_tot[(r["Ccode"], r["Dcode"], r[_alt_col])] += v
         elif 8000 <= n <= 8799:
             g = rev_group(n)
             if g:
@@ -731,18 +771,33 @@ def process_year(yy, fy):
                          "Current Expense gate — nothing written")
 
     # ---- LCFF: basic aid + COE funded ADA
-    wb = openpyxl.load_workbook(lcff_path, read_only=True)
+    #
+    # A year CDE publishes no workbook for parses nothing here, and both
+    # facts reach the payload through the not-published machinery. The
+    # dicts stay empty rather than being filled with defaults — a default
+    # is exactly the positive claim this layer refuses to make.
+    lcff_absent = (yy in LCFF_PUBLISHES
+                   and not any(LCFF_PUBLISHES[yy].values()))
+    if lcff_absent:
+        print(f"  FY {fy}: no LCFF workbook published — basic aid and funded "
+              f"ADA are not-published for this year", file=sys.stderr)
+    wb = None if lcff_absent else openpyxl.load_workbook(lcff_path,
+                                                         read_only=True)
     sheet = None
-    for name in wb.sheetnames:
+    for name in ([] if wb is None else wb.sheetnames):
         n = name.replace(" ", "")
         if n.endswith("Annual") or n.endswith("AN"):
             sheet = name
-    if sheet is None:
+    # A DECLARED ABSENCE IS NOT A PARSE FAILURE. The refusal still fires
+    # for a year that IS supposed to have a workbook — that is the
+    # vintage guard from #42 — but a year declared to publish nothing
+    # skips the parse instead of stopping the build.
+    if sheet is None and not lcff_absent:
         raise SystemExit(f"FY {fy}: no Annual sheet in {lcff_path.name}")
-    ws = wb[sheet]
+    ws = None if sheet is None else wb[sheet]
     header, basic_aid, coe_ada = None, {}, {}
     col = {}
-    for row in ws.iter_rows(values_only=True):
+    for row in ([] if ws is None else ws.iter_rows(values_only=True)):
         if header is None:
             if row and str(row[0]).strip() == "County Code":
                 header = [str(x or "").strip() for x in row]
@@ -750,8 +805,17 @@ def process_year(yy, fy):
                     if h.startswith("Total LCFF Entitlement"): col["ent"] = i
                     elif "Local Revenue" in h: col["local"] = i
                     elif h.startswith("Total Funded ADA"): col["ada"] = i
+                # HOW MANY COLUMNS THIS VINTAGE PUBLISHES IS DECLARED,
+                # NOT SNIFFED. FY2019-20's workbook carries 12 columns
+                # and no local-revenue column at all, where FY2020-21+
+                # carry 20 including it. Requiring 3 everywhere would
+                # refuse a legitimate vintage; requiring 2 everywhere
+                # would let a broken parse through on a year that really
+                # does publish local revenue. So the floor is per year,
+                # taken from LCFF_PUBLISHES.
+                need = 3 if LCFF_PUBLISHES.get(yy, {}).get("basicAid", True) else 2
                 gates.require_rows(
-                    len(col), 3, f"FY {fy} LCFF header columns located",
+                    len(col), need, f"FY {fy} LCFF header columns located",
                     f"header was {header}.")
             continue
         if row[0] is None:
@@ -767,8 +831,11 @@ def process_year(yy, fy):
             continue
         if lea["type"].startswith("County Office"):
             coe_ada[(c, d)] = num(col["ada"])
-        else:
+        elif "local" in col:
             basic_aid[(c, d)] = num(col["local"]) > num(col["ent"])
+        # else: this vintage publishes no local-revenue column, so basic
+        # aid cannot be derived and is left unset — lcff_status() turns
+        # that into "not-published" rather than a default False
 
     # ---- charter sponsorship / commingling per district
     sponsored = defaultdict(float)
