@@ -3397,6 +3397,89 @@ def test_ccc_source_identity():
           str(_raised(lambda: m.fetch_apportionment(False, "2011-12")))[:80])
 
 
+def test_strict_source_columns():
+    """AN ABSENT COLUMN IS A HARD FAILURE, NEVER AN EMPTY RESULT.
+
+    Three confident wrong numbers in this sequence came from reading a
+    column by a name the source does not use, where the miss was silent:
+
+      CharterNum vs CharterNumber   the charter qualifier fell back to
+                                    the school code and under-counted
+                                    the collisions 40 -> 32
+      LEAName    vs Dname           reported nine phantom key
+                                    collisions, every one with an
+                                    empty name
+      SchoolCode vs SchoolID        the Alternative Form's vintage
+                                    rename
+
+    An absent column and an empty column are indistinguishable through
+    dict.get(), and the empty one produces an ANSWER rather than an
+    error. StrictRow makes the miss loud."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fsd_strict", str(ROOT / "pipeline" / "fetch_school_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_school_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    row = m.StrictRow({"Ccode": "01", "CharterNumber": "0811"}, "t.mdb:Charters")
+
+    # POSITIVE CONTROL FIRST: a real column still reads normally, by both
+    # forms. Without this the refusals below would be satisfied by a row
+    # that refuses everything.
+    check("strict cols: a real column reads through [] as normal",
+          row["CharterNumber"] == "0811")
+    check("strict cols: and through .get() as normal",
+          row.get("Ccode") == "01")
+
+    # THE THREE HISTORICAL TYPOS, each now a hard failure
+    for typo, real in (("CharterNum", "CharterNumber"),
+                       ("LEAName", "Dname"),
+                       ("SchoolCode", "SchoolID")):
+        raised = _raised(lambda t=typo: row[t])
+        check(f"strict cols: [{typo!r}] raises rather than returning None "
+              f"— the real name is {real!r}",
+              isinstance(raised, KeyError), str(raised)[:70])
+        raised = _raised(lambda t=typo: row.get(t))
+        check(f"strict cols: and .get({typo!r}) raises too — the form that "
+              f"was silent is the one that caused the defects",
+              isinstance(raised, KeyError), str(raised)[:70])
+
+    # the message names the columns that DO exist, so the fix is visible
+    err = str(_raised(lambda: row["CharterNum"]))
+    check("strict cols: the refusal lists the columns that do exist",
+          "CharterNumber" in err and "Ccode" in err, err[:90])
+    check("strict cols: and says why a silent miss is dangerous",
+          "confident wrong answer" in err, err[:90])
+
+    # THE DECLARED ESCAPE HATCH, so "absence is expected" stays sayable
+    check("strict cols: optional() returns the default for an absent "
+          "column — the deliberate, greppable form",
+          row.optional("CharterNum") is None
+          and row.optional("CharterNum", "x") == "x")
+    check("strict cols: and optional() still reads a real column",
+          row.optional("Ccode") == "01")
+
+    # ---- it is actually wired into the reader, not merely defined
+    src = (ROOT / "pipeline" / "fetch_school_data.py").read_text(encoding="utf-8")
+    check("strict cols: mdb_rows yields StrictRow, so every source row in "
+          "this pipeline is strict", "yield StrictRow(row," in src)
+    mdb = ROOT / "pipeline" / "cache" / "schools" / "sacs2223.mdb"
+    if mdb.exists():
+        live = next(m.mdb_rows(mdb, "Charters"))
+        check("strict cols: a LIVE source row is strict",
+              isinstance(live, m.StrictRow))
+        check("strict cols: and refuses the historical typo on real data",
+              isinstance(_raised(lambda: live.get("CharterNum")), KeyError))
+        check("strict cols: while reading its real neighbour",
+              isinstance(live["CharterNumber"], str))
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7868,6 +7951,7 @@ def main():
             test_source_cache_unwritable()
             test_ccc_fourteen_year_gates()
             test_ccc_source_identity()
+            test_strict_source_columns()
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)

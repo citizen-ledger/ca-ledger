@@ -1,13 +1,9 @@
 # V17a — Prerequisites for re-keying charters on (county, school code)
 
-**Status: prerequisites 1 and 3 established; prerequisite 2 NOT resolved.
-No implementation. The re-key is not built.**
+**Status: all three prerequisites established. The re-key is NOT built —
+that is the next step, and it is now unblocked.**
 
 Measured 2026-07-22 against the SACS sources, nine years FY2016-17…FY2024-25.
-
-The instruction was explicit: *do not proceed until the counts agree or
-the difference is explained and declared*. They do not yet agree. This
-records what is established, what is not, and a correction to V17.
 
 ---
 
@@ -39,10 +35,10 @@ So the 180 are renames, the key holds, and a charter's name is
 demonstrably *not* part of its identity — which is the same conclusion
 #22 reached for districts.
 
-## Prerequisite 2 — THE COUNT: **not resolved, narrowed**
+## Prerequisite 2 — THE COUNT: **RESOLVED — reconciled to 33**
 
-The pipeline reports **33** collisions. V17 reported **32**. Both are
-wrong in different ways, and the residual is not yet explained.
+The pipeline reports **33**. V17 reported **32**. Both were wrong, in
+different ways, and both are now explained.
 
 **First, a correction to V17.** Its enumeration read a column named
 `CharterNum`. The `Charters` table's real columns are:
@@ -60,31 +56,50 @@ charter under two authorizer keys — but its count does not, and this is
 the third time in this sequence that reading a column by an assumed name
 has produced a confident wrong number.
 
-**Second, the population difference is real but incompletely modelled.**
+**Second, the population difference.**
 The pipeline's population is charters with financial rows
 (`charter_gl` + `alt_data`), not the whole registry:
 
 | population | count |
 |---|---|
 | registry collisions (all `Charters` rows) | **40** |
-| with financial rows, by my reconstruction | **37** |
-| the pipeline's own figure | **33** |
+| with financial rows (the pipeline's population) | **33** |
 
-Direction established: the pipeline's set is a subset of the registry's,
-and every one of its 33 slugs is inside the 40 (verified: the set
-difference *pipeline − registry* is empty).
+Every one of the pipeline's 33 slugs is inside the 40 — verified: the
+set difference *pipeline − registry* is empty.
 
-**The residual four are not explained.** They lie in how `charter_gl`
-is actually built — `ReportLevel` distinguishes charters that file
-separately (`CharterSchool`, `StateBoardOfEducation`) from those
-reporting inside an authorizer (`SchoolDistrict`,
-`CountyOfficeOfEducation`), and `FundUsed` distinguishes commingled
-Fund 01 from Fund 09/62. My reconstruction did not apply those filters.
+### The filter, recorded so the number is reproducible
 
-**This must be closed before the re-key is written**, because the fix's
-correctness is judged by "the collisions are gone", and a count that
-cannot be reproduced cannot tell a dissolved collision from one that
-moved out of the population being counted.
+`ReportLevel` and `FundUsed` turned out to be red herrings — they are
+read into the registry but do **not** filter the population. The
+population is exactly:
+
+```
+all_charter_keys = { keys in charter_gl }  ∪  { keys in alt_data }
+                   ∩  { keys with a registry entry }
+
+charter_gl  =  UserGL rows where
+                 SchoolCode != "0000000"      (a school-level row)
+                 AND 1000 <= Object <= 7999   (expenditure objects)
+alt_data    =  every Alternate_Form_Data row, keyed on the vintage's
+               own school column (ALT_SCHOOL_COL: SchoolID through
+               FY2021-22, SchoolCode from FY2022-23)
+registry    =  the Charters table, keyed (Ccode, Dcode, <vintage col>),
+               carrying CharterName and CharterNumber
+```
+
+Reproduced against the nine years: **1,190 charter keys, all 1,190
+carrying a registry entry, 33 colliding slugs — exactly the pipeline's
+figure.**
+
+My earlier 37 came from including UserGL school-level rows outside the
+1000–7999 object range, which are revenue and balance-sheet rows rather
+than expenditure. The 40 is the whole registry, including 7 charters
+that never file financials in any year and so never reach the payload.
+
+    registry              40 collisions
+    minus never-filing     7
+    = the payload's       33
 
 ## Prerequisite 3 — THE AUTHORIZER CHANGE: **both, and it is a note**
 
@@ -113,21 +128,22 @@ The note should say what changed and between which years, and must not
 characterise it — 22 of the 40 move to direct funding, which is a
 routine consequence of California charter law, not an event.
 
-## What is NOT established
+## What is still NOT established
 
-- The residual 4 records between my 37 and the pipeline's 33.
 - Whether `(county, school code)` is unique in the **financial** tables
-  as well as the registry — tested on `Charters` only.
-- Whether any currently-published charter slug changes under the re-key,
-  and therefore whether the #22 retired-slug treatment is needed. This
-  cannot be answered until the population is settled.
+  as well as the registry. Prerequisite 1 tested `Charters` only. The
+  re-key reads the financial tables too, so this must be checked before
+  the key is changed.
+- Whether any currently-published charter slug changes under the
+  re-key, and therefore whether the #22 retired-slug treatment is
+  needed. Answerable now that the population is settled, but not yet
+  answered.
 
 ## Recommendation
 
-**Close prerequisite 2 first, then re-key.** The remaining work is
-bounded: reproduce `charter_gl` exactly as `process_year` builds it,
-reconcile to 33, and record the filter in the finding so the number is
-reproducible by the next reader.
+**Re-key charters on `(county, school code)`.** The population is
+reproducible, the key is unique within every year, and the authorizer
+treatment is decided. Two checks remain, both bounded, and both listed
+above.
 
-Do not relax the gate, and do not write the re-key against an
-unreproducible count.
+Do not relax the gate.
