@@ -1263,9 +1263,86 @@ def main():
     # the charter number is NOT unique on its own (0756 is shared by the
     # nine High Tech schools), so it qualifies a shared NAME, never
     # identifies a charter; assign_slugs raises if that is not enough.
-    charter_slugs, charter_ambig = assign_slugs(
-        [(k, r["name"], (r["number"] or k[2]).lower())
-         for k, r in charter_reg.items()], "charters")
+    # ── IDENTITY IS (COUNTY, SCHOOL CODE), NOT (NAME, CHARTER NUMBER) ──
+    #
+    # A charter's authorizer can change — to another district, or to a
+    # direct-funded block — and the Dcode moves with it. Keying on
+    # (Ccode, Dcode, SchoolCode) therefore split 33 charters into two
+    # records each, and no qualifier could separate them, because they
+    # were never two entities: assign_slugs refused, correctly.
+    #
+    # (county, school code) is the pair the source keeps stable across
+    # every one of those transitions. Verified before this was written
+    # (docs/V17A_CHARTER_REKEY_PREREQS.md, and the two checks in this
+    # PR): it maps to 2+ rows within a single year ZERO times, in the
+    # registry AND in both financial tables, across all nine years.
+    #
+    # THE QUALIFIER IS THE SCHOOL CODE, not the charter number. The
+    # number is not unique — measured, ten pairs of distinct identities
+    # share both a name and a number (Impact Academy of Arts &
+    # Technology 0836 holds school codes 0113902 and 0137646), so it
+    # leaves ten collisions standing. The school code is the identity's
+    # own second half and leaves none.
+    charter_identity = {}          # (c, d, s) -> (c, s)
+    identity_years = defaultdict(dict)
+    for k in all_charter_keys:
+        if k in charter_reg:
+            charter_identity[k] = (k[0], k[2])
+    # THE IDENTITY'S NAME COMES FROM ITS NEWEST YEAR, exactly as
+    # newest_of does for districts. Taking whichever key iterated last
+    # gave two records the same name and different slugs: Pacific View
+    # Charter appeared as both `pacific-view-charter` and
+    # `pacific-view-charter-2-0`, because one identity's older key
+    # carried the earlier name "Pacific View Charter 2.0".
+    ident_newest_year = {}
+    ident_reg = {}
+    for k in all_charter_keys:
+        if k not in charter_reg:
+            continue
+        cs = charter_identity[k]
+        newest = max((i for i, fy in enumerate(Y)
+                      if k in years[fy]["charters"]), default=-1)
+        if newest > ident_newest_year.get(cs, -2):
+            ident_newest_year[cs] = newest
+            ident_reg[cs] = charter_reg[k]
+    charter_slugs_by_ident, charter_ambig = assign_slugs(
+        [(cs, r["name"], cs[1].lower()) for cs, r in ident_reg.items()],
+        "charters")
+    charter_slugs = {k: charter_slugs_by_ident[charter_identity[k]]
+                     for k in charter_identity}
+    # ── RETIRED SLUGS FROM THE OLD KEY (the #22 treatment) ────────────
+    # Charters used to be slugged on (name, CHARTER NUMBER). Where the
+    # number qualified a shared name, that slug is not reachable under
+    # the new key, and a link carrying it is genuinely ambiguous — the
+    # number identified more than one charter. assign_slugs already
+    # records the names it qualifies, but not these, because the
+    # QUALIFIER changed rather than the name. They are recorded here so
+    # the page can say what a stale link could have meant instead of
+    # redirecting to an arbitrary one of them.
+    retired = defaultdict(set)
+    for k, r in charter_reg.items():
+        base = slugify(r["name"])
+        old_slug = f"{base}-{(r['number'] or k[2]).lower()}"
+        new_slug = charter_slugs[k]
+        if old_slug != new_slug:
+            retired[old_slug].add(new_slug)
+    # A retired slug that maps to MORE THAN ONE record is genuinely
+    # ambiguous — the old charter number identified several charters, so
+    # the page must say which it could have meant rather than pick one.
+    # A retired slug that maps to exactly one is an unambiguous rename,
+    # which is a different statement and is recorded separately: saying
+    # "this is now X" there is a fact, not a guess.
+    charter_renamed = {}
+    for old_slug, news in retired.items():
+        if len(news) > 1:
+            charter_ambig.setdefault(old_slug, [])
+            for n in news:
+                if n not in charter_ambig[old_slug]:
+                    charter_ambig[old_slug].append(n)
+        else:
+            charter_renamed[old_slug] = next(iter(news))
+    for v in charter_ambig.values():
+        v.sort()
     for key in all_charter_keys:
         reg = charter_reg.get(key)
         if reg is None:
@@ -1273,15 +1350,21 @@ def main():
         c, d, s = key
         slug = charter_slugs[key]
         auth = years[latest]["leas"].get((c, d)) or years[Y[0]]["leas"].get((c, d))
-        entry = {"name": reg["name"], "county": COUNTIES[int(c) - 1],
-                 "charterNumber": reg["number"],
-                 "authorizer": auth["name"] if auth else "State Board of Education",
-                 "years": {}}
+        entry = charters_out.get(slug) or {
+            "name": reg["name"], "county": COUNTIES[int(c) - 1],
+            "charterNumber": reg["number"],
+            "authorizer": auth["name"] if auth else "State Board of Education",
+            "years": {}}
         for fy in Y:
             yd = years[fy]
             if key in yd["charter_gl"]:
                 entry["years"][fy] = {
                     "mode": "sacs",
+                    # THE AUTHORIZER IS A PER-YEAR FACT (V17a prereq 3):
+                    # who oversaw the charter, and how its money reached
+                    # it, in THIS year — not an attribute of the record.
+                    "authorizer": (yd["leas"].get((c, d)) or {}).get(
+                        "name", "State Board of Education"),
                     "ada": round(yd["charters"].get(key, {}).get("ada", 0.0), 2),
                     "expenditures": round(yd["charter_gl_tot"][key], 2),
                     "byObject": {k: round(v, 2) for k, v in yd["charter_gl"][key].items()},
@@ -1289,12 +1372,39 @@ def main():
             elif key in yd["alt_data"]:
                 entry["years"][fy] = {
                     "mode": "alt",
+                    "authorizer": (yd["leas"].get((c, d)) or {}).get(
+                        "name", "State Board of Education"),
                     "ada": round(yd["charters"].get(key, {}).get("ada", 0.0), 2),
                     "expenditures": round(yd["alt_tot"][key], 2),
                     "byObject": {k: round(v, 2) for k, v in yd["alt_data"][key].items()},
                 }
         if entry["years"]:
             charters_out[slug] = entry
+    # ── THE AUTHORIZER CHANGE IS A COMPARABILITY FACT (V17a prereq 3) ──
+    # Derived from what the record now shows, not declared: after the
+    # re-key the pipeline can see both sides of the change. A reader
+    # comparing across it is comparing a period of district oversight
+    # against a period under a different authorizer, or under direct
+    # funding. Stated, never characterised — a charter moving to a
+    # direct-funded block is routine under California charter law.
+    for slug, entry in charters_out.items():
+        seq = [(fy, entry["years"][fy].get("authorizer"))
+               for fy in Y if fy in entry["years"]]
+        changes = [(seq[i - 1][0], seq[i][0], seq[i - 1][1], seq[i][1])
+                   for i in range(1, len(seq))
+                   if seq[i][1] and seq[i - 1][1] and seq[i][1] != seq[i - 1][1]]
+        if changes:
+            entry["authorizerChanges"] = [
+                {"from": a, "to": b, "fromName": x, "toName": y}
+                for a, b, x, y in changes]
+            entry["authorizerNote"] = (
+                "The authorizer of this charter changed during the years "
+                "shown: " + "; ".join(
+                    f"{x} through FY {a}, then {y} from FY {b}"
+                    for a, b, x, y in changes)
+                + ". The authorizer oversees the charter and is the route "
+                  "its funding takes, so figures either side of that "
+                  "change are reported under different oversight.")
     FUND_LABEL = {"General": "Fund 01", "CharterSpecRevenue": "Fund 09",
                   "CharterEnterprise": "Fund 62"}
     # name, then the charter key — an explicit tie-break so the shipped
@@ -1360,6 +1470,9 @@ def main():
             "ambiguousSlugs": {k: v for k, v in (
                 ("districts", district_ambig), ("countyOffices", coe_ambig),
                 ("charters", charter_ambig)) if v},
+            # a retired identifier that maps to exactly one record: not
+            # ambiguous, so stated as a rename rather than a choice
+            "renamedSlugs": {"charters": charter_renamed} if charter_renamed else {},
             "basis": "Unaudited actual expenditures as filed by each LEA under "
                      "SACS. District figures are the Current Expense of "
                      "Education (Fund 01 current operating expense, CDE's EDP "
