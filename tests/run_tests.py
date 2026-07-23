@@ -3496,6 +3496,100 @@ def test_strict_source_columns():
               isinstance(live["CharterNumber"], str))
 
 
+def test_unpublished_reason_live(page, base):
+    """THE REASON REACHES THE PAGE — PROVEN ON THE SHIPPED PAYLOAD.
+
+    test_unknown_facts_render covers this machinery against a SYNTHETIC
+    payload, and passed for two PRs while the live payload carried a
+    false claim (#68: a stale loop variable made every year report a
+    measured status) and then, once that was fixed, carried the status
+    with no reason attached — meta.unpublished was nested inside
+    meta.resource, 16 spaces of indentation rather than 12, so
+    `D.meta.unpublished` was undefined and unpubWhy() returned null.
+
+    Synthetic proof could not catch either: the synthetic payload was
+    built with the block in the right place. This asserts against the
+    payload that actually ships."""
+    fy_absent = "2016-17"
+    unpub = (SCHOOL["meta"].get("unpublished") or {})
+    check("unpublished live: meta.unpublished is at meta TOP LEVEL, where "
+          "the page reads it — not nested inside another block",
+          fy_absent in unpub, str(sorted(unpub)))
+    check("unpublished live: and names the fact and its reason",
+          "basicAid" in unpub.get(fy_absent, {})
+          and "LCFF" in unpub[fy_absent]["basicAid"],
+          str(unpub.get(fy_absent))[:80])
+    # FY2019-20 publishes funded ADA but NOT basic aid — the unknown set
+    # differs per FACT, which is the whole point of the (year, fact) key
+    check("unpublished live: FY2019-20 lists basicAid only, because that "
+          "vintage publishes funded ADA and no local-revenue column",
+          list(unpub.get("2019-20", {})) == ["basicAid"],
+          str(list(unpub.get("2019-20", {}))))
+
+    # a REAL district, in a REAL not-published year, that also has a
+    # measured year — so the same record proves both halves
+    live = sorted(k for k, v in SCHOOL["districts"].items()
+                  if v["years"].get(fy_absent, {}).get("basicAidStatus")
+                  == "not-published"
+                  and v["years"].get(SCHOOL["years"][-1], {})
+                  .get("basicAidStatus") in ("basic-aid", "state-funded"))
+    check("unpublished live: a real district exists in both states, so the "
+          "assertions below compare like with like", len(live) > 100,
+          str(len(live)))
+    D = live[0]
+
+    def record(fy):
+        page.goto(f"{base}/schools.html#c={D}&y={fy}")
+        page.wait_for_selector("#recordBody")
+        page.wait_for_timeout(400)
+        return page.inner_text("#recordBody")
+
+    rec = record(fy_absent)
+    check("unpublished live: the RECORD says the status is not known",
+          f"not known for FY {fy_absent}" in rec, rec[:0])
+    check("unpublished live: and gives CDE's actual reason, not a bare "
+          "'unknown'", "publishes no LCFF funding summary" in rec, rec[:0])
+    check("unpublished live: and says the fact is unavailable rather than "
+          "negative", "unavailable, not negative" in rec, rec[:0])
+
+    # POSITIVE CONTROL: the same district in a year CDE does publish must
+    # NOT carry the not-known wording. Without this, a page that said
+    # "not known" everywhere would satisfy the assertions above.
+    ok = record(SCHOOL["years"][-1])
+    check("unpublished live: the SAME district in a published year does "
+          "not say 'not known' — the wording is earned, not universal",
+          "not known for FY" not in ok, ok[:0])
+
+    # PRINT SHEET — the artefact a reader keeps
+    page.goto(f"{base}/schools.html#c={D}&y={fy_absent}")
+    page.wait_for_selector("#recordSheet", state="attached")
+    page.wait_for_timeout(400)
+    sheet = page.inner_text("#recordSheet")
+    check("unpublished live: the PRINT SHEET carries the reason too",
+          "publishes no LCFF funding summary" in sheet, sheet[:0])
+
+    # CITATION — must state no figure it does not have
+    page.click("#citeToggle")
+    page.wait_for_selector("#citeText:visible")
+    cite = page.inner_text("#citeText")
+    check("unpublished live: the citation is real and states no unknown "
+          "figure", len(cite) > 60 and "NaN" not in cite
+          and "\u221e" not in cite, cite[:0])
+    page.keyboard.press("Escape")
+
+    # CSV — a fact unknown on the page must not be knowable-and-wrong here
+    with page.expect_download() as dl:
+        page.click("#csvBtn")
+    csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
+    rows = [l for l in csv_text.splitlines()
+            if l.startswith(SCHOOL["districts"][D]["name"])]
+    check("unpublished live: the export contains the district's row",
+          len(rows) == 1, str(len(rows)))
+    check("unpublished live: and exports the unknown status word, never a "
+          "measured false", rows and "not-published" in rows[0],
+          str(rows[:1])[:110])
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -7968,6 +8062,7 @@ def main():
             test_ccc_fourteen_year_gates()
             test_ccc_source_identity()
             test_strict_source_columns()
+            test_unpublished_reason_live(page, base)
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)

@@ -1527,6 +1527,24 @@ def main():
                            "are keyed on CDE's own CDS code throughout, so "
                            "the same source data always produces the same "
                            "identifiers and the same digest.",
+            # WHY a fact is unknown, keyed by (year, fact) — a property
+            # of CDE's publication, not of each of 941 districts, so it is
+            # stated once and looked up.
+            #
+            # AT META TOP LEVEL, which is where schools.html reads it.
+            # It was nested inside meta.resource — 16 spaces of
+            # indentation rather than 12 — so the payload carried the
+            # reasons and the page could not see them: `D.meta.unpublished`
+            # was undefined, unpubWhy() returned null, and the record said
+            # "not known" with no reason attached. The status was right;
+            # the explanation never arrived.
+            "unpublished": {
+                fy: {fact: LCFF_UNPUBLISHED_REASON[yy]
+                     for fact, published
+                     in LCFF_PUBLISHES.get(yy, {}).items() if not published}
+                for yy, fy in YEARS
+                if not all(LCFF_PUBLISHES.get(yy, {}).values())
+            },
             "ambiguousSlugs": {k: v for k, v in (
                 ("districts", district_ambig), ("countyOffices", coe_ambig),
                 ("charters", charter_ambig)) if v},
@@ -1606,16 +1624,6 @@ def main():
                     "unrestricted Lottery — largely STATE money the district "
                     "may spend without a categorical restriction. Local "
                     "restricted is a separate group.",
-                # WHY a fact is unknown, keyed by (year, fact) — a
-                # property of the source's publication, not of each of
-                # 940 districts, so it is stated once and looked up.
-                "unpublished": {
-                    fy: {fact: LCFF_UNPUBLISHED_REASON[yy]
-                         for fact, published
-                         in LCFF_PUBLISHES.get(yy, {}).items() if not published}
-                    for yy, fy in YEARS
-                    if not all(LCFF_PUBLISHES.get(yy, {}).values())
-                },
                 "lcffNote": "LCFF is accounted for as a single unrestricted "
                     "resource. Base, supplemental, and concentration grants "
                     "are NOT tracked separately in any district's general "
