@@ -641,6 +641,21 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
         added = set(cov["added"])
         entered = [e for e in batch["events"]
                    if e["o"] is None and _fy_of(e["k"]) in added]
+        # THE COLLAPSE IS EARNED, as #58 established for shapeOnly. A
+        # coverage expansion may be counted rather than listed ONLY if
+        # every suppressed event is an ENTRY into a newly-covered year:
+        # o is None, and the year is one being added. An event that
+        # changes an existing value, or touches a year that was already
+        # covered, is a source change and can never be collapsed this
+        # way — it stays in the list.
+        bad = [e for e in entered
+               if e.get("o") is not None or _fy_of(e["k"]) not in added]
+        if bad:
+            raise SystemExit(
+                "COVERAGE COLLAPSE REFUSED: it would hide "
+                f"{len(bad)} event(s) that are not entries into a newly "
+                "covered year — a coverage expansion may be counted, a "
+                "source change may never be. Nothing written.")
         batch["events"] = [e for e in batch["events"] if e not in entered]
         batch["ours"] = True
         batch["coverageAdded"] = cov["added"]
@@ -683,6 +698,22 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
 # years the record ALREADY covered are unaffected and still reported one by
 # one, so a real restatement can never hide inside an extension.
 COVERAGE = [
+    {
+        "layer": "school",
+        "built": "2026-07-22",
+        "added": ["2016-17", "2017-18", "2018-19", "2019-20", "2020-21",
+                  "2021-22"],
+        "note": "Our own change of coverage, not a change at the source. The "
+                "K-12 record now begins at FY 2016-17 rather than FY 2022-23. "
+                "Every added year reconciles to CDE's published Current "
+                "Expense of Education to the cent before publication, the "
+                "same gate the existing years pass. The figures for these six "
+                "years are newly IN the record, but none of them moved \u2014 "
+                "they were published all along and the Ledger had not loaded "
+                "them. They are counted here rather than listed as hundreds "
+                "of thousands of individual appearances, because an entry is "
+                "not a revision: nothing that was already published changed.",
+    },
     {
         "layer": "state",
         "built": "2026-07-21",

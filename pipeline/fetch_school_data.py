@@ -434,7 +434,7 @@ def slugify(s):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", s.lower())).strip("-")
 
 
-def assign_slugs(records, label):
+def assign_slugs(records, label, force_qualify=frozenset()):
     """Deterministic, collision-free slugs — the identifier contract.
 
     `records` is a list of (identity, name, qualifier) where `identity`
@@ -473,12 +473,17 @@ def assign_slugs(records, label):
     out, ambiguous = {}, {}
     for base in sorted(by_name):
         group = sorted(by_name[base], key=lambda r: r[0])
-        if len(group) == 1:
+        # `force_qualify` names identities that shared this name in SOME
+        # year even if they do not share it in the year that produced
+        # this record. They must be qualified anyway: an unqualified
+        # slug would describe two entities for that earlier year.
+        if len(group) == 1 and group[0][0] not in force_qualify:
             out[group[0][0]] = base
             continue
         for ident, name, qualifier in group:
             out[ident] = slugify(name + "-" + str(qualifier))
-        ambiguous[base] = sorted(out[ident] for ident, _, _ in group)
+        if len(group) > 1:
+            ambiguous[base] = sorted(out[ident] for ident, _, _ in group)
     if len(set(out.values())) != len(out):
         dupes = sorted(s for s in set(out.values())
                        if list(out.values()).count(s) > 1)
@@ -1105,6 +1110,7 @@ def main():
 
     latest = YEARS[-1][1]
     Y = [fy for _, fy in YEARS]
+    YY_OF = {fy: yy for yy, fy in YEARS}
 
     # ---- NCES crosswalk (identifier matching for the address view)
     if not PUBSCHLS.exists():
@@ -1146,13 +1152,22 @@ def main():
                     f"RE-CODING COLLISION: {_old} and {_new} both present in "
                     f"FY {fy}. They cannot be the same district in a year "
                     "that contains both; nothing written.")
+        # EVERY per-key table, DERIVED not listed. The first version of
+        # this hand-wrote the table names and got one wrong — "by_res"
+        # where the pipeline calls it "edp_by_res" — so Lowell Joint's
+        # resource breakdown was silently left behind under the old key
+        # and the resource gate refused. A hand-written list of names is
+        # the same failure mode as a hand-written column name; this
+        # finds every table that is keyed by (Ccode, Dcode) instead.
         for _d in (years[fy] for fy in Y):
-            for _tbl in ("edp", "basic_aid", "coe_ada", "sponsored",
-                         "dep_funds_exp", "edp_restr", "edp_fn", "edp_fn_obj",
-                         "by_res"):
-                _t = _d.get(_tbl)
-                if isinstance(_t, dict) and _old in _t and _new not in _t:
-                    _t[_new] = _t.pop(_old)
+            for _name, _t in list(_d.items()):
+                if not isinstance(_t, dict) or _old not in _t:
+                    continue
+                if _new in _t:
+                    raise SystemExit(
+                        f"RE-CODING COLLISION in {_name}: {_old} and {_new} "
+                        "are both present; nothing written.")
+                _t[_new] = _t.pop(_old)
     all_keys = sorted({k for fy in Y for k in years[fy]["ce"]})
     newest_of = {k: next((years[fy]["ce"][k] for fy in reversed(Y)
                           if k in years[fy]["ce"]), None) for k in all_keys}
@@ -1199,8 +1214,15 @@ def main():
                 # The bare `basicAid` key is gone from EVERY year, so no
                 # consumer can read it correctly in one year and be lied to
                 # in another.
+                # yy MUST come from THIS year, not the enclosing scope.
+                # It was reading the outer loop's leftover `yy` — the
+                # LAST year, which publishes everything — so all nine
+                # years took the published branch and four of them
+                # asserted "state-funded" about 3,756 districts on no
+                # evidence. That is precisely the claim #55 exists to
+                # prevent, reintroduced by a stale variable.
                 "basicAidStatus": lcff_status(
-                    yy, "basicAid",
+                    YY_OF[fy], "basicAid",
                     lambda: ("basic-aid" if yd["basic_aid"].get(key)
                              else "state-funded")),
                 "smallNSS": pub["ada"] < 250,
@@ -1305,9 +1327,47 @@ def main():
         if newest > ident_newest_year.get(cs, -2):
             ident_newest_year[cs] = newest
             ident_reg[cs] = charter_reg[k]
+    # A NAME SHARED IN *ANY* YEAR IS A SHARED NAME. Qualifying on the
+    # newest name alone missed a real ambiguity: Pacific View Charter
+    # (Humboldt 12/1230150) was renamed "Pacific View Charter 2.0" in
+    # FY2017-18, but in FY2016-17 it carried the same name as the
+    # distinct San Diego charter 37/3731221. Under newest-name-only
+    # qualification the base names differ, so San Diego took the bare
+    # `pacific-view-charter` — an identifier that, for FY2016-17,
+    # describes two entities. They are two entities, not one: different
+    # counties, different school codes, both present in FY2016-17.
+    #
+    # So every name an identity has EVER held counts toward ownership,
+    # which is #22's rule applied across the window rather than at its
+    # end: every holder of a shared name is disambiguated.
+    ident_all_names = defaultdict(set)
+    for k in all_charter_keys:
+        if k not in charter_reg:
+            continue
+        cs = charter_identity[k]
+        for fy in Y:
+            reg_fy = years[fy]["charters"].get(k)
+            if reg_fy and reg_fy.get("name"):
+                ident_all_names[cs].add(slugify(reg_fy["name"]))
+        ident_all_names[cs].add(slugify(charter_reg[k]["name"]))
+    shared_bases = {b for b, owners in
+                    ((b, [cs for cs, names in ident_all_names.items() if b in names])
+                     for b in {n for names in ident_all_names.values() for n in names})
+                    if len(owners) > 1}
     charter_slugs_by_ident, charter_ambig = assign_slugs(
         [(cs, r["name"], cs[1].lower()) for cs, r in ident_reg.items()],
-        "charters")
+        "charters", force_qualify={cs for cs, names in ident_all_names.items()
+                                   if names & shared_bases})
+    # A base name shared ACROSS YEARS is ambiguous for every identity
+    # that ever held it, including those whose current name differs. The
+    # list must name them all, or it says a stale link could have meant
+    # one thing when it could have meant two.
+    for base in shared_bases:
+        owners = sorted(charter_slugs_by_ident[cs]
+                        for cs, names in ident_all_names.items()
+                        if base in names and cs in charter_slugs_by_ident)
+        if len(owners) > 1:
+            charter_ambig[base] = owners
     charter_slugs = {k: charter_slugs_by_ident[charter_identity[k]]
                      for k in charter_identity}
     # ── RETIRED SLUGS FROM THE OLD KEY (the #22 treatment) ────────────
