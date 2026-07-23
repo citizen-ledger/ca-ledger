@@ -727,10 +727,21 @@ COUNTY_PIN = {                 # $M, statewide sum of the stored per-county
     "2019-20": 96848.236, "2020-21": 104705.656, "2021-22": 106687.413,
     "2022-23": 115685.330, "2023-24": 126286.986,
 }
-SCHOOL_CE_PIN = {              # $, statewide sum of the per-district Current
-    "2022-23": 89068561292.64, # Expense figures, each gated to the cent
-    "2023-24": 97527767792.56, # against CDE's published EDP 365 at build.
-    "2024-25": 101236938810.13,# The AGGREGATE is ours. TAMPER PIN.
+SCHOOL_CE_PIN = {
+    # RE-DERIVED, NOT MATCHED TO THE BUILD (nine-year extension).
+    # The three years that were already pinned are BYTE-IDENTICAL after
+    # the extension — verified before these six were added, which is
+    # what makes this a reviewed change rather than a finding: nothing
+    # already published moved.
+    "2016-17": 62420252068.21,
+    "2017-18": 64756253417.27,
+    "2018-19": 69258133669.73,
+    "2019-20": 70032149542.13,
+    "2020-21": 73174722467.47,
+    "2021-22": 80987195668.80,
+    "2022-23": 89068561292.64,
+    "2023-24": 97527767792.56,
+    "2024-25": 101236938810.13,
 }
 DIST_PIN = {                   # $, statewide as-filed expenditures. TAMPER
     "2016-17": 54226963772,    # PIN, and the only kind possible here: no
@@ -1608,8 +1619,13 @@ def test_schools(page, base):
     src = (ROOT / "schools.html").read_text(encoding="utf-8")
 
     # ---- THE GATE, re-asserted from the shipped data for every district-year
-    check("schools: 934 districts, 58 county offices",
-          len(SCHOOL["districts"]) == 934 and len(SCHOOL["countyOffices"]) == 58,
+    # 941, RE-DERIVED: the 934 previously shipped are all still present,
+    # plus 7 that appear ONLY in the newly-added years — districts that
+    # stopped filing before FY2022-23 and so could not appear in a
+    # three-year window. A reviewed consequence of widening the window,
+    # not a change in the population that was already published.
+    check("schools: 941 districts, 58 county offices",
+          len(SCHOOL["districts"]) == 941 and len(SCHOOL["countyOffices"]) == 58,
           f"{len(SCHOOL['districts'])}/{len(SCHOOL['countyOffices'])}")
     bad_gate, bad_sum = [], []
     for slug, d in SCHOOL["districts"].items():
