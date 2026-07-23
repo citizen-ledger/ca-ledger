@@ -75,3 +75,29 @@ school recurring under changed identifiers, or records that should
 never have been separate.
 
 The gate is behaving correctly. It should not be relaxed either.
+
+**Investigated: `docs/V17_CHARTER_SLUG_FINDING.md`.** All are one shape
+— a single charter under two authorizer keys, same county and same CDS
+school code, `Dcode` differing. None co-occur; none exist in the shipped
+window. The root cause is the derivation: districts were re-keyed on CDS
+in #22, charters still key on `(name, charter number)` where the number
+is documented non-unique. The recommendation is to re-key charters on
+`(county, school code)` rather than declare 32 re-codings.
+
+---
+
+## Identity is derived, or it is enumerated — prefer derived
+
+Two identity defects in a row (#63 Lowell Joint, V17 charters) shared a
+tell: an entity split across keys because the key included something the
+source is free to change — a county code, an authorizing district.
+
+When one entity splits, ask first whether the KEY is wrong, not whether
+the instance needs declaring. A declaration is right when the source
+genuinely re-coded one thing once (Lowell Joint: one entry, guarded by
+`assert_recodings`). A derivation fix is right when the same thing is
+happening to many entities for the same structural reason (charters: 32
+at once, and more each time the window grows).
+
+Enumerating what a better key would dissolve produces a maintenance
+surface that rots as the window moves.
