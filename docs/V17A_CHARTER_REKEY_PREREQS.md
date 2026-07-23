@@ -39,7 +39,7 @@ So the 180 are renames, the key holds, and a charter's name is
 demonstrably *not* part of its identity — which is the same conclusion
 #22 reached for districts.
 
-## Prerequisite 2 — THE COUNT: **not resolved, narrowed**
+## Prerequisite 2 — THE COUNT: **RESOLVED — reconciled to 33**
 
 The pipeline reports **33** collisions. V17 reported **32**. Both are
 wrong in different ways, and the residual is not yet explained.
@@ -74,17 +74,38 @@ Direction established: the pipeline's set is a subset of the registry's,
 and every one of its 33 slugs is inside the 40 (verified: the set
 difference *pipeline − registry* is empty).
 
-**The residual four are not explained.** They lie in how `charter_gl`
-is actually built — `ReportLevel` distinguishes charters that file
-separately (`CharterSchool`, `StateBoardOfEducation`) from those
-reporting inside an authorizer (`SchoolDistrict`,
-`CountyOfficeOfEducation`), and `FundUsed` distinguishes commingled
-Fund 01 from Fund 09/62. My reconstruction did not apply those filters.
+### The filter, recorded so the number is reproducible
 
-**This must be closed before the re-key is written**, because the fix's
-correctness is judged by "the collisions are gone", and a count that
-cannot be reproduced cannot tell a dissolved collision from one that
-moved out of the population being counted.
+`ReportLevel` and `FundUsed` turned out to be red herrings — they are
+read into the registry but do **not** filter the population. The
+population is exactly:
+
+```
+all_charter_keys = { keys in charter_gl }  ∪  { keys in alt_data }
+                   ∩  { keys with a registry entry }
+
+charter_gl  =  UserGL rows where
+                 SchoolCode != "0000000"      (a school-level row)
+                 AND 1000 <= Object <= 7999   (expenditure objects)
+alt_data    =  every Alternate_Form_Data row, keyed on the vintage's
+               own school column (ALT_SCHOOL_COL: SchoolID through
+               FY2021-22, SchoolCode from FY2022-23)
+registry    =  the Charters table, keyed (Ccode, Dcode, <vintage col>),
+               carrying CharterName and CharterNumber
+```
+
+Reproduced against the nine years: **1,190 charter keys, all 1,190
+carrying a registry entry, 33 colliding slugs — exactly the pipeline's
+figure.**
+
+My earlier 37 came from including UserGL school-level rows outside the
+1000–7999 object range, which are revenue and balance-sheet rows rather
+than expenditure. The 40 is the whole registry, including 7 charters
+that never file financials in any year and so never reach the payload.
+
+    registry              40 collisions
+    minus never-filing     7
+    = the payload's       33
 
 ## Prerequisite 3 — THE AUTHORIZER CHANGE: **both, and it is a note**
 
