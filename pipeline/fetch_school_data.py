@@ -92,6 +92,70 @@ OUT_PATH = ROOT / "school-data.js"
 PUBSCHLS = CACHE / "pubschls.txt"   # CDE directory export (live URL is
 # bot-gated; obtainable via web.archive.org snapshot of
 # https://www.cde.ca.gov/schooldirectory/report?rid=dl1&tp=txt)
+# ── RE-CODED DISTRICTS: one body, one NCES id, two California keys ───
+#
+# California's (Ccode, Dcode) key is administrative and CAN MOVE. The
+# NCES id does not. Where SACS files a district under one key and later
+# another, the two keys are the SAME DISTRICT and its series is
+# continuous; treating them as two records would publish one body twice,
+# with a short series each, as if they were different districts.
+#
+# THE CROSSWALK CANNOT SEE THIS. nces_ids is built from ONE
+# current-vintage directory export, so it resolves only the current key
+# and any earlier key looks like a district with no NCES id. The next
+# re-coding will look exactly like this one — see docs/OPEN.md.
+#
+# DECLARED, NEVER INFERRED, AND EARNED: assert_recodings() below requires
+# BOTH keys to actually occur in the loaded years, so an entry cannot
+# rot into a stale exemption once a window no longer reaches back to it.
+#
+# Lowell Joint Elementary — verified four ways before declaring
+# (docs/V16_NCES_IDENTIFIER_FINDING.md):
+#   1. the keys NEVER co-occur: 19/64766 in FY2016-17..FY2020-21,
+#      30/64766 from FY2021-22, one row each year, never both;
+#   2. the boundary is not a step change: +14.7% across it, the 70th
+#      percentile of 973 districts in a year whose median was +10.9%
+#      (the first full year of federal COVID relief);
+#   3. NO other district holds either key in any of the nine years, and
+#      the name and type are identical throughout;
+#   4. CDE's directory carries NCES 0623010 as ONE Active district row,
+#      with no ClosedDate — not a closure and a new opening.
+# It is a joint district straddling the Los Angeles / Orange county
+# line; CDE moved its administrative county from 19 to 30.
+RECODED_DISTRICTS = {
+    ("19", "64766"): {
+        "to": ("30", "64766"),
+        "nces": "0623010",
+        "changedAt": "2021-22",
+        "why": "Lowell Joint is a joint elementary district straddling the "
+               "Los Angeles / Orange county line. California moved its "
+               "administrative county code from 19 to 30 at FY2021-22; its "
+               "federal NCES identifier, 0623010, did not change. The nine "
+               "years are one continuous district.",
+    },
+}
+
+
+def assert_recodings(seen_keys):
+    """A DECLARED RE-CODING MUST BE EXERCISED BY THE DATA.
+
+    `seen_keys` is every (Ccode, Dcode) the loaded years actually
+    contain. Both sides of a declared re-coding must appear, or the
+    declaration is making a claim about years this build cannot see —
+    which is how an exemption goes stale and starts hiding a real gap.
+    """
+    for old, rec in RECODED_DISTRICTS.items():
+        new = rec["to"]
+        if old not in seen_keys or new not in seen_keys:
+            raise SystemExit(
+                f"DECLARED RE-CODING NOT EXERCISED: {old} -> {new} is "
+                f"declared in RECODED_DISTRICTS, but "
+                f"{'the old' if old not in seen_keys else 'the new'} key does "
+                "not occur in the loaded years. A declaration that nothing "
+                "tests is a stale exemption; remove it or widen the window. "
+                "Nothing written.")
+
+
 COMMON_ADMIN_NCES = {
     "0603090": "2376349", "0631230": "2376349",   # Arena Union / Point Arena
     "0625130": "5040717", "0625150": "5040717",   # Modesto City Elem / High
@@ -1006,6 +1070,30 @@ def main():
     res_titles_used = {fy: {} for fy in Y}
     # sorted on the CDS key itself — the source's own stable identity —
     # so the iteration order cannot depend on PYTHONHASHSEED.
+    seen_keys = {k for fy in Y for k in years[fy]["ce"]}
+    # A DECLARED RE-CODING MUST BE EXERCISED — both keys present, or the
+    # declaration is a stale exemption.
+    assert_recodings(seen_keys)
+    # A re-coded district's OLD key folds into its new one, so the nine
+    # years are one continuous record rather than two short ones. Every
+    # year's figures are carried across; nothing is dropped.
+    for _old, _rec in RECODED_DISTRICTS.items():
+        _new = _rec["to"]
+        for fy in Y:
+            if _old in years[fy]["ce"] and _new not in years[fy]["ce"]:
+                years[fy]["ce"][_new] = years[fy]["ce"].pop(_old)
+            elif _old in years[fy]["ce"]:
+                raise SystemExit(
+                    f"RE-CODING COLLISION: {_old} and {_new} both present in "
+                    f"FY {fy}. They cannot be the same district in a year "
+                    "that contains both; nothing written.")
+        for _d in (years[fy] for fy in Y):
+            for _tbl in ("edp", "basic_aid", "coe_ada", "sponsored",
+                         "dep_funds_exp", "edp_restr", "edp_fn", "edp_fn_obj",
+                         "by_res"):
+                _t = _d.get(_tbl)
+                if isinstance(_t, dict) and _old in _t and _new not in _t:
+                    _t[_new] = _t.pop(_old)
     all_keys = sorted({k for fy in Y for k in years[fy]["ce"]})
     newest_of = {k: next((years[fy]["ce"][k] for fy in reversed(Y)
                           if k in years[fy]["ce"]), None) for k in all_keys}
