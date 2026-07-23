@@ -101,3 +101,38 @@ at once, and more each time the window grows).
 
 Enumerating what a better key would dissolve produces a maintenance
 surface that rots as the window moves.
+
+---
+
+## UC: the campus segmentation is not uniform across vintages
+
+**Status: open, blocking the UC four-year extension.
+`docs/V18_UC_SEGMENTATION_FINDING.md`.**
+
+All twelve sources (six AFRs, six UCOP FTE PDFs) fetch and verify as
+real PDFs. The blocker is what they say, not whether they exist.
+
+The third strip component — Department of Energy laboratories — is
+published four different ways across six years: a per-campus row
+(FY2023-24, FY2024-25), a systemwide-only line under that label
+(FY2021-22), a systemwide-only line under a *different* label,
+`DOE Labs Expenses` (FY2022-23), and absent from the campus table
+altogether (FY2019-20, FY2020-21, each carrying an "Excludes DOE
+laboratories" footnote).
+
+So the strip is not the same operation in each year, and a core series
+built by applying one strip across all six would compare
+differently-composed figures and read the difference as a trend.
+
+Two smaller vintage facts sit alongside it: `Impairment of capital
+assets` is a function row in the two oldest years only, and the
+parser's table anchor (`"Campus Financial Facts"`) does not match the
+older vintages, which print the heading in capitals. The anchor needs a
+DECLARED per-vintage entry, not a case-insensitive match — a case-blind
+search is the widened detector this repo has refused twice.
+
+Also open, and it touches the SHIPPED years: the published audit-status
+sentence quotes PwC's "other information comprises pages 4 through 7",
+and that string is not present in the first twenty pages of any of the
+six reports. It needs re-verifying against each report before being
+repeated, including for the two years already published.
