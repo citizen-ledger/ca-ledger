@@ -106,8 +106,14 @@ import revisions  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "ccc"
 OUT_PATH = ROOT / "ccc-data.js"
-FY = "2022-23"
-FY_PORTAL = "14"  # CCFS-311 FiscalYearDropdown value for 2022-23
+# ── THE FOURTEEN YEARS THE CCFS-311 PORTAL PUBLISHES ─────────────────
+# Dropdown values read off the portal's own <option> list, never guessed.
+# Value 1 is FY2009-10 and they run consecutively; the layer shipped
+# value 14 (FY2022-23) alone until this extension.
+PORTAL_YEARS = [(str(i), f"{2008+i}-{str(2009+i)[-2:]}") for i in range(1, 15)]
+YEARS = [fy for _, fy in PORTAL_YEARS]
+FY = YEARS[-1]                       # the latest year, still the default
+FY_PORTAL = PORTAL_YEARS[-1][0]
 
 PORTAL = "https://fiscalportal.cccco.edu/Reports/AnnualReports"
 DCC_URL = "https://webdata.cccco.edu/ded/DistrictCollegeCodes.pdf"
@@ -267,31 +273,39 @@ def fetch_dropdown(refresh):
     return code2name
 
 
-def fetch_table_vi(refresh):
+def fetch_table_vi(refresh, portal_val=None, fy=None):
     """Table VI = Summary of Current Expense of Education (ECS 84362):
     per-district CE + instructional salaries + 50%-law percent, and a
     printed statewide total row. The Run button is disabled until a
-    fiscal-year autopostback fires, so this scripts the handshake."""
+    fiscal-year autopostback fires, so this scripts the handshake.
+
+    Parameterised by portal dropdown value, one cache file per year."""
+    portal_val = portal_val or FY_PORTAL
+    fy = fy or FY
     def live():
         html = _get(PORTAL)
         tk = _tokens(html)
         s1 = _post(tk, {"__EVENTTARGET": "ctl00$MainContent$FiscalYearDropdown",
-                        "ctl00$MainContent$FiscalYearDropdown": FY_PORTAL,
+                        "ctl00$MainContent$FiscalYearDropdown": portal_val,
                         "ctl00$MainContent$StatewideReportDropdown": "40"})
         tk2 = _tokens(s1)
-        run = _post(tk2, {"ctl00$MainContent$FiscalYearDropdown": FY_PORTAL,
+        run = _post(tk2, {"ctl00$MainContent$FiscalYearDropdown": portal_val,
                           "ctl00$MainContent$StatewideReportDropdown": "40",
                           "ctl00$MainContent$RunStatewideReport": "View Report"})
         return _plain(run)
-    text = html.unescape(_cached("tablevi-fy2223.txt", live, refresh))  # idempotent for cached/live
+    cache_name = ("tablevi-fy2223.txt" if fy == "2022-23"
+                  else f"tablevi-{fy}.txt")
+    text = html.unescape(_cached(cache_name, live, refresh))
     anchor = "Percent of Instructors' Salaries to Current Expense of Education"
     i = text.find(anchor)
     if i < 0:
-        raise SystemExit("CCC: Table VI did not render (portal handshake failed) — nothing written")
+        raise SystemExit(f"CCC {fy}: Table VI did not render (portal handshake "
+                         "failed) — nothing written")
     seg = text[i + len(anchor):]
     ms = re.search(r"Statewide\s+([\d,]+)\s+([\d,]+)\s+([\d.]+)%", seg)
     if not ms:
-        raise SystemExit("CCC: Table VI statewide total row not found — nothing written")
+        raise SystemExit(f"CCC {fy}: Table VI statewide total row not found "
+                         "— nothing written")
     statewide = {"ce": int(ms.group(1).replace(",", "")),
                  "instrSal": int(ms.group(2).replace(",", "")),
                  "pct50": float(ms.group(3))}
@@ -331,12 +345,38 @@ def fetch_roster(refresh):
 
 
 # ── source 3: SCFF Exhibit C PDF ─────────────────────────────────────
-def fetch_apportionment(refresh):
+def fetch_apportionment(refresh, fy=None):
+    """Parse one year's Exhibit C.
+
+    THE PDF MUST DECLARE ITS OWN FISCAL YEAR. A file archived under a
+    2021-22 path is named 202021-Exhibit-C-July-2021-Revision.pdf and its
+    first page reads "2020-21 Second Principal" — FY2020-21 data. So the
+    year is taken from the document, never from the path, and a document
+    that does not say what it is is refused."""
     import pypdf
-    blob = _cached("apportionment-2022-23-R1-ExhibitC.pdf",
-                   lambda: _get(EXHIBITC_URL, binary=True), refresh, binary=True)
-    (CACHE / "_exc_tmp.pdf").write_bytes(blob)
-    r = pypdf.PdfReader(CACHE / "_exc_tmp.pdf")
+    fy = fy or FY
+    if fy == FY:
+        blob = _cached("apportionment-2022-23-R1-ExhibitC.pdf",
+                       lambda: _get(EXHIBITC_URL, binary=True), refresh, binary=True)
+        (CACHE / "_exc_tmp.pdf").write_bytes(blob)
+        src = CACHE / "_exc_tmp.pdf"
+    else:
+        src = CACHE / "exhibitc" / f"exhibitc-{fy}.pdf"
+        if not src.exists():
+            raise SystemExit(
+                f"CCC {fy}: no verified Exhibit C on disk. Availability is "
+                "declared in APPORTIONMENT_AVAILABLE and files are accepted "
+                "only on %PDF- magic bytes; nothing written.")
+    r = pypdf.PdfReader(src)
+
+    # POSITION GUARD ON SOURCE IDENTITY: the first page must name the
+    # fiscal year this file is being read as.
+    first = (r.pages[0].extract_text() or "")[:400]
+    if fy not in first:
+        raise SystemExit(
+            f"CCC {fy}: this Exhibit C does not declare itself as {fy} — its "
+            f"first page reads {first.splitlines()[1][:60]!r}. The URL is not "
+            "the year; nothing written.")
 
     def num(s):
         s = s.replace(",", "").replace("$", "").replace("(", "-").replace(")", "").strip()
