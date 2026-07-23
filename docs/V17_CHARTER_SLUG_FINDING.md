@@ -1,6 +1,15 @@
 # V17 — The charter slug collisions blocking the K-12 nine-year window
 
 **Status: investigation only. Nothing built, nothing shipped.**
+
+> **CORRECTION (V17a).** This finding's count of **32 is wrong.** The
+> enumeration read a column named `CharterNum`; the `Charters` table has
+> `CharterNumber` and `SchoolID`, so the qualifier fell back silently and
+> under-counted. Read correctly the registry has **40** colliding slugs,
+> of which the pipeline gates a financial subset it reports as 33.
+> The CATEGORISATION below stands — every collision is one charter under
+> two authorizer keys — but the numbers do not. See
+> `docs/V17A_CHARTER_REKEY_PREREQS.md`.
 Measured 2026-07-22 against the SACS sources, on branch `lowell-recoding`.
 
 With the NCES re-coding declared (#63), the nine-year K-12 build passes
