@@ -3399,30 +3399,196 @@ def test_ccc_source_identity():
         check("ccc identity: the verified Exhibit C cache is present",
               False, "cache missing — run the pipeline with --refresh")
         return
-    # POSITIVE CONTROL FIRST: a year whose PDF DOES declare itself parses
+    # POSITIVE CONTROL FIRST: a vintage whose PDF declares itself parses.
     ok = None
     try:
-        m.fetch_apportionment(False, "2019-20")
+        m.fetch_apportionment(False, "2023-24")
         ok = True
     except SystemExit as e:
         ok = str(e)
-    check("ccc identity: FY2019-20's Exhibit C declares itself and is "
-          "accepted", ok is True, str(ok)[:90])
-    # and a year whose document does NOT say what it is, is refused
-    bad = None
+    # FY2023-24 was previously REFUSED here, and that was the guard's
+    # defect, not the document's: the masthead ("2023-24 Second Principal")
+    # sits at character ~6,700 because the summary table extracts ahead of
+    # it, and the guard only read the first 400. The guard now matches the
+    # DECLARED masthead over the whole first page — still an exact match
+    # against a per-vintage declared string, never a year-anywhere search.
+    check("ccc identity: FY2023-24 DOES declare itself (past the old "
+          "400-character window) and is accepted", ok is True, str(ok)[:110])
+
+    # NEGATIVE CONTROL, paired: a document that does not carry the declared
+    # masthead is refused. This is the #59 case — a file archived under one
+    # year's path declaring another's — simulated by asking for a
+    # declaration this document does not make.
+    real = dict(m.APPORTIONMENT_AVAILABLE["2023-24"])
+    m.APPORTIONMENT_AVAILABLE["2023-24"] = dict(
+        real, declares="2019-20 Recalculation Apportionment")
     try:
-        m.fetch_apportionment(False, "2023-24")
-        bad = "ACCEPTED"
-    except SystemExit as e:
-        bad = str(e)
-    check("ccc identity: FY2023-24's file does not declare the year on the "
-          "page the parser reads, and is REFUSED rather than assumed",
-          "does not declare itself" in str(bad), str(bad)[:90])
+        bad = str(_raised(lambda: m.fetch_apportionment(False, "2023-24")))
+    finally:
+        m.APPORTIONMENT_AVAILABLE["2023-24"] = real
+    check("ccc identity: a file that does NOT carry the declared masthead is "
+          "REFUSED, not assumed (the URL is never the year)",
+          "does not declare itself" in bad, bad[:110])
+    # and the guard is exact: restoring the true declaration parses again
+    check("ccc identity: and the guard is exact — the true declaration is "
+          "accepted again once restored",
+          m.APPORTIONMENT_AVAILABLE["2023-24"]["declares"] == "2023-24 Second Principal")
+
+    # A vintage that has not declared WHAT IT PUBLISHES cannot be read at
+    # all: FY2018-19's parser lands in a later PR, and until it declares
+    # its facts the reader refuses deliberately rather than guessing.
+    undeclared = str(_raised(lambda: m.fetch_apportionment(False, "2018-19")))
+    check("ccc identity: a vintage with no declared fact table is refused "
+          "deliberately rather than read optimistically",
+          "APPORTIONMENT_FACTS" in undeclared, undeclared[:110])
     check("ccc identity: an unavailable year refuses on the missing file "
           "rather than inventing one",
           "nothing written" in str(
               _raised(lambda: m.fetch_apportionment(False, "2011-12"))),
           str(_raised(lambda: m.fetch_apportionment(False, "2011-12")))[:80])
+
+
+def test_ccc_exhibitc_vintages():
+    """PER-VINTAGE EXHIBIT C PARSERS: each declares what it publishes.
+
+    A verified Exhibit C is not a parseable one, and a parseable one does
+    not publish every fact. FY2023-24 (P2) publishes funded FTES and state
+    General Fund — both reconcile against its own printed statewide
+    control, the General Fund to the dollar — but its community-supported
+    count cannot be reconciled: the document prints SEVEN while eight
+    districts on it show a property-tax excess, and it refers the reader
+    to a memo it does not contain. That fact is therefore NOT-PUBLISHED
+    for FY2023-24 rather than derived into a roster that contradicts the
+    Chancellor's Office's own count.
+
+    Every negative here is paired with a positive control."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fcccxv", str(ROOT / "pipeline" / "fetch_ccc_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_ccc_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+    if not (ROOT / "pipeline" / "cache" / "ccc" / "exhibitc").exists():
+        check("ccc exhibitc: the verified cache is present", False, "cache missing")
+        return
+
+    # ---- FY2022-23 (R1): every fact published, every one reconciled
+    r23 = m.verify_apportionment_vintage("2022-23")
+    check("ccc exhibitc 2022-23: round is recorded (R1), not assumed",
+          r23["round"] == "R1", str(r23["round"]))
+    check("ccc exhibitc 2022-23: funded FTES reconciles to its printed control",
+          abs(r23["published"]["fundedFtes"]["residual"]) <= 0.5,
+          str(r23["published"]["fundedFtes"]))
+    check("ccc exhibitc 2022-23: state General Fund reconciles to the dollar",
+          r23["published"]["stateGf"]["residual"] == 0,
+          str(r23["published"]["stateGf"]))
+    check("ccc exhibitc 2022-23: the community-supported derivation matches "
+          "the printed count (the POSITIVE CONTROL for that check)",
+          r23["published"]["communitySupported"]["derived"]
+          == r23["published"]["communitySupported"]["control"] == 8,
+          str(r23["published"]["communitySupported"]))
+
+    # ---- FY2023-24 (P2): two facts published and reconciled, one not
+    r24 = m.verify_apportionment_vintage("2023-24")
+    check("ccc exhibitc 2023-24: round is recorded as P2 — a different stage "
+          "of the year's apportionment from R1, not interchangeable",
+          r24["round"] == "P2", str(r24["round"]))
+    check("ccc exhibitc 2023-24: funded FTES reconciles to its printed control",
+          abs(r24["published"]["fundedFtes"]["residual"]) <= 0.5,
+          str(r24["published"]["fundedFtes"]))
+    check("ccc exhibitc 2023-24: state General Fund reconciles to the dollar",
+          r24["published"]["stateGf"]["residual"] == 0,
+          str(r24["published"]["stateGf"]))
+    check("ccc exhibitc 2023-24: community-supported is NOT-PUBLISHED, with a "
+          "stated reason naming the contradiction it refuses to resolve",
+          "communitySupported" in r24["notPublished"]
+          and "7 Fully Community Supported" in r24["notPublished"]["communitySupported"]
+          and "memo" in r24["notPublished"]["communitySupported"],
+          str(r24["notPublished"].get("communitySupported"))[:120])
+    check("ccc exhibitc 2023-24: and it is genuinely absent — no district "
+          "carries the property-tax-excess input it would be derived from",
+          "communitySupported" not in r24["published"])
+
+    # ---- THE NEGATIVE'S POSITIVE CONTROL: declaring the unreconcilable
+    # fact as published must FAIL the gate, proving the declaration is
+    # load-bearing and not decoration.
+    real = dict(m.APPORTIONMENT_FACTS["2023-24"])
+    m.APPORTIONMENT_FACTS["2023-24"] = dict(real, communitySupported=True)
+    try:
+        forced = str(_raised(lambda: m.verify_apportionment_vintage("2023-24")))
+    finally:
+        m.APPORTIONMENT_FACTS["2023-24"] = real
+    check("ccc exhibitc: declaring FY2023-24's community-supported count as "
+          "PUBLISHED fails the gate (8 derived vs 7 printed) — the "
+          "not-published declaration is load-bearing",
+          "gate failure" in forced, forced[:130])
+
+    # ---- FY2020-21 (P1) and FY2019-20 (R1): the row labels DIFFER, and
+    # the state general fund is PUBLISHED at both — under another name.
+    # These two were first read as publishing no state general fund at
+    # all; that was a regex missing a renamed row, and declaring the fact
+    # absent would have been a FALSE ABSENCE — the mirror of reading an
+    # absent figure as zero. Both now reconcile to the dollar.
+    r21 = m.verify_apportionment_vintage("2020-21")
+    r20 = m.verify_apportionment_vintage("2019-20")
+    check("ccc exhibitc 2020-21: round P1 recorded", r21["round"] == "P1")
+    check("ccc exhibitc 2019-20: round R1 recorded", r20["round"] == "R1")
+    for fy, rep in (("2020-21", r21), ("2019-20", r20)):
+        check(f"ccc exhibitc {fy}: state General Fund IS published (under "
+              "'State General Entitlement') and reconciles to the dollar",
+              rep["published"]["stateGf"]["residual"] == 0,
+              str(rep["published"].get("stateGf")))
+        check(f"ccc exhibitc {fy}: funded FTES reconciles to its printed control",
+              abs(rep["published"]["fundedFtes"]["residual"]) <= 0.5,
+              str(rep["published"]["fundedFtes"]))
+    check("ccc exhibitc 2020-21: community-supported derivation ties to its "
+          "printed count (8), so it IS published",
+          r21["published"]["communitySupported"]["derived"]
+          == r21["published"]["communitySupported"]["control"] == 8)
+    check("ccc exhibitc 2019-20: community-supported is NOT-PUBLISHED — 8 "
+          "districts show an excess where the document prints 7 — with a "
+          "reason naming the marginal district",
+          "communitySupported" in r20["notPublished"]
+          and "Sierra Joint" in r20["notPublished"]["communitySupported"],
+          str(r20["notPublished"].get("communitySupported"))[:110])
+
+    # ---- THE LABEL DECLARATION IS LOAD-BEARING, not decoration. Reading
+    # FY2020-21 with the LATER vintages' label must fail, and reading it
+    # with its own must succeed (the paired positive control above).
+    real_v = dict(m.APPORTIONMENT_AVAILABLE["2020-21"])
+    m.APPORTIONMENT_AVAILABLE["2020-21"] = dict(
+        real_v, gfLabel="State General Fund Allocation")
+    try:
+        wrong = str(_raised(lambda: m.verify_apportionment_vintage("2020-21")))
+    finally:
+        m.APPORTIONMENT_AVAILABLE["2020-21"] = real_v
+    check("ccc exhibitc: reading FY2020-21 with a LATER vintage's row label "
+          "fails — the labels are declared per vintage, never a widened "
+          "alternation that would accept any of them in any year",
+          "did not parse" in wrong, wrong[:120])
+    check("ccc exhibitc: each vintage declares its own row labels",
+          m.APPORTIONMENT_AVAILABLE["2019-20"]["gfLabel"] == "State General Entitlement"
+          and m.APPORTIONMENT_AVAILABLE["2022-23"]["gfLabel"] == "State General Fund Allocation")
+
+    # ---- an undeclared fact may not be quietly derived
+    check("ccc exhibitc: a fact declared not-published is refused if a "
+          "figure for it is present",
+          "not published must not be derived" in
+          (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8"))
+    # ---- absent means absent: a declared fact that fails to parse RAISES
+    src = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
+    # the exact defect that was here: `d[key] = num(...) if mm else 0.0`,
+    # which turned a row this vintage never prints into 72 confident zeros
+    check("ccc exhibitc: a DECLARED fact that does not parse is a parse "
+          "failure, never a zero",
+          "but the row did not parse" in src and "if mm else 0.0" not in src)
+    check("ccc exhibitc: a vintage must declare its facts before it can be read",
+          "no APPORTIONMENT_FACTS declaration" in src)
 
 
 def test_strict_source_columns():
@@ -8297,6 +8463,7 @@ def main():
             test_source_cache_unwritable()
             test_ccc_fourteen_year_gates()
             test_ccc_source_identity()
+            test_ccc_exhibitc_vintages()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)
             test_uc_audit_quotation()
