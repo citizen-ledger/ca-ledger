@@ -401,14 +401,24 @@ def flatten(layer, payload):
         for fy, v in (payload.get("fy") or {}).items():
             out[f"index\t{fy}"] = v
     elif layer == "ccc":
+        # `statewide` is already a map keyed by FY, so its leaves are
+        # FY-first. District year-varying figures are flattened FY-FIRST too
+        # — `district:610\t2022-23.ce`, never `…\tyears.2022-23.ce` — so the
+        # fiscal year is the head of every figure path and `_fy_of` can read
+        # it. A coverage expansion cannot collapse keys it cannot date.
         for k, v in _leaves(payload.get("statewide") or {}, "", {}).items():
             out[f"statewide\t{k}"] = v
         for d in payload.get("districts") or []:
             ident = f"district:{d.get('code')}"
+            # entity-level figures (nColleges) keep their undated key; they
+            # describe the current roster, not any one year
             for k, v in _leaves({x: d[x] for x in d
-                                 if x not in ("name", "code", "colleges")},
+                                 if x not in ("name", "code", "colleges", "years")},
                                 "", {}).items():
                 out[f"{ident}\t{k}"] = v
+            for fy, block in (d.get("years") or {}).items():
+                for k, v in _leaves(block, "", {}).items():
+                    out[f"{ident}\t{fy}.{k}"] = v
     else:
         raise ValueError(f"unknown layer {layer!r}")
     return {k: v for k, v in out.items() if v is not None}
@@ -726,6 +736,36 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
 # years the record ALREADY covered are unaffected and still reported one by
 # one, so a real restatement can never hide inside an extension.
 COVERAGE = [
+    {
+        "layer": "ccc",
+        "built": "2026-07-24",
+        "added": ["2009-10", "2010-11", "2011-12", "2012-13", "2013-14",
+                  "2014-15", "2015-16", "2016-17", "2017-18", "2018-19",
+                  "2019-20", "2020-21", "2021-22", "2023-24"],
+        "note": "Our own change of coverage, not a change at the source. The "
+                "community-college layer carried one fiscal year (FY2022-23); "
+                "it now carries fifteen, FY2009-10 through FY2023-24 — every "
+                "year the Chancellor's Office CCFS-311 portal publishes. Each "
+                "added year passes the same whole-dollar gate as the year "
+                "already shipped: its districts' Current Expense of Education "
+                "sum EXACTLY, to the dollar, to that year's printed Table VI "
+                "Statewide total. The figures for these fourteen years are "
+                "newly IN the record, but none of them moved — the portal "
+                "published them all along and the Ledger had not loaded them. "
+                "They are counted here rather than listed as thousands of "
+                "individual appearances, because an entry is not a revision. "
+                "Apportionment facts do NOT extend across all fifteen: only "
+                "FY2019-20, FY2020-21, FY2022-23 and FY2023-24 have an Exhibit "
+                "C this Ledger reads, and each of those is a different round "
+                "of the year's apportionment (R1, P1, R1, P2). Every other "
+                "year's apportionment facts are not-published, with the reason "
+                "carried on the record. Separately and deliberately, the "
+                "statewide college count no longer appears inside a fiscal "
+                "year: the MIS roster is current-vintage only and carries no "
+                "history, so stating it under FY2022-23 asserted today's "
+                "roster about an earlier year. That single removal is listed "
+                "in this batch rather than collapsed.",
+    },
     {
         "layer": "uc",
         "built": "2026-07-23",

@@ -288,6 +288,22 @@ def build(refresh=False):
                           "nominal-to-real difference, but the newest year "
                           "cannot be adjusted at all — see the forecast note "
                           "above."),
+                "ccc": ("This is the site's LONGEST window — fifteen fiscal "
+                        "years, FY2009-10 to FY2023-24 — and long windows "
+                        "invert the usual warning. The choice of index "
+                        "matters least here, because the cumulative "
+                        "adjustment is large enough to swamp the difference "
+                        "between reasonable indices: prices on this measure "
+                        "rise about 49% across the window, so a FY2009-10 "
+                        "dollar is restated upward by roughly half again. "
+                        "What matters instead is that a real trend over "
+                        "fifteen years is dominated by that restatement, not "
+                        "by any single year's movement — the nominal series "
+                        "and the real series can tell opposite stories about "
+                        "the same period, and the real one is the Ledger's "
+                        "own construction, not the Chancellor's Office's. "
+                        "Every year in this window is a DOF actual; none is "
+                        "a forecast, so none is left unadjusted."),
             },
             "shortWindow": ("Short windows are more sensitive to the choice "
                             "of index than long ones. Over the eight-year "

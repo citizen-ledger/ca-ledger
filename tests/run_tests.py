@@ -756,8 +756,8 @@ DIST_PIN = {                   # $, statewide as-filed expenditures. TAMPER
 # ── PUBLISHED CONTROLS (a reader can look these up) ──────────────────
 CSU_UNIVERSITY_OPEXP_K = 11_630_059   # CSU audited University total operating
 CSU_PIN_YEAR = "2023-24"              # expenses, in thousands
-CCC_STATEWIDE_CE = 8_469_851_699      # Chancellor's Office Table VI printed
-CCC_PIN_YEAR = "2022-23"              # statewide Current Expense of Education
+CCC_STATEWIDE_CE = 9_454_228_830      # Chancellor's Office Table VI printed
+CCC_PIN_YEAR = "2023-24"              # statewide Current Expense of Education
 UC_AUDITED = {   # UC audited total operating expenses + the printed campus/Systemwide
                  # components, re-derived from each AFR (NOT copied from the build).
                  # doeForm/doeK record UC's own DOE presentation: 'systemwide' years
@@ -3159,7 +3159,7 @@ def test_ccc_apportionment_availability(page, base):
     # ---- the empty-set threshold no longer divides by nothing
     check("ccc avail: a threshold derived from an empty apportionment set "
           "is None, not a ZeroDivisionError",
-          "if code2app and ftes_sum:" in
+          'if code2app and apportionment_fact_published(fy, "fundedFtes"):' in
           (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8"))
     check("ccc avail: and the live year still HAS a derived threshold, so "
           "the guard did not flatten it",
@@ -3318,8 +3318,8 @@ def test_source_cache_unwritable():
 def test_ccc_fourteen_year_gates():
     """EVERY PORTAL YEAR GATES AT EXACTLY $0, MEASURED, ONE AT A TIME.
 
-    The CCFS-311 portal publishes fourteen fiscal years, FY2009-10
-    through FY2022-23, as consecutive dropdown values read off the
+    The CCFS-311 portal publishes fifteen fiscal years, FY2009-10
+    through FY2023-24, as consecutive dropdown values read off the
     portal's own <option> list rather than guessed. Each year's 72 or 73
     districts' Current Expense of Education must sum to the Chancellor's
     Office's own printed Table VI statewide total, to the dollar.
@@ -3338,11 +3338,11 @@ def test_ccc_fourteen_year_gates():
     finally:
         sys.argv = argv
 
-    check("ccc 14y: the portal year list is derived from the portal's own "
-          "dropdown, and runs fourteen consecutive years",
-          len(m.PORTAL_YEARS) == 14
+    check("ccc 15y: the portal year list is derived from the portal's own "
+          "dropdown, and runs fifteen consecutive years",
+          len(m.PORTAL_YEARS) == 15
           and m.PORTAL_YEARS[0] == ("1", "2009-10")
-          and m.PORTAL_YEARS[-1] == ("14", "2022-23"),
+          and m.PORTAL_YEARS[-1] == ("15", "2023-24"),
           str(m.PORTAL_YEARS[:2]))
 
     results, counts = {}, {}
@@ -3446,6 +3446,103 @@ def test_ccc_source_identity():
           "nothing written" in str(
               _raised(lambda: m.fetch_apportionment(False, "2011-12"))),
           str(_raised(lambda: m.fetch_apportionment(False, "2011-12")))[:80])
+
+
+def test_ccc_multi_year_payload():
+    """THE FIFTEEN-YEAR PAYLOAD: one window, one coverage fact.
+
+    Every shipped year's districts sum to that year's own printed Table VI
+    statewide total. Apportionment does NOT extend across all fifteen —
+    only four years have an Exhibit C this Ledger reads — and every other
+    year's apportionment facts are ABSENT with a stated reason, never
+    zero. The college roster is current-vintage and is never asserted
+    inside a year. Negatives are paired with positive controls."""
+    years = CCC["years"]
+    check("ccc multi: fifteen consecutive years, oldest to newest",
+          len(years) == 15 and years[0] == "2009-10" and years[-1] == "2023-24",
+          str(years[:2] + years[-1:]))
+    check("ccc multi: statewide is keyed by every shipped year",
+          set(CCC["statewide"]) == set(years))
+
+    # ---- CE is gated for EVERY year, recomputed from the shipped rows
+    for fy in years:
+        rows = [d for d in CCC["districts"] if fy in d["years"]]
+        s = sum(d["years"][fy]["ce"] for d in rows)
+        sw = CCC["statewide"][fy]
+        check(f"ccc multi {fy}: shipped district CE sums to the printed "
+              "statewide total, to the dollar (recomputed)",
+              s == sw["ce"], f"{s:,} vs {sw['ce']:,}")
+        check(f"ccc multi {fy}: the district count matches the year's roster",
+              len(rows) == sw["nDistricts"] == (72 if fy < "2018-19" else 73),
+              f"{len(rows)} rows, sw says {sw['nDistricts']}")
+
+    # ---- THE 72->73 BREAK is real and stated, not smoothed
+    early = {fy for fy in years if fy < "2018-19"}
+    check("ccc multi: 72 districts before FY2018-19, 73 from it",
+          all(CCC["statewide"][fy]["nDistricts"] == 72 for fy in early)
+          and all(CCC["statewide"][fy]["nDistricts"] == 73
+                  for fy in set(years) - early))
+    check("ccc multi: the district-count break is STATED, naming Calbright",
+          "Calbright" in CCC["meta"]["districtCountBreak"]
+          and "72" in CCC["meta"]["districtCountBreak"])
+
+    # ---- APPORTIONMENT ships for exactly the declared vintages
+    withapp = [fy for fy in years
+               if "apportionmentStatus" not in CCC["statewide"][fy]]
+    check("ccc multi: apportionment ships for exactly the four read vintages",
+          withapp == ["2019-20", "2020-21", "2022-23", "2023-24"], str(withapp))
+    for fy in withapp:
+        check(f"ccc multi {fy}: the apportionment ROUND is recorded",
+              CCC["statewide"][fy].get("apportionmentRound") in ("P1", "P2", "R1"))
+    # POSITIVE CONTROL for the absence: a year WITH apportionment carries
+    # funded FTES; a year without carries none at all, and says why.
+    check("ccc multi: a year WITH apportionment carries funded FTES",
+          isinstance(CCC["statewide"]["2022-23"].get("fundedFtes"), (int, float)))
+    for fy in years:
+        if fy in withapp:
+            continue
+        sw = CCC["statewide"][fy]
+        check(f"ccc multi {fy}: apportionment is absent, never zero",
+              "fundedFtes" not in sw and "stateGf" not in sw
+              and sw.get("apportionmentStatus") == "not-published")
+        check(f"ccc multi {fy}: and the absence carries a stated reason",
+              len(sw.get("apportionmentReason") or "") > 40)
+        for d in CCC["districts"]:
+            v = d["years"].get(fy)
+            if not v:
+                continue
+            check(f"ccc multi {fy}: districts carry no derived apportionment "
+                  "figure and a three-valued status",
+                  "fundedFtes" not in v and "perFtes" not in v
+                  and v["basicAidStatus"] == "not-published")
+            break
+    # FY2018-19's absence is a DIFFERENT absence from FY2021-22's, and says so
+    check("ccc multi: FY2018-19 is verified-but-unread, not unverified",
+          "verified genuine" in CCC["statewide"]["2018-19"]["apportionmentReason"])
+    check("ccc multi: FY2021-22 is unverified — no Exhibit C found",
+          "publishes no Exhibit C" in CCC["statewide"]["2021-22"]["apportionmentReason"])
+
+    # ---- ROSTER SCOPING: current-vintage only, never inside a year
+    d0 = CCC["districts"][0]
+    check("ccc multi: the college roster lives at the entity, not in a year",
+          "nColleges" in d0 and "multiCollege" in d0
+          and all("nColleges" not in v and "multiCollege" not in (v.get("flags") or {})
+                  for v in d0["years"].values()))
+    check("ccc multi: and the payload says the roster is current-vintage only",
+          "current" in CCC["meta"]["rosterScope"].lower()
+          and "no history" in CCC["meta"]["rosterScope"].lower())
+    check("ccc multi: the rounds-differ statement names all three stages",
+          all(k in CCC["meta"]["roundsDiffer"] for k in ("P1", "P2", "R1"))
+          and "not interchangeable" in CCC["meta"]["roundsDiffer"])
+
+    # ---- the deflator covers this window as actuals
+    defl = load_data_js(ROOT / "deflator-data.js")
+    fc = set(defl["meta"]["forecastYears"])
+    check("ccc multi: the deflator covers every year in the window as an actual",
+          all(y in defl["fy"] and y not in fc for y in years))
+    check("ccc multi: and carries a window note written for a series this long",
+          "ccc" in defl["meta"]["windowNotes"]
+          and "longest" in defl["meta"]["windowNotes"]["ccc"].lower())
 
 
 def test_ccc_exhibitc_vintages():
@@ -3944,16 +4041,13 @@ def test_empty_gate_guard():
     #      Before this change the same mutation produced a clean build.
     src = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
     check("empty gate: CCC guards its statewide target before comparing",
-          "require_target(\n            appn_statewide" in src
-          or "require_target(appn_statewide" in src
-          or "gates.require_target(\n        appn_statewide" in src
-          or "appn_statewide, \"Exhibit C statewide totals\"" in src, "")
+          'app_sw.get(key), f"{fy} Exhibit C statewide {label}"' in src, "")
     check("empty gate: CCC no longer skips the comparison when the control is "
-          "missing", 'appn_statewide.get("fundedFtes") and' not in src)
+          "missing", 'app_sw.get("fundedFtes") and' not in src)
     check("empty gate: nor the state-GF one",
-          'appn_statewide.get("stateGf") and' not in src)
+          'app_sw.get("stateGf") and' not in src)
     check("empty gate: CCC guards its Table VI target too",
-          'require_target(tvi_statewide' in src)
+          'require_target(tvi_sw, f"{fy} Table VI printed statewide totals"' in src)
 
     # ---- the K-12 case, which would have shipped a year nobody verified
     ksrc = (ROOT / "pipeline" / "fetch_school_data.py").read_text(encoding="utf-8")
@@ -4211,7 +4305,7 @@ def test_ccc_write_path():
         check("ccc write path: attributed to us, not to the source",
               "our own correction" in ours[0]["note"].lower())
     check("ccc write path: the shipped figure is now the published control",
-          CCC["statewide"][CCC["years"][-1]]["fundedFtes"] == 1100664.61,
+          CCC["statewide"]["2022-23"]["fundedFtes"] == 1100664.61,
           str(CCC["statewide"][CCC["years"][-1]]["fundedFtes"]))
 
 
@@ -4503,31 +4597,42 @@ def test_ccc_absence(page, base):
           "noApportionmentReason" in src)
 
     # ---- districts WITH apportionment still carry real booleans
+    # community-supported status is PUBLISHED for FY2022-23 and NOT for the
+    # newest year, so the measured-vs-unknown distinction is checked at the
+    # year that publishes it (docs/V19). Calbright stays the absent case.
+    PFY = "2022-23"
     known = [d for d in CCC["districts"]
-             if not ccc_yr(d)["flags"]["noApportionment"]]
+             if not ccc_yr(d, PFY)["flags"]["noApportionment"]]
     # POSITIVE CONTROL: the conversion must not have flattened the known
     # answers into the unknown word
     check("ccc absence: every other district still carries a MEASURED status",
-          all(ccc_yr(d)["flags"]["basicAidStatus"] in ("basic-aid", "state-funded")
+          all(ccc_yr(d, PFY)["flags"]["basicAidStatus"] in ("basic-aid", "state-funded")
               for d in known), str(len(known)))
     check("ccc absence: and the community-supported count is unchanged at 8 "
           "— still matching the Exhibit C control",
           sum(1 for d in known
-              if ccc_yr(d)["flags"]["basicAidStatus"] == "basic-aid") == 8,
+              if ccc_yr(d, PFY)["flags"]["basicAidStatus"] == "basic-aid") == 8,
           str(sum(1 for d in known
-                  if ccc_yr(d)["flags"]["basicAidStatus"] == "basic-aid")))
+                  if ccc_yr(d, PFY)["flags"]["basicAidStatus"] == "basic-aid")))
     check("ccc absence: and their numeric fields are present, so absence "
           "means absence rather than everything having vanished",
-          all("fundedFtes" in ccc_yr(d) and "stateGf" in ccc_yr(d)
+          all("fundedFtes" in ccc_yr(d, PFY) and "stateGf" in ccc_yr(d, PFY)
               for d in known))
 
     # ---- BEHAVIOURAL: the page shows unknown as unknown, and the CSV
     #      exports it as empty rather than "no"
-    page.goto(f"{base}/ccc.html")
+    # Read the page AT THE YEAR THAT PUBLISHES the status. The newest year
+    # does not (docs/V19), so exporting it would show "not-published" in
+    # every row and the measured/unknown distinction below would be
+    # untestable — the assertion would pass vacuously on a uniform column.
+    page.goto(f"{base}/ccc.html#y={PFY}")
     page.wait_for_selector(".r .nm")
     page.wait_for_timeout(400)
     body = page.inner_text("body")
     check("ccc absence: the district is on the page", "CALBRIGHT" in body.upper())
+    check("ccc absence: and the page is showing the year that publishes the "
+          "status, so the distinction below is observable",
+          page.evaluate("() => S.year") == PFY)
 
     csv = page.evaluate("() => csvText()")
     header = csv.splitlines()[-2].split(",") if False else None
@@ -4561,7 +4666,7 @@ def test_ccc_absence(page, base):
           "1,100,664.62", 'appn_statewide.get("fundedFtes", ftes_sum)' not in psrc
           and 'appn_statewide.get("stateGf", gf_sum)' not in psrc)
     check("ccc absence: the shipped statewide FTES is the published control",
-          CCC["statewide"][CCC["years"][-1]]["fundedFtes"] == 1100664.61,
+          CCC["statewide"]["2022-23"]["fundedFtes"] == 1100664.61,
           str(CCC["statewide"][CCC["years"][-1]]["fundedFtes"]))
 
     # ---- BEHAVIOURAL: an undeclared absence refuses the build
@@ -5487,17 +5592,24 @@ def test_ccc(page, base):
           sw["ce"] == CCC_STATEWIDE_CE, f"{sw['ce']} vs {CCC_STATEWIDE_CE}")
     check("ccc gate: every figure is a whole-dollar integer (no cents)",
           all(isinstance(Y(d)["ce"], int) for d in ds) and isinstance(sw["ce"], int))
+    # the roster is CURRENT-VINTAGE and lives at the entity, never in a year,
+    # so it is counted across districts and is absent from the statewide block
     check("ccc: 116 accredited colleges across the districts (reconciles to the official count)",
-          sum(d["nColleges"] for d in ds) == 116 and sw["nColleges"] == 116)
+          sum(d["nColleges"] for d in ds) == 116 and "nColleges" not in sw)
     # rosters, data-derived, verified against source counts
-    multi = [d for d in ds if Y(d)["flags"]["multiCollege"]]
-    basic = [d for d in ds if Y(d)["flags"]["basicAidStatus"] == "basic-aid"]
+    multi = [d for d in ds if d["multiCollege"]]
+    # community-supported status is published for FY2022-23, not for the
+    # newest year (FY2023-24 prints 7 where eight districts show an excess —
+    # see docs/V19), so this control is read at the year that publishes it
+    basic = [d for d in ds
+             if (d["years"].get("2022-23") or {}).get("basicAidStatus") == "basic-aid"]
     check("ccc: 23 multi-college districts", len(multi) == 23)
     check("ccc: community-supported count matches the Chancellor's Office figure (8)",
-          len(basic) == sw["communitySupported"] == 8)
+          len(basic) == CCC["statewide"]["2022-23"]["communitySupported"] == 8)
     dangerous = sorted(d["name"] for d in ds
-                       if Y(d)["flags"]["multiCollege"]
-                       and Y(d)["flags"]["basicAidStatus"] == "basic-aid")
+                       if d["multiCollege"]
+                       and (d["years"].get("2022-23") or {}).get("basicAidStatus")
+                       == "basic-aid")
     check("ccc: the dangerous cell (multi-college AND community-supported) is verified — includes San Mateo",
           "SAN MATEO" in dangerous and len(dangerous) == 4, str(dangerous))
     # per-FTES = Current Expense / apportionment funded FTES; Calbright has none
@@ -8464,6 +8576,7 @@ def main():
             test_ccc_fourteen_year_gates()
             test_ccc_source_identity()
             test_ccc_exhibitc_vintages()
+            test_ccc_multi_year_payload()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)
             test_uc_audit_quotation()

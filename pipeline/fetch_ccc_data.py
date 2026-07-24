@@ -110,7 +110,7 @@ OUT_PATH = ROOT / "ccc-data.js"
 # Dropdown values read off the portal's own <option> list, never guessed.
 # Value 1 is FY2009-10 and they run consecutively; the layer shipped
 # value 14 (FY2022-23) alone until this extension.
-PORTAL_YEARS = [(str(i), f"{2008+i}-{str(2009+i)[-2:]}") for i in range(1, 15)]
+PORTAL_YEARS = [(str(i), f"{2008+i}-{str(2009+i)[-2:]}") for i in range(1, 16)]
 YEARS = [fy for _, fy in PORTAL_YEARS]
 FY = YEARS[-1]                       # the latest year, still the default
 FY_PORTAL = PORTAL_YEARS[-1][0]
@@ -119,6 +119,8 @@ PORTAL = "https://fiscalportal.cccco.edu/Reports/AnnualReports"
 DCC_URL = "https://webdata.cccco.edu/ded/DistrictCollegeCodes.pdf"
 EXHIBITC_URL = ("https://www.cccco.edu/-/media/CCCCO-Website/docs/apportionment/"
                 "2022-23-R1-Exhibit-C-March-2024.pdf")
+# the ONE vintage that live URL publishes — never "the latest year"
+EXHIBITC_LIVE_FY = "2022-23"
 UA = {"User-Agent": "Mozilla/5.0 (Citizen Ledger data pipeline)", "Referer": PORTAL}
 
 # The one district in Table VI that is absent from the report dropdown
@@ -262,6 +264,96 @@ def apportionment_fact_published(fy, fact):
             "declare which apportionment facts its Exhibit C publishes "
             "before it can be read; nothing written.")
     return facts.get(fact, False)
+
+
+# A vintage whose Exhibit C is verified GENUINE but has not been declared
+# READABLE. FY2018-19 is the case: both PDF text extractors corrupt its
+# numbers (and pypdf truncates three district names), so reading it needs a
+# declared per-vintage extractor plus a bounded repair — see docs/V20. Until
+# that is built its apportionment facts are not-published, which is also
+# permanently true of two of them.
+APPORTIONMENT_UNREADABLE_REASON = {
+    "2018-19":
+        "The Chancellor's Office publishes an Exhibit C for FY2018-19 and it "
+        "is verified genuine, but the Ledger does not yet read it. Both PDF "
+        "text extractors insert spurious spaces inside its figures, and one "
+        "also truncates three district names, so reading it honestly needs a "
+        "declared per-vintage extractor rather than a loosened pattern (see "
+        "docs/V20_CCC_2018_19_EXHIBITC_FINDING.md). Two of its apportionment "
+        "facts are not published by that document in any case: it prints no "
+        "funded-FTES figure and no community-supported count.",
+}
+
+
+def apportionment_absent_reason(fy):
+    """Why a whole fiscal year carries no apportionment facts at all.
+
+    Every absence must be explained by a DECLARED reason — an unexplained
+    one is a parse failure until shown otherwise."""
+    if not apportionment_published(fy):
+        return APPORTIONMENT_UNVERIFIED_REASON
+    if fy not in APPORTIONMENT_FACTS:
+        return APPORTIONMENT_UNREADABLE_REASON.get(fy)
+    return None
+
+
+# THE DISTRICT ROSTER CHANGES INSIDE THE WINDOW, and the change is DECLARED
+# rather than tolerated: 72 districts through FY2017-18, 73 from FY2018-19.
+# A year whose Table VI does not match its declared count fails the gate, so
+# a genuine roster change and a parse failure can never be confused.
+DISTRICT_COUNT_BREAK = "2018-19"
+DISTRICT_COUNT = {fy: (72 if fy < DISTRICT_COUNT_BREAK else 73)
+                  for _, fy in PORTAL_YEARS}
+
+
+def _gate_apportionment(fy, code2app, app_sw):
+    """One year's apportionment reconciliation. Every DECLARED fact must
+    tie to Exhibit C's own printed statewide control; every fact declared
+    not-published must be genuinely absent. Returns a list of failures."""
+    fail = []
+    for key, label in (("fundedFtes", "funded FTES"),
+                       ("stateGf", "state General Fund")):
+        if apportionment_fact_published(fy, key):
+            gates.require_target(
+                app_sw.get(key), f"{fy} Exhibit C statewide {label}",
+                f"the {label} reconciliation cannot run.")
+        else:
+            leaked = [c for c, a in code2app.items() if key in a]
+            if leaked or key in app_sw:
+                fail.append(
+                    f"{fy}: {label} is declared not-published but "
+                    f"{len(leaked)} district records carry it — a fact that is "
+                    "not published must not be derived.")
+    if apportionment_fact_published(fy, "fundedFtes"):
+        s = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
+        if abs(s - app_sw["fundedFtes"]) > 0.5:
+            fail.append(f"{fy}: funded FTES sum {s} != Exhibit C statewide "
+                        f"{app_sw['fundedFtes']}")
+    if apportionment_fact_published(fy, "stateGf"):
+        s = round(sum(a["stateGf"] for a in code2app.values()))
+        if s != round(app_sw["stateGf"]):
+            fail.append(f"{fy}: state GF sum {s:,} != Exhibit C statewide "
+                        f"{round(app_sw['stateGf']):,}")
+    if apportionment_fact_published(fy, "communitySupported"):
+        ctrl = app_sw.get("communitySupported")
+        if ctrl is None:
+            gates.require_target(
+                None, f"{fy} Exhibit C 'Community Supported Districts'",
+                "the community-supported derivation has no control to tie to.")
+        n = sum(1 for a in code2app.values() if a.get("ptaxExcess", 0) < -1)
+        if n != ctrl:
+            fail.append(f"{fy}: {n} community-supported districts derived but "
+                        f"Exhibit C states {ctrl}")
+    else:
+        if (fy, "communitySupported") not in APPORTIONMENT_FACT_UNPUBLISHED:
+            fail.append(f"{fy}: community-supported is declared not-published "
+                        "with no stated reason — an unexplained silence is not "
+                        "a declaration.")
+        leaked = [c for c, a in code2app.items() if "ptaxExcess" in a]
+        if leaked:
+            fail.append(f"{fy}: community-supported is declared not-published "
+                        f"but {len(leaked)} districts carry its input.")
+    return fail
 
 # apportionment-name → portal-canonical-name normalized aliases (the
 # three sources spell a handful of merged/renamed districts differently)
@@ -447,7 +539,13 @@ def fetch_apportionment(refresh, fy=None):
     that does not say what it is is refused."""
     import pypdf
     fy = fy or FY
-    if fy == FY:
+    # EXHIBITC_URL serves ONE specific vintage — the FY2022-23 Recalculation.
+    # This branch used to trigger on `fy == FY`, i.e. "whatever the latest
+    # year happens to be", so extending the window to FY2023-24 silently
+    # pointed the newest year at the 2022-23 document. The identity guard
+    # below caught it, which is what it is for; the live URL is now keyed to
+    # the year it actually publishes.
+    if fy == EXHIBITC_LIVE_FY:
         blob = _cached("apportionment-2022-23-R1-ExhibitC.pdf",
                        lambda: _get(EXHIBITC_URL, binary=True), refresh, binary=True)
         (CACHE / "_exc_tmp.pdf").write_bytes(blob)
@@ -687,227 +785,227 @@ NO_APPORTIONMENT = {
 # ── join + gate ──────────────────────────────────────────────────────
 def build(refresh):
     code2name = fetch_dropdown(refresh)
-    tvi, tvi_statewide = fetch_table_vi(refresh)
+    # THE COLLEGE ROSTER IS CURRENT-VINTAGE ONLY. MIS publishes today's
+    # District & College Codes; it carries no history. So `colleges`,
+    # `nColleges` and `multiCollege` stay at the ENTITY, never inside a
+    # year — putting them in `years[fy]` would assert today's roster about
+    # 2009-10, which is precisely the claim the source cannot support.
     roster = fetch_roster(refresh)
-    appn, appn_statewide = fetch_apportionment(refresh)
-
     name2code = {v: k for k, v in code2name.items()}
     canon_n = {_norm(nm): code for nm, code in name2code.items()}
-    app2code = {}
-    for fn in appn:
-        k = _norm(fn)
-        app2code[fn] = canon_n.get(APPN_ALIAS.get(k, k))
-    code2app = {c: appn[fn] for fn, c in app2code.items() if c}
 
-    # ── structural pre-gate: the three sources must line up ──────────
     fail = []
-    tvi_codes = {name2code.get(nm) for nm in tvi}
-    if None in tvi_codes:
-        fail.append("Table VI has a district name not in the portal dropdown: "
-                    + ", ".join(nm for nm in tvi if nm not in name2code))
-        tvi_codes.discard(None)
-    bad = gates.check_exact(len(tvi), 73, "Table VI district roster")
-    if bad:
-        fail.append(bad)
-    missing_roster = tvi_codes - set(roster)
-    if missing_roster:
-        fail.append(f"districts with no college roster: {sorted(missing_roster)}")
-    unmatched_appn = [fn for fn, c in app2code.items() if c is None]
-    if unmatched_appn:
-        fail.append(f"apportionment districts not matched to a code: {unmatched_appn}")
+    years_data = {}
 
-    n_colleges = sum(len(roster[c]["colleges"]) for c in tvi_codes if c in roster)
+    for pv, fy in PORTAL_YEARS:
+        tvi, tvi_sw = fetch_table_vi(refresh, pv, fy)
+
+        # ── structural pre-gate: every name must resolve to a portal code
+        tvi_codes = {name2code.get(nm) for nm in tvi}
+        if None in tvi_codes:
+            fail.append(f"{fy}: Table VI has a district name not in the portal "
+                        "dropdown: "
+                        + ", ".join(nm for nm in tvi if nm not in name2code))
+            tvi_codes.discard(None)
+        # THE ROSTER SIZE IS A DECLARED STRUCTURAL BREAK, not a constant.
+        want = DISTRICT_COUNT.get(fy)
+        if want is None:
+            fail.append(f"{fy}: no declared district count. The 72->73 break is "
+                        "declared in DISTRICT_COUNT; a year with no declaration "
+                        "is not read.")
+        else:
+            bad = gates.check_exact(len(tvi), want, f"{fy} Table VI district roster")
+            if bad:
+                fail.append(bad)
+        missing_roster = tvi_codes - set(roster)
+        if missing_roster:
+            fail.append(f"{fy}: districts with no college roster: "
+                        f"{sorted(missing_roster)}")
+
+        # ── THE GATE: per-district CE == printed statewide, to the dollar
+        gates.require_target(tvi_sw, f"{fy} Table VI printed statewide totals",
+                             "the whole-dollar gate cannot run.")
+        gates.require_rows(len(tvi), 70, f"{fy} Table VI districts")
+        ce_sum = sum(v["ce"] for v in tvi.values())
+        if ce_sum != tvi_sw["ce"]:
+            fail.append(f"WHOLE-DOLLAR GATE FAILED for {fy}: {len(tvi)} districts "
+                        f"sum to {ce_sum:,} but Table VI's printed Statewide total "
+                        f"is {tvi_sw['ce']:,} "
+                        f"(residual {ce_sum - tvi_sw['ce']:+,})")
+
+        # ── apportionment: ONLY where the vintage declares its facts ────
+        # A year with no verified Exhibit C, or one whose Exhibit C has not
+        # been declared readable (FY2018-19 — see docs/V20), contributes NO
+        # apportionment facts at all. They are absent, never zero.
+        code2app, app_sw = {}, {}
+        if apportionment_published(fy) and fy in APPORTIONMENT_FACTS:
+            appn, app_sw = fetch_apportionment(refresh, fy)
+            app2code = {}
+            for fn in appn:
+                k = _norm(fn)
+                app2code[fn] = canon_n.get(APPN_ALIAS.get(k, k))
+            unmatched = [fn for fn, c in app2code.items() if c is None]
+            if unmatched:
+                fail.append(f"{fy}: apportionment districts not matched to a "
+                            f"district code: {unmatched}")
+            code2app = {c: appn[fn] for fn, c in app2code.items() if c}
+            gates.require_rows(len(code2app), 70,
+                               f"{fy} apportionment districts matched to a code")
+            fail.extend(_gate_apportionment(fy, code2app, app_sw))
+
+        # statewide noncredit share → the data-derived "noncredit-heavy"
+        # threshold (2x statewide). A year with no apportionment has no
+        # threshold to derive, and the flag is not-published for that year.
+        nc_threshold = None
+        nc_share = None
+        ftes_sum = None
+        if code2app and apportionment_fact_published(fy, "fundedFtes"):
+            ftes_sum = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
+            if ftes_sum:
+                nc_num = sum((code2app[c].get("noncreditShare") or 0)
+                             * code2app[c]["fundedFtes"] for c in code2app)
+                nc_share = round(nc_num / ftes_sum, 4)
+                nc_threshold = round(2 * (nc_num / ftes_sum), 4)
+
+        years_data[fy] = {
+            "tvi": tvi, "tviStatewide": tvi_sw, "ceSum": ce_sum,
+            "code2app": code2app, "appStatewide": app_sw,
+            "ncThreshold": nc_threshold, "ncShare": nc_share, "ftesSum": ftes_sum,
+            "round": (APPORTIONMENT_AVAILABLE.get(fy) or {}).get("round"),
+        }
+
+    n_colleges = sum(len(roster[c]["colleges"]) for c in roster)
     if n_colleges != 116:
         fail.append(f"{n_colleges} accredited colleges across districts (expected 116)")
-
-    # ── THE GATE: sum of per-district CE == printed statewide, exact ──
-    gates.require_target(tvi_statewide, "Table VI printed statewide totals",
-                         "the whole-dollar gate cannot run.")
-    gates.require_rows(len(tvi), 70, "Table VI districts")
-    ce_sum = sum(v["ce"] for v in tvi.values())
-    if ce_sum != tvi_statewide["ce"]:
-        fail.append(f"WHOLE-DOLLAR GATE FAILED: 73 districts sum to {ce_sum:,} "
-                    f"but Table VI's printed Statewide total is "
-                    f"{tvi_statewide['ce']:,} (residual {ce_sum - tvi_statewide['ce']:+,})")
-
-    # ── apportionment self-reconciliation (funded FTES, state GF) ────
-    # The target must EXIST before it is compared against. Guarding each
-    # comparison with `if appn_statewide.get(k) and ...` meant a missing
-    # control skipped the check and the build reported success — which is
-    # what happened for FY2022-23 until the parser above was fixed.
-    gates.require_target(
-        appn_statewide, "Exhibit C statewide totals",
-        "funded FTES and state General Fund would go unreconciled.")
-    gates.require_rows(len(code2app), 70,
-                       "apportionment districts matched to a district code")
-    # EACH DECLARED FACT MUST RECONCILE; each undeclared fact must be
-    # genuinely ABSENT. The second half matters as much as the first: it
-    # is what stops a "not-published" declaration from quietly coexisting
-    # with a derived figure nobody reconciled.
-    for key, label in (("fundedFtes", "funded FTES"),
-                       ("stateGf", "state General Fund")):
-        if apportionment_fact_published(FY, key):
-            gates.require_target(
-                appn_statewide.get(key), f"Exhibit C statewide {label}",
-                f"the {label} reconciliation cannot run.")
-        else:
-            leaked = [c for c, a in code2app.items() if key in a]
-            if leaked or key in appn_statewide:
-                fail.append(
-                    f"{label} is declared not-published for FY {FY} but "
-                    f"{len(leaked)} district records carry it — a fact that is "
-                    "not published must not be derived.")
-    ftes_sum = None
-    if apportionment_fact_published(FY, "fundedFtes"):
-        ftes_sum = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
-        if abs(ftes_sum - appn_statewide["fundedFtes"]) > 0.5:
-            fail.append(f"funded FTES sum {ftes_sum} != Exhibit C statewide "
-                        f"{appn_statewide['fundedFtes']}")
-    if apportionment_fact_published(FY, "stateGf"):
-        gf_sum = round(sum(a["stateGf"] for a in code2app.values()))
-        if gf_sum != round(appn_statewide["stateGf"]):
-            fail.append(f"state GF sum {gf_sum:,} != Exhibit C statewide "
-                        f"{round(appn_statewide['stateGf']):,}")
-    basic_n = (sum(1 for a in code2app.values() if a["ptaxExcess"] < -1)
-               if apportionment_fact_published(FY, "communitySupported") else None)
-    # The control must EXIST, and a control of ZERO is a real published
-    # value — not a reason to skip the comparison. Truthiness conflated
-    # the two: a year in which the Chancellor's Office legitimately
-    # prints zero community-supported districts would have disabled the
-    # check entirely, and a missing control did so silently.
-    if apportionment_fact_published(FY, "communitySupported"):
-        cs_control = appn_statewide.get("communitySupported")
-        if cs_control is None:
-            gates.require_target(
-                None, "Exhibit C statewide 'Fully Community Supported Districts'",
-                "meta.daggers.basicAid claims this count matches the "
-                "Chancellor's Office figure, so the claim cannot be made.")
-        if basic_n != cs_control:
-            fail.append(f"{basic_n} community-supported districts derived but Exhibit C "
-                        f"states {appn_statewide['communitySupported']}")
-    else:
-        # DECLARED NOT-PUBLISHED. The reason must exist — an undeclared
-        # silence is indistinguishable from an oversight — and no
-        # community-supported status may have been derived anyway.
-        if (FY, "communitySupported") not in APPORTIONMENT_FACT_UNPUBLISHED:
-            fail.append(
-                f"community-supported status is declared not-published for FY "
-                f"{FY} with no reason in APPORTIONMENT_FACT_UNPUBLISHED — an "
-                "unexplained silence is not a declaration.")
-        leaked = [c for c, a in code2app.items() if "ptaxExcess" in a]
-        if leaked:
-            fail.append(
-                f"community-supported status is declared not-published for FY "
-                f"{FY} but {len(leaked)} districts carry a property-tax-excess "
-                "figure it would be derived from.")
 
     if fail:
         for f in fail[:12]:
             print("  CCC GATE FAIL:", f, file=sys.stderr)
-        raise SystemExit(f"FY {FY}: {len(fail)} gate failure(s) — nothing written")
+        raise SystemExit(f"{len(fail)} gate failure(s) — nothing written")
 
-    # statewide noncredit share → the data-derived "noncredit-heavy" threshold (2× statewide)
-    # THE THRESHOLD IS DERIVED FROM THE APPORTIONMENT SET, so a year with
-    # no apportionment has no threshold to derive — and dividing by an
-    # empty set's FTES is a ZeroDivisionError, not a zero. The flag then
-    # becomes not-published for every district, which is the truth: it is
-    # 2x a statewide share that was never measured.
-    if code2app and ftes_sum:
-        sw_nc_num = sum((code2app[c]["noncreditShare"]) * code2app[c]["fundedFtes"]
-                        for c in code2app)
-        sw_nc_share = sw_nc_num / ftes_sum
-        nc_threshold = round(2 * sw_nc_share, 4)
-    else:
-        sw_nc_share = None
-        nc_threshold = None
-
-    # ── assemble districts ───────────────────────────────────────────
-    districts = []
-    for nm, cev in tvi.items():
-        code = name2code[nm]
-        colleges = roster[code]["colleges"]
-        a = code2app.get(code)
-        # MULTI-YEAR SHAPE, matching cities, counties and K-12: identity
-        # at the entity, everything that varies by year inside `years`,
-        # keyed by fiscal-year label. A reader moving between layers meets
-        # the same structure, and a maintainer meets one convention.
-        #
-        # `colleges`/`nColleges` stay at the entity for now because the
-        # roster source (DistrictCollegeCodes.pdf) is current-vintage only
-        # and is not year-scoped yet — that is the next PR, and putting it
-        # here would assert a current roster about older years.
-        rec = {
-            "name": nm, "code": code,
-            "colleges": colleges, "nColleges": len(colleges),
-            "years": {},
-        }
-        yr = {"ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"]}
-        if a:
-            # ONLY THE FACTS THIS VINTAGE PUBLISHES ARE EMITTED. A fact the
-            # vintage does not publish is ABSENT from the record (a number
-            # that is absent yields NaN, never a confident 0), and a status
-            # that cannot be derived is the three-valued "not-published"
-            # rather than a bare false.
-            if "fundedFtes" in a:
-                yr["fundedFtes"] = round(a["fundedFtes"], 2)
-                # a rate with no denominator is not published, rather than null
-                if a["fundedFtes"]:
-                    yr["perFtes"] = round(cev["ce"] / a["fundedFtes"])
-            if "stateGf" in a:
-                yr["stateGf"] = round(a["stateGf"])
-            if a.get("noncreditShare") is not None:
-                yr["noncreditShare"] = a["noncreditShare"]
-            if "ptaxExcess" in a:
-                yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
-                                        else "state-funded")
+    # ── assemble districts, keyed on the source's own code ───────────
+    #
+    # MULTI-YEAR SHAPE, matching cities, counties, K-12 and UC: identity at
+    # the entity, everything that varies by year inside `years`, keyed by
+    # fiscal-year label. A district that does not exist in a year simply
+    # has no entry for it — absence, never a zero.
+    districts = {}
+    for pv, fy in PORTAL_YEARS:
+        yd = years_data[fy]
+        for nm, cev in yd["tvi"].items():
+            code = name2code[nm]
+            rec = districts.get(code)
+            if rec is None:
+                rec = districts[code] = {
+                    "name": nm, "code": code,
+                    "colleges": roster[code]["colleges"],
+                    "nColleges": len(roster[code]["colleges"]),
+                    "years": {},
+                }
+            # the display name follows the newest year the district appears
+            # in; identity is the code, so a rename is not a new district
+            rec["name"] = nm
+            yr = {"ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"]}
+            a = yd["code2app"].get(code)
+            if a:
+                # ONLY THE FACTS THIS VINTAGE PUBLISHES ARE EMITTED.
+                if "fundedFtes" in a:
+                    yr["fundedFtes"] = round(a["fundedFtes"], 2)
+                    if a["fundedFtes"]:
+                        yr["perFtes"] = round(cev["ce"] / a["fundedFtes"])
+                if "stateGf" in a:
+                    yr["stateGf"] = round(a["stateGf"])
+                if a.get("noncreditShare") is not None:
+                    yr["noncreditShare"] = a["noncreditShare"]
+                if "ptaxExcess" in a:
+                    yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
+                                            else "state-funded")
+                else:
+                    yr["basicAidStatus"] = "not-published"
+                    yr["basicAidUnpublishedReason"] = \
+                        APPORTIONMENT_FACT_UNPUBLISHED.get(
+                            (fy, "communitySupported"), "")
             else:
+                # ABSENCE MARKS ABSENCE. A number that is not known is
+                # ABSENT (absence yields NaN, not a confident 0); a boolean
+                # that is not known is a THREE-VALUED STATUS, because false
+                # is a real answer with no room left to mean "unknown".
+                # The reason travels WITH the record — a district-level one
+                # where the district has none, a year-level one where the
+                # whole vintage has none.
+                reason = (NO_APPORTIONMENT.get(code)
+                          if yd["code2app"] else apportionment_absent_reason(fy))
+                if not reason:
+                    raise SystemExit(
+                        f"CCC {fy}: {nm} ({code}) has no apportionment record "
+                        "and no declared reason. An unexplained absence is a "
+                        "parse failure until shown otherwise; declare it "
+                        "deliberately. Nothing written.")
                 yr["basicAidStatus"] = "not-published"
-                yr["basicAidUnpublishedReason"] = APPORTIONMENT_FACT_UNPUBLISHED.get(
-                    (FY, "communitySupported"), "")
-        else:
-            # ABSENCE MARKS ABSENCE. `basicAid = False` used to publish
-            # "we checked the property-tax-excess schedule and this is not
-            # a community-supported district" about a district whose
-            # apportionment we never had. Unknown is None, like its four
-            # siblings, and the reason travels with the record.
-            reason = NO_APPORTIONMENT.get(rec["code"])
-            if not reason:
-                raise SystemExit(
-                    f"CCC: {rec['name']} ({rec['code']}) has no apportionment "
-                    "record and no declared reason. An unexplained absence is "
-                    "a parse failure until it is shown otherwise; declare it "
-                    "in NO_APPORTIONMENT deliberately. Nothing written.")
-            # THE CONFORMING ENCODING (see fetch_school_data.LCFF_PUBLISHES).
-            # These were null. null is falsy and coerces to 0 in a sum, so
-            # it is the shape the rule exists to forbid: a consumer doing
-            # `if (d.basicAid)` or `total += d.stateGf` gets a confident
-            # wrong answer. A number that is not known is ABSENT — absence
-            # yields NaN, which is not a valid answer. A boolean that is
-            # not known is a THREE-VALUED STATUS, because false is a valid
-            # answer and has no room left to mean "unknown".
-            yr["basicAidStatus"] = "not-published"
-            yr["noApportionmentReason"] = reason
-        yr["flags"] = {
-            "multiCollege": rec["nColleges"] > 1,
-            "basicAidStatus": yr["basicAidStatus"],
-            "noncreditHeavyStatus": (
-                "not-published" if "noncreditShare" not in yr
-                or nc_threshold is None
-                else "noncredit-heavy" if yr["noncreditShare"] >= nc_threshold
-                else "not-noncredit-heavy"),
-            "noApportionment": a is None,
-        }
-        rec["years"][FY] = yr
-        districts.append(rec)
-    districts.sort(key=lambda r: r["name"])
+                yr["noApportionmentReason"] = reason
+            yr["flags"] = {
+                "basicAidStatus": yr["basicAidStatus"],
+                "noncreditHeavyStatus": (
+                    "not-published" if "noncreditShare" not in yr
+                    or yd["ncThreshold"] is None
+                    else "noncredit-heavy"
+                    if yr["noncreditShare"] >= yd["ncThreshold"]
+                    else "not-noncredit-heavy"),
+                "noApportionment": a is None,
+            }
+            rec["years"][fy] = yr
+    districts = sorted(districts.values(), key=lambda r: r["name"])
+    # multiCollege is a CURRENT-VINTAGE roster fact and lives at the entity,
+    # never inside a year (see the roster note above).
+    for rec in districts:
+        rec["multiCollege"] = rec["nColleges"] > 1
 
-    dangerous = sorted(r["name"] for r in districts
-                       if r["years"][FY]["flags"]["multiCollege"]
-                       and r["years"][FY]["flags"]["basicAidStatus"] == "basic-aid")
+    dangerous = sorted(
+        r["name"] for r in districts
+        if r["multiCollege"]
+        and r["years"].get(FY, {}).get("basicAidStatus") == "basic-aid")
+
+    # ── statewide, per year ──────────────────────────────────────────
+    # THE PUBLISHED CONTROL, NEVER OUR OWN SUM. These used to fall back to
+    # the pipeline's own totals if the Chancellor's Office control was
+    # missing, which is how 1,100,664.62 came to be published where the
+    # printed control says 1,100,664.61 (corrected 2026-07-21). A control
+    # that does not exist means the fact is absent, not that our sum
+    # stands in for it.
+    statewide = {}
+    for pv, fy in PORTAL_YEARS:
+        yd = years_data[fy]
+        sw = {
+            "ce": yd["tviStatewide"]["ce"],
+            "instrSal": yd["tviStatewide"]["instrSal"],
+            "pct50": yd["tviStatewide"]["pct50"],
+            "nDistricts": sum(1 for r in districts if fy in r["years"]),
+            "noncreditThreshold": yd["ncThreshold"],
+            "statewideNoncreditShare": yd["ncShare"],
+        }
+        app_sw = yd["appStatewide"]
+        if apportionment_published(fy) and fy in APPORTIONMENT_FACTS:
+            if apportionment_fact_published(fy, "fundedFtes") and "fundedFtes" in app_sw:
+                sw["fundedFtes"] = round(app_sw["fundedFtes"], 2)
+            if apportionment_fact_published(fy, "stateGf") and "stateGf" in app_sw:
+                sw["stateGf"] = round(app_sw["stateGf"])
+            if apportionment_fact_published(fy, "communitySupported"):
+                sw["communitySupported"] = app_sw.get("communitySupported")
+            else:
+                sw["communitySupportedStatus"] = "not-published"
+                sw["communitySupportedReason"] = APPORTIONMENT_FACT_UNPUBLISHED.get(
+                    (fy, "communitySupported"), "")
+        else:
+            sw["apportionmentStatus"] = "not-published"
+            sw["apportionmentReason"] = apportionment_absent_reason(fy) or ""
+        # the round this year's apportionment facts were assembled at
+        if yd["round"] and fy in APPORTIONMENT_FACTS:
+            sw["apportionmentRound"] = yd["round"]
+        statewide[fy] = sw
 
     payload = {
         # the year axis every multi-year layer publishes
-        "years": [FY],
+        "years": YEARS,
         "meta": {
             "source": "fiscalportal.cccco.edu",
             "sourceLabel": "California Community Colleges Chancellor's Office — CCFS-311 "
@@ -925,11 +1023,43 @@ def build(refresh):
             "gate": "WHOLE-DOLLAR, EXACT — no write on failure. The 73 districts' Current "
                     "Expense of Education (ECS 84362) sum to the Chancellor's Office's own "
                     "printed Table VI Statewide total, exactly, to the dollar "
-                    f"(${tvi_statewide['ce']:,}). A third, accurately-named resolution tier: "
+                    f"(FY{FY}: ${years_data[FY]['tviStatewide']['ce']:,}). A third, accurately-named resolution tier: "
                     "exact to the dollar — finer than CSU's thousand, coarser than K-12's "
                     "cent. The figures are independently validated off the portal by the "
                     "mandatory CPA audit each district files under Ed Code 84040 (the CCFS-311 "
                     "fund balances equal the audited fund balances).",
+            # ── comparability facts the PAGE renders on the record ──
+            # These are not method-note footnotes: the page shows each one
+            # on the record for the year it is true of, the same treatment
+            # as UC's DOE-assembly break.
+            "roundsDiffer": "P1, P2 and R1 are different STAGES of the same "
+                "year's apportionment — First Principal, Second Principal and "
+                "Recalculation — computed at different points from different "
+                "information, and they are not interchangeable. This layer "
+                "publishes apportionment figures for four fiscal years and "
+                "they were not all assembled at the same stage, so a "
+                "comparison across them compares a year measured early "
+                "against a year measured late. The round is recorded on every "
+                "year that has one.",
+            "districtCountBreak": "The Chancellor's Office reported 72 "
+                "districts through FY2017-18 and 73 from FY2018-19, when "
+                "Calbright — the state's online community college, created "
+                "by statute in 2018 — first filed. That is a real change in "
+                "the number of districts inside this window, not a parse "
+                "difference: the count is declared per year, and a year whose "
+                "Table VI does not match its declared count fails the gate "
+                "rather than being accepted as a roster change. A statewide "
+                "total spanning that boundary compares differently-sized "
+                "systems.",
+            "rosterScope": "The college roster — which colleges each district "
+                "runs, and therefore the multi-college flag — comes from the "
+                "Chancellor's Office MIS District & College Codes, which "
+                "publishes TODAY's list and carries no history. It is "
+                "recorded once per district, never inside a fiscal year, "
+                "because stating it under FY2009-10 would assert a current "
+                "roster about a year it was not measured in. The 116-college "
+                "reconciliation is likewise a statement about the current "
+                "roster only.",
             "reproducibility": "AUTO-REPRODUCIBLE. Every source is a public endpoint this "
                     "pipeline fetches without credentials: the CCFS-311 reporting portal "
                     "(a public POST; no login — only the separate filing route is gated), the "
@@ -981,30 +1111,11 @@ def build(refresh):
             },
             "overlap": _overlap(),
         },
-        "statewide": {FY: {
-            "ce": tvi_statewide["ce"],
-            "instrSal": tvi_statewide["instrSal"],
-            "pct50": tvi_statewide["pct50"],
-            # THE PUBLISHED CONTROL, NEVER OUR OWN SUM. These used to fall
-            # back to ftes_sum / gf_sum — the pipeline's own totals — if the
-            # Chancellor's Office control was missing, which is exactly how
-            # 1,100,664.62 came to be published where the printed control
-            # says 1,100,664.61 (corrected 2026-07-21). The gate above now
-            # requires the control to exist, so the fallback can only ever
-            # have masked its absence.
-            "fundedFtes": round(appn_statewide["fundedFtes"], 2),
-            "stateGf": round(appn_statewide["stateGf"]),
-            "nDistricts": len(districts),
-            "nColleges": n_colleges,
-            "communitySupported": basic_n,
-            "noncreditThreshold": nc_threshold,
-            "statewideNoncreditShare": (round(sw_nc_share, 4)
-                                            if sw_nc_share is not None else None),
-        }},
+        "statewide": statewide,
         "districts": districts,
     }
     stamp(payload)
-    return payload, tvi_statewide, ce_sum
+    return payload, years_data[FY]["tviStatewide"], years_data[FY]["ceSum"]
 
 
 def main():
@@ -1020,12 +1131,21 @@ def main():
           f"Education sum to ${ce_sum:,} = the Chancellor's Office printed Statewide total "
           f"(exact, to the dollar).", file=sys.stderr)
     sw = payload["statewide"][FY]
-    fl = [r["years"][FY]["flags"] for r in d]
-    print(f"  {sw['nColleges']} accredited colleges · "
-          f"{sum(1 for f in fl if f['multiCollege'])} multi-college · "
-          f"{sw['communitySupported']} community-supported · "
+    fl = [r["years"][FY]["flags"] for r in d if FY in r["years"]]
+    print(f"  {sum(r['nColleges'] for r in d)} accredited colleges · "
+          f"{sum(1 for r in d if r['multiCollege'])} multi-college "
+          "(current roster; not asserted about earlier years) · "
+          f"{sw.get('communitySupported', 'not-published')} community-supported · "
           f"{sum(1 for f in fl if f['noncreditHeavyStatus'] == 'noncredit-heavy')} noncredit-heavy · "
-          f"funded FTES {sw['fundedFtes']:,.0f}", file=sys.stderr)
+          f"funded FTES {sw.get('fundedFtes', float('nan')):,.0f}", file=sys.stderr)
+    # per-year coverage, so a year that ships without apportionment is
+    # visible on every run rather than only in the payload
+    print(f"  {len(payload['years'])} fiscal years {payload['years'][0]}..{payload['years'][-1]}"
+          f" · apportionment in "
+          + ", ".join(f"{fy}({payload['statewide'][fy].get('apportionmentRound','?')})"
+                      for fy in payload["years"]
+                      if "apportionmentStatus" not in payload["statewide"][fy]),
+          file=sys.stderr)
 
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     print(f"  payload {len(body) / 1024:.0f} KB", file=sys.stderr)

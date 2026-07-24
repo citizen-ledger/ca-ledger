@@ -122,6 +122,9 @@
 
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
+  .cmpbox{margin-top:12px}
+  .cmp{border-left:4px solid var(--ink);background:var(--wash);padding:11px 15px;margin-top:8px;font-size:var(--fs-note);line-height:1.6}
+  .cmp b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:5px}
   .basis-strip{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);margin-top:10px;line-height:1.6}
 
   .tbl{min-width:660px;margin-top:20px}
@@ -249,6 +252,7 @@
     <div class="schedlbl" id="scheduleLabel"></div>
     <div class="gate-strip" id="gateStrip"></div>
     <div class="basis-strip" id="basisStrip"></div>
+    <div class="cmpbox" id="comparabilityStrip" hidden></div>
     <div class="tblwrap"><div class="tbl" id="tbl"></div></div>
     <div class="caps" id="recordCaps"></div>
 
@@ -301,6 +305,7 @@
      places that know the selected year, so a read site cannot silently
      go on addressing a single year. */
   const YEARS = D.years;
+  const ROUND_NAME = {"P1":"First Principal (P1)","P2":"Second Principal (P2)","R1":"Recalculation (R1)"};
   const yr = r => (r.years || {})[S.year] || {};
   const sw = () => (D.statewide || {})[S.year] || {};
   const money0 = v => "$" + Math.round(v).toLocaleString("en-US");
@@ -329,8 +334,9 @@
   // structural-comparability daggers, data-derived from the flags in ccc-data.js
   function districtNotes(r){
     const v = yr(r), f = v.flags || {}, notes = [];
-    if (f.multiCollege) notes.push(["MULTI-COLLEGE",
-      "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege]);
+    if (r.multiCollege) notes.push(["MULTI-COLLEGE",
+      "Runs " + r.nColleges + " colleges (" + r.colleges.map(titlecase).join(", ") + "). " + M.daggers.multiCollege
+      + " The college roster is the Chancellor's Office's CURRENT list, which carries no history, so it describes this district today — not necessarily in FY " + S.year + "."]);
     // three-valued, matching the K-12 encoding: a status string, never a
     // bare boolean, because "not community-supported" is a real answer
     if (f.basicAidStatus === "basic-aid") notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
@@ -343,7 +349,7 @@
     else if (f.noncreditHeavyStatus === "not-published") notes.push(["NONCREDIT SHARE: NOT KNOWN",
       "The noncredit and adult-education share is taken from the "
       + "apportionment schedule, which is absent for this record."]);
-    if (f.multiCollege && f.basicAidStatus === "basic-aid") notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
+    if (r.multiCollege && f.basicAidStatus === "basic-aid") notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
     // The reason travels WITH the record. This used to be one hardcoded
     // sentence about Calbright, rendered for any district whose
     // apportionment was missing — which would have told a reader that
@@ -479,6 +485,34 @@
       + " — the Chancellor's Office's own printed statewide total, to the dollar. Independently"
       + " validated off the portal by each district's mandatory CPA audit (Ed Code 84040).";
     $("basisStrip").textContent = "BASIS: modified-accrual on the CCC Budget and Accounting Manual — the same shape as K-12's SACS. NOT the state budget page's enacted, budgetary-legal figure. The two are never added.";
+
+    /* ---- COMPARABILITY, STATED WHERE THE READER MEETS IT ---------------
+       Not a method-note footnote: these are facts about the year on screen,
+       rendered on the record itself. Three of them, each only when true. */
+    (function(){
+      const box = $("comparabilityStrip"); if (!box) return;
+      const w = sw(), parts = [];
+      // 1. the apportionment ROUND — P1, P2 and R1 are different stages of
+      //    the same year's apportionment and are not interchangeable
+      if (w.apportionmentRound){
+        parts.push('<b>APPORTIONMENT ROUND · ' + esc(w.apportionmentRound) + '</b>'
+          + esc(M.roundsDiffer) + " For FY " + esc(S.year) + " the apportionment figures on this "
+          + "record come from the " + esc(ROUND_NAME[w.apportionmentRound] || w.apportionmentRound)
+          + " stage.");
+      } else if (w.apportionmentStatus === "not-published"){
+        parts.push('<b>APPORTIONMENT · NOT PUBLISHED FOR FY ' + esc(S.year) + '</b>'
+          + esc(w.apportionmentReason || "")
+          + " Current Expense of Education is unaffected and is gated for this year like every other;"
+          + " it is the apportionment-derived figures — funded FTES, state general fund, per-FTES,"
+          + " community-supported status — that are not published here.");
+      }
+      // 2. the district roster changes INSIDE the window
+      if (M.districtCountBreak){
+        parts.push('<b>THE DISTRICT COUNT CHANGES INSIDE THIS WINDOW</b>' + esc(M.districtCountBreak));
+      }
+      box.innerHTML = parts.map(p => '<div class="cmp">' + p + '</div>').join("");
+      box.hidden = !parts.length;
+    })();
 
     const rows = D.districts.slice().sort((a,b) => {
       if (S.sort === "perFtes"){ const av=typeof a.perFtes==="number"?a.perFtes:-1,
