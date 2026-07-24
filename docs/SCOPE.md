@@ -89,8 +89,15 @@ own printed statewide total, and each district's figure is
 independently validated off the portal by the mandatory CPA audit (Ed
 Code 84040). "Exact to the dollar" is a third, accurately-named
 resolution tier — finer than CSU's thousand, coarser than K-12's cent —
-at the resolution the CCFS-311 portal publishes. Per-FTES uses the
-apportionment funded FTES, not the Data Mart derived count.
+at the resolution the CCFS-311 portal publishes. This layer now carries
+**fifteen fiscal years** (FY2009-10 through FY2023-24), the portal's own
+coverage, each year gated to the dollar; the SCFF apportionment-derived
+figures (funded FTES, state general fund, community-supported status,
+per-FTES) reach only the five years with a readable Exhibit C (FY2018-19 through FY2023-24, FY2021-22 excepted), and not
+every fact in each — the rest are declared not-published, never derived
+(the per-vintage extractor, label and fact declarations are recorded in
+docs/V19–V20). Per-FTES, where it ships, uses the apportionment funded
+FTES, not the Data Mart derived count.
 
 **UC is now built too (per docs/V12_UC_FINDING.md), in its honest,
 stripped form only.** The V10b concern — that a raw UC figure is a
@@ -127,6 +134,49 @@ carries the structural dagger). Sources are public ucop.edu URLs —
 auto-fetchable, no manual cache. All three higher-education systems
 now meet the bar: CSU (thousand, manual-cache), CCC (dollar, auto),
 UC (thousand, auto, stripped on UC's own categories).
+
+## Windows and depths — how far each layer reaches, and the refusals
+
+Each layer covers exactly the years its source supports at a resolution
+the gate can prove. The stopping points are decisions with reasons, not
+artifacts of what was loaded, so they are recorded here to keep a future
+session from re-proposing an extension that was already refused.
+
+- **State (budget + actuals) — 9 years**, FY2017-18…FY2025-26: the span
+  DOF's structured budget API serves; earlier years return empty, not an
+  error (docs/V15).
+- **Cities / counties / special districts — 8 years**, FY2016-17…FY2023-24.
+- **K-12 — 9 years**, FY2016-17…FY2024-25.
+- **Community colleges — 15 years**, FY2009-10…FY2023-24 (apportionment
+  facts on four of them; see above).
+- **CSU — 1 year**, FY2023-24. **UC — 5 years**, FY2020-21…FY2024-25, with
+  FY2019-20 held.
+
+Three historical extensions are **refused, permanently, with their
+reasons** (docs/V15_HISTORICAL_FINDING.md; the vendor case is
+docs/V4_VENDOR_FINDING.md):
+
+1. **Cities and counties cannot go before FY2016-17.** The State
+   Controller's expenditure taxonomy changed at FY2017; before it, police
+   and fire are not separable (both read "Public Safety"). A deeper series
+   could not carry the per-service figures these pages are built on, so it
+   would be a *different* product, not a deeper one — not a data gap to
+   fill.
+2. **CSU cannot be extended at all.** `calstate.edu` returns HTTP 403
+   (Imperva "Human Check") to every scripted request, so the control total
+   for any older year is **uncomputable, not merely unreconciled**. A year
+   that cannot be gated does not ship. (This is also why CSU is the one
+   manual-cache layer above.)
+3. **Vendor / who-the-state-pays data is not published at all.** California
+   publishes no vendor-payment data reconcilable to its budget — its own
+   files cover ~10% of recorded spending with no stable identifiers.
+   Investigated and re-examined; the refusal is the published result.
+
+The rule these share: a figure ships only when it reconciles to a control
+the source itself published. Absent that control, the honest output is a
+stated absence, never a precise-looking number with unknowable gaps. The
+current unfinished work and the recurring shapes behind these decisions
+are kept in docs/OPEN.md.
 
 ## "Ask the Ledger" — permanently out of scope
 
