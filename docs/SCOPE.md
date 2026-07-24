@@ -103,12 +103,24 @@ UC-published cells, with the stripped components shown separately,
 never deleted. The gate: ten campuses plus UC's own PRINTED Systemwide
 column equal the audited total operating expenses **exactly, to the
 thousand** (the CSU tier — the finest resolution UC publishes), proven
-for BOTH FY2024-25 and FY2023-24, with every campus column proven by a
+for **each of five fiscal years, FY2020-21 through FY2024-25** (per
+docs/V18B_UC_SIX_YEAR_BUILD.md), with every campus column proven by a
 **column-sum check** (the sparse rows' column assignment established
-uniquely by exhaustion — the parsing trap the V12 finding documented).
+uniquely by exhaustion — the parsing trap the V12 finding documented —
+and still unique at ten times the source's rounding tolerance).
+**FY2019-20 is held**, not shipped: its unaudited campus table misses
+the audited total by ~351K where every later year ties, so it is
+declared held and re-measured every build rather than shipped at a
+lower tier. UC publishes the DOE laboratory two ways across the window
+(the FY2020-21 campus table excludes it, added back from the audited
+statement; FY2021-22 on carry it inside the Systemwide column); the
+core strip removes the same quantity either way, and that assembly
+break is stated where the five-year core line crosses it.
 The per-campus table is UC's auditor-read "other information," marked
-"(Unaudited)"; that status is stated on the page — the audited figure
-is the systemwide total the campuses reconcile to. The strip's limit
+"(Unaudited)"; that status is stated on the page per vintage (the
+FY2020-21 report predates the fuller auditor language, so it is not
+carried back) — the audited figure is the systemwide total the campuses
+reconcile to. The strip's limit
 is stated on the face: hospitals are stripped, **medical schools are
 not** (health-sciences instruction/research stays in core; UCSF
 carries the structural dagger). Sources are public ucop.edu URLs —
