@@ -3590,6 +3590,50 @@ def test_unpublished_reason_live(page, base):
           str(rows[:1])[:110])
 
 
+def test_uc_audit_quotation():
+    """A VERBATIM QUOTATION MUST HOLD IN EVERY YEAR IT IS ATTACHED TO.
+
+    The layer quoted PwC's "The other information comprises pages 4
+    through 7". Checked in full against all six Annual Financial
+    Reports: that is verbatim correct for FY2024-25 and WRONG for
+    FY2023-24, which also ships and whose auditors' report says "pages 6
+    through 9". FY2022-23 and FY2021-22 also say 6-9; FY2020-21 and
+    FY2019-20 carry no such auditor language at all.
+
+    A page number describes one document's layout, not the audit. The
+    claim now rests on what verifies in every year, and the page range
+    is described rather than quoted."""
+    u = UC["meta"]["unauditedStatus"]
+
+    # POSITIVE CONTROL FIRST: the claim still MAKES its point, so the
+    # absence below is a correction and not a deletion.
+    for frag in ("Campus Facts in Brief",
+                 "do not express an opinion",
+                 "to read the other information and consider whether a "
+                 "material inconsistency exists"):
+        check(f"uc quote: retains the fragment verified verbatim in BOTH "
+              f"shipped reports — {frag[:34]!r}", frag in u, u[:0])
+    check("uc quote: and still says the campus detail does not carry the "
+          "systemwide total's audit status",
+          "does NOT carry that audit status" in u, u[:0])
+
+    # THE CORRECTION: no page range is quoted anywhere in the layer
+    import re as _re
+    check("uc quote: no page range is quoted — it differs between reports, "
+          "so quoting one states a per-vintage detail as a general fact",
+          not _re.search(r"pages? \d+ through \d+", u), u[:0])
+    check("uc quote: and the omission is explained rather than silent",
+          "the range differs between reports" in u, u[:0])
+
+    # the retired wording is gone from the payload AND the page
+    for label, text in (("payload", json.dumps(UC)),
+                        ("page", (ROOT / "uc.html").read_text(encoding="utf-8")),
+                        ("pipeline meta", (ROOT / "pipeline" / "fetch_uc_data.py")
+                         .read_text(encoding="utf-8").split("unauditedStatus")[1])):
+        check(f"uc quote: the unverifiable page range is gone from the "
+              f"{label}", "pages 4 through 7" not in text, label)
+
+
 def test_empty_gate_guard():
     """A CHECK THAT CANNOT FAIL IS NOT A CHECK.
 
@@ -8063,6 +8107,7 @@ def main():
             test_ccc_source_identity()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)
+            test_uc_audit_quotation()
             test_empty_gate_guard()
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)

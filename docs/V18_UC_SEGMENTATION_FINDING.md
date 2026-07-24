@@ -80,22 +80,33 @@ This one is a parser change, not a finding — but it must be a
 `ALT_SCHOOL_COL`, not a loosened case-insensitive match. A case-blind
 search is precisely the widened detector this repo has refused twice.
 
-## The audit-status sentence — do not carry it backward unchecked
+## The audit-status sentence — RESOLVED, and this section was wrong
 
-The shipped claim quotes PwC's *"other information comprises pages 4
-through 7"*. **That string does not appear in the first twenty pages of
-any of the six reports**, including the two currently shipped — so the
-sentence cannot be verified from the text at the location the pipeline
-reads, in any year.
+> **CORRECTION.** This finding originally said the quoted string "does
+> not appear in ... any of the six reports". **That was wrong.** I had
+> searched only the first twenty pages. The auditors' report sits around
+> page 30, and searching the full documents finds the sentence in four
+> of the six. The error was mine, not the source's.
 
-What *is* verifiable in all six: the table is headed `Campus Facts in
-Brief (Unaudited)`. In the older vintages that heading is split across
-two lines, which is why a naive substring test reports it differently.
+Searched in full, the picture is:
 
-The page-range claim needs re-verification against each report before
-it is repeated for any year, including the two already published. That
-is a live-data check I have not completed, and it should not be assumed
-because it reads plausibly.
+| FY | "other information comprises pages …" |
+|---|---|
+| 2024-25 | **4 through 7** |
+| 2023-24 | **6 through 9** |
+| 2022-23 | 6 through 9 |
+| 2021-22 | 6 through 9 |
+| 2020-21 | no such auditor language |
+| 2019-20 | no such auditor language |
+
+The site quoted **"pages 4 through 7"**, which is verbatim correct for
+FY2024-25 and **wrong for FY2023-24 — a year that also ships.** The two
+oldest reports predate the standard that added an "other information"
+section to the auditor's report, so the language is absent entirely.
+
+**Fixed:** the page range is no longer quoted; it is described, with a
+note that it differs between reports. Every fragment still quoted was
+checked verbatim against BOTH shipped reports. No figure moved.
 
 ## Recommendation
 
@@ -115,8 +126,8 @@ The bounded next steps, in order:
 2. **Declare the per-vintage table anchor and row set** — capitals
    heading, `Impairment of capital assets` in the two oldest years —
    the way `CE_VINTAGE` declares K-12's.
-3. **Re-verify the PwC page-range sentence** against each report, and
-   correct it for the shipped years if it does not hold.
+3. ~~Re-verify the PwC page-range sentence.~~ **Done** — it did not
+   hold for FY2023-24 and has been corrected; see above.
 
 Do not relax the strip identity, the column-sum check, or the
 sparse-row proof to accommodate a vintage difference.
@@ -129,4 +140,5 @@ sparse-row proof to accommodate a vintage difference.
 | DOE published four different ways | row census across both table pages, six AFRs |
 | `Impairment of capital assets` in the two oldest years only | same census |
 | the anchor finds zero pages in the added years | `"Campus Financial Facts" in text`, per page, six AFRs |
-| the PwC page-range string is absent | regex over the first twenty pages of each report |
+| the PwC page range is 4-7 in FY2024-25 and 6-9 in FY2023-24 | regex over the FULL text of each report — the first-twenty-pages search that produced the original wrong claim missed the auditors' report, which sits near page 30 |
+| every other quoted fragment is verbatim in both shipped years | substring check against the full text of each |
