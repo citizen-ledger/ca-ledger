@@ -1565,7 +1565,8 @@ def test_rename(page, base):
              "address.html": "Your governments",
              "ccc.html": "Community colleges",
              "uc.html": "UC campuses",
-             "about.html": "About & method"}
+             "about.html": "About & method",
+             "reading.html": "Reading the Ledger"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
         esc_title = title.replace("&", "&amp;")
@@ -5518,6 +5519,64 @@ def test_zero_service(page, base):
           page.locator(".depth-panel .depth-row").count() > 0)
 
 
+def test_reading(page, base):
+    """The reader's entry point, promoted from docs/ to a first-class page.
+    Same shell as every page (test_polish/test_shell/test_mobile already
+    check the header, nav, footer, type tokens, 360/390 layout across the
+    page list this is now in); here: reachable from the front page, the
+    archive voice, and every factual claim tied to the build."""
+    page.goto(f"{base}/reading.html")
+    page.wait_for_selector("h1")
+    body = page.inner_text("body")
+    check("reading: the page renders its own heading", "Reading the Ledger" in body)
+    check("reading: reachable from the front page, beside 'How every figure is verified'",
+          page.goto(f"{base}/index.html") is not None
+          and page.locator('.fd-discipline a[href="reading.html"]').count() == 1)
+    # header/footer component present (the shared shell)
+    page.goto(f"{base}/reading.html")
+    check("reading: the institutional footer is present",
+          "CITIZEN LEDGER · PUBLIC RECORD" in page.inner_text("footer.ft"))
+    check("reading: links to the method reference and the change record",
+          page.locator('a[href="about.html"]').count() >= 1
+          and page.locator('a[href="revisions.html"]').count() >= 1)
+
+    # ---- the archive voice: banned + marketing terms absent (same scan as about)
+    src = (ROOT / "reading.html").read_text(encoding="utf-8").lower()
+    for w in BANNED + ["empowering", "empower", "unlock", "revolution",
+                       "game-chang", "call to action", "join us", "sign up",
+                       "our mission"]:
+        check(f"reading voice: {w!r} absent", w not in src)
+
+    # ---- factual claims tied to the build, not just to prose
+    check("reading: the five gate tiers are named, each with its layer",
+          all(t in body for t in ("To the cent", "To the dollar",
+                                  "To the thousand", "Pinned, not reconciled")))
+    # the tiers correspond to the layers' actual published units
+    ccc_unit = (CCC["meta"].get("unit") or "").lower()
+    uc_unit = (UC["meta"].get("unit") or "").lower()
+    check("reading: 'to the dollar' is CCC's real published resolution",
+          "dollar" in ccc_unit and "community-college districts" in body)
+    check("reading: 'to the thousand' is UC's and CSU's real published resolution",
+          "thousand" in uc_unit and "CSU and UC" in body)
+    # UC held year and its residual, from the shipped payload
+    held = UC["held"]["2019-20"]
+    check("reading: the UC held-year example matches the shipped residual",
+          held["published"] is False and abs(held["residualK"]) == 351
+          and "351 thousand" in body and "held" in body)
+    # the not-published / zero / rendering-gap distinction, three-valued
+    check("reading: 'not published' is distinguished from a real zero and a gap",
+          "A real zero" in body and "Not published" in body
+          and "A rendering gap" in body
+          and "not-a-number" in body and "no room left" in body)
+    # layers never sum, with the overlap reason
+    check("reading: the never-sum rule is stated with its reason",
+          "the same dollar appears in more than one" in body
+          and "never sum" in body.lower())
+    # not a data page: no CSV/cite chrome to imply figures live here
+    check("reading: it is prose, not a data record (no CSV/cite controls)",
+          page.locator("#csvBtn").count() == 0 and page.locator("#citeToggle").count() == 0)
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -6503,7 +6562,7 @@ def test_polish(page, base):
     its band, Download CSV wears the outline vocabulary, and the type
     scale is declared tokens rather than half-pixel drift."""
     PAGES = ["index.html", "cities.html", "schools.html",
-             "districts.html", "address.html", "about.html"]
+             "districts.html", "address.html", "about.html", "reading.html"]
     # phone front door: statement within the first screen's ~250px
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{base}/index.html")
@@ -8191,8 +8250,8 @@ def test_runtime_origins():
     pages = sorted(p.name for p in ROOT.glob("*.html"))
     EXPECTED = sorted(["404.html", "about.html", "address.html", "ccc.html",
                        "cities.html", "csu.html", "districts.html",
-                       "index.html", "revisions.html", "schools.html",
-                       "search.html", "uc.html"])
+                       "index.html", "reading.html", "revisions.html",
+                       "schools.html", "search.html", "uc.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -8256,7 +8315,7 @@ def test_shell(page, base):
     steward line in every footer, system-colored identity assets, a
     share card, and print styles that keep the figures."""
     PAGES = ["index.html", "cities.html", "schools.html",
-             "districts.html", "address.html", "about.html"]
+             "districts.html", "address.html", "about.html", "reading.html"]
     # ---- 404 page: served, on-voice, absolute links (GitHub Pages
     # serves it at ANY missing depth, so relative links would break)
     src404 = (ROOT / "404.html").read_text(encoding="utf-8")
@@ -8450,7 +8509,7 @@ def test_mobile(browser, base):
     ctx = browser.new_context(viewport={"width": 360, "height": 780})
     p = ctx.new_page()
     for name in ("index.html", "cities.html", "schools.html",
-                 "districts.html", "address.html", "about.html"):
+                 "districts.html", "address.html", "about.html", "reading.html"):
         p.goto(f"{base}/{name}")
         p.wait_for_load_state("networkidle")
         sw = p.evaluate("Math.max(document.documentElement.scrollWidth,"
@@ -8775,6 +8834,7 @@ def main():
             test_legibility(page, base)
             test_zero_service(page, base)
             test_frontdoor_about(page, base)
+            test_reading(page, base)
             test_map(page, base)
             test_mobile(browser, base)
             test_precision(page, base)
