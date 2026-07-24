@@ -171,6 +171,58 @@ def apportionment_published(fy):
     Declared, never sniffed, and never inferred from a URL that responds."""
     return APPORTIONMENT_AVAILABLE.get(fy) is not None
 
+
+# ── WHICH FACTS EACH VINTAGE'S EXHIBIT C SUPPORTS ────────────────────
+#
+# A verified Exhibit C is not the same as a parseable one, and a
+# parseable one does not publish every fact. This table is DECLARED FROM
+# MEASUREMENT AGAINST THE PRINTED CONTROL — never from whether a regex
+# happened to match, which is the sniff this repo refuses.
+#
+#   True  → the fact MUST parse for every district AND its district sum
+#           MUST reconcile against Exhibit C's own printed statewide
+#           control. Failing either stops the build.
+#   False → the fact is NOT-PUBLISHED for that year. It is never derived,
+#           never defaulted to zero, and no reconciliation is run for it
+#           (there is no control to run against). The reason travels with
+#           it in APPORTIONMENT_FACT_UNPUBLISHED.
+#
+# A vintage with no entry here cannot be read at all: adding a year means
+# declaring what that year publishes, deliberately.
+APPORTIONMENT_FACTS = {
+    "2022-23": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
+    "2023-24": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
+}
+APPORTIONMENT_FACT_UNPUBLISHED = {
+    ("2023-24", "communitySupported"):
+        "Exhibit C prints “7 Fully Community Supported Districts” for "
+        "FY2023-24 P2, but EIGHT districts on that same document show a "
+        "property-tax excess, and the document does not say which eight is "
+        "not among the seven — it refers the reader to a memo it does not "
+        "contain (“See memo for additional information regarding revenue "
+        "deficit at 2023-24 P2”, alongside a 7.9944% revenue deficit of "
+        "$763,789,279, where FY2022-23 printed a 0.0000% deficit and its "
+        "eight-district derivation matched exactly). Sierra Joint CCD's "
+        "excess falls from $12.5M to $2.0M between the two years and is the "
+        "marginal case. Rather than publish a derived roster that "
+        "contradicts the Chancellor's Office's own count, the "
+        "community-supported status is not published for this year."
+}
+
+
+def apportionment_fact_published(fy, fact):
+    """Whether this vintage's Exhibit C supports a given fact.
+
+    Declared per vintage; a year that has not declared its facts is a
+    hard failure rather than an optimistic default."""
+    facts = APPORTIONMENT_FACTS.get(fy)
+    if facts is None:
+        raise SystemExit(
+            f"CCC {fy}: no APPORTIONMENT_FACTS declaration. A vintage must "
+            "declare which apportionment facts its Exhibit C publishes "
+            "before it can be read; nothing written.")
+    return facts.get(fact, False)
+
 # apportionment-name → portal-canonical-name normalized aliases (the
 # three sources spell a handful of merged/renamed districts differently)
 APPN_ALIAS = {
@@ -369,14 +421,31 @@ def fetch_apportionment(refresh, fy=None):
                 "only on %PDF- magic bytes; nothing written.")
     r = pypdf.PdfReader(src)
 
-    # POSITION GUARD ON SOURCE IDENTITY: the first page must name the
-    # fiscal year this file is being read as.
-    first = (r.pages[0].extract_text() or "")[:400]
-    if fy not in first:
+    # POSITION GUARD ON SOURCE IDENTITY: the document must declare itself
+    # as the year it is being read as, in ITS OWN MASTHEAD — the block
+    # "California Community Colleges / <FY> <Round> / <Entity> / Exhibit C
+    # - Page 1". The expected string is DECLARED per vintage in
+    # APPORTIONMENT_AVAILABLE[fy]["declares"], so this is an exact match
+    # against a known form, not a loosened year-anywhere search.
+    #
+    # It is matched over the WHOLE first page, not its first 400
+    # characters. FY2023-24 puts a summary table ahead of the masthead in
+    # extraction order, so its declaration sits at character ~6,700; the
+    # old 400-character window refused a document that does identify
+    # itself. The window was the defect, not the source.
+    declares = (APPORTIONMENT_AVAILABLE.get(fy) or {}).get("declares")
+    if not declares:
         raise SystemExit(
-            f"CCC {fy}: this Exhibit C does not declare itself as {fy} — its "
-            f"first page reads {first.splitlines()[1][:60]!r}. The URL is not "
-            "the year; nothing written.")
+            f"CCC {fy}: no declared Exhibit C masthead for this vintage. "
+            "Availability and the string the document must declare are "
+            "declared in APPORTIONMENT_AVAILABLE; nothing written.")
+    page0 = r.pages[0].extract_text() or ""
+    if declares not in page0:
+        head = next((ln for ln in page0.splitlines() if ln.strip()), "")
+        raise SystemExit(
+            f"CCC {fy}: this Exhibit C does not declare itself as "
+            f"{declares!r} — its first page begins {head[:60]!r}. The URL is "
+            "not the year; nothing written.")
 
     def num(s):
         s = s.replace(",", "").replace("$", "").replace("(", "-").replace(")", "").strip()
@@ -410,25 +479,47 @@ def fetch_apportionment(refresh, fy=None):
         name = next((lines[k] for k in range(hdr - 1, -1, -1) if lines[k]), "")
         if not name:
             continue
+        # ONLY THE FACTS THIS VINTAGE DECLARES ARE READ. A fact declared
+        # unpublished is left ABSENT — never read, never defaulted to 0.0.
+        # The old `else 0.0` was the absent-reads-as-zero defect in the
+        # place it does most damage: a vintage that prints no State
+        # General Fund row would have summed 72 confident zeros and
+        # reconciled them against a control that does not exist.
+        want_ftes = apportionment_fact_published(fy, "fundedFtes")
+        want_gf = apportionment_fact_published(fy, "stateGf")
+        want_cs = apportionment_fact_published(fy, "communitySupported")
         if "Statewide" in name:  # statewide summary page → reconciliation totals
-            mm = re.search(r"Funded FTES:\s+([\d,]+\.\d+)", t)
-            if mm:
-                statewide["fundedFtes"] = num(mm.group(1))
-            mm = re.search(r"State General Fund Allocation\s+([\d,]+)\s*\n", t)
-            if mm:
-                statewide["stateGf"] = num(mm.group(1))
-            mm = re.search(r"(\d+)\s+Fully Community Supported Districts", t)
-            if mm:
-                statewide["communitySupported"] = int(mm.group(1))
+            if want_ftes:
+                mm = re.search(r"Funded FTES:\s+([\d,]+\.\d+)", t)
+                if mm:
+                    statewide["fundedFtes"] = num(mm.group(1))
+            if want_gf:
+                mm = re.search(r"State General Fund Allocation\s+([\d,]+)\s*\n", t)
+                if mm:
+                    statewide["stateGf"] = num(mm.group(1))
+            if want_cs:
+                mm = re.search(r"(\d+)\s+Fully Community Supported Districts", t)
+                if mm:
+                    statewide["communitySupported"] = int(mm.group(1))
             continue
         d = {}
-        for key, pat in [
-            ("fundedFtes", r"Funded FTES:\s+([\d,]+\.\d+)"),
-            ("stateGf", r"State General Fund Allocation\s+([\d,]+)\s*\n"),
-            ("ptaxExcess", r"Less Property Tax Excess\s+(\(?[\d,]*\)?|-)"),
-        ]:
+        # ptaxExcess exists only to derive community-supported status, so
+        # it is read only where that status is publishable.
+        specs = [s for s in (
+            ("fundedFtes", r"Funded FTES:\s+([\d,]+\.\d+)") if want_ftes else None,
+            ("stateGf", r"State General Fund Allocation\s+([\d,]+)\s*\n") if want_gf else None,
+            ("ptaxExcess", r"Less Property Tax Excess\s+(\(?[\d,]*\)?|-)") if want_cs else None,
+        ) if s is not None]
+        for key, pat in specs:
             mm = re.search(pat, t)
-            d[key] = num(mm.group(1)) if mm else 0.0
+            if not mm:
+                # A DECLARED fact that does not parse is a parse failure,
+                # not a zero: the declaration says this vintage prints it.
+                raise SystemExit(
+                    f"CCC {fy}: {name} declares {key!r} as published for this "
+                    "vintage but the row did not parse. Either the "
+                    "declaration is wrong or the parser is; nothing written.")
+            d[key] = num(mm.group(1))
         # noncredit share from the Section Ia funded-FTES-by-category block
         sec = t[t.find("Section Ia"):]
         cats = {}
@@ -437,12 +528,88 @@ def fetch_apportionment(refresh, fy=None):
             if mm:
                 cats[cat] = lastnum(mm.group(1))
         nc = cats.get("Noncredit", 0) + cats.get("CDCP", 0)
-        # A missing denominator is not a measurement of zero noncredit.
-        d["noncreditShare"] = (round(nc / d["fundedFtes"], 4)
-                               if d["fundedFtes"] else None)
+        # A missing denominator is not a measurement of zero noncredit —
+        # and a vintage that does not publish funded FTES has no
+        # denominator at all, so the share is absent rather than zero.
+        denom = d.get("fundedFtes")
+        d["noncreditShare"] = round(nc / denom, 4) if denom else None
         appn[name] = d
     (CACHE / "_exc_tmp.pdf").unlink(missing_ok=True)
     return appn, statewide
+
+
+def verify_apportionment_vintage(fy, refresh=False):
+    """Parse ONE vintage's Exhibit C and run its reconciliations.
+
+    This is the per-vintage parser's own gate, callable without touching
+    the payload, so a vintage can be proven readable before any year is
+    wired in. Returns a report; raises SystemExit on any failure.
+
+    Every fact the vintage DECLARES must parse for every district and its
+    district sum must tie to Exhibit C's own printed statewide control.
+    Every fact the vintage declares NOT-published must be absent from
+    every record — the check that stops a "not-published" declaration
+    from coexisting with a quietly derived figure — and must carry a
+    stated reason."""
+    appn, statewide = fetch_apportionment(refresh, fy)
+    rep = {"fy": fy, "round": APPORTIONMENT_AVAILABLE[fy]["round"],
+           "declares": APPORTIONMENT_AVAILABLE[fy]["declares"],
+           "districts": len(appn), "published": {}, "notPublished": {}}
+    gates.require_rows(len(appn), 70, f"CCC {fy} Exhibit C district pages")
+    fail = []
+    for key, label, tol in (("fundedFtes", "funded FTES", 0.5),
+                            ("stateGf", "state General Fund", 0.5)):
+        if apportionment_fact_published(fy, key):
+            gates.require_target(
+                statewide.get(key), f"CCC {fy} Exhibit C statewide {label}",
+                f"the {label} reconciliation cannot run.")
+            missing = [n for n, a in appn.items() if key not in a]
+            if missing:
+                fail.append(f"{len(missing)} districts lack {label}, which this "
+                            f"vintage declares published")
+            s = sum(a[key] for a in appn.values() if key in a)
+            resid = s - statewide[key]
+            if abs(resid) > tol:
+                fail.append(f"{label} sum {s:,.2f} != statewide "
+                            f"{statewide[key]:,.2f} (residual {resid:+,.2f})")
+            rep["published"][key] = {"sum": round(s, 2),
+                                     "control": round(statewide[key], 2),
+                                     "residual": round(resid, 2)}
+        else:
+            leaked = [n for n, a in appn.items() if key in a]
+            if leaked:
+                fail.append(f"{label} is declared not-published for {fy} but "
+                            f"{len(leaked)} districts carry it")
+            rep["notPublished"][key] = APPORTIONMENT_FACT_UNPUBLISHED.get((fy, key), "")
+    # community-supported: derived from property-tax excess, validated
+    # against the printed count — or not derived at all
+    if apportionment_fact_published(fy, "communitySupported"):
+        gates.require_target(
+            statewide.get("communitySupported"),
+            f"CCC {fy} Exhibit C 'Fully Community Supported Districts'",
+            "the community-supported derivation has no control to tie to.")
+        n = sum(1 for a in appn.values() if a.get("ptaxExcess", 0) < -1)
+        if n != statewide["communitySupported"]:
+            fail.append(f"{n} community-supported districts derived but Exhibit C "
+                        f"states {statewide['communitySupported']}")
+        rep["published"]["communitySupported"] = {
+            "derived": n, "control": statewide["communitySupported"]}
+    else:
+        reason = APPORTIONMENT_FACT_UNPUBLISHED.get((fy, "communitySupported"))
+        if not reason:
+            fail.append(f"community-supported is declared not-published for {fy} "
+                        "with no stated reason")
+        leaked = [n for n, a in appn.items() if "ptaxExcess" in a]
+        if leaked:
+            fail.append(f"community-supported is declared not-published for {fy} "
+                        f"but {len(leaked)} districts carry its input")
+        rep["notPublished"]["communitySupported"] = reason or ""
+    if fail:
+        for f in fail[:12]:
+            print(f"  CCC {fy} EXHIBIT C GATE FAIL:", f, file=sys.stderr)
+        raise SystemExit(f"CCC {fy}: {len(fail)} Exhibit C gate failure(s) — "
+                         "nothing written")
+    return rep
 
 
 # ---------------------------------------------------- declared absences
@@ -520,34 +687,66 @@ def build(refresh):
         "funded FTES and state General Fund would go unreconciled.")
     gates.require_rows(len(code2app), 70,
                        "apportionment districts matched to a district code")
+    # EACH DECLARED FACT MUST RECONCILE; each undeclared fact must be
+    # genuinely ABSENT. The second half matters as much as the first: it
+    # is what stops a "not-published" declaration from quietly coexisting
+    # with a derived figure nobody reconciled.
     for key, label in (("fundedFtes", "funded FTES"),
                        ("stateGf", "state General Fund")):
-        gates.require_target(
-            appn_statewide.get(key), f"Exhibit C statewide {label}",
-            f"the {label} reconciliation cannot run.")
-    ftes_sum = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
-    if abs(ftes_sum - appn_statewide["fundedFtes"]) > 0.5:
-        fail.append(f"funded FTES sum {ftes_sum} != Exhibit C statewide "
-                    f"{appn_statewide['fundedFtes']}")
-    gf_sum = round(sum(a["stateGf"] for a in code2app.values()))
-    if gf_sum != round(appn_statewide["stateGf"]):
-        fail.append(f"state GF sum {gf_sum:,} != Exhibit C statewide "
-                    f"{round(appn_statewide['stateGf']):,}")
-    basic_n = sum(1 for a in code2app.values() if a["ptaxExcess"] < -1)
+        if apportionment_fact_published(FY, key):
+            gates.require_target(
+                appn_statewide.get(key), f"Exhibit C statewide {label}",
+                f"the {label} reconciliation cannot run.")
+        else:
+            leaked = [c for c, a in code2app.items() if key in a]
+            if leaked or key in appn_statewide:
+                fail.append(
+                    f"{label} is declared not-published for FY {FY} but "
+                    f"{len(leaked)} district records carry it — a fact that is "
+                    "not published must not be derived.")
+    ftes_sum = None
+    if apportionment_fact_published(FY, "fundedFtes"):
+        ftes_sum = round(sum(a["fundedFtes"] for a in code2app.values()), 2)
+        if abs(ftes_sum - appn_statewide["fundedFtes"]) > 0.5:
+            fail.append(f"funded FTES sum {ftes_sum} != Exhibit C statewide "
+                        f"{appn_statewide['fundedFtes']}")
+    if apportionment_fact_published(FY, "stateGf"):
+        gf_sum = round(sum(a["stateGf"] for a in code2app.values()))
+        if gf_sum != round(appn_statewide["stateGf"]):
+            fail.append(f"state GF sum {gf_sum:,} != Exhibit C statewide "
+                        f"{round(appn_statewide['stateGf']):,}")
+    basic_n = (sum(1 for a in code2app.values() if a["ptaxExcess"] < -1)
+               if apportionment_fact_published(FY, "communitySupported") else None)
     # The control must EXIST, and a control of ZERO is a real published
     # value — not a reason to skip the comparison. Truthiness conflated
     # the two: a year in which the Chancellor's Office legitimately
     # prints zero community-supported districts would have disabled the
     # check entirely, and a missing control did so silently.
-    cs_control = appn_statewide.get("communitySupported")
-    if cs_control is None:
-        gates.require_target(
-            None, "Exhibit C statewide 'Fully Community Supported Districts'",
-            "meta.daggers.basicAid claims this count matches the "
-            "Chancellor's Office figure, so the claim cannot be made.")
-    if basic_n != cs_control:
-        fail.append(f"{basic_n} community-supported districts derived but Exhibit C "
-                    f"states {appn_statewide['communitySupported']}")
+    if apportionment_fact_published(FY, "communitySupported"):
+        cs_control = appn_statewide.get("communitySupported")
+        if cs_control is None:
+            gates.require_target(
+                None, "Exhibit C statewide 'Fully Community Supported Districts'",
+                "meta.daggers.basicAid claims this count matches the "
+                "Chancellor's Office figure, so the claim cannot be made.")
+        if basic_n != cs_control:
+            fail.append(f"{basic_n} community-supported districts derived but Exhibit C "
+                        f"states {appn_statewide['communitySupported']}")
+    else:
+        # DECLARED NOT-PUBLISHED. The reason must exist — an undeclared
+        # silence is indistinguishable from an oversight — and no
+        # community-supported status may have been derived anyway.
+        if (FY, "communitySupported") not in APPORTIONMENT_FACT_UNPUBLISHED:
+            fail.append(
+                f"community-supported status is declared not-published for FY "
+                f"{FY} with no reason in APPORTIONMENT_FACT_UNPUBLISHED — an "
+                "unexplained silence is not a declaration.")
+        leaked = [c for c, a in code2app.items() if "ptaxExcess" in a]
+        if leaked:
+            fail.append(
+                f"community-supported status is declared not-published for FY "
+                f"{FY} but {len(leaked)} districts carry a property-tax-excess "
+                "figure it would be derived from.")
 
     if fail:
         for f in fail[:12]:
@@ -591,14 +790,27 @@ def build(refresh):
         }
         yr = {"ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"]}
         if a:
-            yr["fundedFtes"] = round(a["fundedFtes"], 2)
-            yr["stateGf"] = round(a["stateGf"])
-            # a rate with no denominator is not published, rather than null
-            if a["fundedFtes"]:
-                yr["perFtes"] = round(cev["ce"] / a["fundedFtes"])
-            yr["noncreditShare"] = a["noncreditShare"]
-            yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
-                                    else "state-funded")
+            # ONLY THE FACTS THIS VINTAGE PUBLISHES ARE EMITTED. A fact the
+            # vintage does not publish is ABSENT from the record (a number
+            # that is absent yields NaN, never a confident 0), and a status
+            # that cannot be derived is the three-valued "not-published"
+            # rather than a bare false.
+            if "fundedFtes" in a:
+                yr["fundedFtes"] = round(a["fundedFtes"], 2)
+                # a rate with no denominator is not published, rather than null
+                if a["fundedFtes"]:
+                    yr["perFtes"] = round(cev["ce"] / a["fundedFtes"])
+            if "stateGf" in a:
+                yr["stateGf"] = round(a["stateGf"])
+            if a.get("noncreditShare") is not None:
+                yr["noncreditShare"] = a["noncreditShare"]
+            if "ptaxExcess" in a:
+                yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
+                                        else "state-funded")
+            else:
+                yr["basicAidStatus"] = "not-published"
+                yr["basicAidUnpublishedReason"] = APPORTIONMENT_FACT_UNPUBLISHED.get(
+                    (FY, "communitySupported"), "")
         else:
             # ABSENCE MARKS ABSENCE. `basicAid = False` used to publish
             # "we checked the property-tax-excess schedule and this is not
