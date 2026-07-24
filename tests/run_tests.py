@@ -3435,9 +3435,9 @@ def test_ccc_source_identity():
           m.APPORTIONMENT_AVAILABLE["2023-24"]["declares"] == "2023-24 Second Principal")
 
     # A vintage that has not declared WHAT IT PUBLISHES cannot be read at
-    # all: FY2019-20's parser lands in a later PR, and until it declares
+    # all: FY2018-19's parser lands in a later PR, and until it declares
     # its facts the reader refuses deliberately rather than guessing.
-    undeclared = str(_raised(lambda: m.fetch_apportionment(False, "2019-20")))
+    undeclared = str(_raised(lambda: m.fetch_apportionment(False, "2018-19")))
     check("ccc identity: a vintage with no declared fact table is refused "
           "deliberately rather than read optimistically",
           "APPORTIONMENT_FACTS" in undeclared, undeclared[:110])
@@ -3527,6 +3527,53 @@ def test_ccc_exhibitc_vintages():
           "PUBLISHED fails the gate (8 derived vs 7 printed) — the "
           "not-published declaration is load-bearing",
           "gate failure" in forced, forced[:130])
+
+    # ---- FY2020-21 (P1) and FY2019-20 (R1): the row labels DIFFER, and
+    # the state general fund is PUBLISHED at both — under another name.
+    # These two were first read as publishing no state general fund at
+    # all; that was a regex missing a renamed row, and declaring the fact
+    # absent would have been a FALSE ABSENCE — the mirror of reading an
+    # absent figure as zero. Both now reconcile to the dollar.
+    r21 = m.verify_apportionment_vintage("2020-21")
+    r20 = m.verify_apportionment_vintage("2019-20")
+    check("ccc exhibitc 2020-21: round P1 recorded", r21["round"] == "P1")
+    check("ccc exhibitc 2019-20: round R1 recorded", r20["round"] == "R1")
+    for fy, rep in (("2020-21", r21), ("2019-20", r20)):
+        check(f"ccc exhibitc {fy}: state General Fund IS published (under "
+              "'State General Entitlement') and reconciles to the dollar",
+              rep["published"]["stateGf"]["residual"] == 0,
+              str(rep["published"].get("stateGf")))
+        check(f"ccc exhibitc {fy}: funded FTES reconciles to its printed control",
+              abs(rep["published"]["fundedFtes"]["residual"]) <= 0.5,
+              str(rep["published"]["fundedFtes"]))
+    check("ccc exhibitc 2020-21: community-supported derivation ties to its "
+          "printed count (8), so it IS published",
+          r21["published"]["communitySupported"]["derived"]
+          == r21["published"]["communitySupported"]["control"] == 8)
+    check("ccc exhibitc 2019-20: community-supported is NOT-PUBLISHED — 8 "
+          "districts show an excess where the document prints 7 — with a "
+          "reason naming the marginal district",
+          "communitySupported" in r20["notPublished"]
+          and "Sierra Joint" in r20["notPublished"]["communitySupported"],
+          str(r20["notPublished"].get("communitySupported"))[:110])
+
+    # ---- THE LABEL DECLARATION IS LOAD-BEARING, not decoration. Reading
+    # FY2020-21 with the LATER vintages' label must fail, and reading it
+    # with its own must succeed (the paired positive control above).
+    real_v = dict(m.APPORTIONMENT_AVAILABLE["2020-21"])
+    m.APPORTIONMENT_AVAILABLE["2020-21"] = dict(
+        real_v, gfLabel="State General Fund Allocation")
+    try:
+        wrong = str(_raised(lambda: m.verify_apportionment_vintage("2020-21")))
+    finally:
+        m.APPORTIONMENT_AVAILABLE["2020-21"] = real_v
+    check("ccc exhibitc: reading FY2020-21 with a LATER vintage's row label "
+          "fails — the labels are declared per vintage, never a widened "
+          "alternation that would accept any of them in any year",
+          "did not parse" in wrong, wrong[:120])
+    check("ccc exhibitc: each vintage declares its own row labels",
+          m.APPORTIONMENT_AVAILABLE["2019-20"]["gfLabel"] == "State General Entitlement"
+          and m.APPORTIONMENT_AVAILABLE["2022-23"]["gfLabel"] == "State General Fund Allocation")
 
     # ---- an undeclared fact may not be quietly derived
     check("ccc exhibitc: a fact declared not-published is refused if a "

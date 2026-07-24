@@ -149,13 +149,34 @@ ALLAN_HANCOCK_CODE = "610"
 #
 # ROUNDS DIFFER and are recorded, because P1, P2 and R1 are different
 # stages of the same year's apportionment and are not interchangeable.
+# THE ROW LABELS DIFFER BY VINTAGE, and are DECLARED per vintage — never
+# matched by a widened alternation that would accept any of them in any
+# year. FY2019-20 and FY2020-21 print "State General Entitlement" where
+# FY2022-23 and FY2023-24 print "State General Fund Allocation", and
+# "Community Supported Districts" where the later vintages print "Fully
+# Community Supported Districts".
+#
+# This is why a fact must never be called not-published merely because a
+# regex missed: at these two vintages the state general fund IS printed,
+# under another name. Declaring it absent would have published a false
+# absence — the mirror of reading an absent figure as zero.
 APPORTIONMENT_AVAILABLE = {
-    "2018-19": {"round": "P2", "declares": "2018-19 Second Principal Apportionment"},
-    "2019-20": {"round": "R1", "declares": "2019-20 Recalculation Apportionment"},
-    "2020-21": {"round": "P1", "declares": "2020-21 First Principal"},
+    "2018-19": {"round": "P2", "declares": "2018-19 Second Principal Apportionment",
+                "gfLabel": "State General Entitlement",
+                "csLabel": "Community Supported Districts"},
+    "2019-20": {"round": "R1", "declares": "2019-20 Recalculation Apportionment",
+                "gfLabel": "State General Entitlement",
+                "csLabel": "Community Supported Districts"},
+    "2020-21": {"round": "P1", "declares": "2020-21 First Principal",
+                "gfLabel": "State General Entitlement",
+                "csLabel": "Community Supported Districts"},
     "2021-22": None,   # no Exhibit C verified — facts are not-published
-    "2022-23": {"round": "R1", "declares": "2022-23 Recalculation"},
-    "2023-24": {"round": "P2", "declares": "2023-24 Second Principal"},
+    "2022-23": {"round": "R1", "declares": "2022-23 Recalculation",
+                "gfLabel": "State General Fund Allocation",
+                "csLabel": "Fully Community Supported Districts"},
+    "2023-24": {"round": "P2", "declares": "2023-24 Second Principal",
+                "gfLabel": "State General Fund Allocation",
+                "csLabel": "Fully Community Supported Districts"},
 }
 APPORTIONMENT_UNVERIFIED_REASON = (
     "The Chancellor's Office publishes no Exhibit C for this fiscal year "
@@ -190,10 +211,29 @@ def apportionment_published(fy):
 # A vintage with no entry here cannot be read at all: adding a year means
 # declaring what that year publishes, deliberately.
 APPORTIONMENT_FACTS = {
+    # FY2019-20 (R1) and FY2020-21 (P1) publish all three, under their own
+    # row labels (see APPORTIONMENT_AVAILABLE): "State General Entitlement"
+    # and "Community Supported Districts". They were first read as
+    # publishing no state general fund at all — that was the regex missing
+    # a renamed row, not the source omitting a fact, and declaring it
+    # absent would have been a false absence.
+    "2019-20": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
+    "2020-21": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
     "2022-23": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
     "2023-24": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
 }
 APPORTIONMENT_FACT_UNPUBLISHED = {
+    ("2019-20", "communitySupported"):
+        "Exhibit C prints “7 Community Supported Districts” for FY2019-20 "
+        "R1, but EIGHT districts on that same document show a property-tax "
+        "excess, and it does not say which eight is not among the seven. "
+        "Sierra Joint CCD is the marginal case at −$1,558,170, an order of "
+        "magnitude smaller than the other seven; its state general "
+        "entitlement is mid-range among them, so no rule on this document "
+        "separates it. FY2020-21 and FY2022-23, whose derivations tie to "
+        "their printed counts exactly, publish this status; this year does "
+        "not, rather than ship a roster that contradicts the Chancellor's "
+        "Office's own count.",
     ("2023-24", "communitySupported"):
         "Exhibit C prints “7 Fully Community Supported Districts” for "
         "FY2023-24 P2, but EIGHT districts on that same document show a "
@@ -433,7 +473,8 @@ def fetch_apportionment(refresh, fy=None):
     # extraction order, so its declaration sits at character ~6,700; the
     # old 400-character window refused a document that does identify
     # itself. The window was the defect, not the source.
-    declares = (APPORTIONMENT_AVAILABLE.get(fy) or {}).get("declares")
+    vint = APPORTIONMENT_AVAILABLE.get(fy) or {}
+    declares = vint.get("declares")
     if not declares:
         raise SystemExit(
             f"CCC {fy}: no declared Exhibit C masthead for this vintage. "
@@ -488,17 +529,29 @@ def fetch_apportionment(refresh, fy=None):
         want_ftes = apportionment_fact_published(fy, "fundedFtes")
         want_gf = apportionment_fact_published(fy, "stateGf")
         want_cs = apportionment_fact_published(fy, "communitySupported")
+        # patterns built from the DECLARED per-vintage labels, so each
+        # vintage matches its own wording exactly and no other's
+        # The value may be DISPLACED from its label by an intervening line
+        # ("State General Entitlement\nExhibit A \n58,288,934", FY2019-20
+        # Glendale) and may be NEGATIVE in parentheses ("(1,248,742)",
+        # FY2020-21 Coast — a community-supported district's entitlement can
+        # be negative). Both are real layouts, so the gap is allowed but
+        # BOUNDED, and no digit may appear inside it: the first number after
+        # the declared label is the figure, and the reconciliation against
+        # the printed statewide control is what proves it is the right one.
+        gf_pat = re.escape(vint["gfLabel"]) + r"[^\d(]{0,30}(\(?[\d,]{4,}\)?)"
+        cs_pat = r"(\d+)\s+" + re.escape(vint["csLabel"])
         if "Statewide" in name:  # statewide summary page → reconciliation totals
             if want_ftes:
                 mm = re.search(r"Funded FTES:\s+([\d,]+\.\d+)", t)
                 if mm:
                     statewide["fundedFtes"] = num(mm.group(1))
             if want_gf:
-                mm = re.search(r"State General Fund Allocation\s+([\d,]+)\s*\n", t)
+                mm = re.search(gf_pat, t)
                 if mm:
                     statewide["stateGf"] = num(mm.group(1))
             if want_cs:
-                mm = re.search(r"(\d+)\s+Fully Community Supported Districts", t)
+                mm = re.search(cs_pat, t)
                 if mm:
                     statewide["communitySupported"] = int(mm.group(1))
             continue
@@ -507,7 +560,7 @@ def fetch_apportionment(refresh, fy=None):
         # it is read only where that status is publishable.
         specs = [s for s in (
             ("fundedFtes", r"Funded FTES:\s+([\d,]+\.\d+)") if want_ftes else None,
-            ("stateGf", r"State General Fund Allocation\s+([\d,]+)\s*\n") if want_gf else None,
+            ("stateGf", gf_pat) if want_gf else None,
             ("ptaxExcess", r"Less Property Tax Excess\s+(\(?[\d,]*\)?|-)") if want_cs else None,
         ) if s is not None]
         for key, pat in specs:

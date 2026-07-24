@@ -84,20 +84,55 @@ So FY2023-24 is a potentially **complete** year (Current Expense *and*
 apportionment), not the apportionment-only year it first appeared to be.
 That is recorded here for the wiring step; nothing is wired in this PR.
 
-## The other three vintages, measured
+## FY2020-21 (P1) and FY2019-20 (R1) — the labels differ, the facts do not
+
+**A premise correction, and the important one.** These two were first
+read as publishing **no state general fund at all** — the row is absent
+from all 146 pages. That was a regex missing a **renamed row**, not the
+source omitting a fact:
+
+| | FY2022-23 / FY2023-24 | FY2019-20 / FY2020-21 |
+|---|---|---|
+| state general fund | `State General Fund Allocation` | **`State General Entitlement`** |
+| community-supported | `Fully Community Supported Districts` | **`Community Supported Districts`** |
+
+Declaring the fact not-published would have published a **false
+absence** — the mirror of reading an absent figure as zero, and just as
+wrong. The row labels are now DECLARED per vintage
+(`APPORTIONMENT_AVAILABLE[fy]["gfLabel"]` / `["csLabel"]`) and the
+patterns are built from them, so each vintage matches its own wording and
+no other's. A test reads FY2020-21 with the later vintages' label and
+confirms it **fails** — the declaration is load-bearing.
+
+Two further real layouts the gate caught, both now handled with a
+**bounded** gap that cannot wander (no digit may appear inside it):
+
+- the value displaced from its label by an intervening line
+  (`State General Entitlement\nExhibit A \n58,288,934`, Glendale FY2019-20);
+- a **negative** entitlement in parentheses (`(1,248,742)`, Coast
+  FY2020-21 — a community-supported district's entitlement can be below
+  zero).
 
 | vintage | round | funded FTES | state GF | community-supported |
 |---|---|---|---|---|
-| 2020-21 | P1 | parses, reconciles (resid 0.01) | **absent from all 146 pages** | absent |
-| 2019-20 | R1 | parses, reconciles (resid 0.06) | **absent from all 146 pages** | absent |
-| 2018-19 | P2 | **nothing parses** | absent | absent |
+| 2020-21 | P1 | ✓ resid 0.01 | ✓ resid **0** | ✓ 8 == 8 |
+| 2019-20 | R1 | ✓ resid 0.06 | ✓ resid **0** | **not-published** (8 vs 7) |
 
-FY2019-20 and FY2020-21 genuinely do not print a State General Fund
-Allocation row at those vintages — so that fact stays not-published
-rather than derived, which is exactly what the declared fact table is
-for. FY2018-19's statewide page sits at index 144 rather than 0 and none
-of the later vintages' patterns match any page; whether it can be read
-honestly is the open question for its own PR.
+FY2019-20 hits the same non-reconciliation as FY2023-24: eight districts
+show an excess where the document prints seven, with Sierra Joint CCD
+again the marginal case (−$1,558,170, an order of magnitude below the
+others) and its state entitlement mid-range among them, so nothing on the
+document separates it. FY2020-21 and FY2022-23 tie exactly and publish
+the status; FY2019-20 and FY2023-24 do not.
+
+**State general fund now reconciles TO THE DOLLAR in all four vintages.**
+
+## FY2018-19 — still open
+
+Its statewide page sits at index 144 rather than 0 and none of the later
+vintages' patterns match any page. Until it declares its facts it cannot
+be read at all (tested). Whether it can be read honestly is the question
+for its own PR.
 
 ## Rounds differ, and that is a comparability fact
 
