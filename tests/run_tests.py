@@ -3435,17 +3435,189 @@ def test_ccc_source_identity():
           m.APPORTIONMENT_AVAILABLE["2023-24"]["declares"] == "2023-24 Second Principal")
 
     # A vintage that has not declared WHAT IT PUBLISHES cannot be read at
-    # all: FY2018-19's parser lands in a later PR, and until it declares
-    # its facts the reader refuses deliberately rather than guessing.
-    undeclared = str(_raised(lambda: m.fetch_apportionment(False, "2018-19")))
+    # all. Every shipped vintage now declares its facts, so the control is
+    # made by REMOVING one declaration and confirming the refusal — paired
+    # with the positive control that restoring it reads again.
+    saved = m.APPORTIONMENT_FACTS.pop("2023-24")
+    try:
+        undeclared = str(_raised(lambda: m.fetch_apportionment(False, "2023-24")))
+    finally:
+        m.APPORTIONMENT_FACTS["2023-24"] = saved
     check("ccc identity: a vintage with no declared fact table is refused "
           "deliberately rather than read optimistically",
           "APPORTIONMENT_FACTS" in undeclared, undeclared[:110])
+    check("ccc identity: and restoring the declaration lets it read again "
+          "(the refusal was the declaration's absence, not a broken parser)",
+          m.apportionment_fact_published("2023-24", "stateGf") is True)
     check("ccc identity: an unavailable year refuses on the missing file "
           "rather than inventing one",
           "nothing written" in str(
               _raised(lambda: m.fetch_apportionment(False, "2011-12"))),
           str(_raised(lambda: m.fetch_apportionment(False, "2011-12")))[:80])
+
+
+def test_ccc_2018_19_extractor():
+    """THE EXTRACTOR IS A DECLARED PER-VINTAGE PROPERTY, like the anchors
+    and the row labels — not a library chosen by trying one and falling
+    back to the other, because the failure mode is silent corruption
+    rather than an exception.
+
+    FY2018-19 forced it (docs/V20): pypdf inserts a space after a comma on
+    46 of that vintage's 72 district pages AND truncates three district
+    names — corrupted IDENTITY. pdfplumber keeps all 72 names intact.
+
+    It ships ONLY what that document publishes: State General
+    Apportionment, the THIRD label this one fact carries across the
+    window, reconciling to the printed statewide control exactly. Funded
+    FTES and community-supported stay not-published.
+
+    Every negative below is paired with a positive control."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fccc1819", str(ROOT / "pipeline" / "fetch_ccc_data.py"))
+    m = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["fetch_ccc_data.py"]
+    try:
+        spec.loader.exec_module(m)
+    except SystemExit:
+        pass
+    finally:
+        sys.argv = argv
+
+    # ---- the extractor is DECLARED, per vintage, beside the labels
+    check("ccc 2018-19: the extractor is declared per vintage, pdfplumber "
+          "for this one and pypdf for the rest",
+          m.vint_extractor("2018-19") == "pdfplumber"
+          and all(m.vint_extractor(fy) == "pypdf"
+                  for fy in ("2019-20", "2020-21", "2022-23", "2023-24")))
+    check("ccc 2018-19: a vintage that declares no extractor is REFUSED, "
+          "never defaulted into a library that may corrupt it",
+          "no declared text extractor" in
+          str(_raised(lambda: m.vint_extractor("1999-00"))))
+    check("ccc 2018-19: an unknown extractor name is refused too",
+          "unknown declared extractor" in
+          str(_raised(lambda: m._extract_pages("x.pdf", "notalibrary"))))
+    src = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
+    check("ccc 2018-19: the extractor is never selected by trying one and "
+          "falling back", "except Exception" not in
+          src.split("def _extract_pages")[1].split("def ")[0])
+
+    # ---- THE BOUNDED REPAIR: the property is ASSERTED, not measured once
+    bn = m._bounded_number
+    LBL, END = "Total State General Apportionment", "Also displayed"
+    ok = bn(LBL + " 3 0,373,971 " + END + " on Exhibit A.", LBL, END, "2018-19", "T")
+    check("ccc 2018-19: a whitespace-corrupted figure is repaired within its "
+          "bounded span (POSITIVE CONTROL)", ok == 30373971.0, str(ok))
+    neg = bn(LBL + " ($1,248,742) " + END, LBL, END, "2018-19", "T")
+    check("ccc 2018-19: a parenthesised negative is read as negative",
+          neg == -1248742.0, str(neg))
+    # THE MERGE CONTROL: two figures welded together must be REFUSED. A
+    # bare [\d,]+ test would accept "12,489121,000"; the well-formed
+    # comma-grouping assertion is what catches it.
+    merged = str(_raised(lambda: bn(LBL + " 12,489 121,000 " + END,
+                                    LBL, END, "2018-19", "T")))
+    check("ccc 2018-19: two figures welded together are REFUSED — the span "
+          "assertion catches a merge a digits-and-commas test would accept",
+          "well-formed" in merged, merged[:120])
+    check("ccc 2018-19: and the refusal names the vintage and the row",
+          "2018-19" in merged and "nothing written" in merged)
+    wide = str(_raised(lambda: bn(LBL + " " + ("9" * 60) + " " + END,
+                                  LBL, END, "2018-19", "T")))
+    check("ccc 2018-19: an over-wide span is REFUSED before it is repaired, "
+          "so a missing annotation cannot swallow a neighbouring column",
+          "wider than" in wide, wide[:110])
+    missing = str(_raised(lambda: bn("no such row here", LBL, END, "2018-19", "T")))
+    check("ccc 2018-19: a missing label/annotation span is a refusal, not a zero",
+          "no " in missing and "span" in missing, missing[:110])
+
+    # ---- EVERY span in the real document holds a single token. Asserted
+    #      here across all 72 pages, not taken from the finding's word.
+    exc = ROOT / "pipeline" / "cache" / "ccc" / "exhibitc" / "exhibitc-2018-19.pdf"
+    if not exc.exists():
+        check("ccc 2018-19: the verified Exhibit C is cached", False, "missing")
+        return
+    pages = m._extract_pages(exc, "pdfplumber")
+    import re as _re
+    spans, names = [], []
+    for t in pages:
+        ls = [ln.strip() for ln in t.splitlines()]
+        if "Exhibit C - Page 1" not in ls:
+            continue
+        h = ls.index("Exhibit C - Page 1")
+        nm = next((ls[k] for k in range(h - 1, -1, -1) if ls[k]), "")
+        if not nm or "Statewide" in nm:
+            continue
+        names.append(nm)
+        mm = _re.search(_re.escape(LBL) + r"\s+(.*?)\s+" + _re.escape(END), t)
+        if mm:
+            spans.append(mm.group(1))
+    check("ccc 2018-19: all 72 district pages expose the bounded span",
+          len(spans) == len(names) == 72, f"{len(spans)} spans, {len(names)} names")
+    check("ccc 2018-19: EVERY span is one well-formed number once whitespace "
+          "is removed, so none can hold two columns' figures",
+          all(m._WELL_FORMED_NUMBER.match(_re.sub(r"\s+", "", sp)) for sp in spans),
+          str([sp for sp in spans
+               if not m._WELL_FORMED_NUMBER.match(_re.sub(r"\s+", "", sp))][:3]))
+    check("ccc 2018-19: and every span is within the declared width bound",
+          all(len(sp) <= m._MAX_SPAN_CHARS for sp in spans),
+          str(max((len(sp) for sp in spans), default=0)))
+    # the extractor choice is load-bearing: pypdf truncates names here
+    ppdf = m._extract_pages(exc, "pypdf")
+    trunc = []
+    for t in ppdf:
+        ls = [ln.strip() for ln in t.splitlines()]
+        if "Exhibit C - Page 1" not in ls:
+            continue
+        h = ls.index("Exhibit C - Page 1")
+        nm = next((ls[k] for k in range(h - 1, -1, -1) if ls[k]), "")
+        if nm and "Statewide" not in nm and not _re.match(r"^[A-Z]", nm):
+            trunc.append(nm)
+    check("ccc 2018-19: the declared extractor is LOAD-BEARING — pypdf "
+          "truncates district names on this vintage and pdfplumber does not",
+          len(trunc) == 3 and all(_re.match(r"^[A-Z]", n) for n in names),
+          f"pypdf truncated {trunc}")
+
+    # ---- the vintage ships ONE fact, and reconciles it exactly
+    rep = m.verify_apportionment_vintage("2018-19")
+    check("ccc 2018-19: state general apportionment reconciles to the printed "
+          "statewide control, to the dollar",
+          rep["published"]["stateGf"]["residual"] == 0
+          and rep["published"]["stateGf"]["control"] == 2700724947,
+          str(rep["published"]["stateGf"]))
+    check("ccc 2018-19: funded FTES stays NOT-PUBLISHED, with the reason "
+          "naming Section Ia's several candidates",
+          "fundedFtes" in rep["notPublished"]
+          and "Section Ia" in rep["notPublished"]["fundedFtes"],
+          str(rep["notPublished"].get("fundedFtes"))[:100])
+    check("ccc 2018-19: community-supported stays NOT-PUBLISHED — no count is "
+          "printed at all, so the derivation has nothing to tie to",
+          "communitySupported" in rep["notPublished"]
+          and "no community-supported count" in rep["notPublished"]["communitySupported"])
+    check("ccc 2018-19: it is the THIRD label this one fact carries",
+          m.APPORTIONMENT_AVAILABLE["2018-19"]["gfLabel"]
+          == "Total State General Apportionment"
+          and len({m.APPORTIONMENT_AVAILABLE[f]["gfLabel"]
+                   for f in ("2018-19", "2019-20", "2022-23")}) == 3)
+
+    # ---- the SHIPPED payload carries exactly that
+    y = CCC["statewide"]["2018-19"]
+    check("ccc 2018-19: the shipped year carries state GF and its round",
+          y.get("stateGf") == 2700724947 and y.get("apportionmentRound") == "P2")
+    check("ccc 2018-19: and carries NEITHER funded FTES nor a "
+          "community-supported count — absent, never zero",
+          "fundedFtes" not in y and "communitySupported" not in y)
+    ds = [d for d in CCC["districts"] if "2018-19" in d["years"]]
+    withgf = [d for d in ds if "stateGf" in d["years"]["2018-19"]]
+    check("ccc 2018-19: 72 of the 73 districts carry the figure (Calbright, "
+          "which is not apportionment-funded, does not)",
+          len(ds) == 73 and len(withgf) == 72, f"{len(withgf)}/{len(ds)}")
+    check("ccc 2018-19: no district carries a per-FTES rate, because the "
+          "denominator is not published",
+          all("perFtes" not in d["years"]["2018-19"] for d in ds))
+    check("ccc 2018-19: and every district's community-supported status is "
+          "the three-valued not-published, never a bare false",
+          all(d["years"]["2018-19"]["basicAidStatus"] == "not-published"
+              for d in ds))
 
 
 def test_ccc_multi_year_payload():
@@ -3489,8 +3661,9 @@ def test_ccc_multi_year_payload():
     # ---- APPORTIONMENT ships for exactly the declared vintages
     withapp = [fy for fy in years
                if "apportionmentStatus" not in CCC["statewide"][fy]]
-    check("ccc multi: apportionment ships for exactly the four read vintages",
-          withapp == ["2019-20", "2020-21", "2022-23", "2023-24"], str(withapp))
+    check("ccc multi: apportionment ships for exactly the five read vintages",
+          withapp == ["2018-19", "2019-20", "2020-21", "2022-23", "2023-24"],
+          str(withapp))
     for fy in withapp:
         check(f"ccc multi {fy}: the apportionment ROUND is recorded",
               CCC["statewide"][fy].get("apportionmentRound") in ("P1", "P2", "R1"))
@@ -3516,9 +3689,11 @@ def test_ccc_multi_year_payload():
                   "fundedFtes" not in v and "perFtes" not in v
                   and v["basicAidStatus"] == "not-published")
             break
-    # FY2018-19's absence is a DIFFERENT absence from FY2021-22's, and says so
-    check("ccc multi: FY2018-19 is verified-but-unread, not unverified",
-          "verified genuine" in CCC["statewide"]["2018-19"]["apportionmentReason"])
+    # FY2018-19 is now READ (docs/V20 + the declared pdfplumber extractor),
+    # so it carries apportionment rather than an absence reason.
+    check("ccc multi: FY2018-19 is read now, and carries its round",
+          CCC["statewide"]["2018-19"].get("apportionmentRound") == "P2"
+          and "apportionmentStatus" not in CCC["statewide"]["2018-19"])
     check("ccc multi: FY2021-22 is unverified — no Exhibit C found",
           "publishes no Exhibit C" in CCC["statewide"]["2021-22"]["apportionmentReason"])
 
@@ -8576,6 +8751,7 @@ def main():
             test_ccc_fourteen_year_gates()
             test_ccc_source_identity()
             test_ccc_exhibitc_vintages()
+            test_ccc_2018_19_extractor()
             test_ccc_multi_year_payload()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)

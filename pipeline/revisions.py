@@ -856,6 +856,37 @@ def _fy_of(key):
 # step is introduced.
 CORRECTIONS = [
     {
+        # NOT shapeOnly and NOT a coverage change: FY2018-19 was already in
+        # the record, and these figures genuinely ENTER it. They are listed
+        # one by one — 72 districts and the statewide total — because that
+        # is what happened; the note says why they could not be read before.
+        "id": "ccc-2018-19-state-general-apportionment",
+        "layer": "ccc",
+        "built": "2026-07-24",
+        "note": "Our own correction, not a change at the source. FY2018-19's State "
+                "General Apportionment now appears for every district and for "
+                "the statewide total. The Chancellor's Office published these "
+                "figures all along; the Ledger could not read them, for two "
+                "reasons that are now declared rather than worked around. "
+                "First, that vintage names the fact differently again — "
+                "“State General Apportionment”, where FY2019-20 and "
+                "FY2020-21 print “State General Entitlement” and the "
+                "later years print “State General Fund Allocation”. "
+                "Second, its PDF defeats both text extractors in different "
+                "ways: pypdf inserts a space after a comma on 46 of its 72 "
+                "district pages and truncates three district names outright, "
+                "while pdfplumber keeps every name intact but breaks the "
+                "figures elsewhere. The extractor is therefore declared per "
+                "vintage, and the figure is read from the span between the "
+                "document's own printed label and its own printed annotation, "
+                "with that span required on every read to be short and to "
+                "contain exactly one well-formed number. The result "
+                "reconciles to the Chancellor's Office's printed statewide "
+                "total exactly, to the dollar. FY2018-19's funded FTES and "
+                "community-supported status remain not-published: that "
+                "document prints neither.",
+    },
+    {
         "id": "ccc-multi-year-shape",
         "layer": "ccc",
         # collapse the per-field events ONLY if the pipeline can prove no
