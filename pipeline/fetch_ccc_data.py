@@ -162,21 +162,40 @@ ALLAN_HANCOCK_CODE = "610"
 # regex missed: at these two vintages the state general fund IS printed,
 # under another name. Declaring it absent would have published a false
 # absence — the mirror of reading an absent figure as zero.
+# THE TEXT EXTRACTOR IS A PER-VINTAGE PROPERTY TOO, and is declared here
+# beside the anchors and labels rather than chosen by trying one and
+# falling back to the other. FY2018-19 is the case that forced it
+# (docs/V20_CCC_2018_19_EXHIBITC_FINDING.md): pypdf inserts a space after
+# a comma on 46 of that vintage's 72 district pages AND truncates three
+# district names — corrupted IDENTITY, which cannot be matched without the
+# fuzzy matching this repo refuses. pdfplumber keeps all 72 names clean.
+# Neither library is "better"; each is right for particular vintages, so
+# which one reads which is stated, not discovered at run time.
+#
+# gfSpanEnd, where declared, names the document's OWN printed annotation
+# that closes the state-general-fund value. It exists only for vintages
+# whose figures need the bounded repair (see _bounded_number).
 APPORTIONMENT_AVAILABLE = {
     "2018-19": {"round": "P2", "declares": "2018-19 Second Principal Apportionment",
-                "gfLabel": "State General Entitlement",
-                "csLabel": "Community Supported Districts"},
+                "extractor": "pdfplumber",
+                "gfLabel": "Total State General Apportionment",
+                "gfSpanEnd": "Also displayed",
+                "csLabel": None},
     "2019-20": {"round": "R1", "declares": "2019-20 Recalculation Apportionment",
+                "extractor": "pypdf",
                 "gfLabel": "State General Entitlement",
                 "csLabel": "Community Supported Districts"},
     "2020-21": {"round": "P1", "declares": "2020-21 First Principal",
+                "extractor": "pypdf",
                 "gfLabel": "State General Entitlement",
                 "csLabel": "Community Supported Districts"},
     "2021-22": None,   # no Exhibit C verified — facts are not-published
     "2022-23": {"round": "R1", "declares": "2022-23 Recalculation",
+                "extractor": "pypdf",
                 "gfLabel": "State General Fund Allocation",
                 "csLabel": "Fully Community Supported Districts"},
     "2023-24": {"round": "P2", "declares": "2023-24 Second Principal",
+                "extractor": "pypdf",
                 "gfLabel": "State General Fund Allocation",
                 "csLabel": "Fully Community Supported Districts"},
 }
@@ -219,12 +238,36 @@ APPORTIONMENT_FACTS = {
     # publishing no state general fund at all — that was the regex missing
     # a renamed row, not the source omitting a fact, and declaring it
     # absent would have been a false absence.
+    # FY2018-19 (P2) publishes the state general fund as a THIRD label,
+    # "State General Apportionment", read through the declared pdfplumber
+    # extractor and the bounded repair. It publishes NEITHER of the other
+    # two: "Funded FTES" appears on 0 of its 146 pages, and no
+    # community-supported count is printed anywhere. See
+    # docs/V20_CCC_2018_19_EXHIBITC_FINDING.md.
+    "2018-19": {"fundedFtes": False, "stateGf": True, "communitySupported": False},
     "2019-20": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
     "2020-21": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
     "2022-23": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
     "2023-24": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
 }
 APPORTIONMENT_FACT_UNPUBLISHED = {
+    ("2018-19", "fundedFtes"):
+        "The FY2018-19 Exhibit C prints no funded-FTES figure: the label "
+        "appears on none of its 146 pages. That vintage instead prints a "
+        "\u201cSection Ia: FTES Allocation\u201d table whose Totals row offers "
+        "several different quantities \u2014 Applied #1, Applied #2, Paid, FTES "
+        "Reported, a three-year average \u2014 and never says which is the "
+        "funded figure. Choosing one would be a judgement about which "
+        "quantity corresponds, with no printed control to check the choice "
+        "against, so funded FTES is not published for this year \u2014 and "
+        "neither is the per-FTES rate that would divide by it.",
+    ("2018-19", "communitySupported"):
+        "The FY2018-19 Exhibit C prints no community-supported count at all: "
+        "the phrase appears nowhere in the document. Eight districts do show "
+        "a property-tax excess, but a derivation with nothing to reconcile "
+        "against is exactly what this layer refuses elsewhere, where a "
+        "control existed and disagreed. Here no control exists to agree or "
+        "disagree, so the status is not published for this year.",
     ("2019-20", "communitySupported"):
         "Exhibit C prints “7 Community Supported Districts” for FY2019-20 "
         "R1, but EIGHT districts on that same document show a property-tax "
@@ -273,7 +316,9 @@ def apportionment_fact_published(fy, fact):
 # that is built its apportionment facts are not-published, which is also
 # permanently true of two of them.
 APPORTIONMENT_UNREADABLE_REASON = {
-    "2018-19":
+    # (FY2018-19 lived here until its declared extractor was built; the
+    # mechanism stays for the next vintage that needs it.)
+    "_retired-2018-19":
         "The Chancellor's Office publishes an Exhibit C for FY2018-19 and it "
         "is verified genuine, but the Ledger does not yet read it. Both PDF "
         "text extractors insert spurious spaces inside its figures, and one "
@@ -283,6 +328,102 @@ APPORTIONMENT_UNREADABLE_REASON = {
         "facts are not published by that document in any case: it prints no "
         "funded-FTES figure and no community-supported count.",
 }
+
+
+def num(s):
+    """One published figure -> float. Module level because the bounded
+    repair below and the page parser must agree on the conversion."""
+    s = s.replace(",", "").replace("$", "").replace("(", "-").replace(")", "").strip()
+    if s in ("", "-", "—"):
+        return 0.0
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def vint_extractor(fy):
+    """The DECLARED extractor for a vintage. A vintage that does not
+    declare one is not read, rather than defaulted into a library that
+    may corrupt it silently."""
+    v = APPORTIONMENT_AVAILABLE.get(fy) or {}
+    ex = v.get("extractor")
+    if not ex:
+        raise SystemExit(
+            f"CCC {fy}: no declared text extractor. Which library reads a "
+            "vintage is a per-vintage declaration in APPORTIONMENT_AVAILABLE, "
+            "because the failure mode is silent corruption; nothing written.")
+    return ex
+
+
+def _extract_pages(path, extractor):
+    """Every page's text, via the DECLARED per-vintage extractor.
+
+    Never a try-one-then-fall-back: an extractor chosen by which one
+    happened not to raise is a heuristic, and the failure mode here is
+    silent corruption rather than an exception."""
+    if extractor == "pypdf":
+        import pypdf
+        return [(p.extract_text() or "") for p in pypdf.PdfReader(str(path)).pages]
+    if extractor == "pdfplumber":
+        import pdfplumber
+        with pdfplumber.open(str(path)) as pdf:
+            return [(p.extract_text() or "") for p in pdf.pages]
+    raise SystemExit(
+        f"CCC: unknown declared extractor {extractor!r}. The extractor is a "
+        "per-vintage declaration in APPORTIONMENT_AVAILABLE, not a guess; "
+        "nothing written.")
+
+
+# A well-formed comma-grouped integer, optionally $-prefixed and
+# parenthesised for negatives: 1-3 digits, then groups of exactly three.
+_WELL_FORMED_NUMBER = re.compile(r"^\(?\$?\d{1,3}(,\d{3})*\)?$")
+# the widest a value span may be before repair — a bound on how much text
+# the capture can swallow, independent of what it contains
+_MAX_SPAN_CHARS = 40
+
+
+def _bounded_number(text, label, span_end, fy, who):
+    """Read ONE figure that this vintage's extractor has corrupted with
+    spurious whitespace, from the span between the document's own printed
+    LABEL and its own printed ANNOTATION.
+
+    Stripping whitespace inside a number is normally exactly the loosening
+    this repo refuses: in a table of adjacent numeric columns it welds two
+    figures into one confident wrong number. It is safe here only because
+    the span is delimited on BOTH sides by text the document prints, and
+    because that safety is ASSERTED on every read rather than trusted from
+    a one-off measurement:
+
+      * the span must be shorter than _MAX_SPAN_CHARS, so it cannot
+        swallow a neighbouring column even if an annotation goes missing;
+      * with whitespace removed it must be a WELL-FORMED comma-grouped
+        integer. This is the assertion that makes merging detectable: two
+        figures welded together produce a digit group that is not three
+        long ("12,489" + "121,000" -> "12,489121,000", whose middle group
+        is six digits) and are refused. A bare `[\\d,]+` test would have
+        accepted that merge, which is why it is not used.
+
+    Anything that fails either check stops the build."""
+    m = re.search(re.escape(label) + r"\s+(.*?)\s+" + re.escape(span_end), text)
+    if not m:
+        raise SystemExit(
+            f"CCC {fy}: {who} has no {label!r} … {span_end!r} span. The label "
+            "and the annotation that closes it are declared per vintage; "
+            "nothing written.")
+    raw = m.group(1)
+    if len(raw) > _MAX_SPAN_CHARS:
+        raise SystemExit(
+            f"CCC {fy}: {who}'s {label!r} span is {len(raw)} characters "
+            f"({raw[:60]!r}) — wider than the {_MAX_SPAN_CHARS}-character "
+            "bound, so it may hold more than one figure; nothing written.")
+    cleaned = re.sub(r"\s+", "", raw)
+    if not _WELL_FORMED_NUMBER.match(cleaned):
+        raise SystemExit(
+            f"CCC {fy}: {who}'s {label!r} span {raw!r} is not a single "
+            f"well-formed number once whitespace is removed ({cleaned!r}). "
+            "Two figures welded together would look like this; nothing written.")
+    return num(cleaned)
 
 
 def apportionment_absent_reason(fy):
@@ -537,7 +678,6 @@ def fetch_apportionment(refresh, fy=None):
     first page reads "2020-21 Second Principal" — FY2020-21 data. So the
     year is taken from the document, never from the path, and a document
     that does not say what it is is refused."""
-    import pypdf
     fy = fy or FY
     # EXHIBITC_URL serves ONE specific vintage — the FY2022-23 Recalculation.
     # This branch used to trigger on `fy == FY`, i.e. "whatever the latest
@@ -557,7 +697,8 @@ def fetch_apportionment(refresh, fy=None):
                 f"CCC {fy}: no verified Exhibit C on disk. Availability is "
                 "declared in APPORTIONMENT_AVAILABLE and files are accepted "
                 "only on %PDF- magic bytes; nothing written.")
-    r = pypdf.PdfReader(src)
+    # THE EXTRACTOR IS DECLARED PER VINTAGE, never tried-and-fallen-back.
+    pages = _extract_pages(src, vint_extractor(fy))
 
     # POSITION GUARD ON SOURCE IDENTITY: the document must declare itself
     # as the year it is being read as, in ITS OWN MASTHEAD — the block
@@ -578,7 +719,7 @@ def fetch_apportionment(refresh, fy=None):
             f"CCC {fy}: no declared Exhibit C masthead for this vintage. "
             "Availability and the string the document must declare are "
             "declared in APPORTIONMENT_AVAILABLE; nothing written.")
-    page0 = r.pages[0].extract_text() or ""
+    page0 = pages[0] if pages else ""
     if declares not in page0:
         head = next((ln for ln in page0.splitlines() if ln.strip()), "")
         raise SystemExit(
@@ -586,22 +727,12 @@ def fetch_apportionment(refresh, fy=None):
             f"{declares!r} — its first page begins {head[:60]!r}. The URL is "
             "not the year; nothing written.")
 
-    def num(s):
-        s = s.replace(",", "").replace("$", "").replace("(", "-").replace(")", "").strip()
-        if s in ("", "-", "—"):
-            return 0.0
-        try:
-            return float(s)
-        except ValueError:
-            return 0.0
-
     def lastnum(line):
         n = re.findall(r"[\d,]+\.\d+|[\d,]+", line)
         return float(n[-1].replace(",", "")) if n else 0.0
 
     appn, statewide = {}, {}
-    for pg in range(len(r.pages)):
-        t = r.pages[pg].extract_text()
+    for t in pages:
         # WHICH ENTITY THIS PAGE IS ABOUT is the line immediately BEFORE
         # "Exhibit C - Page 1" — line 1 on a district page, line 3 on the
         # statewide summary, which carries two masthead lines first. The
@@ -638,17 +769,30 @@ def fetch_apportionment(refresh, fy=None):
         # the declared label is the figure, and the reconciliation against
         # the printed statewide control is what proves it is the right one.
         gf_pat = re.escape(vint["gfLabel"]) + r"[^\d(]{0,30}(\(?[\d,]{4,}\)?)"
-        cs_pat = r"(\d+)\s+" + re.escape(vint["csLabel"])
+        # Where the vintage declares gfSpanEnd, its extractor corrupts the
+        # figures with spurious whitespace and the value is read from the
+        # bounded label→annotation span instead (see _bounded_number).
+        gf_span_end = vint.get("gfSpanEnd")
+        cs_pat = (r"(\d+)\s+" + re.escape(vint["csLabel"])
+                  if vint.get("csLabel") else None)
         if "Statewide" in name:  # statewide summary page → reconciliation totals
             if want_ftes:
                 mm = re.search(r"Funded FTES:\s+([\d,]+\.\d+)", t)
                 if mm:
                     statewide["fundedFtes"] = num(mm.group(1))
             if want_gf:
-                mm = re.search(gf_pat, t)
-                if mm:
-                    statewide["stateGf"] = num(mm.group(1))
+                if gf_span_end:
+                    statewide["stateGf"] = _bounded_number(
+                        t, vint["gfLabel"], gf_span_end, fy, "Statewide Totals")
+                else:
+                    mm = re.search(gf_pat, t)
+                    if mm:
+                        statewide["stateGf"] = num(mm.group(1))
             if want_cs:
+                if not cs_pat:
+                    raise SystemExit(
+                        f"CCC {fy}: communitySupported is declared published but "
+                        "no csLabel is declared for this vintage; nothing written.")
                 mm = re.search(cs_pat, t)
                 if mm:
                     statewide["communitySupported"] = int(mm.group(1))
@@ -656,9 +800,12 @@ def fetch_apportionment(refresh, fy=None):
         d = {}
         # ptaxExcess exists only to derive community-supported status, so
         # it is read only where that status is publishable.
+        if want_gf and gf_span_end:
+            d["stateGf"] = _bounded_number(
+                t, vint["gfLabel"], gf_span_end, fy, name)
         specs = [s for s in (
             ("fundedFtes", r"Funded FTES:\s+([\d,]+\.\d+)") if want_ftes else None,
-            ("stateGf", gf_pat) if want_gf else None,
+            ("stateGf", gf_pat) if (want_gf and not gf_span_end) else None,
             ("ptaxExcess", r"Less Property Tax Excess\s+(\(?[\d,]*\)?|-)") if want_cs else None,
         ) if s is not None]
         for key, pat in specs:

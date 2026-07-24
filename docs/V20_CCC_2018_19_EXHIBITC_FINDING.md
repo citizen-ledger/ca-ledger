@@ -1,6 +1,13 @@
 # V20 — FY2018-19's Exhibit C: readable for one fact, not for two
 
-**Status: investigation only. Nothing built, nothing shipped.**
+**Status: BUILT.** The recommendation below was implemented — a declared
+per-vintage extractor plus the bounded repair. FY2018-19 now ships its
+State General Apportionment, reconciling to the printed statewide control
+exactly (+0); its funded FTES and community-supported status remain
+not-published, permanently, because that document prints neither.
+The investigation as written stands; this header records the outcome.
+
+**Original status: investigation only. Nothing built, nothing shipped.**
 Measured 2026-07-24 against `pipeline/cache/ccc/exhibitc/exhibitc-2018-19.pdf`
 (146 pages, declares "2018-19 Second Principal Apportionment").
 
@@ -163,3 +170,36 @@ case.
 | the repair reconciles | 72-district sum vs the printed statewide total, residual +0 |
 | funded FTES does not exist here | full-document search for the label; Section Ia read verbatim |
 | no community-supported control exists | full-document search |
+
+---
+
+## Outcome (built)
+
+The extractor is declared in `APPORTIONMENT_AVAILABLE`, beside the anchors
+and row labels:
+
+```python
+"2018-19": {..., "extractor": "pdfplumber",
+            "gfLabel": "Total State General Apportionment",
+            "gfSpanEnd": "Also displayed", "csLabel": None},
+```
+
+Two things hardened relative to this finding:
+
+1. **The span property is ASSERTED on every read, not measured once.**
+   `_bounded_number` refuses a span wider than 40 characters and refuses
+   anything that is not a WELL-FORMED comma-grouped integer once
+   whitespace is removed.
+
+2. **That assertion is stronger than the one this finding used.** The
+   original check was `\(?\$?[\d,]+\)?`, which would have ACCEPTED a
+   merge: `"12,489" + "121,000"` cleans to `"12,489121,000"` and matches
+   digits-and-commas perfectly well. Requiring 1–3 digits then groups of
+   exactly three rejects it, because the welded group is six digits long.
+   A test feeds that exact merge in and confirms the refusal.
+
+The `gfLabel` for this vintage had been left at `"State General
+Entitlement"` — a placeholder guessed during V19b without measuring
+FY2018-19. It was never exercised, because the fact-declaration gate
+refused the year before any label was read. Corrected to the measured
+label.
