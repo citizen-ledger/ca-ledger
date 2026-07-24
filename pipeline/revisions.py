@@ -361,14 +361,42 @@ def flatten(layer, payload):
             years = _school_years(rec.get("years") or {}, fams)
             for k, v in _leaves(years, "", {}).items():
                 out[f"{ident}\t{k}"] = v
-    elif layer in ("csu", "uc"):
-        top = "systemwide"
-        for k, v in _leaves(payload.get(top) or {}, "", {}).items():
+    elif layer == "csu":
+        for k, v in _leaves(payload.get("systemwide") or {}, "", {}).items():
             out[f"systemwide\t{k}"] = v
         for c in payload.get("campuses") or []:
             ident = f"campus:{c.get('name')}"
             for k, v in _leaves({x: c[x] for x in c if x != "name"}, "", {}).items():
                 out[f"{ident}\t{k}"] = v
+    elif layer == "uc":
+        # UC is multi-year: `systemwide` is a map keyed by FY and each campus
+        # carries a `years` map. Both are flattened FY-FIRST so the fiscal
+        # year is the head of every figure path — `_fy_of` reads it, and a
+        # coverage expansion collapses cleanly. The one-time transition from
+        # the legacy single-year flat shape is handled too: that payload has
+        # no top-level `years` list, so its lone year is meta.year, and its
+        # keys land at `systemwide\t{fy}.{k}` — identical to the new shape's
+        # keys for that same year, making the re-addressing a no-op in the
+        # record (no value moved because no key moved).
+        sw = payload.get("systemwide") or {}
+        campuses = payload.get("campuses") or []
+        if isinstance(payload.get("years"), list):
+            for fy, block in sw.items():
+                for k, v in _leaves(block, "", {}).items():
+                    out[f"systemwide\t{fy}.{k}"] = v
+            for c in campuses:
+                ident = f"campus:{c.get('name')}"
+                for fy, block in (c.get("years") or {}).items():
+                    for k, v in _leaves(block, "", {}).items():
+                        out[f"{ident}\t{fy}.{k}"] = v
+        else:
+            fy = (payload.get("meta") or {}).get("year")
+            for k, v in _leaves(sw, "", {}).items():
+                out[f"systemwide\t{fy}.{k}"] = v
+            for c in campuses:
+                ident = f"campus:{c.get('name')}"
+                for k, v in _leaves({x: c[x] for x in c if x != "name"}, "", {}).items():
+                    out[f"{ident}\t{fy}.{k}"] = v
     elif layer == "deflator":
         for fy, v in (payload.get("fy") or {}).items():
             out[f"index\t{fy}"] = v
@@ -698,6 +726,29 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
 # years the record ALREADY covered are unaffected and still reported one by
 # one, so a real restatement can never hide inside an extension.
 COVERAGE = [
+    {
+        "layer": "uc",
+        "built": "2026-07-23",
+        "added": ["2020-21", "2021-22", "2022-23", "2023-24"],
+        "note": "Our own change of coverage, not a change at the source. The UC "
+                "layer carried a single fiscal year (FY2024-25) in a flat "
+                "record; it now uses the multi-year shape cities, counties, "
+                "K-12 and the community colleges already publish — a "
+                "top-level `years` axis with every year-varying field inside "
+                "each campus's `years` map — and the window extends back "
+                "to FY2020-21. The figures for the four added years are newly "
+                "IN the record, but none of them moved: they were in UC's "
+                "Annual Financial Reports all along and the Ledger had not "
+                "loaded them. Each added year passes the same gates as "
+                "FY2024-25 and FY2023-24 — the ten campuses plus UC's own "
+                "printed Systemwide column reconcile to the audited total to "
+                "the thousand, every campus column proven by the column-sum "
+                "check. FY2019-20 is NOT among them: its unaudited campus "
+                "table does not reconcile to the audited total (it misses by "
+                "~351K), so it is held rather than shipped. The FY2024-25 "
+                "figures already in the record did not change — they were "
+                "re-addressed under their fiscal year, which moved no value.",
+    },
     {
         "layer": "school",
         "built": "2026-07-22",

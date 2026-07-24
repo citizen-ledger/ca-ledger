@@ -758,12 +758,24 @@ CSU_UNIVERSITY_OPEXP_K = 11_630_059   # CSU audited University total operating
 CSU_PIN_YEAR = "2023-24"              # expenses, in thousands
 CCC_STATEWIDE_CE = 8_469_851_699      # Chancellor's Office Table VI printed
 CCC_PIN_YEAR = "2022-23"              # statewide Current Expense of Education
-UC_AUDITED = {                        # UC audited total operating expenses and
-    "2024-25": {"auditedTotalK": 57_767_327,   # the printed campus/Systemwide
-                "campusSumK": 58_074_198, "systemwideColK": -306_871},
-    "2023-24": {"auditedTotalK": 54_703_428,   # components, all from the AFRs
-                "campusSumK": 52_003_294, "systemwideColK": 2_700_134},
+UC_AUDITED = {   # UC audited total operating expenses + the printed campus/Systemwide
+                 # components, re-derived from each AFR (NOT copied from the build).
+                 # doeForm/doeK record UC's own DOE presentation: 'systemwide' years
+                 # tie campuses+Systemwide==audited; the 'excluded' year (its campus
+                 # table carries UC's "Excludes DOE laboratories" footnote) ties only
+                 # once the audited statement's own DOE line is added back.
+    "2024-25": {"auditedTotalK": 57_767_327, "campusSumK": 58_074_198,
+                "systemwideColK": -306_871, "doeForm": "systemwide", "doeK": 1_194_419},
+    "2023-24": {"auditedTotalK": 54_703_428, "campusSumK": 52_003_294,
+                "systemwideColK": 2_700_134, "doeForm": "systemwide", "doeK": 1_146_576},
+    "2022-23": {"auditedTotalK": 51_168_944, "campusSumK": 47_288_355,
+                "systemwideColK": 3_880_589, "doeForm": "systemwide", "doeK": 1_104_266},
+    "2021-22": {"auditedTotalK": 47_353_459, "campusSumK": 43_142_310,
+                "systemwideColK": 4_211_149, "doeForm": "systemwide", "doeK": 990_713},
+    "2020-21": {"auditedTotalK": 41_223_780, "campusSumK": 38_487_120,
+                "systemwideColK": 1_694_402, "doeForm": "excluded", "doeK": 1_042_258},
 }
+UC_HELD_RESIDUAL = -351   # FY2019-20's measured non-reconciliation (held, not shipped)
 
 # Schedule 6 statewide control totals (GF, total) in $M, per the vintage
 # publication each year's actuals were extracted from. PUBLISHED CONTROL:
@@ -3983,9 +3995,10 @@ def test_uc_strip_verification():
 
     # ---- the gate text claims only identities that are real
     gate = UC["meta"]["gate"]
-    check("uc strip: meta.gate claims two identities, and does not count the "
-          "removed tautology among them",
-          "Two identities" in gate and "strip identity" not in gate)
+    check("uc strip: meta.gate names the real per-year checks (reconciliation, "
+          "column-sum, header order) and does not count the removed strip tautology",
+          "column-sum" in gate.lower() and "each shipped year" in gate.lower()
+          and "strip identity" not in gate)
 
 
 def test_ccc_write_path():
@@ -5410,119 +5423,276 @@ def test_ccc(page, base):
           and "auto-fetchable" in scope.lower())
 
 
+def test_uc_column_sum_self_guard():
+    """The column-sum prover accepts a uniquely-tying sparse assignment,
+    refuses a non-tying one and an ambiguous one, and — the self-guard —
+    refuses one that is unique only at the ±1K rounding tolerance but
+    ambiguous at ±10K, so the tolerance is proven not to be what makes the
+    assignment unique. Values are at THOUSANDS scale, as the real table is;
+    a ±10 window is negligible against real figures and enormous against
+    toy ones, which is the whole point of the guard."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+    C = ("A", "B", "C")
+    ok, err = U._prove_assignment({"Full": [100000, 200000, 300000], "Sparse": [50000]},
+                                  [150000, 200000, 300000], C)
+    check("uc colsum: a uniquely-tying sparse assignment is accepted (at scale)",
+          err is None and ok["Sparse"] == {"A": 50000}, str(err))
+    bad, e2 = U._prove_assignment({"Full": [100000, 200000, 300000], "Sparse": [9999]},
+                                  [150000, 200000, 300000], C)
+    check("uc colsum: a non-tying sparse row is refused (nothing written)",
+          bad is None and e2 is not None)
+    amb, e3 = U._prove_assignment({"Full": [1000, 1000, 3000], "Sparse": [0]},
+                                  [1000, 1000, 3000], C)
+    check("uc colsum: an ambiguous assignment is refused, not guessed",
+          amb is None and e3 and "tie" in e3, str(e3))
+    # POSITIVE CONTROL for the ±10 self-guard: unique at ±1K, ambiguous at ±10K
+    td, e4 = U._prove_assignment({"Full": [1000, 1000], "Sparse": [5]}, [1005, 1000], ("A", "B"))
+    check("uc colsum: a tolerance-deep tie (unique at ±1K, ambiguous at ±10K) is refused",
+          td is None and e4 and "self-guard" in e4, str(e4))
+    ok2, e5 = U._prove_assignment({"Full": [1000, 1000], "Sparse": [500]}, [1500, 1000], ("A", "B"))
+    check("uc colsum: the same shape, unambiguous at ±10K too, is accepted",
+          e5 is None and ok2["Sparse"] == {"A": 500}, str(e5))
+    # and the shipped data actually exercises the guard: every year proved
+    check("uc colsum: the shipped gate text names the ten-times-tolerance guard",
+          "ten times the rounding tolerance" in UC["meta"]["gate"])
+
+
+def test_uc_longest_label_first():
+    """FY2021-22 prints 'Other and Impairment of capital assets' as ONE
+    line. That label begins with 'Other', itself a declared row, so rows
+    are matched LONGEST-LABEL-FIRST. Matched shortest-first the combined
+    quantity would bind to 'Other' — a wrong number that parses cleanly.
+    The parser proves the right binding; the control proves shortest-first
+    would not."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+    section = U.CAPS["section"]
+    text = (section + "\n"
+            "Instruction 1000 2000\n"
+            "Other and Impairment of capital assets5 30 40\n"
+            "Total 1030 2040\n")
+    rowset = U.BASE_ROWS + ["Other and Impairment of capital assets"]
+    rows, totals = U._parse_facts_page(text, ["A", "B"], rowset, section)
+    check("uc longest-first: the combined line binds to the combined label, not 'Other'",
+          rows.get("Other and Impairment of capital assets") == [30, 40] and "Other" not in rows,
+          str(rows))
+    check("uc longest-first: and the columns still tie", totals == [1030, 2040], str(totals))
+    # POSITIVE CONTROL: shortest-first WOULD mis-bind the combined line to 'Other'
+    line = "Other and Impairment of capital assets5 30 40"
+    short_hit = next(lab for lab in sorted(rowset, key=len) if line.startswith(lab))
+    long_hit = next(lab for lab in sorted(rowset, key=len, reverse=True) if line.startswith(lab))
+    check("uc longest-first control: shortest-first binds to 'Other'; longest-first to the combined label",
+          short_hit == "Other" and long_hit == "Other and Impairment of capital assets")
+    # the shipped FY2021-22 data carries the combined row on real campuses
+    check("uc longest-first: FY2021-22 shipped data carries the combined row",
+          any("Other and Impairment" in k
+              for c in UC["campuses"] for k in c["years"]["2021-22"]["functions"]))
+
+
+def test_uc_header_order_gate():
+    """Campus columns are assigned POSITIONALLY, so a reordered column
+    would tie the column-sum check while mis-attributing every figure. The
+    printed-header order gate catches it. Accept the real order (mixed and
+    caps vintages both); REJECT a reordered or short header."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+    cols = U.PAGE1
+    check("uc header: the newer 'Population segment' header is accepted",
+          U._header_order_ok("Population segment Berkeley Davis irvine Los Angeles Merced\n", cols))
+    check("uc header: the older caps header is accepted (order, not case)",
+          U._header_order_ok("BERKELEY DAVIS IRVINE LOS ANGELES MERCED\n", cols))
+    # POSITIVE CONTROLS
+    check("uc header control: a REORDERED header (Davis before Berkeley) is refused",
+          not U._header_order_ok("Population segment Davis Berkeley Irvine Los Angeles Merced\n", cols))
+    check("uc header control: a header missing a column is refused",
+          not U._header_order_ok("Population segment Berkeley Davis Irvine Los Angeles\n", cols))
+    # page 2 with the printed Systemwide column
+    p2 = U.PAGE2
+    check("uc header: page-2 header incl. Systemwide is accepted",
+          U._header_order_ok("Description Riverside San Diego San Francisco Santa Barbara Santa Cruz Systemwide\n", p2))
+
+
+def test_uc_doe_treatment_declared():
+    """UC publishes the DOE laboratory two ways across the window. Which
+    form applies each year is DECLARED in VINTAGE.doeForm, never inferred
+    from whether a row parsed. The declaration drives the reconciliation,
+    the add-back is load-bearing for the one 'excluded' year, and the
+    break is stated where the series crosses it."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+    src = (ROOT / "pipeline" / "fetch_uc_data.py").read_text(encoding="utf-8")
+    check("uc DOE: the form is a declared per-vintage field, not sniffed",
+          'doeForm="systemwide"' in src and 'doeForm="excluded"' in src
+          and 'v["doeForm"] == "systemwide"' in src)
+    for fy, pins in UC_AUDITED.items():
+        check(f"uc DOE {fy}: VINTAGE.doeForm matches the re-derived pin",
+              U.VINTAGE[fy]["doeForm"] == pins["doeForm"])
+        check(f"uc DOE {fy}: the shipped systemwide block carries the declared form",
+              UC["systemwide"][fy]["doeForm"] == pins["doeForm"])
+    excl = [fy for fy in UC_AUDITED if UC_AUDITED[fy]["doeForm"] == "excluded"]
+    check("uc DOE: exactly the declared 'excluded' year (2020-21) needs the add-back",
+          excl == ["2020-21"])
+    g = UC["meta"]["gateHistory"]["2020-21"]
+    check("uc DOE: the add-back is load-bearing — without it 2020-21 would NOT tie",
+          g["campusSumK"] + g["systemwideColK"] != g["auditedTotalK"]
+          and g["campusSumK"] + g["systemwideColK"] + g["doeK"] == g["auditedTotalK"])
+    doe = UC["meta"]["doeBreak"].lower()
+    check("uc DOE: meta.doeBreak states both forms as a comparability fact",
+          "exclude" in doe and "systemwide column" in doe and "added back" in doe)
+    check("uc DOE: the strip removes the same DOE quantity either way (core comparable)",
+          "same doe quantity" in doe or "removes the same doe" in doe or "same doe" in doe)
+
+
+def test_uc_held_year():
+    """FY2019-20 is HELD, encoded not-published — never a zero, never a
+    silent drop. Its measured non-reconciliation must PERSIST: the build
+    re-measures it and refuses if it ever closes, so a future restatement
+    reaches a human rather than shipping silently."""
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import fetch_uc_data as U
+    held = UC["held"]
+    check("uc held: FY2019-20 is present and marked not-published (not a zero)",
+          "2019-20" in held and held["2019-20"]["published"] is False
+          and held["2019-20"]["status"] == "held-not-reconciled")
+    check("uc held: it carries its measured residual, not a fabricated value",
+          held["2019-20"]["residualK"] == UC_HELD_RESIDUAL)
+    check("uc held: and a stated reason naming the non-reconciliation",
+          "does not reconcile" in held["2019-20"]["reason"].lower())
+    check("uc held: it is NOT among the shipped years or systemwide map",
+          "2019-20" not in UC["years"] and "2019-20" not in UC["systemwide"])
+    check("uc held: no campus carries a 2019-20 figure (not shipped as zero either)",
+          all("2019-20" not in c["years"] for c in UC["campuses"]))
+    lo, hi = U.HELD_RESIDUAL_BAND
+    check("uc held: the declared persistence band brackets the measured residual",
+          lo <= UC_HELD_RESIDUAL <= hi)
+    check("uc held: a reconciling (near-zero) residual would fall OUTSIDE the band → build fails",
+          not (lo <= 0 <= hi))
+    src = (ROOT / "pipeline" / "fetch_uc_data.py").read_text(encoding="utf-8")
+    check("uc held: the build refuses to auto-ship a year that starts reconciling",
+          "a human must decide whether to ship it" in src and "do not auto-ship" in src)
+
+
+def test_uc_deflator_window():
+    """The nominal/real toggle needs the deflator to cover every shipped
+    UC year as an ACTUAL (never a forecast), and the page must load it."""
+    defl = load_data_js(ROOT / "deflator-data.js")
+    fy, forecast = defl["fy"], set(defl["meta"]["forecastYears"])
+    for y in UC["years"]:
+        check(f"uc deflator: {y} is in the deflator series", y in fy)
+        check(f"uc deflator: {y} is an actual, never a forecast", y not in forecast)
+    check("uc deflator: the base year is a real actual (real dollars rebase to it)",
+          defl["meta"]["baseYear"] in fy and defl["meta"]["baseYear"] not in forecast)
+    page_src = (ROOT / "uc.html").read_text(encoding="utf-8")
+    check("uc deflator: the page loads the deflator file and reads its base year",
+          "deflator-data.js" in page_src and "CA_LEDGER_DEFLATOR" in page_src
+          and "DEFM.baseYear" in page_src)
+
+
 def test_uc(page, base):
-    """V12 UC layer: exact-to-the-thousand gate for BOTH years (ten
-    campuses + UC's own printed Systemwide column == audited total),
-    the column-sum check, the strip on UC's own lines only (shown, never
-    deleted), the hospitals-not-medical-schools limit on the face, the
-    unaudited status quoted verbatim, per-FTE with residents excluded on
-    UC's own line, campuses never ranked, and auto-reproducibility."""
-    camps, sw, meta = UC["campuses"], UC["systemwide"], UC["meta"]
-    # ---- data gate: both years, exact, thousands
+    """UC layer, FIVE fiscal years. Each year gated exact-to-the-thousand
+    (campuses + UC's printed Systemwide column, plus the audited
+    statement's own DOE line where the campus table excludes it), the
+    column-sum check re-asserted from the shipped data, the strip on UC's
+    own lines (shown, never deleted), per-vintage audit status, the
+    five-year core trend with the DOE-assembly break stated WHERE THE
+    SERIES CROSSES IT, the held FY2019-20 rendered not-published, the
+    nominal/real toggle, and campuses never ranked."""
+    meta = UC["meta"]
+    SWY = lambda fy: UC["systemwide"][fy]
+    cyr = lambda c, fy: c["years"][fy]
+    camps = UC["campuses"]
+    check("uc: five shipped years, oldest → newest",
+          UC["years"] == ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25"], str(UC["years"]))
     check("uc: 10 campuses", len(camps) == 10)
-    for fy in ("2024-25", "2023-24"):
-        g = meta["gateHistory"][fy]
-        check(f"uc gate {fy}: campuses + printed Systemwide == audited total (exact, thousands)",
-              g["campusSumK"] + g["systemwideColK"] == g["auditedTotalK"]
-              and g["residualK"] == 0,
-              f"{g['campusSumK']} + {g['systemwideColK']} vs {g['auditedTotalK']}")
-    check("uc gate: displayed-year audited total matches gate history",
-          sw["auditedTotalK"] == meta["gateHistory"]["2024-25"]["auditedTotalK"])
-    # pinned published controls (mutation-hardening: auditedTotalK and
-    # gateHistory are pipeline-written; UC's audited totals are pinned)
-    check("uc gate: every year in gateHistory is pinned",
-          set(meta["gateHistory"]) == set(UC_AUDITED),
-          str(set(meta["gateHistory"]) ^ set(UC_AUDITED)))
+    check("uc: gateHistory covers every pinned year",
+          set(meta["gateHistory"]) >= set(UC_AUDITED))
+
+    # ---- the data gate, PER YEAR
     for fy, pins in UC_AUDITED.items():
         g = meta["gateHistory"][fy]
-        for k, want in pins.items():
-            check(f"uc gate {fy}: {k} equals the pinned published figure",
-                  g[k] == want, f"{g[k]} vs {want}")
-    # the gate RECOMPUTED from the shipped campus rows — not the pipeline's
-    # own echoed gateHistory (a +1K drift in any campus row must fail here)
-    row_sum = sum(c["totalK"] for c in camps)
-    check("uc gate: shipped campus rows + printed Systemwide == audited total (recomputed)",
-          row_sum + sw["systemwideColK"] == sw["auditedTotalK"],
-          f"{row_sum} + {sw['systemwideColK']} vs {sw['auditedTotalK']}")
-    check("uc gate: gateHistory campus sum equals the shipped rows' sum",
-          row_sum == meta["gateHistory"]["2024-25"]["campusSumK"])
-    # the column-sum check re-asserted from the shipped data: every campus's
-    # function lines sum exactly to its total
-    check("uc gate: every campus's function lines sum exactly to its total (column-sum, from data)",
-          all(sum(c["functions"].values()) == c["totalK"] for c in camps))
-    # campus-rows-to-systemwide bridges (the strip cannot drift from the rows)
-    check("uc gate: campus med lines + systemwide elimination == systemwide med",
-          sum(c["medK"] for c in camps) + sw["medSystemwideElimK"] == sw["medK"])
-    check("uc gate: campus aux lines + systemwide elimination == systemwide aux",
-          sum(c["auxK"] for c in camps) + sw["auxSystemwideElimK"] == sw["auxK"])
-    check("uc gate: campus cores + systemwide core == total core",
-          sum(c["coreK"] for c in camps) + sw["systemwideCoreK"] == sw["coreK"])
-    check("uc gate: the gate text names the column-sum check",
-          "column-sum" in meta["gate"].lower())
-    # the no-write gate logic itself: the column-sum assignment prover must
-    # reject ambiguous and non-tying sparse rows (unit-level, no network)
-    sys.path.insert(0, str(ROOT / "pipeline"))
-    from fetch_uc_data import _prove_assignment
-    ok_grid, err = _prove_assignment(
-        {"Full": [1, 2, 3], "Sparse": [10]}, [11, 2, 3], ["A", "B", "C"])
-    check("uc pipeline: a uniquely-tying sparse assignment is accepted",
-          err is None and ok_grid["Sparse"] == {"A": 10})
-    bad, err2 = _prove_assignment(
-        {"Full": [1, 2, 3], "Sparse": [5]}, [1, 2, 3], ["A", "B", "C"])
-    check("uc pipeline: a non-tying sparse row is a gate failure (nothing written)",
-          bad is None and err2 is not None)
-    amb, err3 = _prove_assignment(
-        {"Full": [1, 1, 3], "Sparse": [0]}, [1, 1, 3], ["A", "B", "C"])
-    check("uc pipeline: an ambiguous sparse assignment is a gate failure, not a guess",
-          amb is None and err3 is not None and "assignments tie" in err3)
+        for k in ("auditedTotalK", "campusSumK", "systemwideColK", "doeForm", "doeK"):
+            check(f"uc gate {fy}: {k} equals the re-derived pin (not the build's echo)",
+                  g[k] == pins[k], f"{g.get(k)} vs {pins[k]}")
+        addback = g["doeK"] if g["doeForm"] == "excluded" else 0
+        check(f"uc gate {fy}: campuses + Systemwide (+DOE add-back if excluded) == audited, residual 0",
+              g["campusSumK"] + g["systemwideColK"] + addback == g["auditedTotalK"] and g["residualK"] == 0,
+              f"{g['campusSumK']}+{g['systemwideColK']}+{addback} vs {g['auditedTotalK']}")
+        sw = SWY(fy)
+        row_sum = sum(cyr(c, fy)["totalK"] for c in camps)
+        sw_add = sw["doeK"] if sw["doeForm"] == "excluded" else 0
+        check(f"uc gate {fy}: shipped campus rows + Systemwide (+DOE) == audited (recomputed, +1K drift fails here)",
+              row_sum + sw["systemwideColK"] + sw_add == sw["auditedTotalK"],
+              f"{row_sum}+{sw['systemwideColK']}+{sw_add} vs {sw['auditedTotalK']}")
+        check(f"uc gate {fy}: gateHistory campus sum == shipped rows' sum", row_sum == g["campusSumK"])
+        # function lines sum to the printed total within the source's own ±1K
+        # rounding (UC rounds each printed figure independently; measured max
+        # discrepancy is 1 thousand, in FY2020-21) — the same tolerance the gate uses
+        check(f"uc gate {fy}: every campus's function lines sum to its total within ±1K (column-sum, from data)",
+              all(abs(sum(cyr(c, fy)["functions"].values()) - cyr(c, fy)["totalK"]) <= 1 for c in camps))
+        # strip bridges + identity
+        check(f"uc gate {fy}: campus med + systemwide elimination == systemwide med",
+              sum(cyr(c, fy)["medK"] for c in camps) + sw["medSystemwideElimK"] == sw["medK"])
+        check(f"uc gate {fy}: campus aux + systemwide elimination == systemwide aux",
+              sum(cyr(c, fy)["auxK"] for c in camps) + sw["auxSystemwideElimK"] == sw["auxK"])
+        check(f"uc gate {fy}: campus cores + systemwide core == total core",
+              sum(cyr(c, fy)["coreK"] for c in camps) + sw["systemwideCoreK"] == sw["coreK"])
+        check(f"uc strip {fy}: med + aux + DOE + core == audited (exact)",
+              sw["medK"] + sw["auxK"] + sw["doeK"] + sw["coreK"] == sw["auditedTotalK"])
+        check(f"uc strip {fy}: per-campus core == total - med - aux",
+              all(cyr(c, fy)["coreK"] == cyr(c, fy)["totalK"] - cyr(c, fy)["medK"] - cyr(c, fy)["auxK"]
+                  for c in camps))
+        med_set = sorted(c["name"] for c in camps if cyr(c, fy)["medK"] > 0)
+        check(f"uc strip {fy}: the five known medical-center campuses",
+              med_set == ["Davis", "Irvine", "Los Angeles", "San Diego", "San Francisco"], str(med_set))
+        check(f"uc {fy}: per-FTE == core/studentFTE; residents carried for audit",
+              all(cyr(c, fy)["corePerFte"] == round(cyr(c, fy)["coreK"] * 1000 / cyr(c, fy)["fteStudents"])
+                  for c in camps if cyr(c, fy)["fteStudents"]))
+        check(f"uc {fy}: student FTE excludes the resident line",
+              all(cyr(c, fy)["fteStudents"] == cyr(c, fy)["fteGeneral"] + cyr(c, fy)["fteHealthStudents"]
+                  for c in camps) and any(cyr(c, fy)["fteResidents"] > 0 for c in camps))
+
+    # ---- gate text / unit
+    check("uc gate: the gate text names the column-sum check and the per-year window",
+          "column-sum" in meta["gate"].lower() and "each shipped year" in meta["gate"].lower())
     check("uc: unit is thousands, never claimed 'to the cent'",
           "thousand" in meta["unit"].lower()
-          and ("to the cent" not in meta["gate"].lower()
-               or "not to the cent" in meta["gate"].lower()))
-    # ---- the strip: UC's own lines, identity exact, shown not deleted
-    check("uc strip: med + aux + DOE + core == audited total (exact)",
-          sw["medK"] + sw["auxK"] + sw["doeK"] + sw["coreK"] == sw["auditedTotalK"])
-    check("uc strip: per-campus core == total - med - aux",
-          all(c["coreK"] == c["totalK"] - c["medK"] - c["auxK"] for c in camps))
-    med_set = sorted(c["name"] for c in camps if c["medK"] > 0)
-    check("uc strip: five medical-center campuses, the known five",
-          med_set == ["Davis", "Irvine", "Los Angeles", "San Diego", "San Francisco"],
-          str(med_set))
-    check("uc strip: definition says UC's own lines, never our judgment",
-          "own" in meta["strip"]["definition"].lower()
-          and "judgment" in meta["strip"]["definition"].lower())
+          and ("to the cent" not in meta["gate"].lower() or "not to the cent" in meta["gate"].lower()))
+
+    # ---- the strip: UC's own lines, shown not deleted (shape-agnostic meta)
+    check("uc strip: definition credits UC's own lines, never our judgment",
+          "own" in meta["strip"]["definition"].lower() and "judgment" in meta["strip"]["definition"].lower())
     check("uc strip: components shown separately, never deleted",
           "never deleted" in meta["strip"]["definition"].lower())
     check("uc strip: the limit — hospitals stripped, medical schools NOT",
           "hospital" in meta["strip"]["limit"].lower()
           and "not the schools of medicine" in meta["strip"]["limit"].lower())
+    check("uc strip: the residual is labelled ours, inheriting the strips' error",
+          "not a figure" in meta["strip"]["residual"].lower() and "inherits any error" in meta["strip"]["residual"])
     check("uc labs: LBNL inside on UC's own line; Triad/LLNS equity-method, undisclosed",
           "Lawrence Berkeley" in meta["strip"]["labsNote"]
           and "equity" in meta["strip"]["labsNote"].lower()
           and "not disclose" in meta["strip"]["labsNote"].lower())
-    # ---- audit status, verbatim
-    check("uc: unaudited status quotes the verbatim heading",
-          "Campus Facts in Brief (Unaudited)" in meta["unauditedStatus"])
-    check("uc: unaudited status quotes the other-information scope",
-          "other information" in meta["unauditedStatus"]
-          and "do not express an opinion" in meta["unauditedStatus"])
-    # ---- basis / denominator / reproducibility
+
+    # ---- audit status, per vintage (NOT carried back onto FY2020-21)
+    check("uc audit: the full statement quotes the verbatim heading and scope",
+          "Campus Facts in Brief (Unaudited)" in meta["unauditedStatus"]
+          and "do not express an opinion" in meta["unauditedStatus"]
+          and "material inconsistency" in meta["unauditedStatus"])
+    check("uc audit: a REDUCED statement exists for the vintage that predates the standard",
+          "material inconsistency" not in meta["unauditedStatusReduced"]
+          and "predates the standard" in meta["unauditedStatusReduced"]
+          and "do not express an opinion" in meta["unauditedStatusReduced"])
+    check("uc audit: FY2020-21 is declared as lacking the full other-information language",
+          SWY("2020-21")["auditFullOtherInfo"] is False and SWY("2024-25")["auditFullOtherInfo"] is True)
+
+    # ---- basis / denominator / reproducibility / overlap
     check("uc: basis is GAAP, explicitly NOT budgetary-legal",
           "gaap" in meta["basis"].lower() and "not" in meta["basis"].lower()
           and "budgetary-legal" in meta["basis"].lower())
     check("uc: denominator is student FTE with residents EXCLUDED on UC's own line",
-          "fte" in meta["denominator"].lower()
-          and "excluded" in meta["denominator"].lower()
+          "fte" in meta["denominator"].lower() and "excluded" in meta["denominator"].lower()
           and "resident" in meta["denominator"].lower())
-    check("uc: per-FTE derived as core/studentFTE; residents carried for audit",
-          all(c["corePerFte"] == round(c["coreK"] * 1000 / c["fteStudents"])
-              for c in camps if c["fteStudents"]))
-    check("uc: student FTE excludes the resident line",
-          all(c["fteStudents"] == c["fteGeneral"] + c["fteHealthStudents"] for c in camps)
-          and any(c["fteResidents"] > 0 for c in camps))
-    ucsf = next(c for c in camps if c["flags"]["healthOnly"])
-    check("uc: the health-sciences-only campus is San Francisco (no general campus)",
-          ucsf["name"] == "San Francisco" and ucsf["fteGeneral"] == 0)
     check("uc: reproducibility says AUTO-reproducible (the CSU contrast)",
           "auto-reproducible" in meta["reproducibility"].lower()
           and "not auto-reproducible" not in meta["reproducibility"].lower())
@@ -5530,79 +5700,94 @@ def test_uc(page, base):
     check("uc: overlap computed live and non-additive (~8.3% / ~9.3%)",
           ov["shareOfOpex"] == round(ov["stateApprK"] / ov["auditedTotalK"], 4)
           and ov["shareOfOpRev"] == round(ov["stateApprK"] / ov["opRevK"], 4)
-          and ov["auditedTotalK"] == sw["auditedTotalK"]
+          and ov["auditedTotalK"] == SWY("2024-25")["auditedTotalK"]
           and 0.07 < ov["shareOfOpex"] < 0.10 and 0.08 < ov["shareOfOpRev"] < 0.11
           and "do not sum" in ov["statement"].lower())
 
-    # ---- UI
+    # ================= UI =================
     page.goto(f"{base}/uc.html")
     page.wait_for_selector("#tbl .r")
+    # default: FY2024-25 (systemwide DOE form), nominal
     gate = page.inner_text("#gateStrip")
-    check("uc UI: gate strip — exact to the thousand, both years, residual $0k",
-          "exact to the thousand" in gate.lower()
-          and "both years" in gate.lower() and gate.lower().count("residual $0k") == 2)
-    check("uc UI: gate strip names the column-sum check",
-          "column-sum" in gate.lower())
+    check("uc UI: gate strip — exact to the thousand, residual $0k, names the column-sum + ten-times guard + header order",
+          "exact to the thousand" in gate.lower() and "residual $0k" in gate.lower()
+          and "column-sum" in gate.lower() and "ten times the rounding tolerance" in gate.lower()
+          and "header lists the campuses" in gate.lower())
     status = page.inner_text("#statusStrip")
-    check("uc UI: audit status on the face, verbatim heading quoted",
-          "Campus Facts in Brief (Unaudited)" in status
-          and "other information" in status)
+    check("uc UI: default-year (2024-25) audit status carries the full other-information language",
+          "other information" in status and "do not express an opinion" in status
+          and "material inconsistency" in status)
+    # the trend + break + held
+    check("uc UI: the trend draws five value points",
+          page.locator("#trend svg circle").count() == 5)
+    check("uc UI: the trend marks the DOE-assembly break where the series crosses it",
+          page.locator("#trend .brk-lbl").count() == 1
+          and "assembly changes" in (page.locator("#trend .brk-lbl").text_content() or "").lower())
+    check("uc UI: the held FY2019-20 is drawn as a distinct held marker (not on the value line)",
+          page.locator("#trend [data-held]").count() == 1)
+    brk = page.inner_text("#breakNote")
+    check("uc UI: the break note states one series assembled two ways, as a comparability fact",
+          "assembled two ways" in brk.lower() and "comparability fact" in brk.lower())
+    held = page.inner_text("#heldNote")
+    check("uc UI: the held note reads HELD, NOT PUBLISHED with the reason",
+          "held, not published" in held.lower() and "does not reconcile" in held.lower())
+    # switch to the EXCLUDED year and confirm the add-back is stated
+    page.select_option("#yearSel", "2020-21")
+    page.wait_for_timeout(150)
+    gate2 = page.inner_text("#gateStrip")
+    check("uc UI: the excluded year (2020-21) states the audited DOE add-back on the gate",
+          "audited doe line" in gate2.lower() and "added back" in gate2.lower())
+    status2 = page.inner_text("#statusStrip")
+    check("uc UI: the excluded-vintage audit status is the REDUCED form (no material-inconsistency quote)",
+          "predates the standard" in status2 and "material inconsistency" not in status2)
+    # nominal → real (the deflator toggle)
+    page.goto(f"{base}/uc.html")
+    page.wait_for_selector("#trend svg")
+    page.click('#basisGroup button[data-basis="real"]')
+    page.wait_for_timeout(150)
+    check("uc UI: real dollars are the Ledger's own adjustment, rebased to the deflator base year",
+          "real 2024-25 dollars" in page.inner_text("#trendBasis").lower())
+    # back to default view for the rest
+    page.goto(f"{base}/uc.html")
+    page.wait_for_selector("#tbl .r")
     check("uc UI: basis strip says GAAP, not enacted",
-          "gaap" in page.inner_text("#basisStrip").lower()
-          and "not" in page.inner_text("#basisStrip").lower())
+          "gaap" in page.inner_text("#basisStrip").lower() and "not" in page.inner_text("#basisStrip").lower())
     body = page.inner_text("#tbl")
     check("uc UI: UC's printed Systemwide reconciling row is visible",
           "Systemwide (UCOP, DOE laboratory & eliminations)" in body)
-    check("uc UI: core foot in the default (core) view",
-          "University core" in page.inner_text("#tbl .r.foot"))
-    # never ranked: a plain load sorts by NAME, not by magnitude
+    check("uc UI: core foot in the default (core) view", "University core" in page.inner_text("#tbl .r.foot"))
     first_row = page.inner_text("#tbl .r:not(.hd)").split("\n")[0]
     check("uc UI: default order is alphabetical (Berkeley first), never value-ranked",
           first_row.startswith("Berkeley"), first_row)
     strip_box = page.inner_text("#stripBox")
     check("uc UI: strip box shows all three UC lines and the core, never deleted",
           "Medical centers" in strip_box and "Auxiliary enterprises" in strip_box
-          and "Department of Energy laboratories" in strip_box
-          and "NEVER DELETED" in strip_box.upper())
+          and "Department of Energy laboratories" in strip_box and "NEVER DELETED" in strip_box.upper())
     limit = page.inner_text("#limitBox")
     check("uc UI: the limit box — hospitals, not medical schools — with the UCSF example",
-          "HOSPITALS, NOT MEDICAL SCHOOLS" in limit.upper()
-          and "San Francisco" in limit)
-    check("uc UI: overlap does-not-add box",
-          "DO NOT ADD" in page.inner_text("#noSum"))
-    check("uc UI: auto-reproducible box present",
-          "AUTO-REPRODUCIBLE" in page.inner_text("#reproBox"))
+          "HOSPITALS, NOT MEDICAL SCHOOLS" in limit.upper() and "San Francisco" in limit)
+    check("uc UI: overlap does-not-add box", "DO NOT ADD" in page.inner_text("#noSum"))
+    check("uc UI: auto-reproducible box present", "AUTO-REPRODUCIBLE" in page.inner_text("#reproBox"))
     caps = page.inner_text("#recordCaps")
     check("uc UI: never ranked; residents excluded; the limit restated at the table",
-          "never ranked" in caps.lower()
-          and "residents excluded" in caps.lower()
+          "never ranked" in caps.lower() and "residents excluded" in caps.lower()
           and "hospitals, not medical schools" in caps.lower())
-    # per-FTE view + the UCSF structural dagger — the LIMIT must be pinned
-    # in the one view where per-student figures appear (non-negotiable):
-    # the schedule label, the limit box, and the caps must all carry it HERE
+    # per-FTE view + the UCSF structural dagger — the LIMIT pinned in that view
     page.click('#unitGroup button[data-unit="perFte"]')
     page.wait_for_timeout(150)
     sched = page.inner_text("#scheduleLabel").lower()
-    check("uc UI: per-FTE view names the residents exclusion",
-          "residents excluded" in sched)
+    check("uc UI: per-FTE view names the residents exclusion", "residents excluded" in sched)
     check("uc UI: per-FTE schedule label itself carries the strip's limit",
           "hospitals stripped, medical schools not" in sched)
     check("uc UI: limit box visible IN the per-FTE view",
           page.locator("#limitBox").is_visible()
-          and "HOSPITALS, NOT MEDICAL SCHOOLS"
-              in page.inner_text("#limitBox").upper())
-    check("uc UI: never-ranked + limit caps still present in the per-FTE view",
-          "never ranked" in page.inner_text("#recordCaps").lower()
-          and "hospitals, not medical schools" in page.inner_text("#recordCaps").lower())
+          and "HOSPITALS, NOT MEDICAL SCHOOLS" in page.inner_text("#limitBox").upper())
     sf = page.locator('#tbl .r:has-text("San Francisco") .dag')
-    check("uc UI: UCSF carries a comparability dagger in the per-FTE view",
-          sf.count() == 1)
+    check("uc UI: UCSF carries a comparability dagger in the per-FTE view", sf.count() == 1)
     sf.first.click()
     page.wait_for_timeout(120)
-    note = page.inner_text("#tbl .note-row")
     check("uc UI: UCSF dagger names the health-sciences-only structure",
-          "HEALTH-SCIENCES-ONLY" in note.upper())
-    # total view: audited foot
+          "HEALTH-SCIENCES-ONLY" in page.inner_text("#tbl .note-row").upper())
     page.click('#unitGroup button[data-unit="total"]')
     page.wait_for_timeout(150)
     check("uc UI: audited-total foot in the total view",
@@ -5613,20 +5798,19 @@ def test_uc(page, base):
     page.click("#citeToggle")
     page.wait_for_selector("#citeText:visible")
     cite = page.inner_text("#citeText")
-    check("uc cite: thousand + both years + strip limit + never-add stated",
-          "to the thousand" in cite.lower() and "2023-24" in cite
-          and "hospitals, not medical" in cite.lower()
-          and "never added" in cite.lower())
+    check("uc cite: thousand + the five-year window + strip limit + never-add + held-year stated",
+          "to the thousand" in cite.lower() and "2020-21" in cite and "2024-25" in cite
+          and "hospitals, not medical" in cite.lower() and "never added" in cite.lower()
+          and "is held" in cite.lower())
     page.keyboard.press("Escape")
     with page.expect_download() as dl:
         page.click("#csvBtn")
     csv_text = Path(dl.value.path()).read_text(encoding="utf-8")
-    check("uc CSV: campuses + Systemwide + audited total + strip + residents column",
-          "San Francisco" in csv_text and "University total (audited)" in csv_text
-          and "medical_resident_fte" in csv_text
-          and "column-sum check" in csv_text
-          and str(sw["auditedTotalK"]) in csv_text)
-    # SCOPE.md records the layer and its strip discipline
+    check("uc CSV: fiscal-year column, all five years, campuses + audited total + residents + doe_form",
+          "fiscal_year" in csv_text and "San Francisco" in csv_text
+          and "University total (audited)" in csv_text and "medical_resident_fte" in csv_text
+          and "doe_form" in csv_text and all(y in csv_text for y in UC["years"])
+          and str(SWY("2024-25")["auditedTotalK"]) in csv_text)
     scope = (ROOT / "docs" / "SCOPE.md").read_text(encoding="utf-8")
     check("uc: SCOPE.md records UC as built, stripped on UC's own categories",
           "V12_UC_FINDING" in scope and "column-sum check" in scope)
@@ -7421,16 +7605,18 @@ def test_revisions(page, base):
           "only changes the date is not a revision",
           REV.figures_digest(moved) == d0)
     moved2 = json.loads(json.dumps(uc))
-    moved2["campuses"][0]["totalK"] += 1
+    moved2["campuses"][0]["years"][uc["years"][-1]]["totalK"] += 1
     check("revisions: the figures digest moves when a figure moves "
           "(a $1K edit is caught)",
           REV.figures_digest(moved2) != d0)
 
     # --- all three event kinds are representable and distinguishable
+    # (UC is multi-year now: the year-varying figures live in campus.years[fy])
     base_p = load_data_js(ROOT / "uc-data.js")
-    chg = json.loads(json.dumps(base_p)); chg["campuses"][0]["totalK"] += 1000
-    app = json.loads(json.dumps(base_p)); app["campuses"][0]["brandNewK"] = 5
-    dis = json.loads(json.dumps(base_p)); del dis["campuses"][0]["auxK"]
+    yr = base_p["latest"] if base_p.get("latest") else base_p["years"][-1]
+    chg = json.loads(json.dumps(base_p)); chg["campuses"][0]["years"][yr]["totalK"] += 1000
+    app = json.loads(json.dumps(base_p)); app["campuses"][0]["years"][yr]["brandNewK"] = 5
+    dis = json.loads(json.dumps(base_p)); del dis["campuses"][0]["years"][yr]["auxK"]
     flat = REV.flatten("uc", base_p)
     for name, other, want_o, want_n in (
             ("changed", chg, False, False),
@@ -8096,6 +8282,12 @@ def main():
             test_k12_vintage_declaration()
             test_gate_declarations()
             test_uc_strip_verification()
+            test_uc_column_sum_self_guard()
+            test_uc_longest_label_first()
+            test_uc_header_order_gate()
+            test_uc_doe_treatment_declared()
+            test_uc_held_year()
+            test_uc_deflator_window()
             test_ccc_write_path()
             test_historical_state(page, base)
             test_absent_not_zero(page, base)

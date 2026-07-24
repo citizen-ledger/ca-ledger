@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Citizen Ledger — UC campuses</title>
-<meta name="description" content="A nonpartisan record of California government spending. University of California campus spending — ten campuses plus UC's own Systemwide column reconcile exactly to the audited total; medical centers, auxiliaries, and the DOE laboratory stripped on UC's own lines, shown separately, never deleted.">
+<meta name="description" content="A nonpartisan record of California government spending. University of California campus spending, five fiscal years — ten campuses plus UC's own Systemwide column reconcile exactly to the audited total; medical centers, auxiliaries, and the DOE laboratory stripped on UC's own lines, shown separately, never deleted.">
 <link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/uc.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" href="favicon.ico" sizes="48x48">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Citizen Ledger">
 <meta property="og:title" content="Citizen Ledger — UC campuses">
-<meta property="og:description" content="A nonpartisan record of California government spending. UC campus spending, exact to the thousand against UC's audited total; hospitals, auxiliaries, and the DOE laboratory stripped on UC's own lines; campuses never ranked.">
+<meta property="og:description" content="A nonpartisan record of California government spending. UC campus spending across five fiscal years, exact to the thousand against UC's audited total; hospitals, auxiliaries, and the DOE laboratory stripped on UC's own lines; campuses never ranked.">
 <meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/uc.html">
 <meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
 <meta property="og:image:width" content="1200">
@@ -20,12 +20,7 @@
 <meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
 <meta name="twitter:card" content="summary_large_image">
 <style>
-/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
-   Served from this repository, not a third party: no request leaves the
-   reader's machine to render the page. unicode-range keeps it lazy — the
-   latin-ext file is fetched only if a character in its range appears.
-   Codepoints in neither range (the ▲▼ ✕ ✓ marks) fall through to the
-   platform mono stack, exactly as they did before. */
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt). */
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -34,12 +29,12 @@
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 </style>
 <style>
-  /* Ledger design system — see index.html. UC layer: gated EXACT TO THE
-     THOUSAND against UC's audited total (both years, plus the column-sum
-     check); medical centers / auxiliaries / DOE laboratory stripped on
-     UC'S OWN published lines only, shown separately, never deleted; the
-     hospitals-not-medical-schools limit on the face; campuses never
-     ranked. */
+  /* Ledger design system — see index.html. UC layer: FIVE fiscal years,
+     each gated EXACT TO THE THOUSAND against UC's audited total (plus the
+     column-sum check and printed-header order); medical centers /
+     auxiliaries / DOE laboratory stripped on UC'S OWN published lines,
+     shown separately, never deleted; the hospitals-not-medical-schools
+     limit on the face; campuses never ranked. FY2019-20 is held. */
   :root{
     --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
     --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
@@ -68,7 +63,6 @@
   .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
   .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
   .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
-  /* a note may break across pages; it may never be shortened */
   .rs-notes{margin-top:8pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
   .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
   .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 3pt}
@@ -78,7 +72,7 @@
   .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
   .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
   header, footer.ft, .prov, .method, #methodology, .pillgroup,
-  .hd-actions, .tbl, .gatebox, .hero, .dek, .lead { display:none !important }
+  .hd-actions, .tbl, .gatebox, .hero, .dek, .lead, .trendwrap { display:none !important }
   #recordSheet, #printCite { display:block !important }
  .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}
     .bar,.bar i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .bar i{outline:1px solid var(--ink);outline-offset:-1px} }
@@ -115,11 +109,34 @@
   .tblwrap{overflow-x:auto}
 
   .controls{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:34px;flex-wrap:wrap}
+  .ctl-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
   .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:var(--fs-data);color:var(--ink);border-left:1px solid var(--ash)}
   .pillgroup>button:first-child{border-left:none}
   .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
-  .actions{display:flex;gap:8px}
+  .pillgroup>button[disabled]{opacity:0.4;cursor:not-allowed}
+  .stepper{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  .stepper>button{border:none;background:transparent;padding:9px 14px;cursor:pointer;font-size:var(--fs-data);color:var(--ink)}
+  .stepper>button:hover:not([disabled]){background:var(--wash)}
+  .stepper>button[disabled]{opacity:0.35;cursor:not-allowed}
+  .stepper>select{border:none;border-left:1px solid var(--ash);border-right:1px solid var(--ash);background:transparent;padding:9px 12px;font-family:var(--mono);font-size:var(--fs-data);color:var(--ink);cursor:pointer}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* the multi-year trend */
+  .trendwrap{background:var(--surface);border:1px solid var(--ash);border-radius:2px;margin-top:22px;padding:20px 24px 18px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05)}
+  .trend-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .trend-head .microlbl{color:var(--smoke)}
+  .trend svg{width:100%;height:auto;display:block;overflow:visible}
+  .trend .axlbl{font-family:var(--mono);font-size:9px;fill:var(--smoke)}
+  .trend .vlbl{font-family:var(--mono);font-size:9.5px;fill:var(--ink)}
+  .trend .form-badge{font-family:var(--mono);font-size:8px;letter-spacing:.04em;fill:var(--smoke)}
+  .trend .brk-lbl{font-family:var(--mono);font-size:8.5px;fill:var(--graphite)}
+  .trend .yr-hit{cursor:pointer}
+  .trend .yr-hit:hover .axlbl{fill:var(--ink)}
+  .breaknote{border-left:4px solid var(--ink);background:var(--wash);margin-top:14px;padding:12px 16px;font-size:var(--fs-note);line-height:1.6}
+  .breaknote b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:5px}
+  .heldnote{border:1px dashed var(--graphite);margin-top:10px;padding:10px 14px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--graphite)}
+  .heldnote b{color:var(--ink);letter-spacing:0.06em}
 
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
@@ -185,6 +202,7 @@
     nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
     .prov{padding:7px 20px;font-size:var(--fs-micro)} .prov span+span{display:none}
     .tbl{min-width:0} dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
+    .trendwrap{padding:16px 14px}
   }
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .btn[disabled]{opacity:0.42;cursor:not-allowed}
@@ -214,7 +232,7 @@
 
 <div class="prov">
   <span>SOURCE: UC ANNUAL FINANCIAL REPORT (AUDITED, GAAP)</span>
-  <span>EXACT TO THE THOUSAND · BOTH YEARS · COLUMN-SUM PROVEN</span>
+  <span>FIVE YEARS · EXACT TO THE THOUSAND · COLUMN-SUM PROVEN</span>
   <span>AUTO-REPRODUCIBLE</span>
   <span>PUBLIC RECORD</span>
 </div>
@@ -225,20 +243,31 @@
     <div>
       <div class="kicker" id="kicker">THE PUBLIC RECORD · FY 2024-25</div>
       <h1>University of California</h1>
-      <p class="dek">Every campus's operating spending, reconciled exactly — to the thousand, the finest unit UC publishes — against UC's own audited total, two years running. Medical centers, auxiliaries, and the DOE laboratory are stripped on UC's own published lines — shown separately, never deleted — because a raw UC figure is two-fifths hospital ledger.</p>
+      <p class="dek">Every campus's operating spending across five fiscal years, reconciled exactly — to the thousand, the finest unit UC publishes — against UC's own audited total. Medical centers, auxiliaries, and the DOE laboratory are stripped on UC's own published lines — shown separately, never deleted — because a raw UC figure is two-fifths hospital ledger.</p>
     </div>
     <div class="hero-right">
       <div class="hero-num num" id="heroNum">—</div>
       <div class="hero-sub" id="heroSub"></div>
-      <div class="hero-lbl" id="heroLbl">CORE (EDUCATION &amp; RESEARCH) AFTER UC'S OWN STRIP · FY 2024-25</div>
+      <div class="hero-lbl" id="heroLbl">CORE (EDUCATION &amp; RESEARCH) AFTER UC'S OWN STRIP</div>
     </div>
   </div>
 
   <div class="controls np">
-    <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
-      <button data-unit="core" class="on">Core (stripped)</button>
-      <button data-unit="total">Total operating expense</button>
-      <button data-unit="perFte">Core per student FTE</button>
+    <div class="ctl-left">
+      <div class="stepper" role="group" aria-label="Fiscal year">
+        <button id="yearPrev" aria-label="Previous fiscal year">&#9666;</button>
+        <select id="yearSel" aria-label="Select fiscal year"></select>
+        <button id="yearNext" aria-label="Next fiscal year">&#9656;</button>
+      </div>
+      <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
+        <button data-unit="core" class="on">Core (stripped)</button>
+        <button data-unit="total">Total operating expense</button>
+        <button data-unit="perFte">Core per student FTE</button>
+      </div>
+      <div class="pillgroup" role="group" aria-label="Dollars" id="basisGroup">
+        <button data-basis="nominal" class="on">Nominal $</button>
+        <button data-basis="real">Real $</button>
+      </div>
     </div>
     <div class="actions">
       <button class="btn ink" id="citeToggle">Cite</button>
@@ -246,6 +275,16 @@
       <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
     </div>
   </div>
+
+  <section class="trendwrap">
+    <div class="trend-head">
+      <div class="microlbl" id="trendLbl">UNIVERSITY CORE OVER FIVE YEARS</div>
+      <div class="microlbl" id="trendBasis"></div>
+    </div>
+    <div class="trend" id="trend"></div>
+    <div class="breaknote" id="breakNote"></div>
+    <div class="heldnote" id="heldNote"></div>
+  </section>
 
   <section class="record">
     <div class="schedlbl" id="scheduleLabel"></div>
@@ -262,7 +301,7 @@
 
   <section class="method" id="methodology">
     <h2>How the UC layer is built</h2>
-    <p class="lead">The same tier as CSU, named accurately — exact fidelity at the source's own resolution, the thousand — proven for two fiscal years, with every campus column proven by a column-sum check, and the strip defined by UC's own lines alone.</p>
+    <p class="lead">The same tier as CSU, named accurately — exact fidelity at the source's own resolution, the thousand — proven for five fiscal years, with every campus column proven by a column-sum check, and the strip defined by UC's own lines alone.</p>
     <div class="okbox" style="margin-top:22px" id="reproBox"></div>
     <div class="mgrid">
       <div class="mcol" id="methodNotes"></div>
@@ -293,222 +332,312 @@
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
+<script src="deflator-data.js"></script>
 <script src="uc-data.js"></script>
 <script>
   const D = window.CA_UC_DATA;
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const M = D.meta, SW = D.systemwide;
+  const M = D.meta;
+  const YEARS = D.years;                                   // ['2020-21' … '2024-25']
+  const SWY = fy => D.systemwide[fy];                      // systemwide block for a year
+  const cy  = (c, fy) => (c.years || {})[fy] || {};        // one campus in one year
+  const HELD = D.held || {};                               // { '2019-20': {…} }
   const money0 = v => "$" + Math.round(v).toLocaleString("en-US");
-  const moneyB = k => "$" + (k/1e6).toFixed(2) + "B";        // k = thousands
+  const moneyB = k => "$" + (k/1e6).toFixed(2) + "B";      // k = thousands
   const moneyK = k => (k<0 ? "−$" : "$") + Math.abs(Math.round(k)).toLocaleString("en-US") + "k";
 
-  const DEFAULTS = {unit: "core", sort: "name"};
+  // ---- the deflator (the Ledger's own adjustment; nominal by default) ----
+  const DEF  = window.CA_LEDGER_DEFLATOR || null;
+  const DEFM = DEF ? DEF.meta : null;
+  const defOK = fy => !!(DEF && DEF.fy[fy] != null && DEFM.forecastYears.indexOf(fy) < 0);
+  const realOn = () => S.basis === "real" && !!DEF;
+  function adjV(v, fy){                                    // v in thousands, nominal → real
+    if (!realOn() || v == null) return v;
+    return defOK(fy) ? v * (DEF.fy[DEFM.baseYear] / DEF.fy[fy]) : v;
+  }
+
+  const DEFAULTS = {year: YEARS[YEARS.length-1], unit: "core", sort: "name", basis: "nominal"};
   const S = {...DEFAULTS};
 
   function applyHash(){
     const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    S.year = YEARS.includes(p.get("y")) ? p.get("y") : DEFAULTS.year;
     S.unit = ["total","perFte"].includes(p.get("u")) ? p.get("u") : "core";
     S.sort = p.get("s") === "value" ? "value" : "name";
+    S.basis = p.get("b") === "real" ? "real" : "nominal";
   }
   function syncHash(){
     const p = new URLSearchParams();
+    if (S.year !== DEFAULTS.year) p.set("y", S.year);
     if (S.unit !== DEFAULTS.unit) p.set("u", S.unit);
     if (S.sort !== DEFAULTS.sort) p.set("s", S.sort);
+    if (S.basis !== DEFAULTS.basis) p.set("b", S.basis);
     const h = p.toString();
     history.replaceState(null, "", h ? "#"+h : location.pathname);
   }
 
   // comparability daggers — data-derived from the pipeline's flags
-  function campusNotes(c){
-    const f = c.flags, notes = [];
+  function campusNotes(c, fy){
+    const y = cy(c, fy), f = y.flags || {}, sw = SWY(fy), notes = [];
     if (f.medCenter) notes.push(["MEDICAL CENTER & HEALTH SCIENCES",
-      "Runs a hospital enterprise (stripped on UC's own line: " + moneyK(c.medK) + ") — but the strip's limit applies: "
+      "Runs a hospital enterprise (stripped on UC's own line: " + moneyK(y.medK) + ") — but the strip's limit applies: "
       + "the schools of medicine and health sciences remain inside the core, so this campus's core and per-student "
       + "figures are structurally higher than a campus without them. Not comparable across that divide."]);
     if (f.healthOnly) notes.push(["HEALTH-SCIENCES-ONLY CAMPUS",
       "No undergraduates and no general campus — a graduate research and clinical-training enterprise. Even after "
       + "stripping its hospital, its per-student figure reflects that structure and is not comparable to any other campus."]);
     if (f.researchIntensive) notes.push(["RESEARCH-INTENSIVE",
-      "Research is " + Math.round((c.functions.Research||0)/c.coreK*100) + "% of this campus's core — well above the "
-      + "universitywide " + Math.round(SW.researchCoreShare*100) + "% — so per-student figures partly measure research "
+      "Research is " + Math.round((y.functions.Research||0)/y.coreK*100) + "% of this campus's core — well above the "
+      + "universitywide " + Math.round(sw.researchCoreShare*100) + "% — so per-student figures partly measure research "
       + "mission, not instruction cost."]);
     if (f.smallScale) notes.push(["SMALLER CAMPUS",
       "Fixed operating costs spread over fewer students raise the per-student figure independent of any spending decision."]);
     return notes;
   }
 
-  function unitVal(c){
-    return S.unit === "perFte" ? (c.corePerFte||0) : S.unit === "total" ? c.totalK : c.coreK;
+  // value of one campus in the current unit + basis
+  function unitVal(c, fy){
+    const y = cy(c, fy);
+    if (S.unit === "perFte") return y.corePerFte==null ? 0 : adjV(y.coreK, fy)*1000/y.fteStudents;
+    return adjV(S.unit === "total" ? y.totalK : y.coreK, fy);
   }
-  function fmtUnit(c){
-    if (S.unit === "perFte") return c.corePerFte==null ? "—" : money0(c.corePerFte);
-    return moneyK(S.unit === "total" ? c.totalK : c.coreK);
+  function fmtUnit(c, fy){
+    const y = cy(c, fy);
+    if (S.unit === "perFte") return y.corePerFte==null ? "—" : money0(adjV(y.coreK, fy)*1000/y.fteStudents);
+    return moneyK(adjV(S.unit === "total" ? y.totalK : y.coreK, fy));
+  }
+  // the systemwide aggregate value for one year in the current unit + basis
+  function swVal(fy){
+    const sw = SWY(fy);
+    if (S.unit === "perFte") return adjV(sw.coreK, fy)*1000/sw.fteStudents;
+    return adjV(S.unit === "total" ? sw.auditedTotalK : sw.coreK, fy);
+  }
+  function swFmt(fy){
+    const sw = SWY(fy);
+    if (S.unit === "perFte") return money0(adjV(sw.coreK, fy)*1000/sw.fteStudents);
+    return moneyB(adjV(S.unit === "total" ? sw.auditedTotalK : sw.coreK, fy));
+  }
+  const unitWord = () => S.unit==="perFte" ? "core per student FTE" : S.unit==="total" ? "total operating expense" : "core (stripped)";
+
+  /* ---------- the multi-year trend ------------------------------------
+     A line of the university aggregate (core / total / per-FTE) across the
+     five gated years. FY2019-20 is drawn as a HOLLOW, unconnected HELD
+     marker — never a value on the line, because it is not published. The
+     DOE assembly boundary (FY2020-21 excludes the DOE laboratory and adds
+     it back from the audited statement; FY2021-22 on carry it inside the
+     Systemwide column) is drawn WHERE THE SERIES CROSSES IT. */
+  function renderTrend(){
+    const W=720, H=210, PL=52, PR=18, PT=26, PB=46;
+    const plotW=W-PL-PR, plotH=H-PT-PB, base=PT+plotH;
+    const slots = YEARS.length + 1;                        // slot 0 = held 2019-20
+    const xAt = i => PL + plotW*(slots<=1?0:i/(slots-1));
+    const vals = YEARS.map(swVal);
+    const maxV = Math.max(...vals) * 1.14 || 1;
+    const yAt = v => PT + plotH*(1 - v/maxV);
+    const pts = YEARS.map((fy,k)=>({fy, x:xAt(k+1), y:yAt(vals[k]), v:vals[k]}));
+
+    // DOE assembly boundary: between the last 'excluded' year and the first
+    // 'systemwide' year. Located from the data, not hard-coded.
+    let brkIdx = -1;
+    for (let k=1;k<YEARS.length;k++){
+      if (SWY(YEARS[k-1]).doeForm==="excluded" && SWY(YEARS[k]).doeForm==="systemwide"){ brkIdx=k; break; }
+    }
+    const heldFy = Object.keys(HELD)[0];
+
+    let g = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="University '+esc(unitWord())+' by fiscal year">';
+    // baseline
+    g += '<line x1="'+PL+'" y1="'+base+'" x2="'+(W-PR)+'" y2="'+base+'" stroke="var(--ash)" stroke-width="1"/>';
+    // held marker (hollow, unconnected) at slot 0
+    if (heldFy){
+      const hx=xAt(0);
+      g += '<line x1="'+hx+'" y1="'+(base)+'" x2="'+hx+'" y2="'+(base-10)+'" stroke="var(--faint)" stroke-width="1" stroke-dasharray="2 2"/>';
+      g += '<rect class="yr-hit" data-held="1" x="'+(hx-5)+'" y="'+(base-14)+'" width="10" height="10" fill="none" stroke="var(--graphite)" stroke-width="1.2" stroke-dasharray="2 1.5"/>';
+      g += '<text class="axlbl" x="'+hx+'" y="'+(base+16)+'" text-anchor="middle">'+esc(heldFy)+'</text>';
+      g += '<text class="form-badge" x="'+hx+'" y="'+(base+28)+'" text-anchor="middle">held</text>';
+    }
+    // the break line, where the series crosses the assembly change
+    if (brkIdx>0){
+      const bx=(pts[brkIdx-1].x + pts[brkIdx].x)/2;
+      g += '<line x1="'+bx+'" y1="'+(PT-6)+'" x2="'+bx+'" y2="'+base+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3"/>';
+      g += '<text class="brk-lbl" x="'+bx+'" y="'+(PT-10)+'" text-anchor="middle">DOE assembly changes →</text>';
+    }
+    // area + line
+    let dLine = pts.map((p,i)=>(i?'L':'M')+p.x+','+p.y).join(' ');
+    g += '<path d="'+dLine+' L'+pts[pts.length-1].x+','+base+' L'+pts[0].x+','+base+' Z" fill="rgba(43,89,209,.06)"/>';
+    g += '<path d="'+dLine+'" fill="none" stroke="var(--ink)" stroke-width="1.6"/>';
+    // points, value labels, year labels, DOE-form badges, click targets
+    pts.forEach((p,k)=>{
+      const fy=p.fy, sel=(fy===S.year);
+      const form = SWY(fy).doeForm==="excluded" ? "excl. DOE ‡" : "sys. DOE";
+      g += '<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(sel?4.5:3.2)+'" fill="'+(sel?'var(--blue)':'var(--ink)')+'"/>';
+      g += '<text class="vlbl" x="'+p.x+'" y="'+(p.y-9)+'" text-anchor="middle">'+esc(swFmt(fy))+'</text>';
+      g += '<text class="axlbl" x="'+p.x+'" y="'+(base+16)+'" text-anchor="middle" '+(sel?'style="fill:var(--ink)"':'')+'>'+esc(fy)+'</text>';
+      g += '<text class="form-badge" x="'+p.x+'" y="'+(base+28)+'" text-anchor="middle">'+esc(form)+'</text>';
+      g += '<rect class="yr-hit" data-year="'+esc(fy)+'" x="'+(p.x-plotW/(slots-1)/2)+'" y="'+PT+'" width="'+(plotW/(slots-1))+'" height="'+(base-PT+34)+'" fill="transparent"/>';
+    });
+    g += '</svg>';
+    $("trend").innerHTML = g;
+    $("trendLbl").textContent = "UNIVERSITY " + unitWord().toUpperCase() + " · FY " + YEARS[0] + " – " + YEARS[YEARS.length-1];
+    $("trendBasis").textContent = realOn()
+      ? "REAL " + DEFM.baseYear + " DOLLARS · THE LEDGER'S OWN ADJUSTMENT"
+      : "NOMINAL DOLLARS, AS PUBLISHED";
+    // wire clicks
+    $("trend").querySelectorAll("[data-year]").forEach(el => el.addEventListener("click", ()=>{
+      S.year = el.dataset.year; syncHash(); render();
+    }));
+    const heldRect = $("trend").querySelector("[data-held]");
+    if (heldRect) heldRect.addEventListener("click", ()=>{ $("heldNote").scrollIntoView({behavior:"smooth", block:"nearest"}); });
   }
 
-
-  /* ---------- the print record sheet ------------------------------------
-     On screen the comparability notes open ONE entity at a time via
-     S.openNote, so a printed table showed per-student figures with none of
-     the notes that qualify them. UCSF is the case: four flags, and a
-     per-student figure that means nothing without all four. Rendered on
-     every render(), independent of S.openNote, printing EVERY note for
-     EVERY row in full - never a symbol. Never truncated. */
+  /* ---------- the print record sheet ---------------------------------- */
   function renderRecordSheet(){
     const box = document.getElementById("recordSheet");
     if (!box) return;
-    const ents = D.campuses || [];
+    const fy = S.year, ents = D.campuses || [];
     let flagged = 0;
     let h = '<div class="rs-head"><div class="rs-kicker">'
-      + 'CITIZEN LEDGER \u00b7 RECORD SHEET \u00b7 ' + "UC CAMPUSES"
-      + ' \u00b7 FY ' + esc(M.year) + '</div>'
+      + 'CITIZEN LEDGER · RECORD SHEET · ' + "UC CAMPUSES"
+      + ' · FY ' + esc(fy) + (realOn() ? ' · REAL '+esc(DEFM.baseYear)+' $' : ' · NOMINAL $') + '</div>'
       + '<div class="rs-basis"><b>ACCOUNTING BASIS</b>' + esc("Audited GAAP / GASB full-accrual. This is NOT the state budget's enacted Budgetary-Legal basis; the two are never added. Medical centres, auxiliary enterprises and the DOE laboratory are stripped on UC's OWN published lines and shown separately, never deleted.") + '</div>'
-      + '<div class="rs-basis"><b>GATE</b>' + esc("Ten campuses plus UC's own PRINTED Systemwide column equal the audited total operating expenses EXACTLY, TO THE THOUSAND, for both FY2024-25 and FY2023-24, with every campus column proven by a column-sum check.") + '</div>'
-      + '<div class="rs-basis"><b>RESOLUTION AND DENOMINATOR</b>' + esc("Figures are stated in thousands. THE STRIP'S LIMIT, on the face: hospital ENTERPRISES are stripped; SCHOOLS OF MEDICINE ARE NOT. Health-sciences instruction and research remain inside the core. The per-campus table is UC's auditor-read Campus Facts in Brief (Unaudited); the audited figure is the systemwide total the campuses reconcile to.") + '</div>'
-      + '<div class="rs-basis"><b>DOLLARS</b>NOMINAL, as published. Not adjusted for '
-      + 'inflation: this layer is a single fiscal year, so there is no trend to restate.'
-      + '</div></div>';
-    h += '<div class="rs-break"><b>ALL ROWS \u00b7 ' + esc("$ thousands / per student FTE") + '</b><table>'
+      + '<div class="rs-basis"><b>GATE</b>' + esc("For every shipped year: ten campuses plus UC's own PRINTED Systemwide column (plus the audited statement's DOE line where the campus table excludes it) equal the audited total operating expenses EXACTLY, TO THE THOUSAND, with every campus column proven by a column-sum check. FY2019-20 is held: its unaudited campus table does not reconcile.") + '</div>'
+      + '<div class="rs-basis"><b>RESOLUTION AND DENOMINATOR</b>' + esc("Figures are stated in thousands. THE STRIP'S LIMIT, on the face: hospital ENTERPRISES are stripped; SCHOOLS OF MEDICINE ARE NOT. Health-sciences instruction and research remain inside the core. Per-student uses student FTE, medical residents excluded on UC's own line. The per-campus table is UC's auditor-read Campus Facts in Brief (Unaudited); the audited figure is the systemwide total the campuses reconcile to.") + '</div>'
+      + '<div class="rs-basis"><b>DOE ASSEMBLY</b>' + esc(M.doeBreak) + '</div>'
+      + '<div class="rs-basis"><b>DOLLARS</b>' + esc(realOn()
+          ? "Adjusted to " + DEFM.baseYear + " dollars using the price deflator California statute names — the Ledger's own adjustment, not the source's. UC publishes nominal figures only."
+          : "Nominal, as published.") + '</div></div>';
+    h += '<div class="rs-break"><b>ALL ROWS · FY ' + esc(fy) + ' · ' + esc(S.unit==="perFte" ? "core per student FTE" : "$ thousands") + '</b><table>'
       + ents.map(function(c){ return '<tr><td>' + esc(c.name)
-          + ((campusNotes(c)||[]).length ? ' \u2020' : '')
-          + '</td><td class="n">' + esc(fmtUnit(c)) + '</td></tr>'; }).join("")
+          + ((campusNotes(c,fy)||[]).length ? ' †' : '')
+          + '</td><td class="n">' + esc(fmtUnit(c,fy)) + '</td></tr>'; }).join("")
       + '</table></div>';
     let notesHtml = '';
     ents.forEach(function(c){
-      const ns = campusNotes(c) || [];
+      const ns = campusNotes(c,fy) || [];
       if (!ns.length) return;
       flagged++;
-      notesHtml += '<p><strong>' + esc(c.name) + '</strong> \u2014 '
-        + ns.length + ' note' + (ns.length===1?'':'s') + '</p>';
+      notesHtml += '<p><strong>' + esc(c.name) + '</strong> — ' + ns.length + ' note' + (ns.length===1?'':'s') + '</p>';
       ns.forEach(function(n){
-        const title = Array.isArray(n) ? n[0] : null;
-        const text  = Array.isArray(n) ? n[1] : n;
-        notesHtml += '<p class="rs-n">\u2020 '
-          + (title ? '<strong>' + esc(title) + '.</strong> ' : '') + esc(text) + '</p>';
+        notesHtml += '<p class="rs-n">† <strong>' + esc(n[0]) + '.</strong> ' + esc(n[1]) + '</p>';
       });
     });
-    h += '<div class="rs-notes"><b>COMPARABILITY NOTES \u2014 ' + flagged
+    h += '<div class="rs-notes"><b>COMPARABILITY NOTES — ' + flagged
       + ' ROW' + (flagged===1?'':'S') + ' CARRY THEM, PRINTED IN FULL</b>'
-      + (notesHtml || '<p>No row on this sheet carries a comparability note.</p>')
-      + '</div>';
+      + (notesHtml || '<p>No row on this sheet carries a comparability note.</p>') + '</div>';
     const integ = M.integrity || {};
     h += '<div class="rs-foot">'
-      + '<div><b>SOURCE</b>' + esc(M.sourceLabel) + ' \u00b7 generated ' + esc(M.generated) + '</div>'
+      + '<div><b>SOURCE</b>' + esc(M.sourceLabel) + ' · generated ' + esc(M.generated) + '</div>'
       + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span></div>'
       + (integ.digest ? '<div><b>RECORD INTEGRITY</b>SHA-256 ' + esc(integ.digest)
-          + ' (uc-data.js). Verify with <span class="rs-mono">python3 '
-          + 'pipeline/verify_digest.py</span> from the repository. The digest proves the '
-          + 'file is the one the pipeline wrote; it does not verify the published figures '
-          + 'themselves.</div>' : '')
-      + '<div><b>REVISIONS</b>The Ledger\u2019s record of changes begins on the day it '
-      + 'shipped. Figures published before then were replaced rather than compared, so an '
-      + 'absence of recorded change for an earlier period means \u201cnot recorded\u201d, '
-      + 'not \u201cdid not happen\u201d.</div></div>';
+          + ' (uc-data.js). Verify with <span class="rs-mono">python3 pipeline/verify_digest.py</span> from the repository.</div>' : '')
+      + '<div><b>REVISIONS</b>The Ledger’s record of changes begins on the day it shipped. An absence of recorded change for an earlier period means “not recorded”, not “did not happen”.</div></div>';
     box.innerHTML = h;
   }
 
-  /* ---- Print record sheet -------------------------------------------
-     The sheets shipped on every layer but were reachable only by pressing
-     Cmd+P. This is the affordance.
-
-     Where a record must be chosen first the control is DISABLED WITH A
-     REASON rather than hidden: a control that vanishes is invisible to
-     exactly the reader who has not selected anything yet, and an element
-     that appears and disappears is more disorienting to a screen-reader
-     user than one that is present and explains itself. Same vocabulary as
-     the inflation toggle, disabled where deflation is arithmetically
-     inert. */
   const PRINT_REASON = "";
   function printReady(){ return true; }
   function syncPrintBtn(){
     const b = document.getElementById("printBtn");
     if (!b) return;
-    let ok = true;
-    try { ok = printReady(); } catch (e) { ok = false; }
-    b.disabled = !ok;
-    b.setAttribute("aria-disabled", String(!ok));
-    b.title = ok ? "" : PRINT_REASON;
+    let ok = true; try { ok = printReady(); } catch (e) { ok = false; }
+    b.disabled = !ok; b.setAttribute("aria-disabled", String(!ok)); b.title = ok ? "" : PRINT_REASON;
   }
   (function(){
     const b = document.getElementById("printBtn");
-    if (b) b.addEventListener("click", function(){
-      if (!this.disabled) window.print();
-    });
+    if (b) b.addEventListener("click", function(){ if (!this.disabled) window.print(); });
   })();
 
   function render(){
+    const fy = S.year, sw = SWY(fy);
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderRecordSheet();
-    $("heroNum").textContent = moneyB(SW.coreK);
-    $("heroSub").textContent = "10 CAMPUSES · " + moneyB(SW.auditedTotalK) + " AUDITED TOTAL BEFORE THE STRIP · "
-      + SW.fteStudents.toLocaleString() + " STUDENT FTE";
+    renderTrend();
+
+    $("kicker").textContent = "THE PUBLIC RECORD · FY " + fy;
+    $("heroNum").textContent = swFmt(fy);
+    $("heroSub").textContent = "10 CAMPUSES · " + moneyB(adjV(sw.auditedTotalK,fy)) + " AUDITED TOTAL BEFORE THE STRIP · "
+      + sw.fteStudents.toLocaleString() + " STUDENT FTE";
+    $("heroLbl").textContent = (S.unit==="perFte" ? "CORE PER STUDENT FTE" : S.unit==="total" ? "TOTAL OPERATING EXPENSE" : "CORE (EDUCATION & RESEARCH) AFTER UC'S OWN STRIP")
+      + (realOn() ? " · REAL "+DEFM.baseYear+" $" : "") + " · FY " + fy;
+
     $("scheduleLabel").textContent = "OPERATING EXPENSES BY CAMPUS · "
       + (S.unit==="perFte" ? "CORE PER STUDENT FTE (RESIDENTS EXCLUDED, ON UC'S OWN LINE) · HOSPITALS STRIPPED, MEDICAL SCHOOLS NOT — NOT COMPARABLE ACROSS THAT DIVIDE"
          : S.unit==="total" ? "TOTAL, IN THOUSANDS (BEFORE THE STRIP)"
-         : "CORE AFTER UC'S OWN STRIP, IN THOUSANDS") + " · FY 2024-25";
-    const g25 = M.gateHistory["2024-25"], g24 = M.gateHistory["2023-24"];
-    const resid = g => "residual $" + Math.abs(g.residualK).toLocaleString("en-US") + "k";
-    $("gateStrip").textContent = "GATED · EXACT TO THE THOUSAND, BOTH YEARS: the ten campuses ("
-      + moneyK(g25.campusSumK) + ") plus UC's own printed Systemwide column (" + moneyK(g25.systemwideColK)
-      + ") equal UC's audited total operating expenses, " + moneyK(g25.auditedTotalK)
-      + " — " + resid(g25) + ". FY 2023-24 the same: " + moneyK(g24.campusSumK) + " + " + moneyK(g24.systemwideColK)
-      + " = " + moneyK(g24.auditedTotalK) + ", " + resid(g24) + ". Every campus column's function lines sum exactly to its "
-      + "printed total (the column-sum check), with the sparse rows' assignment proven unique by exhaustion.";
-    $("statusStrip").textContent = "AUDIT STATUS, STATED PLAINLY: the per-campus table is UC's “Campus Facts in "
-      + "Brief (Unaudited)” — the auditor's “other information,” on which PwC “do[es] not express an "
-      + "opinion” while its stated responsibility is “to read the other information and consider whether a "
-      + "material inconsistency exists” with the audited statements. The audited figure the campuses reconcile to — "
-      + "the systemwide total — carries PwC's unmodified opinion. The campus detail does not carry that audit status; "
-      + "the exact reconciliation is the check.";
-    $("basisStrip").textContent = "BASIS: audited GAAP / GASB accrual — NOT the state budget page's enacted, budgetary-legal figure. The two are measured differently and are never added.";
+         : "CORE AFTER UC'S OWN STRIP, IN THOUSANDS") + " · FY " + fy;
 
+    const g = M.gateHistory[fy];
+    const resid = g => "residual $" + Math.abs(g.residualK).toLocaleString("en-US") + "k";
+    const addback = g.doeForm==="excluded"
+      ? " UC's campus table for this year EXCLUDES the DOE laboratory (its own printed footnote), so the audited statement's DOE line ("+moneyK(g.doeK)+") is added back to reconcile."
+      : " UC's printed Systemwide column already carries the DOE laboratory ("+moneyK(g.doeK)+") this year.";
+    $("gateStrip").textContent = "GATED · EXACT TO THE THOUSAND: the ten campuses (" + moneyK(g.campusSumK)
+      + ") plus UC's own printed Systemwide column (" + moneyK(g.systemwideColK) + ")"
+      + (g.doeForm==="excluded" ? " plus the audited DOE line ("+moneyK(g.doeK)+")" : "")
+      + " equal UC's audited total operating expenses, " + moneyK(g.auditedTotalK) + " — " + resid(g)
+      + ". Every campus column's function lines sum exactly to its printed total (the column-sum check), the assignment proven unique by exhaustion and still unique at ten times the rounding tolerance; the printed campus-column header lists the campuses in the order they are assigned." + addback;
+
+    $("statusStrip").textContent = sw.auditFullOtherInfo ? M.unauditedStatus : (M.unauditedStatusReduced || M.unauditedStatus);
+    $("basisStrip").textContent = "BASIS: audited GAAP / GASB accrual — NOT the state budget page's enacted, budgetary-legal figure. The two are measured differently and are never added."
+      + (realOn() ? " Real figures are the Ledger's own inflation adjustment (base "+DEFM.baseYear+"); UC publishes nominal dollars only." : "");
+
+    // the break note, restated at the reader's current year
+    const acrossNote = g.doeForm==="excluded"
+      ? "You are viewing FY " + fy + ", the year on the earlier side of the boundary: its campus table excludes the DOE laboratory, added back from the audited statement."
+      : "You are viewing FY " + fy + ", on the later side of the boundary: the DOE laboratory sits inside UC's printed Systemwide column.";
+    $("breakNote").innerHTML = '<b>ONE SERIES, ASSEMBLED TWO WAYS — A COMPARABILITY FACT</b>' + esc(M.doeBreak) + ' ' + esc(acrossNote);
+
+    // the held-year note
+    const hfy = Object.keys(HELD)[0], hobj = HELD[hfy] || {};
+    $("heldNote").innerHTML = '<b>' + esc(hfy) + ' — HELD, NOT PUBLISHED.</b> ' + esc(hobj.reason || "");
+
+    // ---- campus table for the selected year
     const rows = D.campuses.slice().sort((a,b) =>
-      S.sort === "value" ? unitVal(b) - unitVal(a) : a.name.localeCompare(b.name));
-    const max = Math.max(...D.campuses.map(unitVal));
+      S.sort === "value" ? unitVal(b,fy) - unitVal(a,fy) : a.name.localeCompare(b.name));
+    const max = Math.max(...D.campuses.map(c=>unitVal(c,fy)));
     const sortH = (k, extra) => 'class="'+(extra?extra+' ':'')+'hd-sort'+(S.sort===k?' on':'')+'" data-sort="'+k+'"';
     let html = '<div class="r hd"><button '+sortH('name')+'>CAMPUS'+(S.sort==='name'?' ▾':'')+'</button>'
       + '<span></span><span class="v dim">STUDENT FTE</span>'
       + '<button '+sortH('value','v')+'>'
       + (S.unit==='perFte'?'CORE PER FTE':S.unit==='total'?'TOTAL EXPENSE':'CORE EXPENSE')+(S.sort==='value'?' ▾':'')+'</button></div>';
     rows.forEach(c => {
-      const notes = campusNotes(c);
+      const y = cy(c,fy), notes = campusNotes(c,fy);
       const dag = notes.length ? ' <button class="dag" data-note="'+esc(c.name)+'" aria-label="Comparability notes">†'+(notes.length>1?notes.length:'')+'</button>' : '';
       html += '<div class="r"><span class="nm">'+esc(c.name)+dag+'</span>'
-        + '<span class="bar"><i style="width:'+(max?(unitVal(c)/max*100).toFixed(1):0)+'%"></i></span>'
-        + '<span class="v dim">'+c.fteStudents.toLocaleString()+'</span>'
-        + '<span class="v">'+fmtUnit(c)+'</span></div>';
+        + '<span class="bar"><i style="width:'+(max?(unitVal(c,fy)/max*100).toFixed(1):0)+'%"></i></span>'
+        + '<span class="v dim">'+y.fteStudents.toLocaleString()+'</span>'
+        + '<span class="v">'+fmtUnit(c,fy)+'</span></div>';
       if (S.openNote === c.name)
         html += '<div class="note-row">'+notes.map(n => '<span class="tag">† '+esc(n[0])+'</span>'+esc(n[1])).join('')+'</div>';
     });
-    // UC's own printed reconciling column, then the audited foot
-    const reconVal = S.unit==='perFte' ? '—' : moneyK(S.unit==='total' ? SW.systemwideColK : SW.systemwideCoreK);
-    html += '<div class="r recon"><span class="nm">'+esc(SW.systemwideColLabel)+'</span><span></span>'
+    const reconVal = S.unit==='perFte' ? '—' : moneyK(adjV(S.unit==='total' ? sw.systemwideColK : sw.systemwideCoreK, fy));
+    html += '<div class="r recon"><span class="nm">'+esc(sw.systemwideColLabel)+'</span><span></span>'
       + '<span class="v dim">—</span><span class="v">'+reconVal+'</span></div>';
-    const footVal = S.unit==='perFte' ? money0(Math.round(SW.coreK*1000/SW.fteStudents))
-      : moneyK(S.unit==='total' ? SW.auditedTotalK : SW.coreK);
+    const footVal = S.unit==='perFte' ? money0(adjV(sw.coreK,fy)*1000/sw.fteStudents)
+      : moneyK(adjV(S.unit==='total' ? sw.auditedTotalK : sw.coreK, fy));
     const footLbl = S.unit==='total' ? 'University total (audited)' : 'University core (education & research)';
     html += '<div class="r foot"><span class="nm">'+footLbl+'</span><span></span>'
-      + '<span class="v dim">'+SW.fteStudents.toLocaleString()+'</span>'
+      + '<span class="v dim">'+sw.fteStudents.toLocaleString()+'</span>'
       + '<span class="v">'+footVal+'</span></div>';
     $("tbl").innerHTML = html;
 
     $("recordCaps").innerHTML = "<span>CAMPUSES ARE NEVER RANKED — DIFFERENCES REFLECT MISSION AND STRUCTURE, NOT PERFORMANCE</span>"
       + "<span>THE STRIP REMOVES HOSPITALS, NOT MEDICAL SCHOOLS · PER-STUDENT USES STUDENT FTE, RESIDENTS EXCLUDED</span>";
 
-    // the strip, shown, never deleted
-    $("stripBox").innerHTML = '<div class="microlbl">WHAT THE STRIP REMOVES — UC’S OWN LINES, SHOWN SEPARATELY, NEVER DELETED</div>'
+    // the strip, shown, never deleted (for the selected year)
+    const medCampuses = D.campuses.filter(c=>cy(c,fy).medK);
+    $("stripBox").innerHTML = '<div class="microlbl">WHAT THE STRIP REMOVES — UC’S OWN LINES, SHOWN SEPARATELY, NEVER DELETED · FY '+esc(fy)+'</div>'
       + '<div class="striprow"><span>Medical centers (hospital enterprises; five campuses'
-      + D.campuses.filter(c=>c.medK).map(c=>" · "+esc(c.name)+" "+moneyK(c.medK)).join("")
-      + ' · systemwide elimination '+moneyK(SW.medSystemwideElimK)+')</span><span>'+moneyK(SW.medK)+' · '+(SW.medK/SW.auditedTotalK*100).toFixed(1)+'%</span></div>'
-      + '<div class="striprow"><span>Auxiliary enterprises (housing, dining, parking and similar self-supporting operations)</span><span>'+moneyK(SW.auxK)+' · '+(SW.auxK/SW.auditedTotalK*100).toFixed(1)+'%</span></div>'
-      + '<div class="striprow"><span>Department of Energy laboratories (Lawrence Berkeley National Laboratory — inside UC’s statements per its own Note 1; Los Alamos and Livermore are equity-method LLCs already outside the total, their equity income undisclosed by UC)</span><span>'+moneyK(SW.doeK)+' · '+(SW.doeK/SW.auditedTotalK*100).toFixed(1)+'%</span></div>'
-      + '<div class="striprow" style="font-weight:600"><span>Core — education &amp; research remainder</span><span>'+moneyK(SW.coreK)+' · '+(SW.coreK/SW.auditedTotalK*100).toFixed(1)+'%</span></div>';
+      + medCampuses.map(c=>" · "+esc(c.name)+" "+moneyK(adjV(cy(c,fy).medK,fy))).join("")
+      + ' · systemwide elimination '+moneyK(adjV(sw.medSystemwideElimK,fy))+')</span><span>'+moneyK(adjV(sw.medK,fy))+' · '+(sw.medK/sw.auditedTotalK*100).toFixed(1)+'%</span></div>'
+      + '<div class="striprow"><span>Auxiliary enterprises (housing, dining, parking and similar self-supporting operations)</span><span>'+moneyK(adjV(sw.auxK,fy))+' · '+(sw.auxK/sw.auditedTotalK*100).toFixed(1)+'%</span></div>'
+      + '<div class="striprow"><span>Department of Energy laboratories (Lawrence Berkeley National Laboratory; '+esc(sw.doeSource)+' this year)</span><span>'+moneyK(adjV(sw.doeK,fy))+' · '+(sw.doeK/sw.auditedTotalK*100).toFixed(1)+'%</span></div>'
+      + '<div class="striprow" style="font-weight:600"><span>Core — education &amp; research remainder</span><span>'+moneyK(adjV(sw.coreK,fy))+' · '+(sw.coreK/sw.auditedTotalK*100).toFixed(1)+'%</span></div>';
 
+    const ucsf = D.campuses.find(c=>cy(c,fy).flags.healthOnly);
     $("limitBox").innerHTML = '<b>THE STRIP’S LIMIT — HOSPITALS, NOT MEDICAL SCHOOLS</b>' + esc(M.strip.limit)
       + ' Example: even after stripping its hospital, San Francisco’s core is '
-      + moneyK(D.campuses.find(c=>c.flags.healthOnly).coreK) + ' against '
-      + D.campuses.find(c=>c.flags.healthOnly).fteStudents.toLocaleString()
-      + ' student FTE — about ' + money0(D.campuses.find(c=>c.flags.healthOnly).corePerFte) + ' per student.';
+      + moneyK(adjV(cy(ucsf,fy).coreK,fy)) + ' against ' + cy(ucsf,fy).fteStudents.toLocaleString()
+      + ' student FTE — about ' + money0(adjV(cy(ucsf,fy).coreK,fy)*1000/cy(ucsf,fy).fteStudents) + ' per student.';
 
     $("noSum").innerHTML = '<b>THESE FIGURES DO NOT ADD TO THE STATE BUDGET</b>' + esc(M.overlap.statement);
 
@@ -517,13 +646,16 @@
     const notes = [
       ["SOURCE", esc(M.sourceLabel) + "."],
       ["BASIS", esc(M.basis)],
+      ["WINDOW", esc(M.window)],
       ["RESOLUTION & GATE", esc(M.gate)],
+      ["DOE ASSEMBLY", esc(M.doeBreak)],
       ["AUDIT STATUS", esc(M.unauditedStatus)],
       ["THE STRIP", esc(M.strip.definition) + " " + esc(M.strip.labsNote) + " " + esc(M.strip.medNote)],
       ["ITS LIMIT", esc(M.strip.limit)],
       ["DENOMINATOR", esc(M.denominator)],
+      ["INFLATION", esc((DEFM ? "Real figures use " + M.strip.definition.slice(0,0) : "") + "The nominal/real toggle is the Ledger's OWN adjustment; UC, like the Department of Finance and the Department of Education, publishes nominal figures only. Real dollars use the price deflator California statute names for government spending, rebased to " + (DEFM?DEFM.baseYear:"the latest year") + ".")],
       ["COMPARABILITY", esc(M.comparabilityNote)],
-      ["CADENCE", "Annual; UC's audited report publishes about five months after the June 30 fiscal year-end, and the UCOP FTE series alongside it. This layer carries FY 2024-25 with the FY 2023-24 gate re-proven on every rebuild."],
+      ["CADENCE", "Annual; UC's audited report publishes about five months after the June 30 fiscal year-end, and the UCOP FTE series alongside it. This layer carries FY " + YEARS[0] + " through FY " + YEARS[YEARS.length-1] + ", each year's gate re-proven on every rebuild."],
     ];
     $("methodNotes").innerHTML = notes.map(([k,v]) =>
       '<div class="mnote"><b>'+k+'</b><span>'+v+'</span></div>').join("");
@@ -540,53 +672,73 @@
   }
 
   function citationText(){
-    const g25 = M.gateHistory["2024-25"], g24 = M.gateHistory["2023-24"];
-    return 'Citizen Ledger, "University of California — Operating Expenses by Campus, FY 2024-25 (audited GAAP; '
-      + 'core stripped on UC’s own lines)." Audited total operating expenses ' + moneyK(g25.auditedTotalK)
-      + ' (in thousands); the ten campuses plus UC’s own printed Systemwide column reconcile to that total '
-      + 'exactly, to the thousand — the finest resolution UC publishes — for FY 2024-25 and FY 2023-24 ('
-      + moneyK(g24.auditedTotalK) + '), with every campus column proven by a column-sum check. The per-campus table '
-      + 'is UC’s auditor-read "Campus Facts in Brief (Unaudited)"; the audited figure is the systemwide total. '
-      + 'Medical centers (' + moneyK(SW.medK) + '), auxiliary enterprises (' + moneyK(SW.auxK) + '), and the DOE '
-      + 'laboratory (' + moneyK(SW.doeK) + ') are stripped on UC’s own published lines — hospitals, not medical '
-      + 'schools, which remain in the core — leaving a core of ' + moneyK(SW.coreK) + '. Per-student uses student FTE '
-      + '(UCOP actual-FTE series; medical residents excluded on UC’s own line); campuses are never ranked. '
+    const fy = S.year, sw = SWY(fy), g = M.gateHistory[fy];
+    const dollars = realOn() ? "real "+DEFM.baseYear+" dollars (the Ledger's own inflation adjustment)" : "nominal dollars, in thousands";
+    return 'Citizen Ledger, "University of California — Operating Expenses by Campus, FY ' + fy + ' (audited GAAP; '
+      + 'core stripped on UC’s own lines)." Audited total operating expenses ' + moneyK(g.auditedTotalK)
+      + ' (in thousands); the ten campuses plus UC’s own printed Systemwide column'
+      + (g.doeForm==="excluded" ? ' plus the audited statement’s DOE line' : '')
+      + ' reconcile to that total exactly, to the thousand, with every campus column proven by a column-sum check. '
+      + 'This layer carries FY ' + YEARS[0] + ' through FY ' + YEARS[YEARS.length-1] + '; FY '
+      + Object.keys(HELD)[0] + ' is held because its unaudited campus table does not reconcile. '
+      + 'UC publishes the DOE laboratory two ways across the window (added back from the statement through FY '
+      + YEARS[0] + '; inside the Systemwide column thereafter); the core strip removes the same quantity either way. '
+      + 'Medical centers (' + moneyK(sw.medK) + '), auxiliary enterprises (' + moneyK(sw.auxK) + '), and the DOE '
+      + 'laboratory (' + moneyK(sw.doeK) + ') are stripped on UC’s own published lines — hospitals, not medical '
+      + 'schools, which remain in the core — leaving a core of ' + moneyK(sw.coreK) + '. Figures shown in ' + dollars + '. '
+      + 'Per-student uses student FTE (UCOP actual-FTE series; medical residents excluded on UC’s own line); campuses are never ranked. '
       + 'This is audited GAAP accrual, not the state budget’s enacted basis, and the two are never added. '
       + 'Source: ' + M.sourceLabel + '. Generated ' + M.generated + '. Permalink: ' + location.href + '. '
       + 'Accessed ' + new Date().toISOString().slice(0,10) + '.';
   }
   function csvText(){
     const esc2 = x => /[",\n]/.test(String(x)) ? '"'+String(x).replace(/"/g,'""')+'"' : x;
-    const g25 = M.gateHistory["2024-25"], g24 = M.gateHistory["2023-24"];
     const lines = [
-      "# Citizen Ledger — University of California, FY 2024-25 (audited GAAP, in thousands of dollars)",
-      "# EXACT TO THE THOUSAND, not to the cent — thousands is the finest unit UC publishes. Ten campuses + UC's own printed Systemwide column = the audited total, residual 0, for FY 2024-25 ("+g25.auditedTotalK+") AND FY 2023-24 ("+g24.auditedTotalK+"); every campus column proven by the column-sum check.",
-      "# The per-campus table is UC's auditor-read 'Campus Facts in Brief (Unaudited)'; the audited figure is the systemwide total it reconciles to.",
-      "# THE STRIP uses UC's own lines only: Medical centers, Auxiliary enterprises, Department of Energy laboratories (LBNL). Its limit: hospitals are stripped, medical schools are NOT — health-sciences instruction/research remains in core. Campuses are never ranked.",
-      "# Per-student uses student FTE (UCOP actual-FTE series); medical residents are on UC's own labeled line and EXCLUDED from the denominator (column included below).",
-      "# Basis is audited GAAP accrual, NOT the state budget's enacted budgetary-legal figure; never add the two.",
+      "# Citizen Ledger — University of California (audited GAAP, in thousands of dollars, NOMINAL)",
+      "# Five fiscal years FY " + YEARS[0] + " through FY " + YEARS[YEARS.length-1] + ", each gated EXACT TO THE THOUSAND: ten campuses + UC's own printed Systemwide column (+ the audited statement's DOE line where the campus table excludes it) = the audited total, residual 0; every campus column proven by the column-sum check.",
+      "# FY " + Object.keys(HELD)[0] + " is HELD, not shipped: " + (HELD[Object.keys(HELD)[0]].reason||"").replace(/\n/g," "),
+      "# UC publishes the DOE laboratory two ways: 'excluded' years add it back from the audited statement; 'systemwide' years carry it in the printed Systemwide column. The core strip removes the same quantity either way; the doe_form column records which.",
+      "# THE STRIP uses UC's own lines only: Medical centers, Auxiliary enterprises, Department of Energy laboratories (LBNL). Its limit: hospitals are stripped, medical schools are NOT. Campuses are never ranked.",
+      "# Per-student uses student FTE (UCOP actual-FTE series); medical residents are on UC's own line and EXCLUDED. Figures are NOMINAL as published; use the deflator for real dollars.",
       "# Source: " + M.sourceLabel + ". Generated: " + M.generated,
       "# Permalink: " + location.href,
-      "campus,total_operating_expense_thousands,medical_centers_thousands,auxiliary_enterprises_thousands,core_thousands,student_fte,medical_resident_fte,core_per_student_fte_dollars,fall_headcount,medical_center,health_sciences_only,research_intensive"];
-    D.campuses.forEach(c => { lines.push([
-      c.name, c.totalK, c.medK, c.auxK, c.coreK, c.fteStudents, c.fteResidents,
-      c.corePerFte==null?"":c.corePerFte, c.fallHeadcount==null?"":c.fallHeadcount,
-      c.flags.medCenter?"yes":"no", c.flags.healthOnly?"yes":"no", c.flags.researchIntensive?"yes":"no"
-    ].map(esc2).join(",")); });
-    lines.push([SW.systemwideColLabel, SW.systemwideColK, SW.medSystemwideElimK, SW.auxSystemwideElimK, SW.systemwideCoreK, "", "", "", "", "", "", ""].map(esc2).join(","));
-    lines.push(["University total (audited)", SW.auditedTotalK, SW.medK, SW.auxK, SW.coreK, SW.fteStudents, SW.fteResidents, Math.round(SW.coreK*1000/SW.fteStudents), "", "", "", ""].map(esc2).join(","));
-    lines.push(["Department of Energy laboratories (LBNL, stripped; inside the Systemwide column)", SW.doeK, "", "", "", "", "", "", "", "", "", ""].map(esc2).join(","));
+      "fiscal_year,campus,total_operating_expense_thousands,medical_centers_thousands,auxiliary_enterprises_thousands,core_thousands,student_fte,medical_resident_fte,core_per_student_fte_dollars,fall_headcount,medical_center,health_sciences_only,research_intensive"];
+    YEARS.forEach(fy => {
+      const sw = SWY(fy);
+      D.campuses.forEach(c => { const y=cy(c,fy); lines.push([
+        fy, c.name, y.totalK, y.medK, y.auxK, y.coreK, y.fteStudents, y.fteResidents,
+        y.corePerFte==null?"":y.corePerFte, y.fallHeadcount==null?"":y.fallHeadcount,
+        y.flags.medCenter?"yes":"no", y.flags.healthOnly?"yes":"no", y.flags.researchIntensive?"yes":"no"
+      ].map(esc2).join(",")); });
+      lines.push([fy, sw.systemwideColLabel+" (doe_form="+sw.doeForm+")", sw.systemwideColK, sw.medSystemwideElimK, sw.auxSystemwideElimK, sw.systemwideCoreK, "", "", "", "", "", "", ""].map(esc2).join(","));
+      lines.push([fy, "University total (audited)", sw.auditedTotalK, sw.medK, sw.auxK, sw.coreK, sw.fteStudents, sw.fteResidents, Math.round(sw.coreK*1000/sw.fteStudents), "", "", "", ""].map(esc2).join(","));
+      lines.push([fy, "Department of Energy laboratories (LBNL, stripped; "+sw.doeSource+")", sw.doeK, "", "", "", "", "", "", "", "", "", ""].map(esc2).join(","));
+    });
     return lines.join("\r\n");
   }
 
-  // ---- unit + events
+  // ---- events
   $("unitGroup").addEventListener("click", e => {
     const b = e.target.closest("button[data-unit]"); if (!b) return;
     S.unit = b.dataset.unit;
     $("unitGroup").querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
     syncHash(); render();
   });
-  // cite (dialog popover + fallback chain)
+  $("basisGroup").addEventListener("click", e => {
+    const b = e.target.closest("button[data-basis]"); if (!b || b.disabled) return;
+    S.basis = b.dataset.basis;
+    $("basisGroup").querySelectorAll("button").forEach(x => x.classList.toggle("on", x===b));
+    syncHash(); render();
+  });
+  function stepYear(d){
+    const i = YEARS.indexOf(S.year) + d;
+    if (i >= 0 && i < YEARS.length){ S.year = YEARS[i]; $("yearSel").value = S.year; syncHash(); render(); }
+  }
+  $("yearPrev").addEventListener("click", () => stepYear(-1));
+  $("yearNext").addEventListener("click", () => stepYear(1));
+  $("yearSel").addEventListener("change", e => { S.year = e.target.value; syncHash(); render(); });
+
+  // cite
   $("citeToggle").addEventListener("click", ()=>{
     const p = $("citePanel"); if (p.open){ p.close(); return; }
     $("citeText").textContent = citationText();
@@ -615,14 +767,21 @@
   $("csvBtn").addEventListener("click", ()=>{
     const blob = new Blob([csvText()], {type:"text/csv"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "ca-ledger-uc-" + M.year + ".csv"; a.click(); URL.revokeObjectURL(a.href);
+    a.download = "ca-ledger-uc-" + YEARS[0] + "-to-" + YEARS[YEARS.length-1] + ".csv"; a.click(); URL.revokeObjectURL(a.href);
   });
   window.addEventListener("hashchange", ()=>{ applyHash();
     $("unitGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.unit===S.unit));
-    render(); });
+    $("basisGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.basis===S.basis));
+    $("yearSel").value = S.year; render(); });
 
+  // ---- init
   applyHash();
+  $("yearSel").innerHTML = YEARS.map(y => '<option value="'+y+'">FY '+y+'</option>').join("");
+  $("yearSel").value = S.year;
+  $("yearPrev").disabled = $("yearNext").disabled = YEARS.length < 2;
+  if (!DEF){ $("basisGroup").querySelectorAll("button").forEach(b=>{ if(b.dataset.basis==="real"){ b.disabled=true; b.title="Inflation adjustment unavailable: the deflator file did not load."; }}); }
   $("unitGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.unit===S.unit));
+  $("basisGroup").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x.dataset.basis===S.basis));
   render();
 </script>
 </body>
