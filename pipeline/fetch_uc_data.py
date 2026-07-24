@@ -41,15 +41,25 @@ Two identities must hold exactly:
 
 AUDIT STATUS, stated honestly (and carried onto the page): the
 per-campus table is headed "Campus Facts in Brief (Unaudited)" and is
-the auditor's "other information" — PwC's report states "The other
-information comprises pages 4 through 7, but does not include the basic
-financial statements," on which they "do not express an opinion," while
-their stated responsibility is "to read the other information and
-consider whether a material inconsistency exists between the other
-information and the basic financial statements." The audited figure the
-table reconciles to — the systemwide total — carries PwC's unmodified
-opinion. Never imply the campus detail carries the systemwide total's
-audit status.
+the auditor's "other information", on which PwC "do not express an
+opinion" while their stated responsibility is "to read the other
+information and consider whether a material inconsistency exists
+between the other information and the basic financial statements." The
+audited figure the table reconciles to — the systemwide total — carries
+PwC's unmodified opinion. Never imply the campus detail carries the
+systemwide total's audit status.
+
+THE PAGE RANGE IS NOT QUOTED, and that is deliberate. This once read
+'The other information comprises pages 4 through 7'. That is verbatim
+correct for the FY2024-25 report — and WRONG for FY2023-24, which also
+ships and whose auditors' report says "pages 6 through 9". A page
+number describes one document's layout, not the audit, so quoting it
+stated a per-vintage detail as a general fact. Checked in full across
+six reports: FY2024-25 says 4-7; FY2023-24, FY2022-23 and FY2021-22 say
+6-9; FY2020-21 and FY2019-20 carry no such auditor language at all,
+predating the standard that added an "other information" section to the
+report. Every fragment still quoted was verified verbatim against BOTH
+shipped reports.
 
 ────────────────────────────────────────────────────────────────────
 THE STRIP — UC's own published lines ONLY, shown, never deleted
@@ -509,16 +519,26 @@ def build(refresh):
                     "(2) the column-sum check: every campus column's function lines sum "
                     "exactly to that column's printed total, with the sparse rows' "
                     "column assignment proven unique by exhaustion.",
+            # THE PAGE RANGE IS VINTAGE-SPECIFIC AND IS NO LONGER QUOTED.
+            # It read "pages 4 through 7", which is verbatim correct for
+            # the FY2024-25 report and WRONG for FY2023-24, which also
+            # ships and whose auditors' report says "pages 6 through 9".
+            # A page number is a property of one document's layout, not
+            # of the audit, so quoting it stated a per-vintage detail as
+            # a general fact. Every fragment quoted below was checked
+            # verbatim against BOTH shipped reports.
             "unauditedStatus": "The per-campus table is headed \"Campus Facts in Brief "
-                    "(Unaudited)\" and is the auditor's \"other information\": PwC's report "
-                    "states \"The other information comprises pages 4 through 7, but does "
-                    "not include the basic financial statements,\" on which they \"do not "
-                    "express an opinion\" — while their stated responsibility is \"to read "
-                    "the other information and consider whether a material inconsistency "
-                    "exists between the other information and the basic financial "
-                    "statements.\" The audited figure the table reconciles to — the "
-                    "systemwide total — carries PwC's unmodified opinion. The campus detail "
-                    "does NOT carry that audit status; the reconciliation is the check.",
+                    "(Unaudited)\" and is the auditor's \"other information\" — the part "
+                    "of the annual report that management, not the auditor, is "
+                    "responsible for. PwC \"do not express an opinion\" on it, while "
+                    "their stated responsibility is \"to read the other information and "
+                    "consider whether a material inconsistency exists between the other "
+                    "information and the basic financial statements.\" (The auditors' "
+                    "report identifies that other information by page range, and the "
+                    "range differs between reports, so it is not quoted here.) The "
+                    "audited figure the table reconciles to — the systemwide total — "
+                    "carries PwC's unmodified opinion. The campus detail does NOT carry "
+                    "that audit status; the reconciliation is the check.",
             "reproducibility": "AUTO-REPRODUCIBLE. Every source is a public ucop.edu URL "
                     "fetched by plain scripted GET — the Annual Financial Reports and the "
                     "UCOP actual-FTE PDFs. Run `python3 pipeline/fetch_uc_data.py --refresh` "
