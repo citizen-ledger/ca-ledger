@@ -146,6 +146,19 @@
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
   .sched-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
   .gate-line{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;color:var(--graphite);margin-top:8px;padding:8px 12px;background:var(--wash-in);border:1px solid var(--hairline)}
+    /* The as-filed tier is deliberately NOT styled like the gated line
+       above it. Same visual weight would read as the same standing. */
+    .tierbox{border:1px solid var(--rule);border-left:3px solid var(--warn,#b8860b);
+      padding:.6rem .75rem;margin:.5rem 0 .75rem;background:var(--paper2,transparent)}
+    .tier-hd{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
+      font-size:.78rem;letter-spacing:.04em}
+    .tier-hd .tier-tot{font-variant-numeric:tabular-nums}
+    .tier-why{font-size:.78rem;line-height:1.45;opacity:.85;margin:.4rem 0 0}
+    .tier-rows{margin:.5rem 0 0}
+    .tier-row{display:flex;justify-content:space-between;gap:1rem;padding:.12rem 0;
+      font-size:.82rem;border-bottom:1px dotted var(--rule)}
+    .tier-row .v{font-variant-numeric:tabular-nums}
+    @media print{.tierbox{break-inside:avoid}}
   .rec-name{font-family:var(--serif);font-size:26px;margin-top:12px}
   .rec-meta{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-top:6px}
   .rec-big{font-family:var(--mono);font-size:38px;font-weight:500;letter-spacing:-0.6px;margin-top:14px}
@@ -323,12 +336,14 @@
         <span class="schedlbl ghosty" id="scheduleNote"></span>
       </div>
       <div class="gate-line" id="gateLine"></div>
+      <div class="tierbox" id="revenueTier" hidden></div>
       <div id="recordBody"></div>
       <div class="caps" id="recordCaps"></div>
     </div>
   </section>
 
   <div class="overlap" id="overlapPanel"></div>
+  <div class="overlap" id="revenueScopePanel"></div>
 
 
   <section class="method" id="methodology">
@@ -584,6 +599,31 @@
   }
 
   /* ---------- overlap panel: live values only ---------- */
+  /* ---- the GATED half of the split tier, plus what it does not claim -- */
+  function renderRevenueScope(){
+    const box = $("revenueScopePanel"); if (!box) return;
+    const RM = (D.meta && D.meta.revenue) || null;
+    const R = (D.revenue || {})[S.year];
+    if (!RM || !R){ box.hidden = true; return; }
+    box.hidden = false;
+    const g = R.gate, sw = R.statewide;
+    const pctGeneric = R.catchAll ? (R.doublyGeneric / sw.tot * 100) : 0;
+    box.innerHTML =
+      "<b>REVENUE IS GATED AT COUNTY AND STATEWIDE SCOPE \u2014 AND AS FILED AT THE DISTRICT</b>"
+      + "In FY " + esc(S.year) + " California's school districts, county offices and "
+      + "charters reported receiving " + moneyExact(sw.tot) + ". That figure is "
+      + "reconciled cell by cell against CDE's own published rollups: "
+      + fmt(g.cells) + " control cells (" + fmt(g.countyCells) + " across "
+      + g.counties + " counties, " + fmt(g.stateCells) + " statewide), zero "
+      + "disagreements, worst residual $" + g.worstResidual.toFixed(4) + ". "
+      + esc(RM.tiers.why) + " "
+      + "<b>NO SURPLUS OR DEFICIT IS COMPUTED. </b>" + esc(RM.noSurplus) + " "
+      + "<b>NO LEGIBILITY MARK IS CARRIED HERE. </b>" + esc(RM.noMark) + " "
+      + esc(RM.residualNote) + " In FY " + esc(S.year) + " that doubly-generic "
+      + "share is " + moneyExact(R.doublyGeneric) + ", "
+      + pctGeneric.toFixed(2) + "% of all revenue.";
+  }
+
   function renderOverlap(){
     const y = D.meta.overlap.latest;
     $("overlapPanel").innerHTML = "<b>THIS LAYER AND THE STATE BUDGET SEE THE SAME MONEY — THEY ARE NEVER ADDED</b>"
@@ -779,6 +819,31 @@
     return h;
   }
 
+  /* ---- the district's AS-FILED revenue, labelled at the figure -------- */
+  function renderRevenueTier(v){
+    const box = $("revenueTier"); if (!box) return;
+    const RM = (D.meta && D.meta.revenue) || null;
+    const r = v && v.revenueAsFiled;
+    if (!RM || !r){ box.hidden = true; return; }
+    box.hidden = false;
+    const groups = [["lcffStateAid","LCFF state aid"],["propertyTaxes","Property taxes"],
+                    ["lcffTransfers","LCFF transfers"],["federal","Federal"],
+                    ["otherState","Other state"],["localOther","Other local"]];
+    const tot = groups.reduce((s,[k]) => s + (r[k]||0), 0);
+    const rows = groups.map(([k,name]) => [name, r[k]||0])
+      .filter(x => x[1] !== 0).sort((a,b) => b[1]-a[1]);
+    box.innerHTML =
+      '<div class="tier-hd"><b>REVENUE \u00b7 AS FILED, NOT GATED</b>'
+      + '<span class="tier-tot num">' + moneyExact(tot) + '</span></div>'
+      + '<p class="tier-why">' + esc(RM.tiers.asFiled) + ' '
+      + esc(RM.tiers.why) + '</p>'
+      + '<div class="tier-rows">' + rows.map(([n,x]) =>
+          '<div class="tier-row"><span>' + esc(n) + '</span>'
+          + '<span class="v num">' + (x<0?"\u2212":"")
+          + moneyExact(Math.abs(x)) + '</span></div>').join("") + '</div>'
+      + '<p class="tier-why">' + esc(RM.tiers.readTogether) + '</p>';
+  }
+
   function renderSingleDistrict(id){
     const d = D.districts[id], v = d.years[S.year];
     $("scheduleLabel").textContent = "CURRENT EXPENSE OF EDUCATION — BY FUNCTION · "
@@ -788,6 +853,11 @@
       + " · ADA " + fmt(Math.round(v.ada));
     $("gateLine").textContent = "GATED · RECOMPUTED FROM THE SACS GENERAL LEDGER = CDE'S PUBLISHED FIGURE: "
       + moneyExact(v.cePublished) + " · DIFFERENCE $" + Math.abs(v.currentExpense - v.cePublished).toFixed(2);
+    // THE SPLIT TIER, ON THE RECORD ITSELF. The spending figure above is
+    // gated to the cent; the revenue figure below is not, and a reader who
+    // sees them side by side must be able to see that without leaving the
+    // row. Two labels, one record — never one headline over both.
+    renderRevenueTier(v);
     const rows = FN.map(f => [f.name, v.byFunction[f.key]||0, f.key]).filter(r => r[1] !== 0)
       .sort((a,b) => b[1]-a[1]);
     const max = rows.length ? Math.max(...rows.map(r => Math.abs(r[1]))) : 1;
@@ -1116,6 +1186,7 @@
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     try { renderRecordSheet(); } catch (e) { console.error('record sheet:', e); }
     renderChrome(); renderPicker();
+    try { renderRevenueScope(); } catch (e) { console.error('revenue scope:', e); }
     const sel = S.sel.filter(id => ent(id) && ent(id).years[S.year]);
     if (!sel.length){
       renderEmpty(S.type === "districts"

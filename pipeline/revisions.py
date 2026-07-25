@@ -348,6 +348,16 @@ def flatten(layer, payload):
                         if isinstance(val, (int, float)) and not isinstance(val, bool):
                             out[f"{slug}\t{fy}.{field}.{nm}"] = val
     elif layer == "school":
+        # The GATED revenue scopes, per the Schedule 8 finding: a figure
+        # that can be restated must be able to reach the change record.
+        # These are keyed FY-FIRST so `_fy_of` can date them, matching the
+        # ccc/statewide convention.
+        for fy, blk in (payload.get("revenue") or {}).items():
+            for k, v in _leaves(blk.get("statewide") or {}, "", {}).items():
+                out[f"statewide\t{fy}.revenue.{k}"] = v
+            for cc, cv in (blk.get("counties") or {}).items():
+                for k, v in _leaves(cv, "", {}).items():
+                    out[f"county:{cc}\t{fy}.revenue.{k}"] = v
         fams = [f.get("key") for f in (payload.get("objectFamilies") or [])]
         for coll, idf in (("districts", "cds"), ("countyOffices", "cds")):
             for rec in (payload.get(coll) or {}).values():
@@ -443,6 +453,10 @@ def labels(layer, payload):
         for slug, rec in (payload.get("districts") or {}).items():
             out[slug] = rec.get("name")
     elif layer == "school":
+        out["statewide"] = "Statewide (K-12, gated)"
+        for cc in (next(iter((payload.get("revenue") or {}).values()), {})
+                   .get("counties") or {}):
+            out[f"county:{cc}"] = f"County {cc} (K-12 revenue, gated)"
         for coll, idf in (("districts", "cds"), ("countyOffices", "cds")):
             for rec in (payload.get(coll) or {}).values():
                 out[f"{coll}:{rec.get(idf)}"] = rec.get("name")
@@ -801,6 +815,26 @@ FACTS_ADDED = [
                 "governmental-only `revenues` figure the record already "
                 "carried is unchanged and is NOT what the revenue gate "
                 "checks — see docs/V21_REVENUE_FINDING.md.",
+    },
+    {
+        "layer": "school",
+        "built": "2026-07-25",
+        "facts": ["revenue", "revenueAsFiled"],
+        "note": "Our own change of what we publish, not a change at the "
+                "source. K-12 revenue enters the record as a DECLARED SPLIT "
+                "TIER. At county and statewide scope it is GATED: recomputed "
+                "from the raw SACS general ledger and reconciled cell by "
+                "cell against CDE's own published UserGL_Totals, to the "
+                "cent, in all nine years. At district scope it is AS-FILED "
+                "and labelled as such on the record itself, because "
+                "UserGL_Totals has no district row — the pipeline now "
+                "asserts that every run and refuses to build if one appears "
+                "— and the Current Expense of Education workbook that gates "
+                "district expenditure has no revenue column on any sheet of "
+                "any vintage. A reader therefore sees two figures of "
+                "different standing on one record, and the difference is "
+                "stated where the figures are, not in a method note. These "
+                "figures are newly in the record and none of them moved.",
     },
     {
         "layer": "ccc",

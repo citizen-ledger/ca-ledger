@@ -210,9 +210,19 @@ that were not fetched.
 ### 2.4 K-12 — a genuine split tier, and it must be labelled as two things
 
 **Gate that passes:** raw `UserGL` recomputed against CDE's own
-`UserGL_Totals` — **63,811 published control cells across nine years,
-zero disagreements**, worst residual $0.0001 (a float artifact). To the
-cent.
+`UserGL_Totals` — zero disagreements, to the cent.
+
+> **Correction (2026-07-25, during the build).** The cell count first
+> published here, *63,811*, does not reproduce and its provenance is not
+> recoverable. Re-measured from the cached databases: the **revenue-only**
+> control (objects 8000–8799) is **64,811 cells across nine years** —
+> 61,839 county and 2,972 statewide — with **zero disagreements** and a
+> worst residual of **$0.0000687**, a float-accumulation artifact that
+> lands in every year on the statewide Fund 01 cell, the cell with the
+> most summands. The **all-object** control is **356,484 cells**, not
+> 63,811. No object-range variant, with or without a nonzero filter,
+> produces the original figure. The shipped layer uses the measured
+> numbers, which it recomputes on every run rather than quoting.
 
 **But `UserGL_Totals` contains only 58 county keys plus one state key.
 No district row exists in it.**
