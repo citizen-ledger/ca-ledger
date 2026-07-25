@@ -259,6 +259,11 @@
   .tcard .tb i{flex:1;border-radius:2px 2px 0 0}
   .tcard .tf{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke)}
 
+  .revstate{border-top:1px solid var(--ash);margin-top:18px;padding-top:14px}
+  .revstate-h{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-bottom:10px}
+  .revstate p{font-size:var(--fs-note);line-height:1.6;color:var(--graphite);margin:0 0 10px}
+  .revstate p:last-child{margin-bottom:0}
+  .revstate b{color:var(--ink);font-weight:600}
   /* actuals view */
   .act-grid{display:grid;grid-template-columns:14px 1fr 120px 120px 170px;gap:0 14px;align-items:center}
   .act-note{font-size:var(--fs-note);color:var(--graphite);line-height:1.55;max-width:820px;margin-top:10px}
@@ -407,6 +412,7 @@
       <button data-view="change">Change</button>
       <button data-view="trend">Trend</button>
       <button data-view="actuals">Actuals</button>
+      <button data-view="revenue">Revenue</button>
     </div>
     <div class="pillgroup" role="group" aria-label="Unit" id="unitGroup">
       <button data-unit="dollars">Dollars</button>
@@ -518,6 +524,18 @@
       </div>
     </div>
 
+    <div class="tblwrap" id="revenueView" hidden>
+      <div class="actmin">
+        <div class="chg-head">
+          <span class="trend-note" id="revTitle"></span>
+          <span class="schedlbl" id="revVintage"></span>
+        </div>
+        <p class="act-note" id="revNote"></p>
+        <div id="revTable"></div>
+        <div class="revstate" id="revStateState"></div>
+      </div>
+    </div>
+
     <div class="tblwrap" id="actualsView" hidden>
       <div class="actmin">
         <div class="chg-head">
@@ -623,7 +641,7 @@
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 
   const YEARS = Object.keys(D.budgets).sort();
-  const VIEWS = ["allocation","change","trend","actuals"];
+  const VIEWS = ["allocation","change","trend","actuals","revenue"];
   const UNITS = ["dollars","perResident","percent"];
   const BASES = ["nominal","real"];
   const DEFAULTS = { year: YEARS[YEARS.length-1], view:"allocation", unit:"dollars",
@@ -1104,6 +1122,99 @@
         + '<div class="tb">'+series.map((v,i)=>'<i style="height:'+(((v||0)/mx*100).toFixed(1))+'%;background:'+(YEARS[i]===S.year?"#242424":"#cfc9c4")+'"></i>').join("")+'</div>'
         + '<div class="tf"><span>FY '+YEARS[0].slice(2)+' '+(series[0]==null?"—":fmtB(series[0]))+'</span><span>FY '+YEARS[YEARS.length-1].slice(2)+' '+(series[series.length-1]==null?"—":fmtB(series[series.length-1]))+'</span></div></div>';
     }).join("");
+  }
+
+
+  /* ---------- revenue view (Schedule 8 actual revenues) ----------------
+     Four things sit ON this view rather than in the methodology, because
+     each changes how the figure should be read:
+       1. the never-sum overlap, measured from the city and county
+          payloads this site already ships;
+       2. the refusal to compute a surplus or deficit, with the reason;
+       3. why FY2020-21 has revenue but no expenditure actuals;
+       4. why this layer carries NO legibility mark when the city and
+          county records do — a fact about the sources, not an omission.
+  --------------------------------------------------------------------- */
+  const REV = () => (D.meta && D.meta.revenues) || null;
+  const revYear = () => { const r = REV(); return r && r.years ? r.years[S.year] : null; };
+  // Schedule 8 figures are stored in the schedule's own unit, thousands,
+  // so they still foot exactly. This is the only place that converts them
+  // for display. NOT named fmtK: this page already has an fmtK that
+  // formats thousands as dollars, and shadowing it broke the whole script.
+  const fmtRevB = k => {
+    const b = k / 1e6;
+    return "$" + (Math.abs(b) >= 10 ? b.toFixed(1) : b.toFixed(2)) + "B";
+  };
+
+  function renderRevenue(){
+    const R = REV(), y = revYear();
+    if (!R){ $("revTitle").textContent = "Revenue is not present in this data file."; return; }
+    $("revTitle").textContent = "What California collected in FY " + S.year;
+    $("revVintage").textContent = y && y.vintage ? ("SCHEDULE 8 · " + y.vintage.toUpperCase()) : "";
+
+    if (!y || y.unavailable){
+      $("revNote").textContent = (y && y.unavailable) ||
+        "No revenue is published for this fiscal year.";
+      $("revTable").innerHTML = '<div class="empty">Not published for FY ' + esc(S.year)
+        + '. This is an absence at the source, not a revenue of zero.</div>';
+    } else {
+      const L = R.lineLabels || [];
+      const rows = (y.lines || []).slice(0, 18);
+      $("revNote").textContent =
+        "General Fund " + fmtRevB(y.gf) + " · Special Funds " + fmtRevB(y.sp)
+        + " · total " + fmtRevB(y.tot) + ". Every line below foots to that published total exactly.";
+      let h = '<div class="arow ahead act-grid"><span></span><span class="l">Revenue source</span>'
+            + '<span>General Fund</span><span>Special Funds</span><span>Total</span></div>';
+      rows.forEach(r => {
+        const gf = r[1], sp = r[2], tot = gf + sp;
+        h += '<div class="arow act-grid"><span></span><span class="l">' + esc(L[r[0]] || "") + '</span>'
+           + '<span class="num">' + fmtRevB(gf) + '</span>'
+           + '<span class="num">' + fmtRevB(sp) + '</span>'
+           + '<span class="num">' + fmtRevB(tot) + '</span></div>';
+      });
+      h += '<div class="arow act-grid afoot"><span></span><span class="l">All revenue sources ('
+         + (y.lines || []).length + ' published lines)</span>'
+         + '<span class="num">' + fmtRevB(y.gf) + '</span>'
+         + '<span class="num">' + fmtRevB(y.sp) + '</span>'
+         + '<span class="num">' + fmtRevB(y.tot) + '</span></div>';
+      $("revTable").innerHTML = h;
+    }
+
+    /* ---- the four statements, quantified from the shipped payload ---- */
+    const ov = R.localOverlap, actInfoY = actInfo();
+    let st = '<div class="revstate-h">HOW TO READ THIS, AND WHAT THE LEDGER WILL NOT DO</div>';
+
+    if (ov){
+      st += '<p><b>The same dollar is on this page and on the city and county pages.</b> '
+          + 'In FY ' + esc(ov.year) + ' California&rsquo;s counties reported '
+          + '<b>$' + ov.county.toFixed(1) + 'B</b> of intergovernmental revenue — '
+          + ov.countyShare + '% of everything they took in — and its cities another '
+          + '<b>$' + ov.city.toFixed(1) + 'B</b> (' + ov.cityShare + '%). '
+          + 'Most of that is money this page shows the state <em>spending</em>. Revenue overlap '
+          + 'between layers is direct, not structural: it is one dollar appearing twice. '
+          + '<a href="cities.html">City and county revenue</a> is published on its own page and '
+          + 'the two are never added.</p>';
+    }
+    st += '<p><b>The Ledger does not compute a surplus or a deficit, and does not publish one.</b> '
+        + 'These revenues are General Fund and Special Funds only — Schedule 8 carries no federal '
+        + 'funds — while the spending figures on this page include federal and bond funds. '
+        + 'Subtracting them would measure the gap between two different universes, not California&rsquo;s '
+        + 'balance. The absence is a refusal, not an oversight.</p>';
+    st += '<p><b>Why FY 2020-21 has revenue here and no actual spending.</b> '
+        + 'Actual expenditures come from Schedule 9 and actual revenues from Schedule 8, two '
+        + 'different documents. The Schedule 9 PDFs carrying FY 2020-21 do not extract in a form '
+        + 'that reconciles to the state&rsquo;s own control totals, so no actual spending is shown for '
+        + 'that year; the Schedule 8 PDFs for the same year do, and pass all four checks. A reader '
+        + 'stepping through the years meets revenue without spending in FY 2020-21, and that is a '
+        + 'fact about two files, not about California.</p>';
+    if (R.noMark){
+      // meta.noMark opens with its own topic sentence; do not repeat it.
+      const nm = esc(R.noMark);
+      const cut = nm.indexOf(". ");
+      st += '<p><b>' + (cut > 0 ? nm.slice(0, cut + 1) : nm) + '</b>'
+          + (cut > 0 ? nm.slice(cut + 1) : '') + '</p>';
+    }
+    $("revStateState").innerHTML = st;
   }
 
   /* ---------- actuals view (enacted vs actual, both Budgetary-Legal) ---------- */
@@ -1825,10 +1936,12 @@
     $("changeView").hidden = S.view!=="change";
     $("trendView").hidden = S.view!=="trend";
     $("actualsView").hidden = S.view!=="actuals";
+    $("revenueView").hidden = S.view!=="revenue";
     if (S.view==="allocation") renderAlloc(C);
     if (S.view==="change") renderChange(C);
     if (S.view==="trend") renderTrend(C);
     if (S.view==="actuals") renderActuals(C);
+    if (S.view==="revenue") renderRevenue();
     renderFunds();
     $("printCite").textContent = citationText();
   }

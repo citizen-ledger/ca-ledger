@@ -803,6 +803,28 @@ FACTS_ADDED = [
                 "checks — see docs/V21_REVENUE_FINDING.md.",
     },
     {
+        "layer": "state",
+        "built": "2026-07-24",
+        "facts": ["revenue", "revenueGf", "revenueSp"],
+        "note": "Our own change of what we publish, not a change at the "
+                "source. The state layer now carries ACTUAL REVENUES — what "
+                "California collected, on the same Budgetary-Legal basis as "
+                "the spending figures beside them — from the Department of "
+                "Finance's Schedule 8, the revenue twin of the Schedule 9 "
+                "this layer already uses for actual expenditures. Every "
+                "published year passes four independent controls with a "
+                "residual of exactly zero. These figures are newly in the "
+                "record and none of them moved. Note one asymmetry the page "
+                "explains rather than hides: FY2020-21 has revenue here and "
+                "no expenditure actuals, because the Schedule 9 PDFs for "
+                "that year do not extract reliably while the Schedule 8 ones "
+                "do. That is a fact about two documents, not about "
+                "California. Revenue and spending are NOT two sides of one "
+                "ledger — revenue is General Fund and Special Funds only, "
+                "while the spending figures include federal and bond funds — "
+                "so no surplus or deficit is computed anywhere.",
+    },
+    {
         "layer": "county",
         "built": "2026-07-24",
         "facts": ["revAll", "revCats", "revUnex", "revTop"],
