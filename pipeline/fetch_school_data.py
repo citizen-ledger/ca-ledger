@@ -287,6 +287,10 @@ YEARS = [("1617", "2016-17"), ("1718", "2017-18"), ("1819", "2018-19"),
          ("2223", "2022-23"), ("2324", "2023-24"), ("2425", "2024-25")]
 GATE_TOL = 0.05          # per-district vs published EDP 365
 ROLLUP_TOL = 0.05        # per fund×object cell vs CDE's own totals
+# Resources that name no specific programme: 0000 is Unrestricted, and the
+# 5810/7810/9010 trio are each their block's "Other Restricted". Money on a
+# catch-all OBJECT and one of these RESOURCES is generic at both levels.
+RESIDUAL_RESOURCES = {"0000", "5810", "7810", "9010"}
 
 COUNTIES = [  # CDE county codes are alphabetical, 01..58
     "Alameda", "Alpine", "Amador", "Butte", "Calaveras", "Colusa",
@@ -624,6 +628,21 @@ def process_year(yy, fy):
     _alt_col = alt_school_col(yy)   # declared per vintage, never sniffed
     import openpyxl
 
+    # The catch-all revenue objects are DERIVED from CDE's own published
+    # object titles, not hardcoded: a vintage that adds or renames one is
+    # picked up instead of silently mismeasured. Asserted non-empty,
+    # because an empty set would make the residual read as $0.
+    obj_title = {}
+    for r in mdb_rows(sacs, "Object"):
+        obj_title[r["Code"]] = r["Title"].strip()
+    catchall_objects = {c for c, t in obj_title.items()
+                        if c.isdigit() and 8000 <= int(c) <= 8799
+                        and t.lower().startswith(("all other", "other transfers in from all"))}
+    if not catchall_objects:
+        raise SystemExit(f"FY {fy}: no catch-all revenue objects found in "
+                         "CDE's Object dictionary — the titles changed and "
+                         "the residual would read as $0; nothing written")
+
     # ---- LEA + charter registries
     leas = {}
     for r in mdb_rows(sacs, "LEAs"):
@@ -666,6 +685,25 @@ def process_year(yy, fy):
     dep_funds_exp = defaultdict(float)       # (c,d) -> fund 09/62 exp
     rev = defaultdict(float)
     rev_detail = defaultdict(float)          # epa 8012, strs 8590, lottery 8560, passthrough
+    # THE SPLIT TIER. The same revenue dollars accumulated at three scopes.
+    # County and statewide are GATED against CDE's own UserGL_Totals below;
+    # the district scope is AS-FILED, because UserGL_Totals has no district
+    # row to gate it with and the Current Expense workbook — the control
+    # that gates district EXPENDITURE to the cent — has no revenue column.
+    # Both facts are asserted in this module, not assumed.
+    rev_district = defaultdict(lambda: defaultdict(float))   # (c,d) -> grp -> $
+    rev_county = defaultdict(lambda: defaultdict(float))     # ccode -> grp -> $
+    rev_cells = defaultdict(float)          # (scope, fund, object) revenue only
+    # THE HONEST RESIDUAL. SACS has no withheld write-in, so no legibility
+    # mark of the city/county kind is earned. But it would be false to
+    # claim the record is fully itemised: there are large NAMED residuals
+    # ("All Other State Revenue" and its siblings). Most of that money is
+    # still traceable because the account string names a Resource. What is
+    # generic at BOTH levels — a catch-all object crossed with a residual
+    # or unrestricted resource — is genuinely unallocated detail, so it is
+    # measured every run and published rather than described.
+    rev_catchall = defaultdict(float)       # object -> $ on catch-all objects
+    rev_doubly_generic = 0.0
     rollup = defaultdict(float)              # ("99" or ccode, fund, object) -> value
     for r in mdb_rows(sacs, "UserGL"):
         c, d, s = r["Ccode"], r["Dcode"], r["SchoolCode"]  # SACS UserGL: stable across vintages, measured FY1617 and FY2223
@@ -680,8 +718,20 @@ def process_year(yy, fy):
         is_coe = lea and lea["type"].startswith("County Office")
         if 8000 <= obj <= 8799:
             g = rev_group(obj)
+            # the revenue-only control cells, kept separately from the
+            # all-object `rollup` so the revenue gate can be counted and
+            # reported in its own right rather than inferred from a gate
+            # that is mostly expenditure
+            rev_cells[("99", fund, obj_s)] += v
+            rev_cells[(c, fund, obj_s)] += v
+            if obj_s in catchall_objects:
+                rev_catchall[obj_s] += v
+                if r["Resource"] in RESIDUAL_RESOURCES:
+                    rev_doubly_generic += v
             if g:
                 rev[g] += v
+                rev_district[(c, d)][g] += v
+                rev_county[c][g] += v
             if obj == 8012: rev_detail["epa"] += v
             # STRS on-behalf is object 8590 within resource 7690 only —
             # bare 8590 is the whole "all other state revenue" bucket
@@ -744,6 +794,58 @@ def process_year(yy, fy):
     if bad_cells:
         raise SystemExit(f"FY {fy}: {bad_cells} rollup cells disagree with "
                          "CDE's UserGL_Totals — nothing written")
+
+    # ---- GATE 2b: THE REVENUE GATE, counted in its own right.
+    # The gate above is dominated by expenditure cells, so passing it does
+    # not by itself entitle this layer to say "revenue is gated". Revenue
+    # objects are therefore reconciled separately, and the cell count is
+    # published so the claim can be checked rather than trusted.
+    #
+    # THIS GATE REACHES COUNTY AND STATEWIDE SCOPE ONLY. UserGL_Totals is
+    # keyed by county and by a single statewide key; it contains no
+    # district row. That is asserted, not assumed — see rev_gate below.
+    rev_published = {k: v for k, v in published.items()
+                     if k[2].isdigit() and 8000 <= int(k[2]) <= 8799}
+    rev_bad, rev_worst = 0, 0.0
+    for key, pv in rev_published.items():
+        resid = abs(rev_cells.get(key, 0.0) - pv)
+        rev_worst = max(rev_worst, resid)
+        if resid > ROLLUP_TOL:
+            rev_bad += 1
+    if rev_bad:
+        raise SystemExit(f"FY {fy}: {rev_bad} REVENUE control cells disagree "
+                         "with CDE's UserGL_Totals — nothing written")
+    # A ZERO CONTROL PROVES NOTHING. If CDE published no revenue control
+    # cells for a year, reproducing that emptiness is not a reconciliation.
+    if not rev_published:
+        raise SystemExit(f"FY {fy}: CDE's UserGL_Totals carries NO revenue "
+                         "control cells — there is nothing to gate against; "
+                         "nothing written")
+    rev_scopes = {k[0] for k in rev_published}
+    rev_gate = {
+        "cells": len(rev_published),
+        "countyCells": sum(1 for k in rev_published if k[0] != "99"),
+        "stateCells": sum(1 for k in rev_published if k[0] == "99"),
+        "counties": len(rev_scopes - {"99"}),
+        "worstResidual": round(rev_worst, 4),
+    }
+    # THE ASSERTION THE WHOLE SPLIT TIER RESTS ON, measured rather than
+    # inherited: UserGL_Totals contains NO district-scope row. Its Ccode is
+    # a county code or "99" for statewide, and its Dcode is always a
+    # synthetic "999xx" that mirrors the county — never a real district
+    # code. If CDE ever adds a district row, this count stops being zero
+    # and the layer must be re-tiered rather than quietly keep calling the
+    # district figure as-filed.
+    district_rows = sum(1 for r in mdb_rows(sacs, "UserGL_Totals")
+                        if not r["Dcode"].startswith("999"))
+    if district_rows:
+        raise SystemExit(
+            f"FY {fy}: UserGL_Totals now carries {district_rows} district-scope "
+            "rows. The K-12 revenue tier is built on that table having none — "
+            "district revenue is published as-filed precisely because no "
+            "district control exists. Re-tier the layer deliberately rather "
+            "than letting this pass; nothing written.")
+    rev_gate["districtRowsInControl"] = district_rows
 
     # ---- Alternative Form charters (+ their own totals gate)
     alt_data = defaultdict(lambda: defaultdict(float))
@@ -1037,6 +1139,11 @@ def process_year(yy, fy):
         "basic_aid": basic_aid, "sponsored": sponsored,
         "commingled": commingled, "rev": dict(rev),
         "rev_detail": dict(rev_detail),
+        "rev_district": {k: dict(v) for k, v in rev_district.items()},
+        "rev_county": {k: dict(v) for k, v in rev_county.items()},
+        "rev_gate": rev_gate,
+        "rev_catchall": dict(rev_catchall),
+        "rev_doubly_generic": rev_doubly_generic,
         "n_districts": len(ce),
     }
 
@@ -1145,8 +1252,20 @@ def main():
                         t = yd["res_title"].get(row[0])
                         if t:
                             res_titles_used[fy][row[0]] = t
+            _rv = yd["rev_district"].get(key)
             entry["years"][fy] = {
                 "ada": round(pub["ada"], 2),
+                # AS-FILED, AND SAID SO AT THE FIGURE ITSELF. This is the
+                # district's own closed general ledger, recomputed from
+                # SACS. It is structurally inside a county total that IS
+                # gated, but nothing published confirms it at the district,
+                # so it never travels without its tier. The key is
+                # `revenueAsFiled`, not `revenue`, so no consumer can read
+                # it as gated by accident.
+                **({"revenueAsFiled": {g: round(v, 2) for g, v in _rv.items()},
+                    "revenueTier": "as-filed"} if _rv else
+                   {"revenueTier": "none-filed"}),
+                "currentExpense": round(yd["edp"][key], 2),
                 "currentExpense": round(yd["edp"][key], 2),
                 "cePublished": round(pub["edp"], 2),
                 "byFunction": fn,
@@ -1461,7 +1580,36 @@ def main():
             "interLeaPassThroughB": round(det.get("passThrough", 0) / 1e9, 3),
         }
 
+    # ---- THE SPLIT TIER, assembled where both halves are visible at once.
+    # counties + statewide are GATED against CDE's own UserGL_Totals; the
+    # district figures on each entity record are AS-FILED. The two are
+    # published as different things because they ARE different things.
+    revenue_scoped = {}
+    for fy in Y:
+        yd = years[fy]
+        rc = yd["rev_county"]
+        groups = [g for g, _ in REV_GROUPS]
+        sw = {g: round(sum(c.get(g, 0.0) for c in rc.values()), 2) for g in groups}
+        revenue_scoped[fy] = {
+            "statewide": dict(sw, tot=round(sum(sw.values()), 2)),
+            "counties": {c: dict({g: round(v.get(g, 0.0), 2) for g in groups},
+                                 tot=round(sum(v.values()), 2))
+                         for c, v in sorted(rc.items())},
+            "gate": yd["rev_gate"],
+            # measured every run; see RESIDUAL_RESOURCES
+            "catchAll": round(sum(yd["rev_catchall"].values()), 2),
+            "doublyGeneric": round(yd["rev_doubly_generic"], 2),
+            # The gated universe is the SACS general ledger. Charters filing
+            # on the Alternative Form report through a different table with
+            # its own totals control, so their revenue is outside these two
+            # scopes; stating the amount is the only way a reader can tell
+            # how much is outside rather than assuming none is.
+            "altFormRevenueOutsideScope": round(
+                sum(yd["rev"].values()) - sum(sw.values()), 2),
+        }
+
     payload = {
+        "revenue": revenue_scoped,
         "meta": {
             "source": "cde.ca.gov",
             "sourceLabel": "California Department of Education — SACS unaudited "
@@ -1520,6 +1668,85 @@ def main():
                                "Charters are records only. K-12 entities are "
                                "never compared to or summed with cities, "
                                "counties, special districts, or the state.",
+            "revenue": {
+                "source": "CDE SACS unaudited actuals, table UserGL, "
+                          "revenue objects 8000-8799.",
+                # THE WHOLE POINT OF THIS LAYER. Two tiers, named, with the
+                # reason each is what it is.
+                "tiers": {
+                    "gated": "COUNTY AND STATEWIDE. Recomputed from the raw "
+                             "general ledger and reconciled cell by cell "
+                             "against CDE's own published UserGL_Totals — "
+                             "every fund x object cell, to the cent.",
+                    "asFiled": "PER DISTRICT. The district's own closed "
+                               "general ledger, recomputed from the same "
+                               "rows, and structurally inside a county total "
+                               "that is gated — but never independently "
+                               "confirmed at the district itself.",
+                    "why": "CDE's UserGL_Totals has no district row: it is "
+                           "keyed by county and by one statewide key, and "
+                           "the pipeline asserts that every run. The Current "
+                           "Expense of Education workbook, which gates this "
+                           "layer's district EXPENDITURE to the cent, has no "
+                           "revenue column on any of its three sheets in any "
+                           "of the nine vintages. So there is nothing "
+                           "published to gate a district revenue figure "
+                           "against, and the Ledger will not call a figure "
+                           "reconciled when nothing reconciles it.",
+                    "readTogether": "A district record therefore carries two "
+                                    "figures of different standing: its "
+                                    "spending is gated to the cent, its "
+                                    "revenue is as-filed. They are labelled "
+                                    "separately because they are not the "
+                                    "same kind of claim.",
+                },
+                "neverSum": "About half of what districts report receiving "
+                            "is money the state budget page already shows as "
+                            "the state's own spending — LCFF state aid and "
+                            "other state programmes. It is one dollar on two "
+                            "pages, so the two are never added. The property "
+                            "tax inside LCFF is a second such edge: the city, "
+                            "county and special-district layers draw shares "
+                            "of that same tax. A third is federal money, "
+                            "which appears both here and in the state "
+                            "layer's federal funds.",
+                "noSurplus": "No surplus or deficit is computed. This "
+                             "layer's expenditure figure is Current Expense "
+                             "of Education, a statutory subset that excludes "
+                             "capital outlay, debt service, food service and "
+                             "more; this revenue is every governmental fund "
+                             "the ledger carries. Subtracting one from the "
+                             "other would measure the scope difference, not "
+                             "a balance.",
+                # DELIBERATELY NOT the state/CCC wording. Saying "all other
+                # appears nowhere" would be FALSE here: it appears nine
+                # times and carries real money. The claim is narrower and
+                # is the one the evidence supports.
+                "noMark": "No legibility mark is carried on this layer. The "
+                          "mark the city and county records carry is for "
+                          "lines the State Controller labels only as "
+                          "\u201c(Specify)\u201d — a field whose answer the "
+                          "filer supplied and the publisher did not print. "
+                          "SACS has no such field anywhere in its schema: it "
+                          "is codes and values throughout, there is nothing "
+                          "for a filer to type, and so nothing can be "
+                          "withheld. Every code on every revenue row "
+                          "resolves to a title CDE publishes.",
+                # …and the honest qualifier, because "no mark" must not be
+                # heard as "fully itemised".
+                "residualNote": "That is not the same as saying every dollar "
+                                "is itemised. SACS does carry large NAMED "
+                                "residuals — \u201cAll Other State Revenue\u201d "
+                                "and its siblings — and they are a fifth of "
+                                "all revenue. Most of that money stays "
+                                "traceable because the account string also "
+                                "names a funding source. The figure worth "
+                                "watching is what is generic at BOTH levels: "
+                                "a catch-all object on an unrestricted or "
+                                "residual resource. That share is measured "
+                                "on every run and published beside the year "
+                                "rather than described.",
+            },
             "overlap": {
                 "years": overlap_years,
                 "latest": latest,

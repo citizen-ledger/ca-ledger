@@ -309,6 +309,59 @@ above cancelled partially and would have needed only a slightly looser
 tolerance to pass. Prefer refusing a row you cannot align over reading
 it optimistically.
 
+### 2g. "No mark earned" is not the same claim as "fully itemised"
+
+**Shape.** Three layers in a row were asked the same question — does this
+source have a legibility defect worth marking? — and the first two
+answered no for the *same* reason: no placeholder construct exists, the
+words *specify*, *unspecified*, *all other*, *sundry*, *unallocated*
+appear nowhere. It is tempting to reuse that sentence. **For K-12 it
+would have been false.**
+
+SACS carries nine catch-all revenue objects. `All Other State Revenue`
+alone is **$16.6B, 11.2% of all K-12 revenue**; the nine together are
+**$29.0B, 19.5%**. Reusing the sibling prose would have put a
+demonstrably untrue sentence on the page.
+
+**But no mark is earned all the same**, for a different and narrower
+reason: the mark the city and county records carry is for a *withheld
+write-in* — a field where the filer typed an answer the publisher did
+not print. **SACS has no free-text field anywhere in its schema.** It is
+codes and values throughout, every code resolves to a title CDE
+publishes, and $0 of revenue sits on an unnamed resource. There is
+nothing for a filer to type, so there is nothing to withhold.
+
+**And the honest qualifier.** "No mark" must not be heard as "every
+dollar is itemised". Most catch-all money stays traceable because the
+account string also names a Resource — 8590 decomposes across 107 named
+resources, 94% of its dollars on a specifically named one. What is
+generic at *both* levels — a catch-all object on an unrestricted or
+residual resource — is **~5.5% of revenue**, and the layer measures that
+share on every run and publishes it beside the year rather than
+describing it.
+
+**The general rule.** A verdict inherited from a sibling layer is not a
+verdict. Ask the question against *this* source's data, and when the
+answer is "no defect of that kind", check whether a defect of some
+*other* kind is being waved past by the same sentence. Publish the
+qualifier as a number, not an adjective.
+
+### 2h. A published cell count that does not reproduce
+
+`docs/V21_REVENUE_FINDING.md` shipped the figure *63,811 published
+control cells* for the K-12 gate. Building the layer, it did not
+reproduce: the revenue-only control is **64,811** cells, the all-object
+control **356,484**. A brute-force search over every object range with
+and without a nonzero filter produced no variant equal to 63,811, and
+the figure appears once, in prose, with no script beside it.
+
+The number was corrected in place with a visible correction note rather
+than quietly edited, and the shipped layer **recomputes its cell count
+every run** instead of quoting a constant. A figure a reader could check
+should never be a literal in prose when it can be a measurement in code
+— that is the same rule the site applies to the data it publishes, and
+it applies to the findings too.
+
 ---
 
 ## Part 3 — Test-quality debt

@@ -9303,6 +9303,194 @@ def test_v21_ccc_revenue(page, base):
           held_txt[:100])
 
 
+
+
+def test_v21_k12_revenue(page, base):
+    """V21 K-12 revenue: a DECLARED SPLIT TIER. Gated at county and
+    statewide scope, as-filed at the district, and the difference legible
+    on the record rather than in a method note. Shipped payload only."""
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+
+    d = SCHOOL
+    RM = d["meta"].get("revenue")
+    REVN = d.get("revenue")
+    check("v21 k12: the payload carries a revenue block", bool(RM) and bool(REVN))
+    check("v21 k12: it covers exactly the nine years the layer already ships",
+          sorted(REVN) == sorted(d["years"]), str(sorted(REVN))[:60])
+
+    # ---- THE GATED TIER: county + statewide, to the cent ---------------
+    bad, cells, counties = [], 0, set()
+    for fy, blk in REVN.items():
+        g = blk["gate"]
+        cells += g["cells"]
+        counties.add(g["counties"])
+        if g["worstResidual"] > 0.05:
+            bad.append((fy, g["worstResidual"]))
+        # the counties must foot to the statewide figure the gate proved
+        for k in ("lcffStateAid", "propertyTaxes", "lcffTransfers",
+                  "federal", "otherState", "localOther"):
+            got = round(sum(c[k] for c in blk["counties"].values()), 2)
+            if abs(got - blk["statewide"][k]) > 0.05:
+                bad.append((fy, k, got, blk["statewide"][k]))
+    check("v21 k12 GATED TIER: every year reconciles to CDE's own "
+          "UserGL_Totals within a cent, and the counties foot to the "
+          "statewide figure on every revenue group", not bad, str(bad[:3]))
+    check("v21 k12 GATED TIER: the control is real and large — tens of "
+          "thousands of published cells across the window",
+          cells > 60000, str(cells))
+    check("v21 k12 GATED TIER: all 58 counties carry a control every year",
+          counties == {58}, str(counties))
+    check("v21 k12: a zero control would prove nothing, so no year may "
+          "publish an empty gate (negative control)",
+          all(b["gate"]["cells"] > 0 for b in REVN.values()))
+
+    # ---- THE ASSERTION THE TIER RESTS ON -------------------------------
+    check("v21 k12: the pipeline asserts, every year, that CDE's control "
+          "table has NO district row — the reason the district tier is "
+          "as-filed rather than gated",
+          all(b["gate"]["districtRowsInControl"] == 0 for b in REVN.values()),
+          str([b["gate"]["districtRowsInControl"] for b in REVN.values()][:3]))
+    src = (ROOT / "pipeline" / "fetch_school_data.py").read_text()
+    check("v21 k12: and that assertion is FATAL — a district row appearing "
+          "stops the build instead of silently re-tiering the layer",
+          "Re-tier the layer deliberately" in src)
+
+    # ---- THE AS-FILED TIER, and it never travels unlabelled -------------
+    fy = d["years"][-1]
+    withrev = [r for r in d["districts"].values()
+               if "revenueAsFiled" in r["years"].get(fy, {})]
+    check("v21 k12 AS-FILED TIER: districts carry their own revenue",
+          len(withrev) > 800, str(len(withrev)))
+    check("v21 k12 AS-FILED TIER: every district-year carrying a revenue "
+          "figure also carries its tier label — the figure cannot travel "
+          "without it",
+          all(y.get("revenueTier") == "as-filed"
+              for r in d["districts"].values()
+              for y in r["years"].values() if "revenueAsFiled" in y))
+    check("v21 k12 AS-FILED TIER: the key is `revenueAsFiled`, never a bare "
+          "`revenue`, so no consumer can read it as gated by accident "
+          "(negative control)",
+          not any("revenue" in y and "revenueAsFiled" not in y
+                  for r in d["districts"].values()
+                  for y in r["years"].values()))
+    # the as-filed districts sit INSIDE the gated county total
+    from collections import defaultdict
+    bycounty = defaultdict(float)
+    for r in d["districts"].values():
+        y = r["years"].get(fy, {})
+        if "revenueAsFiled" in y:
+            bycounty[r["cds"][:2]] += sum(y["revenueAsFiled"].values())
+    over = [c for c, v in bycounty.items()
+            if v > REVN[fy]["counties"].get(c, {}).get("tot", 0) + 0.05]
+    check("v21 k12: no county's districts exceed the gated county total "
+          "they sit inside — the as-filed figures are structurally "
+          "contained even though they are not independently confirmed",
+          not over, str(over[:3]))
+
+    # ---- THE TWO LABELS ARE STATED, not left to be inferred ------------
+    check("v21 k12: the payload names both tiers",
+          "gated" in RM["tiers"] and "asFiled" in RM["tiers"])
+    check("v21 k12: and says WHY the district cannot be gated — no district "
+          "row, and no revenue column in the Current Expense workbook",
+          "no district row" in RM["tiers"]["why"]
+          and "no revenue column" in RM["tiers"]["why"])
+    check("v21 k12: and says the two figures on one record are different "
+          "kinds of claim", "different standing" in RM["tiers"]["readTogether"])
+    check("v21 k12: no surplus is computed, with the scope reason",
+          "not a balance" in RM["noSurplus"] and "Current Expense" in RM["noSurplus"])
+
+    # ---- NEVER-SUM, quantified from the payload ------------------------
+    OL = d["meta"]["overlap"]["years"][fy]
+    check("v21 k12: the state overlap is measured, and it is about half",
+          0.45 < OL["stateShare"] < 0.60, str(OL["stateShare"]))
+    check("v21 k12: the property-tax edge is quantified too, because the "
+          "city, county and district layers draw on the same tax",
+          OL["propertyTaxB"] > 20, str(OL["propertyTaxB"]))
+    check("v21 k12: the never-sum statement names all three edges — state, "
+          "property tax and federal",
+          all(w in RM["neverSum"] for w in ("state budget page", "property "
+                                            "tax", "federal")))
+
+    # ---- NO MARK — but NOT the state/CCC wording, which would be false --
+    check("v21 k12: the payload explains why no legibility mark is carried",
+          "(Specify)" in RM["noMark"] and "nothing can be" in RM["noMark"])
+    check("v21 k12: the reason given is SACS-specific — no free-text field "
+          "exists, so there is nothing to withhold",
+          "no such field anywhere in its schema" in RM["noMark"])
+    check("v21 k12: and the layer does NOT claim the words 'all other' are "
+          "absent, because in SACS they are present and carry real money "
+          "(negative control against porting the sibling prose)",
+          "all other" not in RM["noMark"].lower()
+          or "All Other State Revenue" in RM["residualNote"])
+    check("v21 k12: the honest qualifier is carried — no mark is not the "
+          "same as fully itemised", "NAMED residuals" in RM["residualNote"])
+    check("v21 k12: and the doubly-generic share is MEASURED per year, not "
+          "described",
+          all(b["doublyGeneric"] > 0 and b["catchAll"] > b["doublyGeneric"]
+              for b in REVN.values()),
+          str([(b["doublyGeneric"], b["catchAll"]) for b in REVN.values()][:1]))
+    share = REVN[fy]["doublyGeneric"] / REVN[fy]["statewide"]["tot"]
+    check("v21 k12: that share is a few percent — small enough that no mark "
+          "is earned, large enough that it is published rather than hidden",
+          0.01 < share < 0.12, f"{share:.4f}")
+    check("v21 k12: the CITY payload does carry the mark this one does not "
+          "(positive control on the other side)",
+          any("revUnex" in y for c in CITY["cities"].values()
+              for y in c["years"].values()))
+
+    # ---- revision-tracked, per the #84 finding -------------------------
+    fx = REV.facts_for("school", "2026-07-25")
+    check("v21 k12: the new facts are DECLARED for the collapse",
+          fx is not None and set(fx["facts"]) == {"revenue", "revenueAsFiled"},
+          str(fx and fx["facts"]))
+    check("v21 k12: an undeclared date gets no collapse (negative control)",
+          REV.facts_for("school", "1999-01-01") is None)
+    flat = REV.flatten("school", d)
+    check("v21 k12: the GATED statewide totals are reachable by flatten(), "
+          "so a restatement cannot move silently",
+          any(k.startswith("statewide\t") and ".revenue.tot" in k for k in flat))
+    check("v21 k12: the GATED county totals are reachable too",
+          any(k.startswith("county:") and ".revenue.tot" in k for k in flat))
+    check("v21 k12: and so are the as-filed district figures",
+          any("revenueAsFiled" in k for k in flat))
+
+    # ---- the page: the tier difference is legible AT THE FIGURE --------
+    page.goto(f"{base}/schools.html")
+    page.wait_for_selector("#revenueScopePanel", timeout=20000)
+    scope = page.eval_on_selector("#revenueScopePanel", "e=>e.textContent")
+    check("v21 k12 page: the gated scope is stated with its cell count",
+          "GATED AT COUNTY AND STATEWIDE" in scope and "control cells" in scope,
+          scope[:90])
+    check("v21 k12 page: the no-surplus refusal is on the page with its reason",
+          "NO SURPLUS OR DEFICIT IS COMPUTED" in scope and "not a balance" in scope)
+    check("v21 k12 page: the absent mark is explained",
+          "NO LEGIBILITY MARK" in scope)
+    check("v21 k12 page: and the doubly-generic residual is published as a "
+          "measured figure, not a description",
+          "% of all revenue" in scope)
+    ov = page.eval_on_selector("#overlapPanel", "e=>e.textContent")
+    check("v21 k12 page: the never-sum overlap with the state page is "
+          "quantified where a reader meets it",
+          "NEVER ADDED" in ov and "state money" in ov)
+
+    # the district record — where the split tier must actually be legible
+    first = sorted(d["districts"])[0]
+    page.goto(f"{base}/schools.html#t=districts&c={first}&y={fy}")
+    page.wait_for_selector("#revenueTier:not([hidden])", timeout=20000)
+    tier = page.eval_on_selector("#revenueTier", "e=>e.textContent")
+    gate = page.eval_on_selector("#gateLine", "e=>e.textContent")
+    check("v21 k12 page: on a district record the SPENDING line still says "
+          "gated", "GATED" in gate, gate[:60])
+    check("v21 k12 page: and the REVENUE block on the same record says "
+          "AS FILED, NOT GATED — the two labels are both visible, on the "
+          "record, without leaving the row",
+          "AS FILED, NOT GATED" in tier, tier[:80])
+    check("v21 k12 page: the district block explains why it cannot be gated",
+          "no district row" in tier or "never independently confirmed" in tier)
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -9379,6 +9567,7 @@ def main():
             test_v21_revenue(page, base)
             test_v21_state_revenue(page, base)
             test_v21_ccc_revenue(page, base)
+            test_v21_k12_revenue(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)
