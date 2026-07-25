@@ -238,6 +238,53 @@ about the contract. When a query's result set can grow past a page, make
 the ordering explicit — and prefer a guard that refuses the ambiguous
 case over a test that would only notice after the numbers moved.
 
+### 2f. In a printed table, every parsing error looks like a number
+
+**Shape.** Extracting figures from a PDF table is not like reading a
+feed. A feed that breaks yields an error or an empty result. A printed
+table that is mis-parsed yields *a number* — correctly typed, plausibly
+sized, sitting in the right column — and nothing downstream can tell it
+from the truth. The only defence is an identity the document itself
+guarantees, asserted on every row.
+
+**The case.** Schedule 8 (state actual revenues, V21) took eight
+distinct hazards to parse, and **not one of them produced an error**:
+
+| Hazard | What it produced |
+|---|---|
+| `$ --` zero form | window slid into the next row — $6.4B General Fund residual |
+| a bare comma matched as a value | run chained through name commas — 136 lines parsed as 3 |
+| a value matched a *prefix* of the next account code | 136 parsed as 71 |
+| name contains digits (`Leases - 1 Percent`, `2011 Realignment`) | window off by one, in **both** directions |
+| `$ -7,533,537` — minus *after* the dollar sign | totals row truncated to four tokens |
+| `- -` as an alternative zero marker | rows silently dropped |
+| the `"- $"` rewrite inherited from `schedule9.py` | ten positive figures turned negative |
+| our own `- -` fix firing inside `- --` | produced `---`, dropping rows again |
+
+The seventh is the interesting one, because it has **no correct answer
+in isolation**: `- $` is a real negative in `Revenue Transfers - $931,165`
+and a wrapped name's trailing hyphen in `Excise Tax - $177,475 … Beer and
+Wine`. Removing the rewrite loses real negatives; keeping it mis-signs
+names. Nothing in the text distinguishes them.
+
+**What resolved it.** The document guarantees an identity — General Fund
++ Special Funds = Total, in each of three column groups. So the parser
+does not *decide* where the nine values start: it tests every candidate
+window against that identity and requires exactly one to satisfy it.
+Ambiguity is refused rather than guessed. The sign question is then a
+*hypothesis* the same identity settles — the row is retried with the
+leading sign reversed only if nothing foots, and that repair fires
+**exactly once across ten publications**, on the single row it exists
+for.
+
+**The general rule.** When parsing a printed table, find an arithmetic
+identity the publisher already guarantees and assert it per row, before
+any total is computed. A totals gate alone is not enough — it tells you
+*that* something is wrong, not *which* row, and several of the hazards
+above cancelled partially and would have needed only a slightly looser
+tolerance to pass. Prefer refusing a row you cannot align over reading
+it optimistically.
+
 ---
 
 ## Part 3 — Test-quality debt

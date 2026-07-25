@@ -2319,7 +2319,7 @@ def test_state_fund_identity(page, base):
     rec = load_data_js(ROOT / "state-revisions.js")
     ours = [b for b in rec["batches"]
             if b.get("ours") and "fund" in (b.get("note") or "").lower()
-            and not b.get("coverageAdded")]
+            and not b.get("coverageAdded") and not b.get("factsAdded")]
     check("state funds: the correction is recorded in the change feed",
           len(ours) == 1, str(len(ours)))
     if ours:
@@ -8998,6 +8998,180 @@ def test_v21_revenue(page, base):
           "does not compute a surplus" in sheet_txt)
 
 
+
+
+def test_v21_state_revenue(page, base):
+    """V21 state revenue: the gates, the refusals, and the absent mark.
+
+    Everything runs against the SHIPPED data.js and the SHIPPED page.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+    s8 = importlib.import_module("schedule8")
+
+    # ---------- the actuals column is IDENTIFIED, never assumed ---------
+    # Publishing an Estimated column as an actual would be a forecast
+    # presented as fact, and the forecast has been wrong by -18.7%.
+    good = "Actuals 2023-24 Estimated 2024-25 Estimated 2025-26"
+    check("v21 state: the Actuals column is located from the header "
+          "(positive control)", s8._actuals_offset(good, "2023-24") == 0,
+          str(s8._actuals_offset(good, "2023-24")))
+    wrong = None
+    try:
+        s8._actuals_offset(good, "2022-23")     # asking for a year this PDF lacks
+    except s8.GateError as e:
+        wrong = str(e)
+    check("v21 state: a publication whose Actuals column is a DIFFERENT "
+          "year is REFUSED, not read anyway",
+          wrong is not None and "2023-24" in wrong, str(wrong)[:70])
+    noheader = None
+    try:
+        s8._actuals_offset("no column header anywhere", "2023-24")
+    except s8.GateError as e:
+        noheader = str(e)
+    check("v21 state: a schedule with no column header is refused — every "
+          "figure in it would be unattributable",
+          noheader is not None and "NO COLUMN HEADER" in noheader)
+
+    # ---------- the row identity chooses the window --------------------
+    # "-- 9,306,026 9,306,026 -- 9,617,786 9,617,786 -- 9,897,738
+    #  9,897,738 2011"  — the trailing 2011 is a wrapped NAME fragment
+    trailing = "-- 9,306,026 9,306,026 -- 9,617,786 9,617,786 -- 9,897,738 9,897,738 2011"
+    check("v21 state: a wrapped name fragment AFTER the values does not "
+          "shift the row (positive control)",
+          s8._triple(trailing, 0) == (0, 9306026, 9306026),
+          str(s8._triple(trailing, 0)))
+    # "1 252 -- 252 …" — the leading 1 is part of "…Leases - 1 Percent"
+    leading = "1 252 -- 252 144 -- 144 126 -- 126"
+    check("v21 state: a name fragment BEFORE the values does not shift it "
+          "either — the same rule cannot be 'take the first nine'",
+          s8._triple(leading, 0) == (252, 0, 252), str(s8._triple(leading, 0)))
+    ambiguous = None
+    try:
+        s8._triple("5 5 5 5 5 5 5 5 5", 0)   # 5+5 != 5 in every window
+    except s8.GateError as e:
+        ambiguous = str(e)
+    check("v21 state: a row whose alignment cannot be established is "
+          "REFUSED rather than guessed (negative control)",
+          ambiguous is not None and "row identity" in ambiguous,
+          str(ambiguous)[:70])
+
+    # ---------- declared per-vintage sources ---------------------------
+    check("v21 state: ten actual years are DECLARED, not discovered",
+          len(s8.SOURCES) == 10, str(len(s8.SOURCES)))
+    check("v21 state: the newest year comes from the Governor's Budget, "
+          "which publishes at a different path (no 'Enacted' segment)",
+          "/pdf/BudgetSummary/" in s8.SOURCES["2024-25"][1]
+          and "/Enacted/" not in s8.SOURCES["2024-25"][1],
+          s8.SOURCES["2024-25"][1])
+    check("v21 state: and every other year does carry the Enacted segment "
+          "(positive control for the same declaration)",
+          all("/Enacted/BudgetSummary/" in v[1]
+              for k, v in s8.SOURCES.items() if k != "2024-25"))
+
+    # ---------- the shipped payload ------------------------------------
+    rev = STATE["meta"].get("revenues")
+    check("v21 state: data.js carries a revenue block", bool(rev))
+    pub = {y: r for y, r in rev["years"].items() if "unavailable" not in r}
+    check("v21 state: eight of the site's nine years publish revenue; the "
+          "newest is not yet published at the source",
+          len(pub) == 8 and "2025-26" in rev["years"]
+          and "unavailable" in rev["years"]["2025-26"], str(sorted(pub)))
+    bad = []
+    for y, r in pub.items():
+        if r["gf"] + r["sp"] != r["tot"]:
+            bad.append((y, "gf+sp!=tot"))
+        # the published lines must still foot to the published total
+        lg = sum(l[1] for l in r["lines"])
+        ls = sum(l[2] for l in r["lines"])
+        if lg != r["gf"] or ls != r["sp"]:
+            bad.append((y, f"lines {lg}/{ls} vs {r['gf']}/{r['sp']}"))
+        if r["gates"]["G1"] != "pass" or r["gates"]["G2"] != "pass" \
+                or r["gates"]["G4"] != "pass":
+            bad.append((y, str(r["gates"])))
+    check("v21 state: every published year's coded lines foot EXACTLY to "
+          "its published totals, on both fund columns",
+          not bad, str(bad[:3]))
+    check("v21 state: figures are kept in the schedule's own unit so they "
+          "still foot", "thousands" in rev["units"], rev["units"][:40])
+
+    # ---------- known anchors, measured independently at source --------
+    check("v21 state anchor: FY2023-24 totals are the published ones",
+          pub["2023-24"]["gf"] == 195261190 and pub["2023-24"]["sp"] == 80549587
+          and pub["2023-24"]["tot"] == 275810777, str(pub["2023-24"]["tot"]))
+    check("v21 state anchor: majors + minors footing holds for FY2023-24 "
+          "(229,598,163 + 46,212,614 = 275,810,777)",
+          229598163 + 46212614 == pub["2023-24"]["tot"])
+
+    # ---------- THE ASYMMETRY: revenue exists where actuals do not -----
+    acts = STATE["meta"]["actuals"]["years"]
+    check("v21 state asymmetry: FY2020-21 publishes NO expenditure actuals",
+          "unavailable" in acts.get("2020-21", {}), str(acts.get("2020-21"))[:60])
+    check("v21 state asymmetry: and DOES publish revenue for the same year "
+          "— the difference is the document, not the year",
+          "2020-21" in pub and pub["2020-21"]["tot"] == 248228724,
+          str(pub.get("2020-21", {}).get("tot")))
+
+    # ---------- the revenue totals are revision-TRACKED ----------------
+    # meta is not walked by flatten(); trend is. A figure that can move
+    # must sit where the record of changes can see it.
+    tr = STATE["trend"]["2023-24"]
+    check("v21 state: the gated totals also sit in `trend`, which the "
+          "record of changes walks — a later restatement cannot move "
+          "silently", "revenue" in tr and abs(tr["revenue"] - 275.811) < 0.002,
+          str(tr.get("revenue")))
+    fx = REV.facts_for("state", "2026-07-24")
+    check("v21 state: the new facts are DECLARED for the collapse",
+          fx is not None and set(fx["facts"]) ==
+          {"revenue", "revenueGf", "revenueSp"}, str(fx and fx["facts"]))
+    check("v21 state: an undeclared date gets no collapse (negative control)",
+          REV.facts_for("state", "1999-01-01") is None)
+
+    # ---------- NO MARK, and the contrast is the point -----------------
+    check("v21 state: the payload states why no legibility mark is carried",
+          "noMark" in rev and "(Specify)" in rev["noMark"], "")
+    check("v21 state: and the CITY payload does carry the mark it names — "
+          "the asymmetry between layers is a fact about the sources "
+          "(positive control on the other side)",
+          any("revUnex" in y for c in CITY["cities"].values()
+              for y in c["years"].values()))
+    check("v21 state: no state year carries an unexplained-share figure, "
+          "because none is earned here (negative control)",
+          not any("revUnex" in r or "revTop" in r for r in pub.values()))
+
+    # ---------- the page, rendered from that payload -------------------
+    page.goto(f"{base}/index.html#v=revenue&y=2023-24")
+    page.wait_for_selector("#revenueView .arow", timeout=15000)
+    check("v21 state page: the revenue view renders and is not hidden",
+          page.eval_on_selector("#revenueView", "e=>!e.hidden"))
+    note = page.eval_on_selector("#revNote", "e=>e.textContent")
+    check("v21 state page: the published totals are on the face",
+          "$195.3B" in note and "$275.8B" in note, note[:80])
+    st = page.eval_on_selector_all("#revStateState p", "els=>els.map(e=>e.textContent)")
+    check("v21 state page: the never-sum statement is QUANTIFIED from the "
+          "local payloads, not asserted in prose",
+          any("intergovernmental revenue" in s and "%" in s for s in st), str(len(st)))
+    check("v21 state page: the site states plainly that it does not compute "
+          "a surplus or deficit, and gives the reason",
+          any("does not compute a surplus" in s and "federal" in s for s in st))
+    check("v21 state page: the FY2020-21 asymmetry is explained rather than "
+          "left as an unexplained gap",
+          any("FY 2020-21" in s and "Schedule 9" in s and "Schedule 8" in s
+              for s in st))
+    check("v21 state page: and the absent mark is explained, so a reader "
+          "who saw marks on the city page learns why there are none here",
+          any("No legibility mark" in s for s in st))
+
+    # the not-published year renders as an absence, never as zero
+    page.goto(f"{base}/index.html#v=revenue&y=2025-26")
+    page.wait_for_selector("#revTable", timeout=15000)
+    empty = page.eval_on_selector("#revTable", "e=>e.textContent")
+    check("v21 state page: a year the source has not published renders as "
+          "an absence, explicitly not as a revenue of zero",
+          "not a revenue of zero" in empty, empty[:80])
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -9072,6 +9246,7 @@ def main():
             test_runtime_origins()
             test_revisions(page, base)
             test_v21_revenue(page, base)
+            test_v21_state_revenue(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

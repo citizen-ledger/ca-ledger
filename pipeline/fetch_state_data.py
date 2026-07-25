@@ -64,6 +64,7 @@ import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 import schedule9  # noqa: E402  (pypdf loaded lazily, only when refreshing actuals)
+import schedule8  # noqa: E402  (Schedule 8 actual revenues, same lazy pypdf)
 
 API_BASE = "https://ebudget.ca.gov/api/publication/e"
 
@@ -649,6 +650,159 @@ def attach_actuals(payload, cached, refresh=False):
     }
 
 
+def _local_intergovernmental():
+    """{year, city, county, cityShare, countyShare} in BILLIONS, read from
+    the city and county payloads this site already publishes.
+
+    Intergovernmental revenue is money another government reported
+    SPENDING. On the state page that overlap is the whole point of the
+    never-sum statement, and stating it as a measured figure — from the
+    very files a reader can download — is better than a sentence that
+    could drift away from the data it describes.
+    """
+    out = {}
+    for name, key in (("city-data.js", "city"), ("county-data.js", "county")):
+        path = OUT_PATH.parent / name
+        if not path.exists():
+            return None
+        text = path.read_text(encoding="utf-8")
+        d = json.loads(text[text.index("{"): text.rindex("}") + 1])
+        cats = d["meta"].get("revCategoryLabels")
+        ents = d.get("cities") or d.get("counties") or {}
+        if not cats:
+            return None
+        ig_idx = {i for i, c in enumerate(cats) if c.startswith("Intergovernmental")}
+        per_year = {}
+        for e in ents.values():
+            for fy, yr in e.get("years", {}).items():
+                tot = yr.get("revAll")
+                if not tot:
+                    continue
+                acc = per_year.setdefault(fy, [0.0, 0.0])
+                acc[0] += sum(v for i, v in yr.get("revCats", []) if i in ig_idx)
+                acc[1] += tot
+        out[key] = per_year
+    common = sorted(set(out["city"]) & set(out["county"]))
+    if not common:
+        return None
+    fy = common[-1]
+    c_ig, c_tot = out["city"][fy]
+    k_ig, k_tot = out["county"][fy]
+    return {
+        "year": fy,
+        "city": round(c_ig / 1000, 3), "cityShare": round(100 * c_ig / c_tot, 1),
+        "county": round(k_ig / 1000, 3), "countyShare": round(100 * k_ig / k_tot, 1),
+    }
+
+
+def attach_revenues(payload, refresh=False):
+    """Adds Schedule 8 prior-year ACTUAL REVENUES to meta.revenues.
+
+    Kept in the SCHEDULE'S OWN UNIT — thousands of dollars, as integers —
+    rather than converted to the billions the rest of this payload uses.
+    Two reasons, both about not losing the thing that was gated: the
+    figures reconcile EXACTLY to the printed totals, and rounding them to
+    billions would make most of the 140-odd coded lines render as 0.000
+    and destroy the footing a reader could check. meta.revenues.units
+    says so, and the page divides for display.
+
+    A year with no Schedule 8 is recorded as unavailable with its reason,
+    never as zero.
+    """
+    years, labels, idx = {}, [], {}
+    for year in payload["years"]:
+        if year not in schedule8.SOURCES:
+            years[year] = {"unavailable":
+                           "Actual revenues for this fiscal year have not yet "
+                           "been published; they first appear in the "
+                           "Governor's Budget the following January."}
+            continue
+        r = schedule8.parse_publication(year)
+        for ln in r["lines"]:
+            if ln["name"] not in idx:
+                idx[ln["name"]] = len(labels)
+                labels.append(ln["name"])
+        years[year] = {
+            "vintage": r["publication"],
+            "gf": r["revenues"]["gf"],
+            "sp": r["revenues"]["sp"],
+            "tot": r["revenues"]["tot"],
+            "gates": r["gates"],
+            # every coded line: [label index, General Fund, Special Funds].
+            # The total is omitted because the row identity makes it
+            # derivable (General + Special), and a stored copy of a
+            # derivable figure is one more thing that can disagree.
+            "lines": sorted(([idx[ln["name"]], ln["gf"], ln["sp"]]
+                             for ln in r["lines"]),
+                            key=lambda x: -(x[1] + x[2])),
+        }
+    # THE PUBLISHED TOTALS GO WHERE THE RECORD OF CHANGES CAN SEE THEM.
+    # revisions.flatten() walks `trend` and `budgets` for this layer and
+    # does NOT walk `meta`. Left in meta alone, a later restatement of a
+    # revenue figure would move silently and never reach the record of
+    # changes — the one thing that record exists to prevent. So the gated
+    # totals live in `trend`, in the billions that series already uses,
+    # and meta.revenues keeps the line detail and the notes. This mirrors
+    # the actuals, whose figures sit on the agency nodes while
+    # meta.actuals carries only vintage notes.
+    for year, r in years.items():
+        if "unavailable" in r:
+            continue
+        t = payload["trend"].setdefault(year, {})
+        t["revenue"] = round(r["tot"] / THOUSANDS_PER_BILLION, 3)
+        t["revenueGf"] = round(r["gf"] / THOUSANDS_PER_BILLION, 3)
+        t["revenueSp"] = round(r["sp"] / THOUSANDS_PER_BILLION, 3)
+
+    # THE NEVER-SUM FIGURE IS MEASURED, NOT ASSERTED. State money arrives
+    # as city and county revenue that this site publishes on another page,
+    # so the same dollar is on both. Rather than write a number into the
+    # page, read it out of the local payloads that already shipped, for the
+    # newest year all three layers cover. If either payload is missing the
+    # statement is omitted rather than guessed.
+    overlap = _local_intergovernmental()
+
+    earlier = sorted(set(schedule8.SOURCES) - set(payload["years"]))
+    payload["meta"]["revenues"] = {
+        "basis": "Actual revenues under the Budgetary-Legal basis of "
+                 "accounting, as published by the Department of Finance in "
+                 "Schedule 8 (Comparative Statement of Revenues) of the "
+                 "publication named per year. Only the schedule's ACTUALS "
+                 "column is read; its two Estimated columns are forecasts "
+                 "and are never published here.",
+        "units": "thousands of dollars — the schedule's own unit, kept "
+                 "exact so the published lines still foot to the published "
+                 "total",
+        "scope": "General Fund and Special Funds only. Schedule 8 does not "
+                 "carry federal funds, and the spending figures on this page "
+                 "do. The two are not the same universe and do not net.",
+        "gates": "Four independent controls, all of which must pass or the "
+                 "year is not published: the coded lines foot to the "
+                 "schedule's own printed TOTALS, REVENUES on each fund "
+                 "column; majors plus minors equal that total; Schedule 1's "
+                 "revenues-and-transfers row (whose printed reference column "
+                 "says 8) agrees; and Schedule 6 — the same document the "
+                 "expenditure actuals are already gated against — agrees in "
+                 "millions.",
+        "noMark": "No legibility mark is carried on this layer, and that is "
+                  "a fact about the source rather than an omission. The city "
+                  "and county revenue records mark lines the State "
+                  "Controller labels only as “(Specify)” — a field "
+                  "whose answer the filer supplied and the Controller does "
+                  "not publish. Schedule 8 has no such construct: the words "
+                  "specify, unspecified, all other, sundry and unallocated "
+                  "do not appear in any of the ten published vintages. Its "
+                  "generic-sounding lines are named, coded, and foot "
+                  "exactly; the largest of them is forecast two years ahead "
+                  "to the dollar, which an unexplained residual could not "
+                  "be. Any “unexplained share” published here "
+                  "would be the Ledger's own boundary, not the source's.",
+        "localOverlap": overlap,
+        "earlierYearsPublished": earlier,
+        "lineLabels": labels,
+        "years": years,
+    }
+
+
 def build_payload(cached):
     years_sorted = sorted(cached.keys())
     budgets, trend = {}, {}
@@ -876,6 +1030,7 @@ def main():
         ],
     }
     attach_actuals(payload, cached, refresh=args.refresh_actuals)
+    attach_revenues(payload, refresh=args.refresh_actuals)
 
     for w in plausibility_report(payload):
         print(f"  PLAUSIBILITY WARNING: {w}", file=sys.stderr)
