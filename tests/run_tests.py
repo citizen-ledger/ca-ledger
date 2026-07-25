@@ -8184,12 +8184,15 @@ def test_revisions(page, base):
     check("revisions: it is labelled as OUR correction, not a source change",
           noted and "our own correction" in noted[0]["note"].lower())
 
-    # A note may come ONLY from a declared constant. There are now two
-    # kinds — a CORRECTION (we changed a figure) and a COVERAGE change (we
-    # changed which years we load). Both are declared in the pipeline; the
-    # refresh path can apply either and invent neither.
+    # A note may come ONLY from a declared constant. There are now three
+    # kinds — a CORRECTION (we changed a figure), a COVERAGE change (we
+    # changed which YEARS we load) and a FACTS_ADDED change (we changed
+    # which FIGURES we publish, across years we already covered). All are
+    # declared in the pipeline; the refresh path can apply any and invent
+    # none.
     declared = {(c["layer"], c["built"]) for c in REV.CORRECTIONS}
     declared |= {(c["layer"], c["built"]) for c in REV.COVERAGE}
+    declared |= {(c["layer"], c["built"]) for c in REV.FACTS_ADDED}
     declared.add((REV.BACKFILL["layer"], REV.BACKFILL["built"]))
     for layer in LAYERS:
         for b in records[layer]["batches"]:
@@ -8202,7 +8205,8 @@ def test_revisions(page, base):
             check(f"revisions: {layer} batch {b['built']} attributes the cause "
                   f"to US, never to the source",
                   ("our own correction" in b["note"].lower()
-                   or "our own change of coverage" in b["note"].lower()),
+                   or "our own change of coverage" in b["note"].lower()
+                   or "our own change of what we publish" in b["note"].lower()),
                   b["note"][:80])
     # and every unnoted batch stays silent, which is the default
     for layer in LAYERS:
@@ -8767,6 +8771,233 @@ def test_map(page, base):
     ctx.unroute("**/vendor/maplibre-gl.js")
 
 
+
+
+def test_v21_revenue(page, base):
+    """V21 revenue: the gate, the two derived marks, and the refusals.
+
+    Every assertion below runs against the SHIPPED payload and the
+    SHIPPED page, never a synthetic fixture — the marks are the whole
+    reason the layer is honest, so "it would render if the data were
+    shaped right" is not evidence that it does.
+    """
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+    strict = importlib.import_module("strict")
+    fcity = importlib.import_module("fetch_city_data")
+    fcounty = importlib.import_module("fetch_county_data")
+
+    # ---------- StrictRow: the absent-column guard, both directions ----
+    row = strict.StrictRow({"value": "7", "entity_name": "X"}, "rrtv-rsj9")
+    check("v21 strict: a column that EXISTS reads normally (positive control)",
+          row.get("value") == "7", repr(row.optional("value")))
+    missed = None
+    try:
+        row.get("values")          # the county spelling, against a city row
+    except KeyError as e:
+        missed = str(e)
+    check("v21 strict: the WRONG amount column raises instead of reading empty",
+          missed is not None and "values" in missed, str(missed)[:70])
+    check("v21 strict: optional() is the declared escape hatch and stays quiet",
+          row.optional("values", "absent") == "absent")
+
+    # amount_column: the declared way to accept a publisher that names one
+    # quantity two ways. Positive control first, then the refusal.
+    check("v21 strict: amount_column picks the name the row actually has",
+          strict.amount_column(row, "values", "value") == "value")
+    none_of = None
+    try:
+        strict.amount_column(row, "amount", "total")
+    except KeyError as e:
+        none_of = str(e)
+    check("v21 strict: amount_column REFUSES when no candidate exists — "
+          "summing an absent column would report $0 for every row",
+          none_of is not None and "NONE OF THE AMOUNT COLUMNS" in none_of,
+          str(none_of)[:70])
+
+    # ---------- the two pipelines declare DIFFERENT amount columns -----
+    check("v21 pipelines: the city amount column is declared as 'value'",
+          fcity.REVEN_VALUE_COL == "value", fcity.REVEN_VALUE_COL)
+    check("v21 pipelines: the county amount column is declared as 'values' — "
+          "the same publisher naming one quantity two ways",
+          fcounty.REVEN_VALUE_COL == "values", fcounty.REVEN_VALUE_COL)
+    check("v21 pipelines: both share ONE unexplained token, so the mark "
+          "cannot drift between layers",
+          fcounty.UNEXPLAINED_TOKEN == fcity.UNEXPLAINED_TOKEN == "(Specify)")
+
+    # ---------- soda() refuses a grouped query with no order ----------
+    # The bug this guard exists for produced 3,837 wrong city-years.
+    raised = None
+    try:
+        fcity.soda("rrtv-rsj9", **{"$select": "entity_name", "$group": "entity_name"})
+    except RuntimeError as e:
+        raised = str(e)
+    check("v21 paging: a GROUPED query with no $order is REFUSED before any "
+          "network call — offset paging over an unordered result drops and "
+          "duplicates rows at the page boundary",
+          raised is not None and "$order" in raised, str(raised)[:80])
+    # positive control: the guard must not fire on an UNgrouped query, or it
+    # would simply be an outage rather than a guard.
+    fired = False
+    try:
+        fcity.soda("rrtv-rsj9", **{"$select": "entity_name", "$limit": "1",
+                                   "$where": "1=0"})
+    except RuntimeError as e:
+        fired = "$order" in str(e)
+    check("v21 paging: the guard does NOT fire on an ungrouped query "
+          "(positive control — it is a guard, not an outage)", not fired)
+
+    # ---------- the fact-collapse declaration ------------------------
+    fx = REV.facts_for("city", "2026-07-24")
+    check("v21 revisions: the city revenue facts are DECLARED, so the "
+          "collapse cannot be applied to an undeclared build",
+          fx is not None and set(fx["facts"]) ==
+          {"revAll", "revCats", "revUnex", "revTop"},
+          str(fx and fx["facts"]))
+    check("v21 revisions: an undeclared layer/date gets no collapse "
+          "(negative control)", REV.facts_for("city", "1999-01-01") is None)
+
+    # ---------- the shipped payload ----------------------------------
+    for label, payload, ctrl_ds in (("city", CITY, "ky7j-fsk5"),
+                                    ("county", COUNTY, "da2q-agh9")):
+        ents = payload.get("cities") or payload.get("counties")
+        meta = payload["meta"]
+        check(f"v21 {label}: the revenue control dataset is named in meta",
+              meta["datasets"].get("revenuePerCapita") == ctrl_ds,
+              str(meta["datasets"].get("revenuePerCapita")))
+        cats = meta["revCategoryLabels"]
+        check(f"v21 {label}: revenue category labels are interned once in meta",
+              len(cats) > 5 and all(isinstance(c, str) for c in cats), str(len(cats)))
+        bad_sum, n_years, with_unex, without_unex, with_top = [], 0, 0, 0, 0
+        for eid, e in ents.items():
+            for fy, yr in e["years"].items():
+                if "revAll" not in yr:
+                    continue
+                n_years += 1
+                # THE INTERNAL IDENTITY: the categories are the total. The
+                # published control certifies the total; this proves the
+                # composition the page renders adds back up to it.
+                s = round(sum(v for _i, v in yr["revCats"]), 3)
+                if abs(s - yr["revAll"]) > 0.01:
+                    bad_sum.append((eid, fy, s, yr["revAll"]))
+                if "revUnex" in yr:
+                    with_unex += 1
+                    if yr["revUnex"] > yr["revAll"] + 0.01:
+                        bad_sum.append((eid, fy, "unex>all", yr["revUnex"]))
+                else:
+                    without_unex += 1
+                if "revTop" in yr:
+                    with_top += 1
+                    if yr["revTop"][1] > yr["revAll"] + 0.01:
+                        bad_sum.append((eid, fy, "top>all", yr["revTop"][1]))
+        check(f"v21 {label}: every year's revenue categories sum to its "
+              f"all-funds total ({n_years} entity-years)",
+              not bad_sum and n_years > 400, str(bad_sum[:3]) or str(n_years))
+        # The mark is a real distinction, not a constant: some years carry it
+        # and some do not, and absence means zero rather than unmeasured.
+        check(f"v21 {label}: the unexplained mark DISCRIMINATES — some years "
+              "carry it and some do not",
+              with_unex > 10 and without_unex > 0,
+              f"with={with_unex} without={without_unex}")
+        check(f"v21 {label}: a largest-line mark is present wherever revenue is",
+              with_top > n_years * 0.9, f"{with_top}/{n_years}")
+
+    # ---------- the mark is TOKEN-derived, not a hand-list ------------
+    # Every label the city layer records as a largest line either carries
+    # the source's own token or does not; the point is that nothing in the
+    # payload enumerates "ambiguous" names.
+    lines = CITY["meta"]["revLineLabels"]
+    tokened = [l for l in lines if "(Specify)" in l]
+    check("v21 mark: the source's own '(Specify)' token appears in the "
+          "shipped label pool (positive control for the derivation)",
+          len(tokened) >= 1, f"{len(tokened)} of {len(lines)}")
+    check("v21 mark: and most largest-line labels do NOT carry it, so the "
+          "token is a discriminator rather than a blanket",
+          len(tokened) < len(lines) * 0.5, f"{len(tokened)}/{len(lines)}")
+
+    # ---------- known anchors, measured independently at source -------
+    irv = CITY["cities"]["irvine"]["years"]["2022-23"]
+    check("v21 anchor: Irvine FY2022-23 all-funds revenue is the Controller's "
+          "published total to the dollar",
+          abs(irv["revAll"] - 918.762) < 0.001, str(irv["revAll"]))
+    check("v21 anchor: and 50.7% of it is a single line — a year can "
+          "reconcile exactly and still rest on one number",
+          abs(irv["revTop"][1] / irv["revAll"] * 100 - 50.7) < 0.2,
+          str(round(irv["revTop"][1] / irv["revAll"] * 100, 1)))
+    check("v21 anchor: Irvine's largest line is NOT a '(Specify)' line, so "
+          "the unexplained mark alone would have missed it (negative control)",
+          "(Specify)" not in CITY["meta"]["revLineLabels"][irv["revTop"][0]],
+          CITY["meta"]["revLineLabels"][irv["revTop"][0]][:40])
+    ind = CITY["cities"]["indio"]["years"]["2022-23"]
+    check("v21 anchor: Indio FY2022-23 is 54% unexplained",
+          abs(ind["revUnex"] / ind["revAll"] * 100 - 54.0) < 0.5,
+          str(round(ind["revUnex"] / ind["revAll"] * 100, 1)))
+    check("v21 anchor: and Indio's largest line IS a '(Specify)' line "
+          "(positive control for the same mark)",
+          "(Specify)" in CITY["meta"]["revLineLabels"][ind["revTop"][0]])
+
+    # ---------- the page, rendered from that payload ------------------
+    page.goto(f"{base}/cities.html#c=irvine&y=2022-23")
+    page.wait_for_selector("#revPanel .revmark", timeout=15000)
+    marks = page.eval_on_selector_all(".revmark", "els=>els.map(e=>e.textContent)")
+    check("v21 page: both marks render on the record for Irvine",
+          len(marks) == 2, str(len(marks)))
+    check("v21 page: the unexplained mark names the source's own token",
+          any("(Specify)" in m for m in marks), str(marks)[:80])
+    check("v21 page: the concentration mark states the share as a fact and "
+          "explicitly declines to call it one-time",
+          any("fact about the filing, not a judgement" in m for m in marks))
+    unex_cls = page.eval_on_selector_all(
+        ".revmark", "els=>els.map(e=>e.classList.contains('unex'))")
+    check("v21 page: Irvine's largest line is not flagged as unexplained "
+          "(negative control — the class tracks the data)",
+          unex_cls == [False, False], str(unex_cls))
+
+    statements = page.eval_on_selector_all("#revState p", "els=>els.map(e=>e.textContent)")
+    check("v21 page: the site states plainly that it does NOT compute a "
+          "surplus or deficit, and gives the reason",
+          any("does not compute a surplus" in s and "other financing sources" in s
+              for s in statements), str(len(statements)))
+    check("v21 page: the never-sum statement is QUANTIFIED from the payload, "
+          "not asserted in prose",
+          any("intergovernmental revenue" in s and "%" in s for s in statements))
+    check("v21 page: property tax is framed as this government's own reported "
+          "figure, never a share of a statewide whole",
+          any("never a share of a statewide whole" in s for s in statements))
+
+    # the same page, on the county layer, must quantify its own overlap
+    page.goto(f"{base}/cities.html#l=county&c=los-angeles&y=2023-24")
+    page.wait_for_selector("#revState p", timeout=15000)
+    cst = page.eval_on_selector_all("#revState p", "els=>els.map(e=>e.textContent)")
+    ig = [s for s in cst if "intergovernmental revenue" in s]
+    check("v21 page: the county overlap statement names a share above 40% — "
+          "the largest direct double-count on the site",
+          bool(ig) and any(f"{p}%" in ig[0] for p in range(40, 50)), str(ig)[:120])
+
+    # Indio: the positive control for the unexplained CLASS on the mark
+    page.goto(f"{base}/cities.html#c=indio&y=2022-23")
+    page.wait_for_selector("#revPanel .revmark", timeout=15000)
+    cls2 = page.eval_on_selector_all(
+        ".revmark", "els=>els.map(e=>e.classList.contains('unex'))")
+    check("v21 page: Indio's largest line IS flagged, because it is itself a "
+          "line the source will not itemise (positive control)",
+          cls2 == [False, True], str(cls2))
+
+    # ---------- the printed record carries it too ---------------------
+    heads = page.eval_on_selector_all(
+        "#recordSheet .rs-break b, #recordSheet .rs-notes b",
+        "els=>els.map(e=>e.textContent)")
+    check("v21 print: the record sheet carries the revenue schedule",
+          any(h.startswith("REVENUE AS FILED") for h in heads), str(heads))
+    check("v21 print: and the caveat travels with it — a printed sheet must "
+          "not show spending without the revenue marks",
+          any(h == "HOW TO READ THE REVENUE FIGURE" for h in heads), str(heads))
+    sheet_txt = page.eval_on_selector("#recordSheet", "e=>e.textContent")
+    check("v21 print: the printed sheet also refuses the surplus",
+          "does not compute a surplus" in sheet_txt)
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -8840,6 +9071,7 @@ def main():
             test_precision(page, base)
             test_runtime_origins()
             test_revisions(page, base)
+            test_v21_revenue(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

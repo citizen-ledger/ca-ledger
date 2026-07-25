@@ -88,12 +88,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
+from strict import StrictRow  # noqa: E402
 
 DOMAIN = "bythenumbers.sco.ca.gov"
 DS_EXPEND = "ju3w-4gxp"
 DS_REVEN = "rrtv-rsj9"
 DS_PERCAP = "ykhf-vfsr"
+DS_REV_PERCAP = "ky7j-fsk5"      # SCO's published per-city TOTAL REVENUES —
+                                 # the revenue reconciliation target, exactly
+                                 # parallel to ykhf-vfsr on the spending side
 DS_SERVICES = "tsz3-29gc"
+
+# THE PUBLISHER DISAGREES WITH ITSELF. SCO's city revenue dataset names
+# its amount column `value`; the COUNTY revenue dataset (emxv-k8xv, used
+# by fetch_county_data.py) names the same quantity `values`. Neither is
+# a typo and neither is documented. The name is declared here, once, and
+# aliased to `v` in every $select, so exactly one line differs between
+# the two pipelines instead of the difference being scattered through
+# every row read. See strict.py for why this is worth a named constant.
+REVEN_VALUE_COL = "value"
+
+# The source's own admission that it is not telling you what this is.
+# SCO's form asks the filer to name what went into a residual line —
+# "(Specify)" — and then publishes only the label, never the filer's
+# answer. Marking these is a property of the SOURCE'S OWN TEXT, not a
+# hand-maintained list of line names: any new residual line SCO adds is
+# marked the day it appears, and nothing here encodes a judgement about
+# which named lines are "really" ambiguous.
+UNEXPLAINED_TOKEN = "(Specify)"
 DS_COUNTY_PERCAP = "miui-wb29"   # SCO's COUNTY per-capita totals — used only
                                  # to detect a city reporting more residents
                                  # than the county containing it
@@ -184,7 +206,30 @@ GAZETTEER_ALIASES = {
 # Fetching
 # ----------------------------------------------------------------------
 def soda(dataset: str, **params):
-    """One SODA query, paged if needed. Returns all rows."""
+    """One SODA query, paged if needed. Returns all rows.
+
+    A GROUPED QUERY MUST DECLARE AN ORDER. Paging is `$limit`/`$offset`,
+    and offset paging over an unordered result is only as stable as the
+    server's incidental row order: the same offset can re-serve a row it
+    already sent and skip one it has not, so the page boundaries silently
+    drop and duplicate groups. Summing the result then produces a total
+    that is wrong in both directions and looks entirely plausible.
+
+    THIS IS NOT HYPOTHETICAL. Adding `line_description` to the revenue
+    fetch took it from ~9,600 groups per year to 176,949 — over the
+    50,000 page size — and every one of 3,837 city-years then missed its
+    published control, in both directions, by up to $41M. The gate
+    caught it, which is the system working; this guard is so that the
+    next grouped query cannot reintroduce it. The expenditure fetch was
+    measured at 98,351 groups per year, also over the page size, and so
+    was relying on incidental ordering too.
+    """
+    if "$group" in params and "$order" not in params:
+        raise RuntimeError(
+            f"GROUPED QUERY WITHOUT $order on {dataset}: paging a GROUP BY "
+            "with $offset over an unordered result drops and duplicates "
+            "groups at the page boundaries, and the resulting sums look "
+            "plausible. Declare an $order over the grouped columns.")
     rows, offset = [], 0
     while True:
         q = dict(params)
@@ -198,7 +243,8 @@ def soda(dataset: str, **params):
                     "User-Agent": "ca-ledger-pipeline/2.0",
                     "Accept": "application/json"})
                 with urllib.request.urlopen(req, timeout=120) as r:
-                    page = json.load(r)
+                    page = [StrictRow(row, f"{dataset} (SCO {DOMAIN})")
+                            for row in json.load(r)]
                 break
             except Exception as e:  # noqa: BLE001 — retry transient failures
                 last_err = e
@@ -335,11 +381,20 @@ def fetch_year(source_year: str):
                              "max(estimated_population) as pop",
                   "$where": f"fiscal_year='{source_year}'",
                   "$group": "entity_name,county,category,subcategory_1,"
+                            "subcategory_2",
+                  "$order": "entity_name,county,category,subcategory_1,"
                             "subcategory_2"})
+    # REVENUE IS READ AT LINE LEVEL, not category level, because two of
+    # the three things the page must say about a revenue figure are
+    # properties of the LINE and cannot be recovered from a category
+    # subtotal: whether the source itself declined to explain it
+    # ("(Specify)"), and how much of the year rests on a single line.
     rev = soda(DS_REVEN,
-               **{"$select": "entity_name,category,sum(value) as v",
+               **{"$select": "entity_name,category,line_description,"
+                             f"sum({REVEN_VALUE_COL}) as v",
                   "$where": f"fiscal_year='{source_year}'",
-                  "$group": "entity_name,category"})
+                  "$group": "entity_name,category,line_description",
+                  "$order": "entity_name,category,line_description"})
 
     cities = defaultdict(lambda: {
         "pop": 0, "county": "",
@@ -348,15 +403,22 @@ def fetch_year(source_year: str):
         "enterprise": defaultdict(float),
         "isf": 0.0, "conduit": 0.0,
         "revenues": 0.0, "revenuesEnterprise": 0.0,
+        # all-funds revenue, which is what the published control totals —
+        # governmental + enterprise + internal service + conduit
+        "revTotal": 0.0,
+        "revByCategory": defaultdict(float),
+        "revUnexplained": 0.0,        # dollars in "(Specify)" lines
+        "revTopLine": ("", 0.0),      # largest single line: (label, dollars)
     })
     for r in exp:
         name = norm(r["entity_name"])
         c = cities[name]
-        c["county"] = norm(r.get("county")) or c["county"]
-        c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
-        v = float(r.get("v") or 0)
+        c["county"] = norm(r.optional("county")) or c["county"]
+        c["pop"] = max(c["pop"], int(float(r.optional("pop") or 0)))
+        v = float(r.optional("v") or 0)
         kind, key, line = classify_expenditure(
-            r.get("category"), r.get("subcategory_1"), r.get("subcategory_2"))
+            r.optional("category"), r.optional("subcategory_1"),
+            r.optional("subcategory_2"))
         if kind == "gov":
             c["byFunction"][key] += v
             if v != 0:
@@ -368,16 +430,44 @@ def fetch_year(source_year: str):
             c["isf"] += v
         else:
             c["conduit"] += v
+    rev_seen = 0
     for r in rev:
         name = norm(r["entity_name"])
         if name not in cities:
             continue
-        v = float(r.get("v") or 0)
-        kind = classify_revenue(r.get("category"))
+        rev_seen += 1
+        v = float(r.optional("v") or 0)
+        cat = norm(r.optional("category"))
+        line = norm(r.optional("line_description"))
+        c = cities[name]
+        # ALL-FUNDS, because that is what SCO's published total_revenues
+        # is — the H2 test in docs/V21_REVENUE_FINDING.md measured a
+        # governmental-only sum reconciling against it just 11.9% of the
+        # time, so a governmental-only gate would be a gate against the
+        # wrong number.
+        c["revTotal"] += v
+        c["revByCategory"][cat] += v
+        if UNEXPLAINED_TOKEN in line:
+            c["revUnexplained"] += v
+        if v > c["revTopLine"][1]:
+            c["revTopLine"] = (line, v)
+        kind = classify_revenue(cat)
         if kind == "gov":
-            cities[name]["revenues"] += v
+            c["revenues"] += v
         elif kind == "ent":
-            cities[name]["revenuesEnterprise"] += v
+            c["revenuesEnterprise"] += v
+    # POSITIVE CONTROL FOR A NEGATIVE FINDING. Every derived revenue
+    # figure below is a share whose numerator can legitimately be zero,
+    # so a fetch that silently returned nothing would render as "no
+    # unexplained revenue anywhere" — the most flattering possible
+    # reading of a broken query. Assert the fetch actually happened
+    # before any of those shares are believed.
+    gates.require_rows(rev_seen, 3000,
+                       f"FY {fy_label(source_year)} revenue line rows matched "
+                       "to a city",
+                       "the source publishes roughly 20,000 city revenue "
+                       "lines per year; near-zero means the amount column "
+                       f"{REVEN_VALUE_COL!r} or the join key changed name")
     print(f"  FY {fy_label(source_year)}: {len(cities)} cities, "
           f"{len(exp):,} expenditure lines, {len(rev):,} revenue lines",
           file=sys.stderr)
@@ -392,8 +482,8 @@ def fetch_services():
     for r in rows:
         name = norm(r["entity_name"])
         out[name] = {
-            "police": norm(r.get("police_service")).upper()[:1],
-            "fire": norm(r.get("fire_service")).upper()[:1],
+            "police": norm(r.optional("police_service")).upper()[:1],
+            "fire": norm(r.optional("fire_service")).upper()[:1],
         }
     print(f"  services checklist: {len(out)} cities (FY 2015-16 vintage)",
           file=sys.stderr)
@@ -445,7 +535,24 @@ def fetch_official_totals():
                    "$where": "fiscal_year in("
                              + ",".join(f"'{y}'" for y in SOURCE_YEARS) + ")"})
     return {(norm(r["entity_name"]), r["fiscal_year"]):
-            float(r.get("total_expenditures") or 0) for r in rows}
+            float(r.optional("total_expenditures") or 0) for r in rows}
+
+
+def fetch_official_revenue_totals():
+    """{(city, source_year): official total_revenues} for reconciliation.
+
+    ky7j-fsk5 is the revenue twin of ykhf-vfsr, and it reconciles at the
+    same tier: measured over the shipped window, every city-year
+    reproduces its published total with a residual of exactly $0.00 —
+    tighter than this pipeline's own tolerance. See
+    docs/V21_REVENUE_FINDING.md §2.1.
+    """
+    rows = soda(DS_REV_PERCAP,
+                **{"$select": "entity_name,fiscal_year,total_revenues",
+                   "$where": "fiscal_year in("
+                             + ",".join(f"'{y}'" for y in SOURCE_YEARS) + ")"})
+    return {(norm(r["entity_name"]), r["fiscal_year"]):
+            float(r.optional("total_revenues") or 0) for r in rows}
 
 
 # ----------------------------------------------------------------------
@@ -465,18 +572,21 @@ def county_populations():
                      "$where": f"fiscal_year >= '{SOURCE_YEARS[0]}' "
                                f"and fiscal_year <= '{SOURCE_YEARS[-1]}'"}):
         try:
-            pop = int(float(r.get("estimated_population") or 0))
+            pop = int(float(r.optional("estimated_population") or 0))
         except (TypeError, ValueError):
             continue
         if pop:
-            out[(norm(r.get("entity_name") or ""), r.get("fiscal_year"))] = pop
+            out[(norm(r.optional("entity_name") or ""),
+                 r.optional("fiscal_year"))] = pop
     return out
 
 
-def sanity_check(years_data, official):
+def sanity_check(years_data, official, official_rev):
     errors, warnings = [], []
     reconciled = 0
     unreconciled = []
+    rev_reconciled = 0
+    rev_unreconciled = []
     for sy, cities in years_data.items():
         bad = gates.check_rows(len(cities), 450,
                                f"FY {fy_label(sy)} city roster",
@@ -512,11 +622,46 @@ def sanity_check(years_data, official):
                         f"the published control is "
                         f"{'0' if key in official else 'absent'} — the figure "
                         "cannot be reconciled and must not ship as if it were")
+
+            # THE REVENUE GATE. Same rule, same tolerance, same refusal
+            # to treat a zero or absent control as a pass — and, for the
+            # same reason as the spending side, against the ALL-FUNDS
+            # sum rather than the governmental one.
+            #
+            # NON-FILING IS ENCODED AS A LITERAL ZERO in this control
+            # (measured: Hollister FY2022, Novato FY2022, Woodland
+            # FY2023 all carry total_revenues = 0). A gate that accepted
+            # a zero control would certify "this city collected nothing"
+            # as reconciled, which is the not-published-is-never-zero
+            # rule failing in the direction that looks like a finding.
+            ours_rev = c["revTotal"]
+            if key in official_rev and official_rev[key] > 0:
+                rev_reconciled += 1
+                drift = abs(ours_rev - official_rev[key])
+                if drift > max(1000.0, official_rev[key] * 0.001):
+                    errors.append(
+                        f"{name} FY {fy_label(sy)} REVENUE: our total "
+                        f"${ours_rev:,.0f} vs official "
+                        f"${official_rev[key]:,.0f} (drift ${drift:,.0f})")
+            else:
+                rev_unreconciled.append(f"{name} FY {fy_label(sy)}")
+                if ours_rev > 0:
+                    errors.append(
+                        f"{name} FY {fy_label(sy)} REVENUE: we report "
+                        f"${ours_rev:,.0f} but the published control is "
+                        f"{'0' if key in official_rev else 'absent'} — the "
+                        "figure cannot be reconciled and must not ship as if "
+                        "it were")
     # the reconciliation must actually have run on the overwhelming majority
     gates.require_rows(reconciled, 3800,
                        "city-years reconciled against a published control",
                        f"{len(unreconciled)} were unreconciled: "
                        f"{unreconciled[:5]}")
+    gates.require_rows(rev_reconciled, 3800,
+                       "city-years whose REVENUE reconciled against a "
+                       "published control",
+                       f"{len(rev_unreconciled)} were unreconciled: "
+                       f"{rev_unreconciled[:5]}")
     latest = SOURCE_YEARS[-1]
     la = years_data[latest].get("Los Angeles")
     if not la:
@@ -552,6 +697,20 @@ def build_payload(years_data, services, gaz, county_pops):
                           for c in cities.values()
                           for fam in c["lines"].values() for lbl in fam})
     line_idx = {lbl: i for i, lbl in enumerate(line_labels)}
+
+    # Revenue label pools, interned the same way the V8 expenditure
+    # lines are: the payload carries indices, the meta carries the text
+    # once. Measured cost of the revenue block with real values is
+    # +23% gzipped (docs/V21_REVENUE_FINDING.md §5); interning is what
+    # keeps it there rather than higher.
+    rev_cat_labels = sorted({k for cities in years_data.values()
+                             for c in cities.values()
+                             for k in c["revByCategory"]})
+    rev_cat_idx = {k: i for i, k in enumerate(rev_cat_labels)}
+    rev_line_labels = sorted({c["revTopLine"][0]
+                              for cities in years_data.values()
+                              for c in cities.values() if c["revTopLine"][0]})
+    rev_line_idx = {k: i for i, k in enumerate(rev_line_labels)}
     for sy, cities in years_data.items():
         for cname, c in cities.items():
             for k, total in c["byFunction"].items():
@@ -625,7 +784,34 @@ def build_payload(years_data, services, gaz, county_pops):
                     "byFund": {k: m(v) for k, v in c["enterprise"].items()
                                if round(v / 1e6, 3) != 0},
                 },
+                # ALL-FUNDS revenue: the figure SCO's published control
+                # certifies, deliberately a different key from
+                # `revenues` (governmental only) so the page can never
+                # show one and cite the other's gate.
+                "revAll": m(c["revTotal"]),
+                "revCats": sorted(
+                    ([rev_cat_idx[k], m(v)]
+                     for k, v in c["revByCategory"].items()
+                     if round(v / 1e6, 3) != 0),
+                    key=lambda x: -abs(x[1])),
             }
+            # THE TWO MARKS, both derived, neither a hand-list.
+            #
+            # revUnex — dollars sitting in lines whose own published
+            # label carries SCO's "(Specify)" token: the form asked the
+            # filer to name it and the answer is not published at any
+            # depth. Emitted only when nonzero, so its absence on a
+            # record means the source explained every line, not that the
+            # field was forgotten.
+            if round(c["revUnexplained"] / 1e6, 3) != 0:
+                yr["revUnex"] = m(c["revUnexplained"])
+            # revTop — the largest single line and its size. A year can
+            # reconcile exactly and still rest on one line; that is a
+            # fact about the filing, stated as a number, with no
+            # inference that the money is one-time.
+            top_label, top_val = c["revTopLine"]
+            if top_label and round(top_val / 1e6, 3) != 0:
+                yr["revTop"] = [rev_line_idx[top_label], m(top_val)]
             if round(c["isf"] / 1e6, 3):
                 yr["internalService"] = m(c["isf"])
             if round(c["conduit"] / 1e6, 3):
@@ -694,8 +880,34 @@ def build_payload(years_data, services, gaz, county_pops):
                      "service funds and conduit financing are excluded from "
                      "both blocks.",
             "servicesChecklistVintage": "2015-16",
+            "revCategoryLabels": rev_cat_labels,
+            "revLineLabels": rev_line_labels,
+            "revenueNote":
+                "revAll is ALL FUNDS — governmental, enterprise, internal "
+                "service and conduit — because that is what the Controller's "
+                "published total_revenues (ky7j-fsk5) certifies, and every "
+                "city-year reproduces it exactly. `revenues` remains the "
+                "governmental-only figure and is NOT what the revenue gate "
+                "checked. revCats are those all-funds categories, nonzero "
+                "only.",
+            "unexplainedNote":
+                "revUnex is the dollars in lines whose own published label "
+                f"carries the Controller's {UNEXPLAINED_TOKEN!r} token — the "
+                "form asked the filer to name what went into a residual line "
+                "and publishes only the label, never the answer, at any "
+                "subcategory depth. Derived from the source's text, not from "
+                "a list of line names kept here. Absent means zero such "
+                "lines, not unmeasured.",
+            "topLineNote":
+                "revTop is [label index, millions] for the single largest "
+                "revenue line of that year. A year can reconcile to the "
+                "published total exactly and still rest on one line; this "
+                "reports that, and asserts nothing about whether the money "
+                "recurs.",
             "datasets": {"expenditures": DS_EXPEND, "revenues": DS_REVEN,
-                         "perCapita": DS_PERCAP, "services": DS_SERVICES},
+                         "perCapita": DS_PERCAP,
+                         "revenuePerCapita": DS_REV_PERCAP,
+                         "services": DS_SERVICES},
         },
         "years": year_labels,
         "functions": [{"key": k, "name": n} for k, n in FUNCTIONS],
@@ -832,6 +1044,10 @@ def main():
           file=sys.stderr)
     official = fetch_official_totals()
     print(f"  {len(official):,} city-year totals", file=sys.stderr)
+    print("Fetching official per-city REVENUE totals (reconciliation "
+          "target)…", file=sys.stderr)
+    official_rev = fetch_official_revenue_totals()
+    print(f"  {len(official_rev):,} city-year revenue totals", file=sys.stderr)
     print("Fetching services checklist…", file=sys.stderr)
     services = fetch_services()
     print("Fetching Census place gazetteer (coordinates)…", file=sys.stderr)
@@ -841,7 +1057,7 @@ def main():
     for sy in SOURCE_YEARS:
         years_data[sy] = fetch_year(sy)
 
-    errors, warnings = sanity_check(years_data, official)
+    errors, warnings = sanity_check(years_data, official, official_rev)
     errors += shape_gate(years_data)
     # coordinate coverage: report failures rather than guessing or
     # silently dropping — an unmatched city fails the write.

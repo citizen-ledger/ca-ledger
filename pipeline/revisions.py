@@ -699,6 +699,46 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
         batch["coverageAdded"] = cov["added"]
         batch["figuresEntered"] = len(entered)
         batch["note"] = cov["note"]
+    fx = facts_for(layer, batch["built"])
+    if fx and any(b.get("factsAdded") == fx["facts"]
+                  for b in (rec.get("batches") or [])):
+        # Same one-time rule as coverage: publishing a new fact is a fact
+        # about this build, not about every future one.
+        fx = None
+    if fx:
+        toks = set(fx["facts"])
+        seg = lambda k: (k.split("\t", 1)[1] if "\t" in k else k).split(".")
+        entered = [e for e in batch["events"]
+                   if e["o"] is None and toks.intersection(seg(e["k"]))]
+        # THE COLLAPSE IS EARNED, exactly as it is for coverage. Only a
+        # pure APPEARANCE of a DECLARED new fact may be counted instead of
+        # listed. Anything that changes an existing value is a revision and
+        # stays in the list; any appearance of a figure that was not
+        # declared stays too, so a genuinely new figure elsewhere in the
+        # payload cannot ride in under this collapse.
+        bad = [e for e in entered
+               if e.get("o") is not None or not toks.intersection(seg(e["k"]))]
+        if bad:
+            raise SystemExit(
+                f"FACT COLLAPSE REFUSED: {len(bad)} suppressed event(s) are "
+                "not pure appearances of a declared new fact — a new fact may "
+                "be counted, a source change may never be. Nothing written.")
+        # A DECLARATION THAT COLLAPSES NOTHING IS STALE. Every declared fact
+        # must actually appear, or the declaration is describing a build
+        # that is not this one — the dormant-declaration failure in a new
+        # place (docs/OPEN.md 2d).
+        missing = sorted(t for t in toks
+                         if not any(t in seg(e["k"]) for e in entered))
+        if missing:
+            raise SystemExit(
+                f"FACT DECLARATION IS STALE: {missing} declared as newly "
+                "published but no figure by that name appeared in this build. "
+                "Nothing written.")
+        batch["events"] = [e for e in batch["events"] if e not in entered]
+        batch["ours"] = True
+        batch["factsAdded"] = fx["facts"]
+        batch["factFiguresEntered"] = len(entered)
+        batch["note"] = fx["note"]
     if source_signal:
         batch["sourceUpdated"] = source_signal
     rec["batches"].append(batch)
@@ -715,6 +755,75 @@ def record_revision(layer, old_payload, new_payload, source_signal=None):
     rec["labels"] = merged
     write_record(layer, rec)
     return batch
+
+
+# --------------------------------------------------- newly published facts
+#
+# PUBLISHING A NEW FACT IS NOT A SET OF FIGURE CHANGES EITHER.
+#
+# COVERAGE below handles the case where the Ledger loads YEARS it did not
+# load before. This handles its sibling: the Ledger publishes a FIGURE it
+# did not publish before, across years it already covered. Nothing moved
+# and no source changed — the record simply carries a fact it did not carry
+# yesterday.
+#
+# Measured on the V21 revenue build: four new figures per record produced
+# 97,067 events on the city layer and 14,375 on the county layer, every one
+# of them an appearance with no prior value, and a 5.8 MB record against a
+# 64 KB budget. Listing them would bury any real revision under a hundred
+# thousand entries that report no change at all — the same phantom-event
+# failure COVERAGE was written for, arriving through the schema instead of
+# the window.
+#
+# The discipline is identical and is enforced above: only a pure appearance
+# of a DECLARED fact may be counted rather than listed, a declaration that
+# collapses nothing is refused as stale, and any real value change stays in
+# the list where a reader can see it.
+FACTS_ADDED = [
+    {
+        "layer": "city",
+        "built": "2026-07-24",
+        "facts": ["revAll", "revCats", "revUnex", "revTop"],
+        "note": "Our own change of what we publish, not a change at the "
+                "source. Every city-year now carries its REVENUE as filed — "
+                "the all-funds total the Controller's published "
+                "total_revenues (ky7j-fsk5) certifies, its composition by "
+                "category, and two marks derived from the filing itself: the "
+                "dollars sitting in lines the Controller labels only "
+                "\"(Specify)\", and the size of the single largest line. "
+                "Every city-year reconciles to the published revenue total "
+                "exactly, on the same gate and the same tolerance as the "
+                "spending side. These figures are newly IN the record; none "
+                "of them moved, because the Ledger was not publishing them "
+                "before. They are counted here rather than listed as tens of "
+                "thousands of individual appearances, because publishing a "
+                "fact for the first time is not a revision of it. The "
+                "governmental-only `revenues` figure the record already "
+                "carried is unchanged and is NOT what the revenue gate "
+                "checks — see docs/V21_REVENUE_FINDING.md.",
+    },
+    {
+        "layer": "county",
+        "built": "2026-07-24",
+        "facts": ["revAll", "revCats", "revUnex", "revTop"],
+        "note": "Our own change of what we publish, not a change at the "
+                "source. Every county-year now carries its REVENUE as filed, "
+                "on the same basis and the same gate as the city layer, "
+                "reconciled against the Controller's published per-county "
+                "total_revenues (da2q-agh9). The three county-years for which "
+                "the Controller publishes a total of zero are counted as "
+                "unreconciled on the revenue side exactly as they already "
+                "were on the spending side, never as verified. These figures "
+                "are newly in the record and none of them moved.",
+    },
+]
+
+
+def facts_for(layer, built):
+    for f in FACTS_ADDED:
+        if f["layer"] == layer and f["built"] == built:
+            return f
+    return None
 
 
 # ------------------------------------------------------- coverage changes

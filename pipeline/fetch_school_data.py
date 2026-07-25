@@ -76,6 +76,7 @@ import gates  # noqa: E402
 import cache_guard                              # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
+from strict import StrictRow  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path(__file__).resolve().parent / "cache" / "schools"
@@ -361,63 +362,10 @@ def ensure_year_files(yy, fy_dashed):
     return CACHE / f"sacs{yy}.mdb", CACHE / f"alt{yy}data.mdb", files["ce"][1], files["lcff"][1]
 
 
-class StrictRow(dict):
-    """A source row that REFUSES an absent column instead of returning None.
-
-    THREE CONFIDENT WRONG NUMBERS in this sequence came from reading a
-    column by a name the source does not use, where the miss was silent:
-
-      CharterNum  vs CharterNumber   the charter qualifier fell back to
-                                     the school code and under-counted
-                                     the collisions 40 -> 32 (#65)
-      LEAName     vs Dname           reported nine phantom key
-                                     collisions, all with empty names (#63)
-      SchoolCode  vs SchoolID        the Alternative Form's vintage
-                                     rename, which at least raised (#61)
-
-    An absent column and an empty column are indistinguishable through
-    `.get()`, and the empty one produces an answer rather than an error.
-    So the miss is made loud: `row["Nope"]` raises KeyError as a plain
-    dict does, and `row.get("Nope")` — the form that used to be silent —
-    raises too. A caller that genuinely wants "absent is acceptable"
-    must say so with `row.optional("Nope")`, which is greppable and
-    rare.
-
-    This does not protect against a column that exists and holds the
-    wrong thing. It protects against the failure mode that has actually
-    occurred three times: a name that is not there at all.
-    """
-
-    __slots__ = ("_table",)
-
-    def __init__(self, mapping, table):
-        super().__init__(mapping)
-        self._table = table
-
-    def _missing(self, key):
-        return KeyError(
-            f"COLUMN {key!r} DOES NOT EXIST in {self._table}. Its columns "
-            f"are: {', '.join(sorted(k for k in self if k))}. An absent "
-            "column reads as empty and produces a confident wrong answer; "
-            "use the real name, or row.optional() if absence is expected.")
-
-    def __getitem__(self, key):
-        if key not in self:
-            raise self._missing(key)
-        return super().__getitem__(key)
-
-    def get(self, key, default=None):
-        """Deliberately NOT dict.get: a typo must not read as an empty
-        value. Use optional() where absence is a real possibility."""
-        if key not in self:
-            raise self._missing(key)
-        return super().__getitem__(key)
-
-    def optional(self, key, default=None):
-        """The declared escape hatch: this column may legitimately be
-        absent in some vintage, and the caller has decided what that
-        means."""
-        return super().get(key, default)
+# StrictRow moved to strict.py so the CITY and COUNTY pipelines can
+# use it too: SCO names the same amount column `value` in the city
+# revenue dataset and `values` in the county one, which is exactly
+# the absent-column failure this class was written for.
 
 
 def mdb_rows(mdb, table):
