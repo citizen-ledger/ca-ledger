@@ -84,6 +84,30 @@ footnote, and the single figure that would close it (1,075,910) appears
 nowhere in the document. It closes only with a source restatement, which
 is UC's to make, not ours to manufacture.
 
+### 1b-ii. CCC FY2019-20 revenue is held — the source disagrees with itself
+
+The community-college layer publishes General Fund revenue (CCFS-311
+Table IV.1) for **fourteen** of its fifteen years. **FY2019-20 publishes
+none.**
+
+The reason is not a parse failure, and that is what makes it a held year
+rather than a bug. Every one of that year's 72 district rows foots
+(Federal + State + Local = Total), and the printed statewide row foots
+too. But the district rows sum to **$6,219,157,723** of State revenue
+while the statewide row printed beneath them says **$6,199,157,723** —
+exactly **$20,000,000** less, and the same $20,000,000 in the Total
+column. Both numbers are the Chancellor's Office's own.
+
+The Ledger does not get to choose which of a source's two figures is
+right, and will not publish a district table that does not add up to the
+total printed beside it. So the year shows no revenue, with that
+measured discrepancy as the stated reason — the same disposition as UC
+FY2019-20, and for the same reason: a gap that is small relative to the
+total but *irreducible* is still a gap.
+
+Note that FY2019-20's **Current Expense of Education is unaffected** and
+gates like every other year. It is only the revenue that is held.
+
 ### 1c. City and county reported-zero, and the one deliberate asymmetry
 
 A function a government **reported as zero** is a real statement about its

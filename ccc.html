@@ -253,6 +253,7 @@
     <div class="gate-strip" id="gateStrip"></div>
     <div class="basis-strip" id="basisStrip"></div>
     <div class="cmpbox" id="comparabilityStrip" hidden></div>
+    <div class="cmpbox" id="revenueStrip" hidden></div>
     <div class="tblwrap"><div class="tbl" id="tbl"></div></div>
     <div class="caps" id="recordCaps"></div>
 
@@ -471,8 +472,45 @@
     });
   })();
 
+  /* ---- GENERAL FUND REVENUE (Table IV.1), and four things about it ----
+     All four sit on the record rather than in a method note, because each
+     changes how the figure should be read: the scope is narrower than any
+     other revenue on this site; roughly half the money is also on the
+     state page; revenue and Current Expense of Education do not net; and
+     no legibility mark is carried here although the city page carries one.
+  --------------------------------------------------------------------- */
+  function renderRevenue(){
+    const box = $("revenueStrip"); if (!box) return;
+    const RM = (M.revenue || null), w = sw();
+    if (!RM){ box.hidden = true; return; }
+    box.hidden = false;
+    const parts = [];
+    if (w.revenue){
+      const r = w.revenue;
+      parts.push('<b>GENERAL FUND REVENUE \u00b7 FY ' + esc(S.year) + '</b>'
+        + 'The ' + w.nDistricts + ' districts reported ' + money0(r.tot)
+        + ' of General Fund revenue: ' + money0(r.fed) + ' federal, '
+        + money0(r.state) + ' state and ' + money0(r.local) + ' local. '
+        + 'Those three foot to that total, and the district rows foot to '
+        + 'the Chancellor\u2019s Office\u2019s own printed statewide row, '
+        + 'to the dollar.');
+    } else {
+      parts.push('<b>GENERAL FUND REVENUE \u00b7 NOT PUBLISHED FOR FY '
+        + esc(S.year) + '</b>' + esc(w.revenueReason || "")
+        + ' Current Expense of Education is unaffected and is gated for '
+        + 'this year like every other.');
+    }
+    parts.push('<b>A NARROWER SCOPE THAN EVERY OTHER REVENUE ON THIS SITE</b>'
+      + esc(RM.scope));
+    parts.push('<b>THE SAME DOLLAR IS ON THE STATE PAGE</b>' + esc(RM.neverSum));
+    parts.push('<b>NO SURPLUS OR DEFICIT IS COMPUTED</b>' + esc(RM.noSurplus));
+    parts.push('<b>NO LEGIBILITY MARK IS CARRIED HERE</b>' + esc(RM.noMark));
+    box.innerHTML = parts.map(p => '<p>' + p + '</p>').join("");
+  }
+
   function render(){
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
+    renderRevenue();
     renderRecordSheet();
     $("heroNum").textContent = moneyB(sw().ce);
     $("kicker").textContent = "THE PUBLIC RECORD \u00b7 FY " + S.year;

@@ -643,6 +643,108 @@ def fetch_table_vi(refresh, portal_val=None, fy=None):
     return tvi, statewide
 
 
+def fetch_table_iv1(refresh, portal_val=None, fy=None):
+    """Table IV.1 = Summary of General Fund Revenues: per-district
+    Federal / State / Local and a Total, with a printed statewide row.
+
+    THE SCOPE IS IN THE SOURCE'S OWN TITLE, and it is narrower than any
+    other revenue on this site: GENERAL FUND ONLY. The community-college
+    districts also run capital-project, debt-service, enterprise,
+    internal-service and trust funds, and none of that is in this table.
+    A reader comparing this figure with a city's or the state's is
+    comparing a general fund with an all-funds total, so the payload and
+    the page both say so rather than leaving it to be inferred.
+
+    Same portal handshake as Table VI — the Run button stays disabled
+    until a fiscal-year autopostback fires — parameterised by dropdown
+    value, one cache file per year.
+    """
+    portal_val = portal_val or FY_PORTAL
+    fy = fy or FY
+
+    def live():
+        page = _get(PORTAL)
+        tk = _tokens(page)
+        s1 = _post(tk, {"__EVENTTARGET": "ctl00$MainContent$FiscalYearDropdown",
+                        "ctl00$MainContent$FiscalYearDropdown": portal_val,
+                        "ctl00$MainContent$StatewideReportDropdown": "37"})
+        tk2 = _tokens(s1)
+        run = _post(tk2, {"ctl00$MainContent$FiscalYearDropdown": portal_val,
+                          "ctl00$MainContent$StatewideReportDropdown": "37",
+                          "ctl00$MainContent$RunStatewideReport": "View Report"})
+        return _plain(run)
+
+    text = html.unescape(_cached(f"tableiv1-{fy}.txt", live, refresh))
+    anchor = "District Federal State Local Total"
+    i = text.find(anchor)
+    if i < 0:
+        raise SystemExit(f"CCC {fy}: Table IV.1 did not render (portal "
+                         "handshake failed, or the column header changed) — "
+                         "nothing written")
+    seg = text[i + len(anchor):]
+    ms = re.search(r"Statewide\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)", seg)
+    if not ms:
+        raise SystemExit(f"CCC {fy}: Table IV.1 statewide total row not found "
+                         "— nothing written")
+    n = lambda s: int(s.replace(",", ""))
+    statewide = {"fed": n(ms.group(1)), "state": n(ms.group(2)),
+                 "local": n(ms.group(3)), "tot": n(ms.group(4))}
+    rows = re.findall(r"([A-Z][A-Z .&'\-]+?)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)",
+                      seg[:ms.start()])
+    out = {}
+    for nm, f, s, l, t in rows:
+        out[nm.strip()] = {"fed": n(f), "state": n(s), "local": n(l), "tot": n(t)}
+
+    # A ZERO OR ABSENT CONTROL DOES NOT RECONCILE. Reproducing a printed
+    # zero proves nothing, and this table has no legitimate zero year.
+    if statewide["tot"] <= 0:
+        raise SystemExit(f"CCC {fy}: Table IV.1 statewide total is "
+                         f"{statewide['tot']} — a zero or missing control "
+                         "cannot be reconciled against; nothing written")
+    gates.require_rows(len(out), 60,
+                       f"CCC {fy} Table IV.1 district rows",
+                       "the portal publishes 72-73; a thin parse would foot "
+                       "to a statewide total that is missing districts")
+
+    # GATE A — the row identity the table guarantees, per district AND on
+    # the printed statewide row: Federal + State + Local = Total.
+    for nm, r in list(out.items()) + [("Statewide", statewide)]:
+        if r["fed"] + r["state"] + r["local"] != r["tot"]:
+            raise SystemExit(
+                f"CCC {fy} Table IV.1 {nm}: {r['fed']:,} + {r['state']:,} + "
+                f"{r['local']:,} != {r['tot']:,} — the row does not foot, so "
+                "the column alignment is not what this parser thinks it is; "
+                "nothing written")
+    # GATE B — the districts ARE the statewide row, to the dollar, on every
+    # column independently. This is the published control.
+    #
+    # A FAILURE HERE IS THE SOURCE DISAGREEING WITH ITSELF, not a broken
+    # parse: every row above has already been proven to foot, and the
+    # printed statewide row foots too. So the year is HELD — recorded as
+    # not-published with the measured residual — rather than killing the
+    # build or being smoothed over by a tolerance. The Ledger does not get
+    # to choose which of the Chancellor's Office's own two figures is
+    # right. This is the same disposition as UC FY2019-20.
+    #
+    # Measured: FY2019-20 is the one held year in fifteen. Its 72 district
+    # rows sum to $6,219,157,723 of State revenue while the statewide row
+    # prints $6,199,157,723 — exactly $20,000,000 less, and the same
+    # $20,000,000 in the Total column.
+    for k in ("fed", "state", "local", "tot"):
+        got = sum(r[k] for r in out.values())
+        if got != statewide[k]:
+            return None, statewide, (
+                f"The Chancellor's Office's own statewide total disagrees "
+                f"with the district rows printed above it: the {len(out)} "
+                f"districts sum to ${got:,} of {k} revenue and the statewide "
+                f"row prints ${statewide[k]:,}, a difference of "
+                f"${abs(got - statewide[k]):,}. Both figures are the "
+                f"source's. Rather than choose between them, or publish a "
+                f"district table that does not add up to the total beside "
+                f"it, no revenue is shown for this year.")
+    return out, statewide, None
+
+
 # ── source 2: MIS District & College Codes PDF ───────────────────────
 def fetch_roster(refresh):
     import pypdf
@@ -946,6 +1048,9 @@ def build(refresh):
 
     for pv, fy in PORTAL_YEARS:
         tvi, tvi_sw = fetch_table_vi(refresh, pv, fy)
+        # Table IV.1 revenue, gated independently. A held year returns a
+        # reason instead of districts; nothing is invented for it.
+        iv1, iv1_sw, iv1_held = fetch_table_iv1(refresh, pv, fy)
 
         # ── structural pre-gate: every name must resolve to a portal code
         tvi_codes = {name2code.get(nm) for nm in tvi}
@@ -1015,6 +1120,7 @@ def build(refresh):
                 nc_threshold = round(2 * (nc_num / ftes_sum), 4)
 
         years_data[fy] = {
+            "iv1": iv1, "iv1Statewide": iv1_sw, "iv1Held": iv1_held,
             "tvi": tvi, "tviStatewide": tvi_sw, "ceSum": ce_sum,
             "code2app": code2app, "appStatewide": app_sw,
             "ncThreshold": nc_threshold, "ncShare": nc_share, "ftesSum": ftes_sum,
@@ -1053,6 +1159,22 @@ def build(refresh):
             # in; identity is the code, so a rename is not a new district
             rec["name"] = nm
             yr = {"ce": cev["ce"], "instrSal": cev["instrSal"], "pct50": cev["pct50"]}
+            # GENERAL FUND REVENUE (Table IV.1). Absent means the year is
+            # held or the district does not appear in that table — never
+            # a revenue of zero.
+            if yd["iv1"] is not None:
+                rv = yd["iv1"].get(nm)
+                if rv:
+                    yr["revenue"] = {"fed": rv["fed"], "state": rv["state"],
+                                     "local": rv["local"], "tot": rv["tot"]}
+                else:
+                    yr["revenueStatus"] = "not-published"
+                    yr["revenueReason"] = (
+                        "This district does not appear in the Chancellor's "
+                        "Office Table IV.1 for this year.")
+            else:
+                yr["revenueStatus"] = "not-published"
+                yr["revenueReason"] = yd["iv1Held"] or ""
             a = yd["code2app"].get(code)
             if a:
                 # ONLY THE FACTS THIS VINTAGE PUBLISHES ARE EMITTED.
@@ -1148,6 +1270,14 @@ def build(refresh):
         # the round this year's apportionment facts were assembled at
         if yd["round"] and fy in APPORTIONMENT_FACTS:
             sw["apportionmentRound"] = yd["round"]
+        if yd["iv1"] is not None:
+            sw["revenue"] = {"fed": yd["iv1Statewide"]["fed"],
+                             "state": yd["iv1Statewide"]["state"],
+                             "local": yd["iv1Statewide"]["local"],
+                             "tot": yd["iv1Statewide"]["tot"]}
+        else:
+            sw["revenueStatus"] = "not-published"
+            sw["revenueReason"] = yd["iv1Held"] or ""
         statewide[fy] = sw
 
     payload = {
@@ -1155,6 +1285,56 @@ def build(refresh):
         "years": YEARS,
         "meta": {
             "source": "fiscalportal.cccco.edu",
+            "revenue": {
+                "table": "CCFS-311 Table IV.1, Summary of General Fund "
+                         "Revenues (statewide report 37 on the same portal "
+                         "this layer already reads Table VI from).",
+                "scope": "GENERAL FUND ONLY — narrower than the revenue on "
+                         "every other layer of this site. Community-college "
+                         "districts also operate capital-project, "
+                         "debt-service, enterprise, internal-service and "
+                         "trust funds, and none of that is in this table. "
+                         "The city, county and state revenue figures "
+                         "elsewhere on this site are all-funds. A reader "
+                         "comparing them is comparing a general fund with a "
+                         "whole government, and the difference is the "
+                         "source's scope, not these districts' size.",
+                "gate": "Two controls, both to the dollar, or the year is "
+                        "not published: every district row must foot "
+                        "(Federal + State + Local = Total), and the district "
+                        "rows must sum to the portal's own printed Statewide "
+                        "row on each of those four columns independently.",
+                "neverSum": "About half of this money is the same money the "
+                            "state budget page shows as an appropriation: "
+                            "the State column is Proposition 98 and "
+                            "apportionment funding that the state layer "
+                            "already reports as its own spending. It is one "
+                            "dollar appearing on two pages, so the two are "
+                            "never added. The Local column is chiefly the "
+                            "property tax that the city, county and "
+                            "special-district layers also draw shares of, "
+                            "and it must not be added across those either.",
+                "noSurplus": "No surplus or deficit is computed. The "
+                             "expenditure figure this layer publishes is "
+                             "Current Expense of Education, a statutory "
+                             "subset defined by ECS 84362 after its own "
+                             "exclusions; this revenue is total General "
+                             "Fund. They are different scopes and their "
+                             "difference has no referent, so the Ledger "
+                             "does not subtract them.",
+                "noMark": "No legibility mark is carried on this layer, and "
+                          "that is a fact about the source. The city and "
+                          "county revenue records mark lines the State "
+                          "Controller labels only as \u201c(Specify)\u201d "
+                          "\u2014 a field whose answer the filer gave and "
+                          "the Controller does not publish. Table IV.1 has "
+                          "no such construct and no residual bucket at all: "
+                          "it has four columns, three named fund sources and "
+                          "their total, and the three foot to the fourth in "
+                          "every district and every published year. The "
+                          "words specify, unspecified, all other, sundry and "
+                          "unallocated appear nowhere in it.",
+            },
             "sourceLabel": "California Community Colleges Chancellor's Office — CCFS-311 "
                            "Annual Financial and Budget Report (Table VI, Current Expense of "
                            "Education, ECS 84362); SCFF 2022-23 Recalculation Exhibit C; MIS "

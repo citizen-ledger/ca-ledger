@@ -9172,6 +9172,137 @@ def test_v21_state_revenue(page, base):
           "not a revenue of zero" in empty, empty[:80])
 
 
+
+
+def test_v21_ccc_revenue(page, base):
+    """V21 community-college revenue: two gates, a held year, a narrower
+    scope, and no mark. All against the SHIPPED payload and page."""
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+    ccc = importlib.import_module("fetch_ccc_data")
+
+    d = load_data_js(ROOT / "ccc-data.js")
+    RM = d["meta"].get("revenue")
+    check("v21 ccc: the payload carries a revenue block", bool(RM))
+    check("v21 ccc: it names the portal report it came from",
+          "Table IV.1" in RM["table"], RM["table"][:50])
+
+    sw = d["statewide"]
+    pub = {fy: s["revenue"] for fy, s in sw.items() if "revenue" in s}
+    held = {fy: s for fy, s in sw.items() if s.get("revenueStatus") == "not-published"}
+    check("v21 ccc: fourteen of the fifteen years publish revenue",
+          len(pub) == 14, str(len(pub)))
+    check("v21 ccc: FY2019-20 is HELD, and the reason is the source's own "
+          "disagreement rather than a parse failure",
+          "2019-20" in held
+          and "20,000,000" in held["2019-20"]["revenueReason"],
+          str(list(held))[:60])
+    check("v21 ccc: a held year publishes NO revenue figure at all — "
+          "absent, never zero (negative control)",
+          "revenue" not in sw["2019-20"])
+
+    # ---- GATE A, on the shipped figures: every row foots -------------
+    badrow = []
+    for fy, r in pub.items():
+        if r["fed"] + r["state"] + r["local"] != r["tot"]:
+            badrow.append(fy)
+    for rec in d["districts"]:
+        for fy, y in rec["years"].items():
+            r = y.get("revenue")
+            if r and r["fed"] + r["state"] + r["local"] != r["tot"]:
+                badrow.append(f"{rec['name']} {fy}")
+    check("v21 ccc: Federal + State + Local = Total in every published "
+          "district-year and every statewide row", not badrow, str(badrow[:3]))
+
+    # ---- GATE B, on the shipped figures: districts ARE the statewide --
+    badsum = []
+    for fy in pub:
+        for k in ("fed", "state", "local", "tot"):
+            got = sum(rec["years"][fy]["revenue"][k] for rec in d["districts"]
+                      if "revenue" in rec["years"].get(fy, {}))
+            if got != pub[fy][k]:
+                badsum.append((fy, k, got, pub[fy][k]))
+    check("v21 ccc: the districts sum to the printed statewide row to the "
+          "dollar, on each of the four columns independently",
+          not badsum, str(badsum[:2]))
+
+    # ---- known anchors, measured independently at the portal ---------
+    check("v21 ccc anchor: FY2022-23 statewide is the portal's printed row",
+          pub["2022-23"] == {"fed": 1077664338, "state": 7684000804,
+                             "local": 5374648142, "tot": 14136313284},
+          str(pub.get("2022-23")))
+    check("v21 ccc anchor: FY2023-24 total is $15,052,293,173",
+          pub["2023-24"]["tot"] == 15052293173, str(pub["2023-24"]["tot"]))
+
+    # ---- the scope caveat is CARRIED, not left to be inferred --------
+    check("v21 ccc: the payload states the General-Fund-only scope",
+          "GENERAL FUND ONLY" in RM["scope"], RM["scope"][:40])
+    check("v21 ccc: and says explicitly that the other layers are all-funds, "
+          "so a cross-layer comparison is not like-for-like",
+          "all-funds" in RM["scope"])
+    check("v21 ccc: the never-sum statement names the state overlap",
+          "state budget page" in RM["neverSum"])
+    check("v21 ccc: no surplus is computed, with the ECS 84362 reason",
+          "84362" in RM["noSurplus"] and "does not subtract" in RM["noSurplus"])
+
+    # ---- NO MARK, and the contrast with cities is the point ----------
+    check("v21 ccc: the payload explains why no legibility mark is carried",
+          "(Specify)" in RM["noMark"] and "no residual bucket" in RM["noMark"])
+    check("v21 ccc: and the CITY payload does carry that mark — the "
+          "asymmetry is a fact about the sources (positive control)",
+          any("revUnex" in y for c in CITY["cities"].values()
+              for y in c["years"].values()))
+    check("v21 ccc: no ccc year carries an unexplained-share figure "
+          "(negative control)",
+          not any("revUnex" in r or "revTop" in r for r in pub.values()))
+
+    # ---- revision-tracked, per the #84 finding -----------------------
+    fx = REV.facts_for("ccc", "2026-07-24")
+    check("v21 ccc: the new fact is DECLARED for the collapse",
+          fx is not None and fx["facts"] == ["revenue"], str(fx and fx["facts"]))
+    check("v21 ccc: an undeclared date gets no collapse (negative control)",
+          REV.facts_for("ccc", "1999-01-01") is None)
+    flat = REV.flatten("ccc", d)
+    check("v21 ccc: the revenue figures are reachable by flatten(), so a "
+          "restatement cannot move silently",
+          any(".revenue.tot" in k for k in flat),
+          str([k for k in flat if ".revenue.tot" in k][:1]))
+
+    # ---- the module's own gate refuses a zero control ----------------
+    check("v21 ccc: fetch_table_iv1 exists and reads statewide report 37",
+          "StatewideReportDropdown" in ccc.fetch_table_iv1.__doc__
+          or '"37"' in open(ROOT / "pipeline" / "fetch_ccc_data.py").read())
+
+    # ---- the page, rendered from that payload ------------------------
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_selector("#revenueStrip p", timeout=15000)
+    heads = page.eval_on_selector_all("#revenueStrip p b", "els=>els.map(e=>e.textContent)")
+    check("v21 ccc page: five revenue statements render on the record",
+          len(heads) == 5, str(heads))
+    first = page.eval_on_selector("#revenueStrip p", "e=>e.textContent")
+    check("v21 ccc page: the published statewide figure is on the face",
+          "$15,052,293,173" in first, first[:90])
+    txt = page.eval_on_selector("#revenueStrip", "e=>e.textContent")
+    check("v21 ccc page: the narrower scope is stated where the reader "
+          "meets the figure", "GENERAL FUND ONLY" in txt)
+    check("v21 ccc page: the never-sum statement is on the face",
+          "state budget page" in txt)
+    check("v21 ccc page: the refusal to compute a surplus is stated with "
+          "its reason", "does not subtract" in txt)
+    check("v21 ccc page: and the absent mark is explained",
+          "no residual bucket" in txt)
+
+    # the held year renders its reason rather than an unexplained blank
+    page.goto(f"{base}/ccc.html#y=2019-20")
+    page.wait_for_selector("#revenueStrip p", timeout=15000)
+    held_txt = page.eval_on_selector("#revenueStrip p", "e=>e.textContent")
+    check("v21 ccc page: the held year says NOT PUBLISHED and gives the "
+          "measured discrepancy",
+          "NOT PUBLISHED" in held_txt and "20,000,000" in held_txt,
+          held_txt[:100])
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -9247,6 +9378,7 @@ def main():
             test_revisions(page, base)
             test_v21_revenue(page, base)
             test_v21_state_revenue(page, base)
+            test_v21_ccc_revenue(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

@@ -803,6 +803,28 @@ FACTS_ADDED = [
                 "checks — see docs/V21_REVENUE_FINDING.md.",
     },
     {
+        "layer": "ccc",
+        "built": "2026-07-24",
+        "facts": ["revenue"],
+        "note": "Our own change of what we publish, not a change at the "
+                "source. Every community-college district-year now carries "
+                "its GENERAL FUND REVENUE — Federal, State and Local — from "
+                "the Chancellor's Office CCFS-311 Table IV.1, read from the "
+                "same portal this layer already reads Table VI from. Two "
+                "controls hold to the dollar in every published year: each "
+                "district row foots, and the district rows sum to the "
+                "portal's own printed Statewide row on all four columns. "
+                "FY2019-20 is HELD and publishes no revenue: there the "
+                "Chancellor's Office's own statewide row sits exactly "
+                "$20,000,000 below the district rows printed above it, and "
+                "rather than choose between the source's two figures the "
+                "year is shown as not-published with the reason. THE SCOPE "
+                "IS NARROWER THAN EVERY OTHER REVENUE ON THIS SITE: General "
+                "Fund only, where the city, county and state figures are "
+                "all-funds. These figures are newly in the record and none "
+                "of them moved.",
+    },
+    {
         "layer": "state",
         "built": "2026-07-24",
         "facts": ["revenue", "revenueGf", "revenueSp"],
