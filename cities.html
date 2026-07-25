@@ -59,7 +59,8 @@
      record sheet itself is never clipped. */
   footer.ft, .prov, .hd, header, .encap, .entfoot,
   main > section, main > .method, #methodology, .overlap, #recordBody,
-  .picker-wrap, .pillgroup, .switch, #mapWrap, .chips, .searchwrap { display:none !important }
+  .picker-wrap, .pillgroup, .switch, #mapWrap, .chips, .searchwrap,
+  #revPanel { display:none !important }
   #recordSheet, #printCite { display:block !important }
   .rs-break{margin-top:6pt}
   .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
@@ -238,6 +239,20 @@
   .mcol{display:flex;flex-direction:column;gap:14px}
   .mnote{display:flex;gap:12px;font-size:var(--fs-note);line-height:1.55;color:var(--graphite)}
   .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  /* V21 revenue: the marks and the two statements sit ON the record,
+     not in the methodology, because they change how the figure reads. */
+  .revmark{border-left:3px solid var(--smoke);background:var(--surface);
+           padding:11px 14px;margin-top:12px;font-size:var(--fs-note);
+           line-height:1.55;color:var(--graphite)}
+  .revmark b{color:var(--ink);font-weight:600}
+  .revmark.unex{border-left-color:var(--ink)}
+  .revmark .mono{font-family:var(--mono);font-size:12.5px;color:var(--ink);word-break:break-word}
+  .revstate{border-top:1px solid var(--ash);margin-top:18px;padding-top:14px}
+  .revstate-h{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-bottom:10px}
+  .revstate p{font-size:var(--fs-note);line-height:1.6;color:var(--graphite);margin:0 0 10px}
+  .revstate p:last-child{margin-bottom:0}
+  .revstate b{color:var(--ink);font-weight:600}
+  .revstate .mono{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
   .integrity{border:1px solid var(--ash);background:var(--surface);padding:14px 16px;margin-top:4px}
   .digest{font-family:var(--mono);font-size:var(--fs-label);color:var(--ink);margin-top:8px;word-break:break-all}
   .revlog{font-family:var(--mono);font-size:var(--fs-data);line-height:1.7;color:var(--smoke)}
@@ -413,6 +428,15 @@
       <span class="schedlbl ghosty">SHOWN SEPARATELY BECAUSE CITIES DIFFER IN WHICH THEY OPERATE</span>
     </div>
     <div id="entBody"></div>
+  </div>
+
+  <div class="record" id="revPanel" hidden>
+    <div class="sched-row">
+      <span class="schedlbl" id="revLabel">REVENUE AS FILED · ALL FUNDS · RECONCILED TO THE CONTROLLER'S PUBLISHED TOTAL</span>
+      <span class="schedlbl ghosty">RECONCILED MEANS THE ARITHMETIC MATCHES — NOT THAT THE REVENUE RECURS</span>
+    </div>
+    <div id="revBody"></div>
+    <div class="revstate" id="revState"></div>
   </div>
 
   <section class="method" id="methodology">
@@ -1205,6 +1229,38 @@
               + (tot ? (r[1]/tot*100).toFixed(1) : "0.0") + '%</td></tr>').join("")
           + '</table></div>';
       }
+      /* REVENUE ON THE PRINTED RECORD. A sheet that showed only what a
+         government spent, and omitted that half its revenue may be
+         unexplained, would be a less honest artifact than the screen. */
+      if (yr && yr.revAll){
+        const RC = REV_CATS(), RL = REV_LINES(), tot = yr.revAll;
+        const rrows = (yr.revCats||[]).map(r=>[RC[r[0]]||"(unlabeled)", r[1]])
+                        .filter(r=>r[1]).sort((a,b)=>b[1]-a[1]);
+        h += '<div class="rs-break"><b>REVENUE AS FILED · ALL FUNDS · '
+          + esc(fmtM(tot)) + '</b><table>' + rrows.map(r =>
+              '<tr><td>' + esc(r[0]) + '</td><td class="n">' + esc(fmtM(r[1]))
+              + '</td><td class="n">' + (tot ? (r[1]/tot*100).toFixed(1) : "0.0")
+              + '%</td></tr>').join("") + '</table></div>';
+        let rn = '<div class="rs-notes"><b>HOW TO READ THE REVENUE FIGURE</b>';
+        if (yr.revUnex){
+          rn += '<p>' + esc(fmtPct(pctOf(yr.revUnex, tot)))
+             + ' of this revenue (' + esc(fmtM(yr.revUnex)) + ') sits in lines the '
+             + 'Controller labels only as "(Specify)" — its form asks the filer to say '
+             + 'what the money was and publishes the label, not the answer. The total '
+             + 'still reconciles to the Controller’s published figure exactly.</p>';
+        }
+        if (yr.revTop){
+          rn += '<p>The largest single line is ' + esc(RL[yr.revTop[0]]||"") + ' at '
+             + esc(fmtM(yr.revTop[1])) + ' — ' + esc(fmtPct(pctOf(yr.revTop[1], tot)))
+             + ' of the year. Stated as a fact about the filing, not a judgement.</p>';
+        }
+        rn += '<p>Revenue and spending here are measured on different scopes and do '
+           + 'not net: the revenue form carries no bond proceeds or other financing '
+           + 'sources, while the spending figures include the capital outlay and debt '
+           + 'service those proceeds fund. The Ledger does not compute a surplus or '
+           + 'deficit, and this sheet does not print one.</p></div>';
+        h += rn;
+      }
       if (notes.length){
         h += '<div class="rs-notes"><b>COMPARABILITY NOTES — ' + notes.length
           + ' APPLY TO THIS RECORD</b>';
@@ -1333,6 +1389,7 @@
     else if (sel.length === 1) renderDetail(sel[0]);
     else renderCompare(sel);
     renderEnterprise(sel);
+    renderRevenue(sel);
     $("printCite").textContent = citationText();
   }
   function renderEmpty(){
@@ -1500,6 +1557,128 @@
     html += "</div></div>";
     $("recordBody").innerHTML = html;
     wireDaggers($("recordBody"));
+  }
+
+  /* ------------------------------------------------------------------
+     REVENUE (V21). Two things are on the face here rather than in a
+     method note, because both change how the number should be read and
+     a reader who never opens the methodology must still see them.
+
+     1. THE UNEXPLAINED MARK. The gate certifies arithmetic, not
+        meaning. The Controller's form asks a filer to name what went
+        into a residual line — "(Specify)" — and then publishes only
+        the label, never the answer, at any subcategory depth. The mark
+        is derived from that token in the source's own text; nothing
+        here holds a list of line names.
+     2. THE CONCENTRATION MARK. A year can reconcile to the published
+        total exactly and still rest on a single line. Stated as a
+        share, with no inference that the money is one-time — a city
+        whose largest line is its electric utility is not anomalous.
+  ------------------------------------------------------------------ */
+  /* D is rebound by bindLayer() per layer, so both labels pools follow
+     whichever of city/county is showing. */
+  const REV_CATS  = () => ((D && D.meta && D.meta.revCategoryLabels) || []);
+  const REV_LINES = () => ((D && D.meta && D.meta.revLineLabels) || []);
+  const UNEXPLAINED_TOKEN = "(Specify)";
+  const pctOf = (a,b) => b ? (a/b*100) : 0;
+  const fmtPct = p => (p<10 ? p.toFixed(1) : Math.round(p)) + "%";
+
+  function revIntergov(yr){
+    const cats = REV_CATS();
+    return (yr.revCats||[]).reduce((s,r)=>
+      s + ((cats[r[0]]||"").indexOf("Intergovernmental")===0 ? r[1] : 0), 0);
+  }
+
+  function renderRevenue(sel){
+    const panel = $("revPanel");
+    if (!sel.length){ panel.hidden = true; return; }
+    panel.hidden = false;
+    const cats = REV_CATS(), lines = REV_LINES(), isCounty = S.layer === "county";
+    let html = "";
+    if (sel.length === 1){
+      const id = sel[0], yr = cityYear(id,S.year);
+      const total = yr.revAll || 0;
+      const rows = (yr.revCats||[]).map(r=>({name:cats[r[0]]||"(unlabeled)", v:r[1]}))
+                     .filter(r=>r.v).sort((a,b)=>b.v-a.v);
+      if (!total || !rows.length){
+        html = '<div class="empty" style="margin-top:14px">'+esc(dispName(id))
+             + ' has no revenue reported for FY '+S.year+'. This is an absent filing, not a revenue of zero.</div>';
+      } else {
+        const max = rows[0].v;
+        html = '<div class="tblwrap"><div class="entmin">';
+        rows.forEach(r=>{
+          html += '<div class="det-row"><span class="fn">'+esc(r.name)+'</span>'
+            + '<span class="cellbar" style="margin-top:0"><i style="width:'+(r.v/max*100).toFixed(1)+'%;background:#4a6d7c"></i></span>'
+            + '<span class="num" style="text-align:right">'+fmtM(r.v)+'</span>'
+            + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(r.v,yr.population))+'</span></div>';
+        });
+        html += '<div class="det-foot"><span style="font-size:14px">All revenue, all funds</span><span></span>'
+          + '<span class="num" style="text-align:right">'+fmtM(total)+'</span>'
+          + '<span class="num dim" style="text-align:right;font-size:12.5px">'+fmtCap(perCap(total,yr.population))+'</span></div>'
+          + '</div></div>';
+
+        /* THE TWO MARKS */
+        let marks = "";
+        if (yr.revUnex){
+          const p = pctOf(yr.revUnex,total);
+          marks += '<div class="revmark"><b>'+fmtPct(p)+' of this year is unexplained.</b> '
+            + fmtM(yr.revUnex)+' sits in lines the Controller labels only as &ldquo;'+UNEXPLAINED_TOKEN
+            + '&rdquo;. Its form asks the filer to say what the money was; it publishes the label and not the answer, '
+            + 'and the deeper subcategory fields repeat the same label rather than resolving it. '
+            + 'This figure still reconciles to the Controller&rsquo;s published total exactly.</div>';
+        }
+        if (yr.revTop){
+          const lbl = lines[yr.revTop[0]] || "", tv = yr.revTop[1], p = pctOf(tv,total);
+          const isUnex = lbl.indexOf(UNEXPLAINED_TOKEN) !== -1;
+          marks += '<div class="revmark'+(isUnex?' unex':'')+'"><b>'+fmtPct(p)+' of this year is one line.</b> '
+            + 'The largest single revenue line is <span class="mono">'+esc(lbl)+'</span> at '+fmtM(tv)+'.'
+            + (isUnex ? ' That line is itself one the Controller does not itemise.' : '')
+            + ' A large share is a fact about the filing, not a judgement: a city whose biggest line is its own '
+            + 'electric utility is ordinary. It is shown because a reconciled total can still rest on one number.</div>';
+        }
+        html += marks;
+      }
+    } else {
+      html = '<div class="tblwrap"><div class="entmin">';
+      sel.forEach(id=>{
+        const yr = cityYear(id,S.year), total = yr.revAll||0;
+        const up = yr.revUnex ? pctOf(yr.revUnex,total) : 0;
+        html += '<div class="det-row tri"><span class="fn">'+esc(dispName(id))+'</span>'
+          + '<span class="num dim" style="font-size:12px">'
+          + (total ? (up ? fmtPct(up)+' UNEXPLAINED' : 'EVERY LINE ITEMISED') : 'NOT FILED')
+          + '</span>'
+          + '<span class="num" style="text-align:right">'+(total?fmtM(total):'—')+'</span></div>';
+      });
+      html += '<div class="caps"><span>SELECT A SINGLE '+(isCounty?'COUNTY':'CITY')+' FOR ITS FULL REVENUE SCHEDULE</span><span></span></div></div></div>';
+    }
+    $("revBody").innerHTML = html;
+
+    /* THE TWO STATEMENTS, on the face. Both are quantified from the
+       shipped payload rather than asserted, so they cannot drift. */
+    const ig = sel.length===1 ? revIntergov(cityYear(sel[0],S.year)) : 0;
+    const igTot = sel.length===1 ? (cityYear(sel[0],S.year).revAll||0) : 0;
+    let st = '<div class="revstate-h">HOW TO READ THIS, AND WHAT THE LEDGER WILL NOT DO</div>';
+    st += '<p><b>Revenue here is not the other side of the spending pages, and the two do not net.</b> '
+        + 'The Controller&rsquo;s revenue form carries no bond proceeds, no proceeds from selling property held in '
+        + 'governmental funds, and no transfers between funds — under governmental accounting those are '
+        + '&ldquo;other financing sources&rdquo;, not revenue, and every row here is typed <span class="mono">Revenues</span>. '
+        + 'The spending pages <em>do</em> include capital outlay and debt service, which is what those absent proceeds pay for. '
+        + '<b>So the Ledger does not compute a surplus or a deficit, and does not publish one.</b> '
+        + 'Subtracting these two numbers would measure the gap between two different scopes, not a government&rsquo;s balance. '
+        + 'The absence is a refusal, not an oversight.</p>';
+    if (sel.length===1 && igTot && ig){
+      st += '<p><b>The same dollar is counted here and on another government&rsquo;s page.</b> '
+          + esc(dispName(sel[0]))+' reports '+fmtM(ig)+' of intergovernmental revenue in FY '+S.year+' — '
+          + fmtPct(pctOf(ig,igTot))+' of everything it took in — and that is money the state or federal government '
+          + 'already reported as its own <em>spending</em>. Revenue overlap is direct, not structural: it is the same '
+          + 'dollar appearing twice. Never add revenue across the layers of this site.</p>';
+    }
+    st += '<p><b>Property tax is each government&rsquo;s own reported figure, never a share of a statewide whole.</b> '
+        + 'California&rsquo;s roughly 1% levy is collected by the county and allocated among the county, its cities, '
+        + 'school and community-college districts, and special districts. This page shows what '+(isCounty?'this county':'this city')
+        + ' reported receiving; it is not that government&rsquo;s slice of a statewide total, and the figures on this site '
+        + 'do not reproduce the Board of Equalization&rsquo;s published four-way split. Do not read them as shares of one pie.</p>';
+    $("revState").innerHTML = st;
   }
 
   /* enterprise block (schedule 3) */

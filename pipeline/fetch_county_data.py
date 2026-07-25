@@ -43,7 +43,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp                      # noqa: E402
 import gates                                     # noqa: E402
 from fetch_city_data import soda, norm           # noqa: E402
+from fetch_city_data import UNEXPLAINED_TOKEN    # noqa: E402
 import revisions                                 # noqa: E402
+
+# SCO NAMES THE SAME QUANTITY DIFFERENTLY IN THE TWO DATASETS: the city
+# revenue set calls its amount column `value`, this one calls it
+# `values`. Declared once, aliased to `v` in every $select. See
+# strict.py — every row this pipeline reads is a StrictRow, so a wrong
+# name raises instead of summing to a county that raised nothing.
+REVEN_VALUE_COL = "values"
+DS_REV_PERCAP = "da2q-agh9"   # SCO's published per-county TOTAL REVENUES —
+                              # the revenue reconciliation target, twin of
+                              # miui-wb29 on the spending side
 
 DS_EXPEND = "uctr-c2j8"
 DS_REVEN = "emxv-k8xv"
@@ -209,11 +220,18 @@ def fetch_year(source_year):
                              "sum(values) as v,max(estimated_population) as pop",
                   "$where": f"fiscal_year='{source_year}'",
                   "$group": "entity_name,category,subcategory_1,"
+                            "line_description",
+                  "$order": "entity_name,category,subcategory_1,"
                             "line_description"})
+    # LINE LEVEL, not category level: the unexplained mark and the
+    # concentration mark are properties of the LINE and cannot be
+    # recovered from a category subtotal.
     rev = soda(DS_REVEN,
-               **{"$select": "entity_name,category,sum(values) as v",
+               **{"$select": "entity_name,category,line_description,"
+                             f"sum({REVEN_VALUE_COL}) as v",
                   "$where": f"fiscal_year='{source_year}'",
-                  "$group": "entity_name,category"})
+                  "$group": "entity_name,category,line_description",
+                  "$order": "entity_name,category,line_description"})
     out = {}
     for r in exp:
         name = norm(r["entity_name"])
@@ -221,7 +239,10 @@ def fetch_year(source_year):
             "pop": 0, "byFunction": {}, "enterprise": {},
             "lines": {},
             "isf": 0.0, "conduit": 0.0, "revenues": 0.0,
-            "revenuesEnterprise": 0.0})
+            "revenuesEnterprise": 0.0,
+            # all-funds revenue — what the published control certifies
+            "revTotal": 0.0, "revByCategory": {},
+            "revUnexplained": 0.0, "revTopLine": ("", 0.0)})
         c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
         v = float(r.get("v") or 0)
         kind, key = classify(r.get("category"), r.get("subcategory_1"))
@@ -237,20 +258,41 @@ def fetch_year(source_year):
             c["isf"] += v
         else:
             c["conduit"] += v
+    rev_seen = 0
     for r in rev:
         name = norm(r["entity_name"])
         if name not in out:
             continue
-        cat = norm(r.get("category"))
-        v = float(r.get("v") or 0)
+        rev_seen += 1
+        cat = norm(r.optional("category"))
+        line = norm(r.optional("line_description"))
+        v = float(r.optional("v") or 0)
+        c = out[name]
+        # ALL FUNDS, because that is what the published control is.
+        c["revTotal"] += v
+        c["revByCategory"][cat] = c["revByCategory"].get(cat, 0.0) + v
+        if UNEXPLAINED_TOKEN in line:
+            c["revUnexplained"] += v
+        if v > c["revTopLine"][1]:
+            c["revTopLine"] = (line, v)
         if cat in ENTERPRISE_BY_CATEGORY:
-            out[name]["revenuesEnterprise"] += v
+            c["revenuesEnterprise"] += v
         elif cat not in ("Internal Service Fund", "Conduit Financing"):
-            out[name]["revenues"] += v
+            c["revenues"] += v
             if cat.startswith("Intergovernmental"):
                 key = ("igState" if "State" in cat else
                        "igFederal" if "Federal" in cat else "igOther")
-                out[name][key] = out[name].get(key, 0.0) + v
+                c[key] = c.get(key, 0.0) + v
+    # POSITIVE CONTROL: every derived share below has a numerator that
+    # can legitimately be zero, so a silently empty fetch would render
+    # as "nothing unexplained anywhere" — the most flattering reading
+    # of a broken query. Assert the fetch happened.
+    gates.require_rows(rev_seen, 500,
+                       f"FY {fy_label(source_year)} county revenue line "
+                       "rows matched to a county",
+                       "the source publishes roughly 1,400 county revenue "
+                       "lines per year; near-zero means the amount column "
+                       f"{REVEN_VALUE_COL!r} or the join key changed name")
     print(f"  FY {fy_label(source_year)}: {len(out)} counties, "
           f"{len(exp):,} expenditure lines", file=sys.stderr)
     return out
@@ -282,12 +324,24 @@ def main():
                                  "$where": "fiscal_year in("
                                            + ",".join(f"'{y}'" for y in SOURCE_YEARS) + ")"})}
     print(f"  {len(official):,} county-year controls", file=sys.stderr)
+    print("Fetching official per-county REVENUE control totals…",
+          file=sys.stderr)
+    official_rev = {(norm(r["entity_name"]), r["fiscal_year"]):
+                    float(r.optional("total_revenues") or 0)
+                    for r in soda(DS_REV_PERCAP,
+                                  **{"$select": "entity_name,fiscal_year,"
+                                                "total_revenues",
+                                     "$where": "fiscal_year in("
+                                               + ",".join(f"'{y}'" for y in SOURCE_YEARS) + ")"})}
+    print(f"  {len(official_rev):,} county-year revenue controls",
+          file=sys.stderr)
     city_pops = city_populations_by_county()
 
     years_data = {y: fetch_year(y) for y in SOURCE_YEARS}
 
     errors, notes = [], []
     reconciled, unreconciled = 0, []
+    rev_reconciled, rev_unreconciled = 0, []
     # THE CLASSIFICATION-SHAPE GATE (hard): statewide, every function
     # must be nonzero in every year (measured clean on all 8 shipped
     # vintages); a column shift zeroes whole functions while totals
@@ -339,11 +393,44 @@ def main():
                               f"${ctrl:,.0f} (drift ${abs(ours - ctrl):,.0f})")
             else:
                 reconciled += 1
+
+            # THE REVENUE GATE — same rule, same tolerance, and the same
+            # refusal to read a zero control as a pass. Non-filing is
+            # encoded as a literal 0 in this control too (measured on the
+            # city side: Hollister FY2022, Novato FY2022, Woodland
+            # FY2023), and certifying that as "reconciled" would publish
+            # "this county collected nothing" as a verified fact.
+            ours_rev = c["revTotal"]
+            ctrl_rev = official_rev.get((name, sy))
+            if ctrl_rev is None:
+                errors.append(f"{name} FY {fy_label(sy)}: no REVENUE control")
+                rev_unreconciled.append(f"{name} FY {fy_label(sy)} (none)")
+            elif ctrl_rev == 0:
+                rev_unreconciled.append(f"{name} FY {fy_label(sy)} (zero)")
+                if ours_rev > 0:
+                    errors.append(
+                        f"{name} FY {fy_label(sy)} REVENUE: we report "
+                        f"${ours_rev:,.0f} but the published control is 0 — "
+                        "the figure cannot be reconciled and must not ship "
+                        "as if it were")
+            elif abs(ours_rev - ctrl_rev) > max(GATE_DOLLARS, ctrl_rev * 0.001):
+                errors.append(
+                    f"{name} FY {fy_label(sy)} REVENUE: ${ours_rev:,.0f} vs "
+                    f"control ${ctrl_rev:,.0f} "
+                    f"(drift ${abs(ours_rev - ctrl_rev):,.0f})")
+            else:
+                rev_reconciled += 1
             if c["pop"] <= 0:
                 errors.append(f"{name} FY {fy_label(sy)}: population 0")
     bad = gates.check_rows(
         reconciled, 440, "county-years reconciled against a published control",
         f"{len(unreconciled)} did not: {unreconciled[:5]}")
+    if bad:
+        errors.append(bad)
+    bad = gates.check_rows(
+        rev_reconciled, 440,
+        "county-years whose REVENUE reconciled against a published control",
+        f"{len(rev_unreconciled)} did not: {rev_unreconciled[:5]}")
     if bad:
         errors.append(bad)
     if errors:
@@ -373,6 +460,14 @@ def main():
                           for c in cs.values()
                           for fam in c["lines"].values() for lbl in fam})
     line_idx = {lbl: i for i, lbl in enumerate(line_labels)}
+    # Revenue label pools, interned exactly as the V8 expenditure lines
+    # are: indices in the payload, text once in the meta.
+    rev_cat_labels = sorted({k for cs in years_data.values()
+                             for c in cs.values() for k in c["revByCategory"]})
+    rev_cat_idx = {k: i for i, k in enumerate(rev_cat_labels)}
+    rev_line_labels = sorted({c["revTopLine"][0] for cs in years_data.values()
+                              for c in cs.values() if c["revTopLine"][0]})
+    rev_line_idx = {k: i for i, k in enumerate(rev_line_labels)}
     for sy, cs in years_data.items():
         for cname, c in cs.items():
             for k, total in c["byFunction"].items():
@@ -473,7 +568,25 @@ def main():
                                           if round(v / 1e6, 3) != 0}},
                 "scoTotal": m(sum(c["byFunction"].values())
                               + sum(c["enterprise"].values()) + c["isf"] + c["conduit"]),
+                # ALL-FUNDS revenue — the figure the published control
+                # certifies. Deliberately a different key from
+                # `revenues` (governmental only), which the revenue
+                # gate did NOT check.
+                "revAll": m(c["revTotal"]),
+                "revCats": sorted(
+                    ([rev_cat_idx[k], m(v)]
+                     for k, v in c["revByCategory"].items()
+                     if round(v / 1e6, 3) != 0),
+                    key=lambda x: -abs(x[1])),
             }
+            # The two derived marks. Emitted only when nonzero, so an
+            # absent field means the source explained every line /
+            # reported no revenue, not that nothing was measured.
+            if round(c["revUnexplained"] / 1e6, 3) != 0:
+                yr["revUnex"] = m(c["revUnexplained"])
+            top_label, top_val = c["revTopLine"]
+            if top_label and round(top_val / 1e6, 3) != 0:
+                yr["revTop"] = [rev_line_idx[top_label], m(top_val)]
             if round(c["isf"] / 1e6, 3):
                 yr["internalService"] = m(c["isf"])
             if round(c["conduit"] / 1e6, 3):
@@ -547,8 +660,30 @@ def main():
                          "activities, official FTR activity_fundtype line "
                          "names, children sum to the unrounded function "
                          "totals exactly (gated).",
+            "revCategoryLabels": rev_cat_labels,
+            "revLineLabels": rev_line_labels,
+            "revenueNote":
+                "revAll is ALL FUNDS — governmental, enterprise, internal "
+                "service and conduit — because that is what the "
+                "Controller's published total_revenues (da2q-agh9) "
+                "certifies. `revenues` remains the governmental-only "
+                "figure and is NOT what the revenue gate checked.",
+            "unexplainedNote":
+                "revUnex is the dollars in lines whose own published "
+                f"label carries the Controller's {UNEXPLAINED_TOKEN!r} "
+                "token — the form asked the filer to name what went into "
+                "a residual line and publishes only the label, never the "
+                "answer, at any subcategory depth. Derived from the "
+                "source's text, not from a list kept here. Absent means "
+                "zero such lines, not unmeasured.",
+            "topLineNote":
+                "revTop is [label index, millions] for the single largest "
+                "revenue line of that year. A year can reconcile exactly "
+                "and still rest on one line; this reports that, and "
+                "asserts nothing about whether the money recurs.",
             "datasets": {"expenditures": DS_EXPEND, "revenues": DS_REVEN,
-                         "perCapita": DS_PERCAP},
+                         "perCapita": DS_PERCAP,
+                         "revenuePerCapita": DS_REV_PERCAP},
         },
         "years": [fy_label(y) for y in SOURCE_YEARS],
         "functions": [{"key": k, "name": n} for k, n in FUNCTIONS],

@@ -192,6 +192,52 @@ long time. When you finally exercise a placeholder, measure it against the
 source rather than trusting it; and prefer declarations that a test
 exercises even when the feature that uses them is not yet turned on.
 
+### 2e. A query that reconciles today can be relying on undefined behaviour
+
+**Shape.** A paged query returns the right answer, every gate passes, and
+the figures are correct — because the server happened to order its rows
+consistently, not because anything asked it to. Nothing in the code, the
+tests, or the source documents the dependency. The day the result set
+crosses a page boundary, or the server changes its incidental ordering,
+the answer silently becomes wrong in both directions.
+
+**The case.** `soda()` pages with `$limit`/`$offset`. Offset paging over
+an *unordered* result is only as stable as the server's accidental row
+order: the same offset can re-serve a row it already sent and skip one it
+has not, so groups are dropped and duplicated at the page boundaries and
+the sums stay entirely plausible.
+
+Adding `line_description` to the city revenue fetch (V21) took it from
+~9,600 groups per year to **176,949** — past the 50,000 page size — and
+**all 3,837 city-years then missed their published control, in both
+directions, by up to $41M**. The reconciliation gate caught it and
+refused to write, which is the system working exactly as intended.
+
+The part worth recording is what the investigation of that failure
+turned up: **the expenditure query has been over the page boundary the
+whole time.** Measured at **98,351 groups per year** against the same
+50,000 limit, also with no `$order`. It has always reconciled — so it
+has always been *correct* — but only because Socrata happened to return
+stable ordering across pages. It worked by luck, and the only thing that
+would ever have told us otherwise was a gate failing.
+
+**What changed.** `soda()` now raises on any grouped query that does not
+declare an `$order`, so the class of bug cannot be reintroduced silently;
+both city queries and both county queries declare one.
+
+**Still open.** `fetch_district_data.py` has its own local `soda()` and
+four grouped queries with no `$order`. Measured, they are **42,117** and
+**37,319** groups against a 50,000 limit — under it, so they fetch in a
+single page and no paging occurs today. They are correct, and they are
+within ~16% of the boundary; the district roster only grows. They were
+deliberately left untouched (that pipeline is mid-review for a separate
+tier question) and should get the same guard when it is next opened.
+
+**The general rule.** "It reconciles" is evidence about today's data, not
+about the contract. When a query's result set can grow past a page, make
+the ordering explicit — and prefer a guard that refuses the ambiguous
+case over a test that would only notice after the numbers moved.
+
 ---
 
 ## Part 3 — Test-quality debt
