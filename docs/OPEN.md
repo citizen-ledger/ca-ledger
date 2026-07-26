@@ -489,6 +489,58 @@ silently revert.
 the exceptions are described separately is the moment the reader can no
 longer tell how much of the site is actually reproducible.
 
+### 2n. The first page that needs a server
+
+Every page on this site was a file that worked from a double-click:
+data arrives by `<script src>`, which a browser loads from `file://`,
+so the whole site clones and reads with no server and no build. The
+compensation layer broke that, and the break is worth naming because it
+was invisible until looked for.
+
+**Verified, not assumed:** `compensation.html` is the only page in the
+repository that calls `fetch()` at runtime, and every other page was
+re-opened from a `file://` URL after this shipped and renders fully.
+
+The reason is size. 1,407,216 position rows encode to **46.1 MB raw /
+14.3 MB gzipped** even with shared vocabularies and integer-array rows,
+against a previous site-wide largest payload of 14.8 MB. One file would
+make every reader download all of it to look at one city. So the index
+loads with the page and per-employer detail is fetched on demand.
+
+**What it cost, measured** — shallow clone, with and without:
+
+| | tree | `.git` | files | clone |
+|---|---|---|---|---|
+| without | 41 MB | 10 MB | 125 | 0.22 s |
+| with | 117 MB | 25 MB | 4,264 | 0.66 s |
+
+The rebuild claim survives; the file count is the bigger change.
+
+**Two things this required beyond the code.** It degrades the way the
+map does when tiles fail — naming what failed *and* what still holds,
+never a blank and never a substituted number — and on a `file://` path
+it says so explicitly, since that is the likeliest cause and the reader
+would otherwise think the page is broken. And it is written down in
+`docs/SCOPE.md` as Exception 3, beside the two manual-cache exceptions,
+because **a load pattern that isn't recorded becomes an undocumented
+dependency**: the next person to add a page has no way to know the
+double-click rule ever existed.
+
+### 2o. A test that intercepts a request must prove it intercepted one
+
+The degradation test above passed on its first run while testing
+nothing. It navigated with `goto(url + "#hash")` to a page already open,
+which is a **same-document navigation** — the script never re-runs, no
+request is made, and the assertions read the *previous* employer's
+successfully-rendered table. The route interception was registered
+correctly and simply never fired.
+
+The fix is two lines: force a new document (a query string does it), and
+**assert the interception actually happened** before asserting anything
+about the failure it was supposed to cause. A negative-path test that
+cannot tell "the failure was handled well" from "the failure never
+occurred" is not a test.
+
 ---
 
 ## Part 3 — Test-quality debt
