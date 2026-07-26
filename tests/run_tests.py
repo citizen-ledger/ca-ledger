@@ -8270,9 +8270,10 @@ def test_runtime_origins():
     """
     pages = sorted(p.name for p in ROOT.glob("*.html"))
     EXPECTED = sorted(["404.html", "about.html", "address.html", "ccc.html",
-                       "cities.html", "csu.html", "districts.html",
-                       "index.html", "reading.html", "revisions.html",
-                       "schools.html", "search.html", "uc.html"])
+                       "cities.html", "compensation.html", "csu.html",
+                       "districts.html", "index.html", "reading.html",
+                       "revisions.html", "schools.html", "search.html",
+                       "uc.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -9645,6 +9646,215 @@ def test_v21_district_tier(page, base):
           "UNDERSTATED" not in page.inner_text("#recNotes").upper())
 
 
+
+
+def test_v23a_compensation(page, base):
+    """V23a: the compensation layer. As-filed, per-row only, no averages,
+    daggered, and loudly non-reproducible. Shipped payload only."""
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    import check_vintage
+    d = load_data_js(ROOT / "compensation-data.js")
+    M = d["meta"]
+
+    # ---- TIER: as-filed, and the reason is structural ------------------
+    check("v23a: the layer ships at the as-filed tier",
+          M["tier"] == "AS FILED — UNRECONCILED", M["tier"])
+    check("v23a: the basis says the control cannot be ALIGNED, not that a "
+          "gate failed — the distinction is the whole finding",
+          "no as-of-date total" in M["basis"]
+          and "no instant at which a gate could be applied" in M["basis"])
+    check("v23a: SCO's own published totals are carried so a reader can "
+          "see how far the live file has moved",
+          M["published"]["citiesCounties"]["positions"] == 746358
+          and M["published"]["k12"]["compliantFilers"] == 360)
+
+    # ---- NO AVERAGES. The rule most likely to be broken later ---------
+    bad = []
+    for sl, e in d["entities"].items():
+        for k in ("positions", "wages", "retHealth", "elected"):
+            if not isinstance(e[k], int):
+                bad.append((sl, k))
+    check("v23a: every entity figure is an int — a count or a whole-dollar "
+          "sum. A non-integer would mean something was divided, and this "
+          "layer publishes no averages", not bad, str(bad[:3]))
+    src = (ROOT / "pipeline" / "fetch_compensation_data.py").read_text()
+    check("v23a: and the pipeline asserts that itself rather than trusting "
+          "the author", "publishes no averages" in src)
+    # The negative control is about FIGURES, not prose: meta.noAverages
+    # exists precisely to say no average is published, so scanning key
+    # NAMES for the word would flag the disclaimer itself.
+    numeric_meta = {k: v for k, v in M.items() if isinstance(v, (int, float))}
+    check("v23a: no numeric figure anywhere in meta is a per-position "
+          "statistic (negative control)",
+          not any(w in k.lower() for k in numeric_meta
+                  for w in ("avg", "average", "median", "mean", "per")),
+          str(sorted(numeric_meta)))
+
+    # ---- THE PENSION DAGGER -------------------------------------------
+    dag = [e for e in d["entities"].values() if e["unfundedInRetirement"]]
+    nodag = [e for e in d["entities"].values() if not e["unfundedInRetirement"]]
+    check("v23a: both sides of the pension flag are present — daggered and "
+          "undaggered employers both exist (positive control on each side)",
+          len(dag) > 50 and len(nodag) > 50, f"{len(dag)}/{len(nodag)}")
+    check("v23a: the flag is EMPLOYER-level, which is what makes a "
+          "per-employer dagger exact; the pipeline refuses to build if an "
+          "employer ever reports it both ways",
+          "no longer an employer-level property" in src)
+    check("v23a: the dagger text says the component cannot be netted out",
+          "cannot be netted out" in M["pensionDagger"])
+
+    # ---- K-12 VOLUNTARY REPORTING -------------------------------------
+    check("v23a: K-12 is declared voluntary and the others mandated",
+          M["layers"]["k12"]["mandate"] == "voluntary"
+          and M["layers"]["city"]["mandate"] == "mandated")
+
+    # ---- NOT-PUBLISHED vs ZERO ----------------------------------------
+    nf = M["nonFilers"]["city"]
+    check("v23a: cities that filed nothing are named, so absence is not "
+          "read as zero", len(nf) == 3 and "Banning" in nf, str(nf))
+    check("v23a: and no employer in the payload is a silent zero — a "
+          "non-filer is absent, not present-with-zero (negative control)",
+          not any(e["positions"] == 0 for e in d["entities"].values()))
+
+    # ---- CONTRACT SERVICES --------------------------------------------
+    check("v23a: contracted services are carried from the site's own "
+          "checklist, so an absent department is not read as a zero",
+          len(M["contractedServices"]) > 100, str(len(M["contractedServices"])))
+
+    # ---- DOES NOT EQUAL SPENDING --------------------------------------
+    check("v23a: the does-not-equal statement is quantified, not generic",
+          "0.431" in M["doesNotEqual"] and "0.203" in M["doesNotEqual"])
+    check("v23a: and it names the cause — enterprise scope with no fund "
+          "field to correct", "no fund field" in M["doesNotEqual"])
+
+    # ---- SLUGS ARE LAYER-KEYED ----------------------------------------
+    check("v23a: slugs are keyed by layer, so a county cannot collide with "
+          "a city of the same name",
+          "city-alameda" in d["entities"] and "county-alameda" in d["entities"])
+    check("v23a: and the two are different records with different payrolls "
+          "(positive control that the collision fix held)",
+          d["entities"]["city-alameda"]["positions"]
+          != d["entities"]["county-alameda"]["positions"])
+
+    # ---- VINTAGE + STALENESS ------------------------------------------
+    v = M["vintage"]
+    check("v23a: the payload carries its own vintage from the source's "
+          "LastUpdatedDate", bool(v.get("latest")) and bool(v.get("earliest")))
+    res = {r["layer"]: r for r in check_vintage.check()}
+    check("v23a STALENESS: the compensation layer is not stale — this "
+          "assertion FAILS when the data ages past its threshold, so "
+          "staleness surfaces in CI rather than sitting on the page "
+          "looking current",
+          res["compensation"]["status"] == "current",
+          f"{res['compensation']['status']} at {res['compensation'].get('ageDays')} days")
+    check("v23a STALENESS: the CSU manual-cache layer is checked the same "
+          "way — the second exception is not left unwatched",
+          res["csu"]["status"] == "current",
+          f"{res['csu']['status']} at {res['csu'].get('ageDays')} days")
+    # the check must measure the SOURCE, not our own build date
+    csu = load_data_js(ROOT / "csu-data.js")
+    check("v23a STALENESS: CSU is aged on its SOURCE fiscal year, never on "
+          "meta.generated — checking the build date would measure our own "
+          "activity and never go stale",
+          check_vintage.LAYERS["csu"]["path"] == ("meta", "year"),
+          str(check_vintage.LAYERS["csu"]["path"]))
+    stale_src = (ROOT / "pipeline" / "check_vintage.py").read_text()
+    check("v23a STALENESS: the scheduled check never fetches either "
+          "source — for compensation that is the point, since its source "
+          "excludes exactly this access",
+          "NEVER FETCHES" in stale_src
+          and "urllib" not in stale_src and "requests" not in stale_src)
+    wf = ROOT / ".github" / "workflows" / "vintage-check.yml"
+    check("v23a STALENESS: a scheduled job exists so the maintainer is "
+          "told without anyone running the suite", wf.exists())
+    wft = wf.read_text()
+    check("v23a STALENESS: it runs on a schedule and can open an issue",
+          "schedule:" in wft and "issues: write" in wft
+          and "issues.create" in wft)
+
+    # ---- REPRODUCIBILITY: two exceptions, named together ---------------
+    check("v23a: the payload states the layer cannot rebuild itself",
+          "CANNOT BE REBUILT WITHOUT A MANUAL DOWNLOAD" in M["reproducibility"])
+    check("v23a: and names the OTHER exception in the same breath",
+          "CSU" in M["reproducibility"] and "exactly two" in M["reproducibility"])
+    for f, label in ((ROOT / "about.html", "about page"),
+                     (ROOT / "README.md", "README")):
+        t = f.read_text()
+        check(f"v23a: the {label} names both manual-cache exceptions "
+              "together, not as separate one-offs",
+              ("CSU" in t and "compensation" in t.lower()
+               and ("two" in t.lower())), label)
+    check("v23a: the about page no longer calls CSU 'the one layer' that "
+          "is not auto-reproducible (negative control — that sentence "
+          "became false the moment a second exception shipped)",
+          "one layer that is NOT auto-reproducible" not in
+          (ROOT / "about.html").read_text())
+
+    # ---- THE PAGE ------------------------------------------------------
+    page.goto(f"{base}/compensation.html")
+    page.wait_for_selector("#entList .entrow", timeout=20000)
+    band = page.inner_text("#tierBand")
+    check("v23a page: the tier band says as-filed and unreconciled",
+          "AS FILED" in band and "UNRECONCILED" in band)
+    check("v23a page: and explains that no instant exists at which a gate "
+          "could apply", "NO INSTANT" in band.upper())
+    vb = page.inner_text("#vintageBand")
+    check("v23a page: the vintage is visible at all times, not only when "
+          "stale", "VINTAGE" in vb.upper() and M["vintage"]["latest"] in vb)
+    check("v23a page: and it says the layer is refreshed by hand",
+          "by hand" in vb)
+    heads = page.eval_on_selector_all("#statements .statement b",
+                                      "els=>els.map(e=>e.textContent)")
+    for want in ("NOT A SHARE OF SPENDING", "NO AVERAGES", "PENSION REPORTING",
+                 "CANNOT REBUILD ITSELF"):
+        check(f"v23a page: the record carries its {want} statement",
+              any(want in h.upper() for h in heads), str(heads))
+
+    # a daggered employer's record
+    dslug = [sl for sl, e in d["entities"].items()
+             if e["layer"] == "city" and e["unfundedInRetirement"]][0]
+    page.goto(f"{base}/compensation.html#e={dslug}")
+    page.wait_for_selector("#recTable .posrow", timeout=20000)
+    fl = page.inner_text("#recFlags")
+    check("v23a page: a daggered employer carries the pension statement ON "
+          "THE RECORD, not in a footnote", "UNFUNDED LIABILITY" in fl.upper())
+    check("v23a page: and it says an identically-paid position elsewhere is "
+          "not comparable", "not comparable" in fl)
+    rows = page.eval_on_selector_all("#recTable .posrow", "els=>els.length")
+    check("v23a page: the per-position rows render", rows > 10, str(rows))
+
+    # an undaggered employer must NOT carry it
+    nslug = [sl for sl, e in d["entities"].items()
+             if e["layer"] == "city" and not e["unfundedInRetirement"]][0]
+    page.goto(f"{base}/compensation.html#e={nslug}")
+    page.wait_for_selector("#recTable .posrow", timeout=20000)
+    check("v23a page: an employer without the flag carries no pension "
+          "dagger (negative control)",
+          "UNFUNDED LIABILITY" not in page.inner_text("#recFlags").upper())
+
+    # a K-12 record must carry the voluntary statement
+    kslug = [sl for sl, e in d["entities"].items() if e["layer"] == "k12"][0]
+    page.goto(f"{base}/compensation.html#e={kslug}")
+    page.wait_for_selector("#recFlags", timeout=20000)
+    kf = page.inner_text("#recFlags")
+    check("v23a page: every K-12 record says reporting is voluntary",
+          "VOLUNTARY" in kf.upper())
+    check("v23a page: with the filer counts, and the consequence that "
+          "nothing aggregate means anything",
+          "360" in kf and "1,883" in kf and "self-selected" in kf)
+
+    # the CSU page carries its own vintage band
+    page.goto(f"{base}/csu.html")
+    page.wait_for_selector("#vintageBand", timeout=20000)
+    cv = page.inner_text("#vintageBand")
+    check("v23a page: the CSU layer also shows its vintage at all times",
+          "VINTAGE" in cv.upper())
+    check("v23a page: and names the other manual-cache layer, so the two "
+          "exceptions are visible together to a reader too",
+          "compensation" in cv.lower())
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -9723,6 +9933,7 @@ def main():
             test_v21_ccc_revenue(page, base)
             test_v21_k12_revenue(page, base)
             test_v21_district_tier(page, base)
+            test_v23a_compensation(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

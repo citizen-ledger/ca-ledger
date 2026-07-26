@@ -440,6 +440,55 @@ matched the code that produced it. CCC was affected the same way.
 across the very change that breaks them.** Rebuild them when the shape
 of their inputs changes, not only when their content is supposed to.
 
+### 2l. A layer that cannot refresh itself goes stale in silence
+
+Two layers on this site cannot be rebuilt by `--refresh`: CSU, whose
+audited statements are bot-gated, and compensation, whose source
+expressly excludes automated retrieval. Both fail in the same quiet way
+— the page keeps rendering, every figure stays exactly as published, and
+nothing says the record has stopped being current. **A stale record does
+not look stale.**
+
+The fix has to reach two different people, so it is announced twice, at
+the same threshold, in the same words:
+
+- **the reader** — a vintage band on the layer's own page, always
+  visible, that turns conspicuous once past the threshold. Staleness is
+  a fact about the record, not only a maintenance task.
+- **the maintainer** — a scheduled job (`pipeline/check_vintage.py`,
+  run weekly by `.github/workflows/vintage-check.yml`) that opens an
+  issue. A test in the suite is not enough: it fires only when somebody
+  runs the suite, which is exactly what a forgotten layer does not get.
+
+**Two things that were nearly wrong.** The check first read CSU's
+`meta.generated` — the day the pipeline last ran. That measures *our*
+activity: the layer could sit three years behind its source and report
+current forever, as long as anyone rebuilt for any reason. It now reads
+`meta.year`, the fiscal year of the statements themselves. And the
+scheduled job **reads dates from the repository and fetches neither
+source** — for compensation that is not an optimisation but the whole
+point, since a staleness checker that crawled the excluded host would
+contradict the reason the exception exists.
+
+### 2m. Two exceptions are a limit; two one-offs are a broken claim
+
+The site's claim is that any figure can be rebuilt from published
+sources. Before this work, one layer was excepted and the about page
+said so — *"the one layer that is NOT auto-reproducible"*. Adding a
+second exception made that sentence false, and the natural failure is to
+add a second footnote somewhere else and leave the first standing.
+
+So both are now named **together**, in one breath, wherever the rebuild
+claim appears — README, about page, both layer pages, and the pipeline
+docstring — with the reason stated: *two documented exceptions are a
+limit, two one-offs are how a rebuild claim quietly stops being true.* A
+test asserts the old "one layer" sentence is gone, so the claim cannot
+silently revert.
+
+**If a third is ever added, it goes in those same places.** The moment
+the exceptions are described separately is the moment the reader can no
+longer tell how much of the site is actually reproducible.
+
 ---
 
 ## Part 3 — Test-quality debt

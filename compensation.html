@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — Public employee compensation</title>
+<meta name="description" content="A nonpartisan record of California government spending. Public employee compensation as filed with the State Controller, position by position, labeled — never averaged, never ranked.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/compensation.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — Public employee compensation">
+<meta property="og:description" content="A nonpartisan record of California government spending. Public employee compensation as filed, position by position, labeled — never averaged, never ranked.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/compensation.html">
+<meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
+   Served from this repository, not a third party: no request leaves the
+   reader's machine to render the page. unicode-range keeps it lazy — the
+   latin-ext file is fetched only if a character in its range appears.
+   Codepoints in neither range (the ▲▼ ✕ ✓ marks) fall through to the
+   platform mono stack, exactly as they did before. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* Ledger design system — see index.html. This page is the Ledger's
+     one UNRECONCILED layer, and its surfaces say so at a glance:
+     dashed hairlines where the gated layers use solid, an open square
+     (▢) where the gated layers use a filled mark, no schedule number,
+     and a caveat band that is part of the record face, not a footnote. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+  @media print{
+  .rs-head{border-bottom:2px solid #000;padding-bottom:8pt;margin-bottom:10pt}
+  .rs-kicker{font-family:var(--mono);font-size:8.5pt;letter-spacing:0.09em;font-weight:700;margin-bottom:7pt}
+  .rs-basis{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-basis b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
+  /* the as-filed / do-not-add warning leads, in heavier dress than a basis line */
+  .rs-warn{font-size:9pt;line-height:1.5;margin-bottom:7pt;border:2px solid #000;padding:7pt 9pt}
+  .rs-warn b{font-family:var(--mono);font-size:8pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-ent{margin-bottom:11pt}
+  .rs-name{font-family:var(--serif);font-size:15pt;font-weight:600;border-bottom:1px solid #000;padding-bottom:2pt}
+  .rs-figs{font-family:var(--mono);font-size:9pt;margin-top:4pt}
+  .rs-break{margin-top:6pt}
+  .rs-break b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-break table{width:100%;border-collapse:collapse;font-size:8.5pt}
+  .rs-break td{padding:1.5pt 0;border-bottom:1px solid #ddd}
+  .rs-break td.n{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:8pt}
+  .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
+  .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
+  .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
+  .rs-foot div{margin-bottom:4pt}
+  .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
+  .rs-url,.rs-mono{font-family:var(--mono);word-break:break-all}
+  header, footer.ft, .prov, .method, #methodology, .pillgroup, .hd-actions,
+  .picker-wrap, .searchwrap, .chips, #recordBody, #recordSec, #dirWrap,
+  .finding, .stack, #pinmap, .pinmap { display:none !important }
+  #recordSheet, #printCite { display:block !important }
+ .np{display:none!important} .po{display:block!important} body{background:#fff} .record{box-shadow:none!important}  .roundel,.sw,.bar,.bar *,.cellbar,.cellbar i,.trackbar,.trackbar i,.chg-mid i{print-color-adjust:exact;-webkit-print-color-adjust:exact} .sw,.bar>*,.cellbar i,.trackbar i{outline:1px solid var(--ink);outline-offset:-1px} }
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:var(--fs-label);font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:var(--fs-note);text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .btn{font-size:var(--fs-data);border-radius:9999px;padding:9px 20px;cursor:pointer;border:1px solid var(--ash);background:transparent;color:var(--graphite)}
+  .btn:hover{border-color:var(--ink);color:var(--ink)}
+  .btn.ink{border-color:var(--ink);color:var(--ink)}
+  .btn.ink:hover{background:var(--ink);color:var(--parchment)}
+  .btn.blue{border:none;background:var(--blue);color:#fff}
+  .btn.blue:hover{background:var(--blue-hover)}
+  .btn.sm{padding:6px 14px;font-size:var(--fs-label)}
+
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  /* the tier band: persistent, page-level, part of the chrome */
+  .tierband{padding:11px 40px;background:var(--wash);border-bottom:1px dashed var(--graphite);font-family:var(--mono);font-size:var(--fs-label);color:var(--ink);letter-spacing:0.02em;line-height:1.55}
+  .tiermark{display:inline-block;width:9px;height:9px;border:1.5px solid var(--ink);background:transparent;margin-right:8px;vertical-align:baseline}
+
+  main{max-width:1160px;margin:0 auto;padding:0 40px}
+  .hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;margin-top:44px}
+  .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:0}
+  .dek{font-size:var(--fs-body);color:var(--graphite);margin-top:12px;max-width:560px;line-height:1.5}
+  .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  .hero-sub{font-family:var(--mono);font-size:var(--fs-data);color:var(--graphite);margin-top:10px}
+  .hero-lbl{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-top:4px}
+  .hero-right{text-align:right}
+  .microlbl{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.1em;color:var(--smoke)}
+  .num{font-family:var(--mono);font-size:var(--fs-note);font-variant-numeric:tabular-nums}
+  .dim{color:var(--smoke)}
+  .schedlbl{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  .tblwrap{overflow-x:auto}
+
+  /* PART 1 — the finding: reconciled facts about the filings, on the
+     Ledger's solid record surface (the counts ARE gated: they come from
+     SCO's own lists and are recomputed live by the pipeline). */
+  .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  .statrow{display:flex;gap:44px;flex-wrap:wrap;margin-top:18px}
+  .stat .v{font-family:var(--mono);font-size:38px;font-weight:500;letter-spacing:-0.6px}
+  .stat .k{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.08em;color:var(--smoke);margin-top:6px}
+  .finding p{font-size:var(--fs-body);line-height:1.65;color:var(--ink);margin-top:16px;max-width:74ch}
+  .finding .yeartbl{margin-top:22px;border-top:1px solid var(--ink)}
+  .yr-row{display:grid;grid-template-columns:110px 1fr 1fr 1fr;gap:0 18px;padding:9px 0;border-bottom:1px solid var(--hairline);font-family:var(--mono);font-size:var(--fs-data)}
+  .yr-row.hd{color:var(--smoke);font-size:var(--fs-micro);letter-spacing:0.08em}
+  .methodbox{margin-top:22px;border:1px solid var(--hairline);background:var(--parchment);padding:14px 18px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.7;color:var(--graphite)}
+
+  /* PART 2 — the directory: verifiable facts (existence, type, status) */
+  .dir-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
+  input[type="search"]{font-family:var(--mono);font-size:var(--fs-data);padding:9px 16px;border:1px solid var(--ash);border-radius:9999px;background:transparent;color:var(--ink);min-width:280px}
+  input[type="search"]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .dir-count{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke)}
+  .dir-legend{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-top:10px;line-height:1.7}
+  .dir-list{list-style:none;margin-top:12px;border-top:1px solid var(--ink)}
+  .dir-row{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(200px,1fr) 120px 70px;gap:0 18px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hairline)}
+  .dir-row:hover{background:var(--wash-in)}
+  .dir-row .nm{border:none;background:transparent;text-align:left;font-size:var(--fs-note);cursor:pointer;color:var(--ink);padding:2px 0}
+  .dir-row .nm:hover{color:var(--blue)}
+  .dir-row .meta{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke)}
+  .fstrip{font-family:var(--mono);font-size:var(--fs-data);letter-spacing:0.35em}
+  .dir-row .ext{font-family:var(--mono);font-size:var(--fs-label);white-space:nowrap}
+
+  /* PART 3 — the as-filed record: the unreconciled tier, visibly.
+     Dashed border, open-square mark, caveat band on the face. */
+  .record.unrec{border:1px dashed var(--graphite);box-shadow:none;background:var(--surface)}
+  .caveat{display:flex;gap:10px;align-items:flex-start;background:var(--wash);border:1px dashed var(--graphite);padding:12px 16px;font-family:var(--mono);font-size:var(--fs-data);line-height:1.6;color:var(--ink);margin:16px 0 4px}
+  .unrec .u-row{display:grid;grid-template-columns:90px repeat(4,minmax(110px,1fr)) 110px;gap:0 14px;padding:9px 0;border-bottom:1px dashed var(--hairline);font-family:var(--mono);font-size:var(--fs-data);font-variant-numeric:tabular-nums;text-align:right}
+  .unrec .u-row .y{text-align:left}
+  .unrec .u-row.hd{color:var(--smoke);font-size:var(--fs-micro);letter-spacing:0.07em;border-bottom:1px dashed var(--graphite)}
+  .unrec h3{font-family:var(--serif);font-size:22px;font-weight:400;margin-top:4px}
+  .recmeta{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);margin-top:6px}
+  dialog.cite-dlg{margin:14vh auto auto;padding:0;border:1px dashed var(--graphite);border-radius:2px;background:var(--surface);max-width:560px;width:calc(100vw - 48px)}
+  dialog.cite-dlg::backdrop{background:rgba(36,36,36,.18)}
+  .cite-card{padding:14px 18px 18px}
+  .cite-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .cite-card .btn{margin-top:12px}
+  .xbtn{border:none;background:transparent;color:var(--smoke);cursor:pointer;padding:8px;font-size:var(--fs-data)}
+  .cite-text{font-family:var(--mono);font-size:var(--fs-data);line-height:1.6;margin-top:8px;word-break:break-word}
+  .empty{margin-top:20px;border:1px dashed var(--hairline);padding:24px;font-size:var(--fs-note);color:var(--graphite)}
+
+  .method{margin-top:56px;border-top:1px solid var(--ink);padding-top:26px}
+  .method .lead{font-size:var(--fs-body);color:var(--graphite);max-width:640px;margin-top:10px}
+  .mgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;margin-top:26px}
+  .mcol{display:flex;flex-direction:column;gap:16px}
+  .mnote{display:flex;gap:12px;font-size:var(--fs-note);line-height:1.55;color:var(--graphite)}
+  .mnote b{font-family:var(--mono);font-weight:400;color:var(--ink);flex:none}
+  .revlog{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);line-height:1.9;border:1px solid var(--hairline);padding:12px 16px}
+  .integrity{border:1px solid var(--hairline);padding:12px 16px}
+  .digest{font-family:var(--mono);font-size:var(--fs-micro);word-break:break-all;color:var(--graphite);margin-top:6px}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+  @media(max-width:880px){ .mgrid{grid-template-columns:1fr} .dir-row{grid-template-columns:1fr 96px} .dir-row .meta2{display:none} .dir-row .fstrip{white-space:nowrap;letter-spacing:0.26em;font-size:var(--fs-label)} .unrec .u-row{grid-template-columns:80px repeat(4,minmax(90px,1fr))} .unrec .u-row .st{display:none} .unrec .u-row .y{position:sticky;left:0;background:var(--surface);padding-right:6px} }
+  @media(max-width:720px){
+    h1{font-size:40px} .hero-num{font-size:34px} main{padding:0 20px}
+    header.hd,.prov,.tierband,footer.ft{padding-left:20px;padding-right:20px}
+    .record{padding:20px 16px 24px}
+    dialog.cite-dlg{margin:auto;width:calc(100vw - 32px);max-height:82vh;overflow:auto}
+    /* the finding's per-year table narrows to the viewport — the status
+       columns wrap rather than run off the screen */
+    .yr-row{grid-template-columns:70px repeat(3,minmax(0,1fr));gap:0 10px;font-size:var(--fs-label)}
+    .yr-row.hd{font-size:var(--fs-micro);letter-spacing:0.05em}
+    /* phone header: a table of contents, not wrapped chrome — every
+       section visible at once, provenance condensed to one line */
+    header.hd{padding:12px 20px;gap:10px}
+    nav.pn{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+    nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
+    .prov{padding:7px 20px;font-size:var(--fs-micro)}
+    .prov span+span{display:none}
+  }
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .btn[disabled]{opacity:0.42;cursor:not-allowed}
+  .btn[disabled]:hover{background:transparent;color:var(--graphite);border-color:var(--ash)}
+</style>
+<style>
+/* the tier band: persistent, page-level, part of the chrome — the same
+     construction the special-districts layer uses, because this layer is
+     at the same evidentiary tier and must not look different from it */
+  .tierband{padding:11px 40px;background:var(--wash);border-bottom:1px dashed var(--graphite);font-family:var(--mono);font-size:var(--fs-label);color:var(--ink);letter-spacing:0.02em;line-height:1.55}
+  .tiermark{display:inline-block;width:9px;height:9px;border:1.5px solid var(--ink);background:transparent;margin-right:8px;vertical-align:baseline}
+
+  /* VINTAGE, ALWAYS VISIBLE. Staleness is a fact about the record, not a
+     maintenance task, so the reader learns it at the same moment the
+     maintainer does. Quiet while current; conspicuous once past the
+     threshold, in the same words the scheduled check uses. */
+  .vintage{padding:9px 40px;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;border-bottom:1px solid var(--hairline);color:var(--graphite);background:var(--wash-in)}
+  .vintage b{color:var(--ink)}
+  .vintage.stale{background:#fff4e5;border-bottom:2px solid #b8860b;color:#5c4304}
+  .vintage.stale b{color:#5c4304}
+  @media (prefers-color-scheme: dark){
+    .vintage.stale{background:#3a2f12;border-bottom-color:#d4a017;color:#f0dfae}
+    .vintage.stale b{color:#f7ecc9}
+  }
+
+  .layerpick{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0}
+  .layerpick button{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;padding:6px 12px;border:1px solid var(--hairline);background:transparent;color:var(--graphite);cursor:pointer}
+  .layerpick button.on{border-color:var(--ink);color:var(--ink);background:var(--wash)}
+  .entrow{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:7px 0;border-bottom:1px dotted var(--hairline);align-items:baseline;cursor:pointer}
+  .entrow:hover{background:var(--wash)}
+  .entrow .num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:var(--fs-micro)}
+  .dag{color:#b8860b;font-weight:700}
+  .posrow{display:grid;grid-template-columns:1fr 1fr repeat(4,auto);gap:10px;padding:4px 0;border-bottom:1px dotted var(--hairline);font-size:.82rem;align-items:baseline}
+  .posrow .num{font-variant-numeric:tabular-nums;text-align:right}
+  .poshead{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;color:var(--graphite);border-bottom:1px solid var(--ink)}
+  .statement{border:1px solid var(--hairline);border-left:3px solid var(--graphite);padding:.7rem .85rem;margin:.7rem 0;font-size:.83rem;line-height:1.5}
+  .statement b{display:block;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;margin-bottom:.3rem}
+  .statement.warn{border-left-color:#b8860b}
+  @media (max-width:780px){
+    .tierband,.vintage{padding-left:20px;padding-right:20px}
+    .posrow{grid-template-columns:1fr auto auto}
+    .posrow span:nth-child(n+4){display:none}
+  }
+
+</style>
+</head>
+<body>
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="search.html">Search</a>
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html">Community colleges</a>
+    <a href="uc.html">UC campuses</a>
+    <a href="districts.html">Special districts</a>
+    <span class="active">Compensation</span>
+    <a href="about.html">About &amp; method</a>
+  </nav>
+</header>
+<div class="tierband" id="tierBand"><span class="tiermark" aria-hidden="true"></span>THIS LAYER IS AS FILED — UNRECONCILED. THE STATE CONTROLLER PUBLISHES AN ANNUAL TOTAL IN A PRESS RELEASE, BUT THIS EXPORT IS A LIVE DATABASE WITH NO AS-OF-DATE TOTAL, SO THE TWO CANNOT BE ALIGNED AT ANY INSTANT. THIS IS NOT A GATE THAT FAILED; THERE IS NO INSTANT AT WHICH A GATE COULD BE APPLIED. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.</div>
+
+<div class="vintage" id="vintageBand"></div>
+
+<main class="wrap">
+  <header class="hd">
+    <h1>Public employee compensation</h1>
+    <p class="dek">What each California city, county, special district and school employer reported paying, position by position, for reporting year <span id="ryear"></span>. Reported to the State Controller by each employer; published here exactly as filed.</p>
+  </header>
+
+  <section id="statements"></section>
+
+  <div class="layerpick" id="layerPick"></div>
+  <input type="search" id="q" placeholder="Find an employer…" style="width:100%;max-width:420px;padding:7px 10px;font-size:.9rem;margin-bottom:10px">
+  <div id="entList"></div>
+
+  <section id="recordSec" hidden aria-live="polite">
+    <h2 id="recTitle"></h2>
+    <div id="recMeta"></div>
+    <div id="recFlags"></div>
+    <div id="recTable"></div>
+  </section>
+
+  <section class="method" id="methodology">
+    <h2>Methodology</h2>
+    <div id="methodNotes"></div>
+  </section>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="address.html">YOUR GOVERNMENTS</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+<script src="compensation-data.js"></script>
+<script>
+(function(){
+  "use strict";
+  var D = window.COMPENSATION_DATA, M = D.meta;
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function fmt(n){ return Number(n||0).toLocaleString("en-US"); }
+  function money(n){ return "$" + fmt(Math.round(n||0)); }
+
+  $("ryear").textContent = M.year;
+
+  /* ---- VINTAGE, ALWAYS ON. Computed against the source's own newest
+     LastUpdatedDate, in the browser, so it goes stale on its own without
+     anyone rebuilding. The threshold and the wording match the scheduled
+     check and the test, so a reader and a maintainer learn the same fact
+     in the same words at the same time. */
+  (function(){
+    var v = M.vintage, latest = new Date(v.latest + "T00:00:00Z");
+    var days = Math.floor((Date.now() - latest.getTime()) / 86400000);
+    var limit = v.staleMonths * 31, stale = days > limit;
+    var band = $("vintageBand");
+    band.className = "vintage" + (stale ? " stale" : "");
+    band.innerHTML = stale
+      ? '<b>THIS RECORD IS ' + fmt(days) + ' DAYS OLD AND IS NO LONGER CURRENT.</b> '
+        + 'The newest figure in it was last updated by its filer on ' + esc(v.latest)
+        + ', more than ' + v.staleMonths + ' months ago. The State Controller has almost '
+        + 'certainly published a newer reporting year. This layer cannot refresh itself — '
+        + 'its source excludes automated retrieval — so a person must fetch it again.'
+      : '<b>VINTAGE ' + esc(v.latest) + '</b> · the newest figure here was last updated by '
+        + 'its filer ' + fmt(days) + ' days ago · earliest ' + esc(v.earliest)
+        + ' · this layer is refreshed by hand, not automatically';
+  })();
+
+  /* ---- the statements that must sit on the record, not in a footnote */
+  (function(){
+    var s = "";
+    s += '<div class="statement"><b>WHAT THIS IS</b>' + esc(M.basis) + '</div>';
+    s += '<div class="statement"><b>THIS IS NOT A SHARE OF SPENDING</b>' + esc(M.doesNotEqual) + '</div>';
+    s += '<div class="statement"><b>NO AVERAGES ARE PUBLISHED HERE</b>' + esc(M.noAverages) + '</div>';
+    s += '<div class="statement warn"><b>&dagger; PENSION REPORTING IS NOT UNIFORM</b>' + esc(M.pensionDagger) + '</div>';
+    s += '<div class="statement warn"><b>THIS LAYER CANNOT REBUILD ITSELF</b>' + esc(M.reproducibility) + '</div>';
+    $("statements").innerHTML = s;
+    $("methodNotes").innerHTML = s;
+  })();
+
+  var S = { layer: "city", q: "", sel: null };
+  var LAYERS = Object.keys(M.layers);
+
+  function renderPicker(){
+    $("layerPick").innerHTML = LAYERS.map(function(k){
+      var t = M.layers[k];
+      return '<button data-layer="' + k + '"' + (k===S.layer?' class="on"':'') + '>'
+        + esc(t.label.toUpperCase()) + ' · ' + fmt(t.employers) + '</button>';
+    }).join("");
+  }
+
+  function renderList(){
+    var q = S.q.toLowerCase();
+    var rows = [];
+    for (var sl in D.entities){
+      var e = D.entities[sl];
+      if (e.layer !== S.layer) continue;
+      if (q && e.name.toLowerCase().indexOf(q) < 0) continue;
+      rows.push([sl, e]);
+    }
+    /* SORTED BY NAME, NEVER BY PAY. A payload or a list ordered by money
+       is a ranking whatever it is called, and this layer does not rank. */
+    rows.sort(function(a,b){ return a[1].name.localeCompare(b[1].name); });
+    var head = '<div class="entrow" style="border-bottom:1px solid var(--ink)">'
+      + '<span class="poshead">EMPLOYER</span>'
+      + '<span class="poshead num">POSITIONS REPORTED</span>'
+      + '<span class="poshead num">TOTAL WAGES</span></div>';
+    $("entList").innerHTML = head + rows.slice(0, 400).map(function(r){
+      var sl = r[0], e = r[1];
+      return '<div class="entrow" data-sl="' + sl + '"><span>' + esc(e.name)
+        + (e.unfundedInRetirement ? ' <span class="dag" title="retirement figure includes unfunded liability">&dagger;</span>' : '')
+        + (e.county ? ' <span style="color:var(--graphite)">· ' + esc(e.county) + '</span>' : '')
+        + '</span><span class="num">' + fmt(e.positions) + '</span>'
+        + '<span class="num">' + money(e.wages) + '</span></div>';
+    }).join("") + (rows.length > 400
+      ? '<p class="recmeta">Showing the first 400 of ' + fmt(rows.length)
+        + ' — narrow the search to see the rest.</p>' : "");
+  }
+
+  function renderRecord(sl){
+    var e = D.entities[sl];
+    if (!e) return;
+    S.sel = sl;
+    $("recordSec").hidden = false;
+    $("recTitle").textContent = e.name;
+    $("recMeta").innerHTML = '<div class="recmeta">'
+      + esc(M.layers[e.layer].label) + (e.county ? ' · ' + esc(e.county) + ' County' : '')
+      + ' · ' + fmt(e.positions) + ' positions reported · ' + money(e.wages)
+      + ' wages · ' + money(e.retHealth) + ' retirement and health'
+      + (e.elected ? ' · ' + fmt(e.elected) + ' elected' : '') + '</div>';
+
+    var flags = "";
+    /* THE PENSION DAGGER, on the record of every employer it applies to. */
+    if (e.unfundedInRetirement){
+      flags += '<div class="statement warn"><b>&dagger; THIS EMPLOYER’S RETIREMENT FIGURE INCLUDES UNFUNDED LIABILITY</b>'
+        + 'Employers not marked exclude it. The Controller collects a single flag per '
+        + 'employer and does not publish the unfunded component separately, so it cannot '
+        + 'be removed here. A position at this employer is therefore not comparable, on '
+        + 'total compensation, with an identically-paid position at an employer without '
+        + 'the mark.</div>';
+    }
+    /* K-12 CARRIES ITS VOLUNTARY-REPORTING STATEMENT ON EVERY RECORD. */
+    if (e.layer === "k12"){
+      var p = M.published.k12;
+      flags += '<div class="statement warn"><b>K-12 REPORTING IS VOLUNTARY AND MOST EMPLOYERS DO NOT FILE</b>'
+        + 'Unlike cities, counties and special districts, school employers are not required '
+        + 'to report to the Controller. For reporting year ' + esc(M.year) + ' the Controller '
+        + 'states that ' + fmt(p.compliantFilers) + ' of ' + fmt(p.invitedFilers)
+        + ' K-12 employers filed a fully compliant report. This record is one of those that '
+        + 'chose to file. The set of filers is self-selected, so nothing aggregate over this '
+        + 'layer — a statewide total, a comparison of districts, a count of positions across '
+        + 'California schools — means anything.</div>';
+    }
+    /* CONTRACT SERVICES: an absent department is not a zero. */
+    var cs = M.contractedServices[sl];
+    if (cs){
+      var names = Object.keys(cs);
+      flags += '<div class="statement"><b>SOME SERVICES ARE PROVIDED UNDER CONTRACT, SO THEIR STAFF ARE NOT HERE</b>'
+        + 'This city reports ' + names.map(esc).join(", ") + ' as '
+        + esc(cs[names[0]]) + '. Those employees work for the contracting agency and appear '
+        + 'in that agency’s record, not this one. The absence of a department is not a '
+        + 'finding about this employer’s payroll.</div>';
+    }
+    $("recFlags").innerHTML = flags;
+
+    $("recTable").innerHTML = '<p class="recmeta">Loading positions…</p>';
+    fetch(M.detailPath.replace("{slug}", sl)).then(function(r){
+      if (!r.ok) throw new Error("detail unavailable");
+      return r.json();
+    }).then(function(rows){
+      var head = '<div class="posrow poshead"><span>POSITION</span><span>DEPARTMENT</span>'
+        + '<span class="num">REGULAR</span><span class="num">OVERTIME</span>'
+        + '<span class="num">LUMP SUM &amp; OTHER</span><span class="num">RETIREMENT &amp; HEALTH</span></div>';
+      /* Rows render in the order the employer filed them. Not sorted. */
+      $("recTable").innerHTML = head + rows.map(function(r){
+        return '<div class="posrow"><span>' + esc(M.positionsVocab[r[0]])
+          + (r[6] ? ' <span style="color:var(--graphite)">(elected)</span>' : '')
+          + '</span><span>' + esc(M.departmentsVocab[r[1]]) + '</span>'
+          + '<span class="num">' + money(r[2]) + '</span>'
+          + '<span class="num">' + (r[3] ? money(r[3]) : "—") + '</span>'
+          + '<span class="num">' + (r[4] ? money(r[4]) : "—") + '</span>'
+          + '<span class="num">' + money(r[5])
+          + (e.unfundedInRetirement ? ' <span class="dag">&dagger;</span>' : '')
+          + '</span></div>';
+      }).join("");
+    }).catch(function(){
+      $("recTable").innerHTML = '<p class="recmeta">Position detail could not be loaded '
+        + 'for this employer.</p>';
+    });
+    location.hash = "e=" + encodeURIComponent(sl);
+  }
+
+  document.addEventListener("click", function(ev){
+    var b = ev.target.closest("[data-layer]");
+    if (b){ S.layer = b.dataset.layer; S.sel = null; $("recordSec").hidden = true;
+            renderPicker(); renderList(); return; }
+    var r = ev.target.closest("[data-sl]");
+    if (r) renderRecord(r.dataset.sl);
+  });
+  $("q").addEventListener("input", function(){ S.q = this.value; renderList(); });
+
+  function applyHash(){
+    var m = /e=([^&]+)/.exec(location.hash);
+    if (m){
+      var sl = decodeURIComponent(m[1]);
+      if (D.entities[sl]){ S.layer = D.entities[sl].layer; renderPicker(); renderList();
+                           renderRecord(sl); return; }
+    }
+    renderPicker(); renderList();
+  }
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+})();
+</script>
+</body>
+</html>
