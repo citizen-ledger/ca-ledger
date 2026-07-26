@@ -348,6 +348,9 @@
   const F = D.meta.finding;
   const ALL = Object.keys(D.districts);
   const STATUS_WORD = {F:"filed", L:"filed late", M:"did not file", "-":"no filing on record"};
+  /* SCO's workbooks label a fiscal year by its ending calendar
+     year; the site labels it 2023-24. Converted once, here. */
+  const fyLabel = y => (Number(y)-1) + '-' + String(y).slice(2);
   const CAVEAT = "As filed with the State Controller. Not reconciled: three of the four fund-class columns have no published total to check against, and the Ledger does not yet gate on the one that does. The Ledger has not verified this figure.";
 
   const S = { d: null, q: "" };
@@ -577,6 +580,7 @@
                + '</td><td>' + label + '</td></tr>'; }).join("")
       + '</table></div>';
     h += '<div class="rs-notes"><b>COMPARABILITY NOTES</b>'
+      + (negBalanceLine(d) ? '<p>\u2020 ' + esc(negBalanceLine(d)) + '</p>' : '')
       + '<p>\u2020 Every figure on this sheet is as filed and unverified. A blank year '
       + 'means the district did not file, or filed too late to appear \u2014 not that it '
       + 'spent nothing.</p>'
@@ -666,6 +670,42 @@
     // applied to it. The Ledger does not quietly rename an entity on the
     // strength of its own inference; it shows what was filed and says
     // what it found.
+    /* ---- NEGATIVE FUND BALANCE. The COUNT of years is the fact; there
+       is deliberately no dollar figure, because one beside the spending
+       figure on this same record invites the ratio V24 refused. The
+       limits travel with the statement rather than sitting in a method
+       note, and nothing here characterises the cause — the filing does
+       not carry one. */
+    if (r.negBalance){
+      const nb = r.negBalance, k = nb.years.length;
+      const last = nb.years[nb.years.length-1];
+      notes += '<div class="caveat" style="margin:10px 0">'
+        + '<span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span>'
+        + '<span><b>THIS ENTITY REPORTED A NEGATIVE FUND BALANCE IN '
+        + k + ' OF THE LAST ' + nb.of + ' YEARS.</b> '
+        + 'Its total governmental fund balance as filed with the State '
+        + 'Controller was below zero in FY ' + esc(nb.years.map(fyLabel).join(', FY '))
+        + '. '
+        + '<b>The Ledger cannot tell you why.</b> The filing carries no cause '
+        + 'field, note or flag, so this figure does not distinguish fiscal '
+        + 'distress from spending that ran ahead of a reimbursement within '
+        + 'the year. No amount is shown here: a deficit figure beside the '
+        + 'spending figure above invites a comparison the data does not '
+        + 'support. '
+        + 'The figure is as filed and unverified \u2014 the Controller '
+        + 'publishes no control total for fund balance, and of the checks '
+        + 'available the only one testing an independent quantity holds for '
+        + '70.2% of entities reporting a negative balance against 84.8% of '
+        + 'those reporting a positive one, so filing quality is measurably '
+        + 'worse on records like this one.'
+        + (nb.windowEdge
+            ? ' <b>This count may understate.</b> A negative year at either '
+              + 'end of the eight-year window cannot be told apart from a '
+              + 'longer run continuing outside it, and this entity\u2019s '
+              + 'does touch an edge.'
+            : '')
+        + '</span></div>';
+    }
     if (r.mislabel){
       notes += '<div class="caveat" style="margin:10px 0">'
         + '<span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span>'
@@ -691,6 +731,20 @@
     for (let i = YEARS.length-1; i>=0; i--) if (r.exp[i] || r.rev[i]) return i;
     return -1;
   }
+  /* One sentence, one place. The record, the CSV, the citation and the
+     print sheet all say the same thing about a negative balance, so the
+     statement cannot drift between surfaces. No dollar figure, by
+     construction — there is no amount in the payload to print. */
+  function negBalanceLine(r){
+    if (!r || !r.negBalance) return "";
+    const nb = r.negBalance;
+    return "Reported a negative fund balance in " + nb.years.length + " of the last "
+      + nb.of + " years (FY " + nb.years.map(fyLabel).join(", FY ")
+      + "). No cause is published, so this does not distinguish fiscal distress "
+      + "from within-year timing; as filed and unverified"
+      + (nb.windowEdge ? "; the count may understate, as it touches the edge of "
+                       + "the eight-year window" : "") + ".";
+  }
   function citationText(){
     const r = D.districts[S.d];
     const i = latestFiledIdx(r);
@@ -707,6 +761,7 @@
       + ' (unreconciled)." '
       + r.name + (r.county ? " (" + r.county + " County)" : "") + ", " + r.type
       + (r.activity && r.activity !== r.type ? ", " + r.activity : "") + ". " + figure
+      + (negBalanceLine(r) ? negBalanceLine(r) + " " : "")
       + CAVEAT + " Source: California State Controller, bythenumbers.sco.ca.gov ("
       + D.meta.datasets.expenditures + " / " + D.meta.datasets.revenues + "). Generated "
       + D.meta.generated + ". Permalink: " + location.href + ". "
@@ -719,6 +774,7 @@
       "# District: " + r.name + (r.county ? " (" + r.county + " County)" : "")
         + " · " + r.type + (r.activity && r.activity !== r.type ? " · " + r.activity : ""),
       "# " + CAVEAT,
+      ...(negBalanceLine(r) ? ["# " + negBalanceLine(r)] : []),
       "# No per-resident figures exist for this layer: special districts have no resident denominator.",
       "# Units: as-filed dollars. Source: bythenumbers.sco.ca.gov ("
         + D.meta.datasets.expenditures + ", " + D.meta.datasets.revenues + ") · Generated: "

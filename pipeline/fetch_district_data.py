@@ -98,6 +98,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates                                     # noqa: E402
+import negative_balance                          # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -564,6 +565,53 @@ def main():
     # other build (docs/OPEN.md 2d, the dormant-declaration failure), so a
     # key that finds no district stops the write rather than sitting
     # quietly in the file forever.
+    # ---- NEGATIVE FUND BALANCE, per docs/V24A. The year COUNT is the
+    # whole product: 45% of affected districts are negative in exactly one
+    # of the eight years and only 11 in all eight, so a bare list would
+    # present a one-year event and an eight-year condition as the same
+    # fact. Keyed on the Controller's own Entity ID, never on the name —
+    # two governments sharing a name is a documented hazard here.
+    # NO DOLLAR FIGURE IS CARRIED, and there is no field for one.
+    negbal = negative_balance.history("district")
+    # The Socrata feed exposes no entity id, so the join is on the same
+    # (name, county) pair the roster itself is keyed on, with the county
+    # taken from the workbook's own ENTITIES tab. Ambiguity is refused
+    # rather than resolved: a normalised name that matches two districts
+    # would attach one district's deficit history to another's record.
+    idx = {}
+    for r in districts.values():
+        idx.setdefault((norm(r["name"]), (r.get("county") or "").lower()), []).append(r)
+    attached = ambiguous = unmatched = 0
+    for eid, rec in negbal.items():
+        key = (norm(rec["name"]), (rec.get("county") or "").lower())
+        hit = idx.get(key) or []
+        if len(hit) > 1:
+            ambiguous += 1
+            continue
+        if not hit:
+            unmatched += 1
+            continue
+        hit[0]["negBalance"] = {
+            "years": rec["years"],
+            "of": len(negative_balance.YEARS),
+            "windowEdge": negative_balance.edge_cases(rec["years"]),
+        }
+        attached += 1
+    if ambiguous:
+        raise SystemExit(
+            f"NEGATIVE BALANCE: {ambiguous} entities match more than one "
+            "district by (name, county). Attaching a deficit history to the "
+            "wrong government is the Rural North Vacaville failure with a "
+            "worse payload; nothing written")
+    if not attached:
+        raise SystemExit(
+            f"NEGATIVE BALANCE: computed a history for {len(negbal)} "
+            "entities and attached none — the join key is wrong and the "
+            "statement would be silently absent from every record; "
+            "nothing written")
+    print("negative balance: %d attached, %d workbook entities with no "
+          "roster match" % (attached, unmatched), file=sys.stderr)
+
     for (nm, county), info in MISLABELS.items():
         hit = [r for r in districts.values()
                if r["name"] == nm and r.get("county") == county]

@@ -7404,7 +7404,7 @@ def test_print_remaining(page, base):
         page.wait_for_selector("#recordSheet", state="attached")
         page.wait_for_function(
             "() => document.getElementById('recordSheet').innerText.trim().length > 0")
-        sh = page.inner_text("#recordSheet")
+        sh = page.eval_on_selector("#recordSheet", "e=>e.textContent")
         check(f"print schools ({kind}): the sheet renders", bool(sh.strip()))
         check(f"print schools ({kind}): states its gate or records-only status",
               want in sh.upper(), want)
@@ -8070,7 +8070,13 @@ def test_district_entity_key(page, base):
 
     # ---- recorded as OUR OWN correction, the feed's one attributed type
     rec = load_data_js(ROOT / "district-revisions.js")
-    ours = [b for b in rec["batches"] if b.get("ours")]
+    # A FACTS_ADDED batch is also "ours" but is not a correction — it
+    # records newly published figures. Excluded the same way the city
+    # layer's fund-name assertion already excludes coverage and facts
+    # batches, so this stays a test about the re-keying correction.
+    ours = [b for b in rec["batches"]
+            if b.get("ours") and not b.get("factsAdded")
+            and not b.get("coverageAdded")]
     check("district key: the correction is recorded in the change feed",
           len(ours) == 1, str(len(ours)))
     if ours:
@@ -8250,10 +8256,20 @@ def test_revisions(page, base):
         check(f"revisions: {layer} stores no label for an entity it never "
               f"mentions", set(rec["labels"]) <= used,
               str(sorted(set(rec["labels"]) - used)[:3]))
-    total = sum((ROOT / REV.LAYERS[l][1]).stat().st_size for l in LAYERS)
-    check("revisions: the whole record is under 64 KB "
-          "(per-layer, so a light page never pays for a heavy one)",
-          total < 65536, f"{total} B")
+    # PER LAYER, which is what this rule always said it was — the comment
+    # read "per-layer, so a light page never pays for a heavy one" while
+    # the code summed all eight. A reader of the districts page downloads
+    # district-revisions.js and nothing else, so the sum was never the
+    # quantity that mattered; the sum only meant every layer competed for
+    # one pool, and the pool ran out (main sat 32 bytes under it, so the
+    # next fact recorded anywhere would have failed regardless of which
+    # layer added it). 32 KB per layer against a current largest of ~19 KB.
+    PER_LAYER = 32768
+    sizes = {l: (ROOT / REV.LAYERS[l][1]).stat().st_size for l in LAYERS}
+    over = {l: n for l, n in sizes.items() if n >= PER_LAYER}
+    check("revisions: every layer's record is under 32 KB — a light page "
+          "never pays for a heavy one",
+          not over, str(over) or f"largest {max(sizes.values())} B")
 
 
 def test_runtime_origins():
@@ -10019,6 +10035,174 @@ def test_v23a_compensation(page, base):
           "compensation" in cv.lower())
 
 
+
+
+def test_v24a_negative_balance(page, base):
+    """V24a: the per-record negative-balance statement. A year count, never
+    a dollar figure, never a list. Shipped payloads only."""
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    nb = importlib.import_module("negative_balance")
+
+    dist = {k: v for k, v in DIST["districts"].items() if "negBalance" in v}
+    city = {k: v for k, v in CITY["cities"].items() if "negBalance" in v}
+    check("v24a: the district layer carries the history the finding measured",
+          len(dist) == 294, str(len(dist)))
+    check("v24a: and the city layer carries its six", len(city) == 6, str(len(city)))
+
+    # ---- THE COUNT IS THE PRODUCT, and it matches the finding ----------
+    from collections import Counter
+    spread = Counter(len(v["negBalance"]["years"]) for v in dist.values())
+    check("v24a: the year-count distribution reproduces the finding — 132 "
+          "districts negative in exactly one year, 11 in all eight",
+          spread[1] == 132 and spread[8] == 11, str(dict(sorted(spread.items()))))
+    check("v24a: every record carries the denominator, so 'N of 8' is "
+          "self-describing rather than relying on the reader",
+          all(v["negBalance"]["of"] == 8 for v in dist.values()))
+    check("v24a: the window is declared, not inferred from whatever the "
+          "workbooks happen to carry", len(nb.YEARS) == 8, str(nb.YEARS))
+
+    # ---- NO DOLLAR FIGURE. The rule most likely to erode later --------
+    bad = [k for k, v in {**dist, **city}.items()
+           if set(v["negBalance"]) - {"years", "of", "windowEdge"}]
+    check("v24a: the payload carries ONLY years, the denominator and the "
+          "edge flag — there is no field an amount could live in",
+          not bad, str(bad[:3]))
+    check("v24a: and no numeric leaf in any negBalance block is a dollar "
+          "amount (negative control)",
+          all(isinstance(v["negBalance"]["of"], int)
+              and all(isinstance(y, str) for y in v["negBalance"]["years"])
+              for v in {**dist, **city}.values()))
+    src = (ROOT / "pipeline" / "negative_balance.py").read_text()
+    check("v24a: the pipeline states why no figure is emitted, so a later "
+          "author does not add one as an improvement",
+          "NO DOLLAR FIGURE IS EMITTED" in src)
+
+    # ---- DERIVED, NEVER HAND-LISTED -----------------------------------
+    check("v24a: the histories are derived from declared source vintages, "
+          "not a hand-maintained list of entities",
+          len(nb.SOURCES["district"]) == 6 and len(nb.SOURCES["city"]) == 5)
+    for name in ("Barstow Fire Protection District", "Isleton"):
+        found = any(v["name"] == name for v in {**dist, **city}.values())
+        check(f"v24a: {name} is present, and by derivation", found)
+    dsrc = (ROOT / "pipeline" / "fetch_district_data.py").read_text()
+    check("v24a: an ambiguous (name, county) join is REFUSED rather than "
+          "resolved — attaching one government's deficit to another is the "
+          "failure this project already records",
+          "entities match more than one" in dsrc)
+    check("v24a: and a join that attaches nothing stops the build instead "
+          "of shipping a silently empty statement",
+          "attached none" in dsrc)
+
+    # ---- THE WINDOW-EDGE LIMIT ----------------------------------------
+    edge = [v for v in dist.values() if v["negBalance"]["windowEdge"]]
+    noedge = [v for v in dist.values() if not v["negBalance"]["windowEdge"]]
+    check("v24a: both edge and non-edge cases exist, so the caveat is "
+          "conditional rather than boilerplate (positive control each side)",
+          len(edge) > 50 and len(noedge) > 50, f"{len(edge)}/{len(noedge)}")
+    check("v24a: an entity negative in all eight years necessarily touches "
+          "an edge", all(v["negBalance"]["windowEdge"]
+                         for v in dist.values()
+                         if len(v["negBalance"]["years"]) == 8))
+
+    # ---- THE RECORD ----------------------------------------------------
+    slug8 = [k for k, v in dist.items() if len(v["negBalance"]["years"]) == 8][0]
+    page.goto(f"{base}/districts.html#d={slug8}")
+    page.wait_for_selector("#recNotes", timeout=20000)
+    txt = page.inner_text("#recNotes")
+    check("v24a record: the statement is on the record with its year count",
+          "NEGATIVE FUND BALANCE IN 8 OF THE LAST 8 YEARS" in txt.upper(), txt[:90])
+    check("v24a record: it says plainly that the cause is not published and "
+          "does not characterise the entity",
+          "cannot tell you why" in txt and "no cause field" in txt)
+    check("v24a record: it names the verification limit with the measured "
+          "rates, rather than a vague as-filed label",
+          "70.2%" in txt and "84.8%" in txt)
+    check("v24a record: NO DOLLAR AMOUNT appears in the statement",
+          "$" not in txt.split("NEGATIVE FUND BALANCE")[1][:1200])
+    check("v24a record: the window-edge limit is stated for an eight-year "
+          "case", "may understate" in txt)
+
+    slug1 = [k for k, v in dist.items()
+             if len(v["negBalance"]["years"]) == 1
+             and not v["negBalance"]["windowEdge"]][0]
+    page.goto(f"{base}/districts.html#d={slug1}")
+    page.wait_for_selector("#recNotes", timeout=20000)
+    t1 = page.inner_text("#recNotes")
+    check("v24a record: a one-year case says one of eight, so a reader can "
+          "tell it from a standing condition",
+          "IN 1 OF THE LAST 8 YEARS" in t1.upper(), t1[:80])
+    check("v24a record: and a non-edge case carries NO window-edge caveat "
+          "(negative control)", "may understate" not in t1)
+
+    clean = [k for k, v in DIST["districts"].items() if "negBalance" not in v][0]
+    page.goto(f"{base}/districts.html#d={clean}")
+    page.wait_for_selector("#districtRecord", timeout=20000)
+    check("v24a record: a district that never filed a negative balance "
+          "shows no statement (negative control)",
+          "NEGATIVE FUND BALANCE" not in page.inner_text("#recNotes").upper())
+
+    # ---- IT TRAVELS: cite, CSV, print sheet ---------------------------
+    page.goto(f"{base}/districts.html#d={slug8}")
+    page.wait_for_selector("#recNotes", timeout=20000)
+    cite = page.evaluate("citationText ? citationText() : ''") \
+        if page.evaluate("typeof citationText === 'function'") else ""
+    csv = page.evaluate("typeof csvText === 'function' ? csvText() : ''")
+    sheet = (page.eval_on_selector("#recordSheet", "e=>e.textContent")
+             if page.query_selector("#recordSheet") else "")
+    for label, blob in (("citation", cite), ("CSV", csv), ("print sheet", sheet)):
+        if blob:
+            check(f"v24a: the statement travels into the {label}",
+                  "negative fund balance" in blob.lower(), blob[:70])
+            check(f"v24a: and carries no dollar amount into the {label} "
+                  "(negative control)",
+                  "negative fund balance" not in blob.lower()
+                  or not _has_money_near(blob, "negative fund balance"))
+
+    # ---- THE CITY LAYER ------------------------------------------------
+    isleton = [k for k, v in city.items() if v["name"] == "Isleton"][0]
+    page.goto(f"{base}/cities.html#c={isleton}&y=2023-24")
+    # print-only element: present but hidden on screen, so wait on
+    # attachment rather than visibility
+    page.wait_for_selector("#recordSheet", state="attached", timeout=20000)
+    page.wait_for_timeout(700)
+    sh = page.inner_text("#recordSheet")
+    check("v24a city: Isleton's record sheet carries the statement",
+          "negative fund balance" in sh.lower(), sh[:80])
+    check("v24a city: with its eight-of-eight count",
+          "8 of the last 8" in sh)
+    clean_city = [k for k, v in CITY["cities"].items() if "negBalance" not in v][0]
+    page.goto(f"{base}/cities.html#c={clean_city}&y=2023-24")
+    page.wait_for_selector("#recordSheet", state="attached", timeout=20000)
+    page.wait_for_timeout(700)
+    check("v24a city: a city that never filed one shows nothing "
+          "(negative control)",
+          "negative fund balance" not in page.eval_on_selector(
+              "#recordSheet", "e=>e.textContent").lower())
+
+    # ---- AND IT IS NOWHERE ELSE. No list, no count on any other surface.
+    # The finding refused a list and a statewide count, so neither may
+    # appear anywhere. Asserted against each page's own main region — not
+    # <body>, which always exists and would make this vacuous.
+    for pg, sel in (("districts.html", "main, .wrap, #recordSec"),
+                    ("cities.html", "main, .wrap, #recordSec"),
+                    ("index.html", "main, .wrap"),
+                    ("about.html", "main, .wrap")):
+        page.goto(f"{base}/{pg}")
+        page.wait_for_selector(sel, timeout=20000)
+        region = page.inner_text(sel)
+        low = region.lower()
+        check(f"v24a: {pg} carries no statewide roll-up of negative-balance "
+              "entities before a record is opened (negative control — the "
+              "finding refused a count and a list)",
+              not ("294" in region and "negative" in low), region[:70])
+
+
+def _has_money_near(blob, phrase):
+    i = blob.lower().find(phrase)
+    return i >= 0 and any(c == "$" for c in blob[i:i + 400])
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -10098,6 +10282,7 @@ def main():
             test_v21_k12_revenue(page, base)
             test_v21_district_tier(page, base)
             test_v23a_compensation(page, base)
+            test_v24a_negative_balance(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)
