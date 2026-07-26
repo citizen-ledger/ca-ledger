@@ -9791,6 +9791,55 @@ def test_v23a_compensation(page, base):
           "one layer that is NOT auto-reproducible" not in
           (ROOT / "about.html").read_text())
 
+    # ---- NAV PLACEMENT: the address lookup is the citizen-facing
+    # surface and stays in the primary nav; compensation is a specialist
+    # layer and lives in the footer, inside the ten-destination budget
+    # the masthead-fold test defends.
+    import re as _re
+    navs, foots = set(), set()
+    for f in sorted(ROOT.glob("*.html")):
+        h = f.read_text()
+        m = _re.search(r'<nav class="pn np"[^>]*>(.*?)</nav>', h, _re.S)
+        if m:
+            navs.add(tuple(x.strip() for x in _re.findall(
+                r'<(?:a[^>]*|span[^>]*)>([^<]+)</(?:a|span)>', m.group(1))))
+        g = _re.search(r'<footer class="ft">(.*?)</footer>', h, _re.S)
+        if g:
+            foots.add(tuple(x.strip() for _, x in _re.findall(
+                r'<a href="([^"]+)"[^>]*>([^<]+)</a>', g.group(1))))
+    check("v23a nav: every page reads the same ten destinations",
+          len(navs) == 1 and len(next(iter(navs))) == 10,
+          f"{len(navs)} variants, {len(next(iter(navs)))} items")
+    nav = next(iter(navs))
+    check("v23a nav: Your governments is in the primary nav — it is how a "
+          "reader with no budget vocabulary finds themselves in the data",
+          any("Your governments" in x for x in nav), str(nav))
+    check("v23a nav: compensation is NOT in the primary nav (negative "
+          "control — it is a specialist layer)",
+          not any("Compensation" in x for x in nav), str(nav))
+    check("v23a nav: and it IS reachable from every footer",
+          all(any("COMPENSATION" in x.upper() for x in f) for f in foots))
+
+    # ---- THE FILE:// RULE. Every page but this one must work from a
+    # double-click, so no other page may acquire a runtime fetch.
+    fetchers = sorted(f.name for f in ROOT.glob("*.html")
+                      if "fetch(" in f.read_text())
+    check("v23a architecture: compensation.html is the ONLY page that "
+          "fetches at runtime — every other page still works from a "
+          "file:// double-click",
+          fetchers == ["compensation.html"], str(fetchers))
+    scope = (ROOT / "docs" / "SCOPE.md").read_text()
+    check("v23a architecture: the on-demand load pattern is recorded in "
+          "SCOPE.md as a named exception",
+          "Exception 3" in scope and "needs a server" in scope)
+    check("v23a architecture: and all three exceptions are described "
+          "together, not as separate one-offs",
+          "three named exceptions" in scope
+          and "Exception 1" in scope and "Exception 2" in scope)
+    check("v23a architecture: SCOPE.md records the measured clone cost, so "
+          "the rebuild claim stays checkable",
+          "117 MB" in scope and "4,264" in scope)
+
     # ---- THE PAGE ------------------------------------------------------
     page.goto(f"{base}/compensation.html")
     page.wait_for_selector("#entList .entrow", timeout=20000)
@@ -9832,6 +9881,44 @@ def test_v23a_compensation(page, base):
     check("v23a page: an employer without the flag carries no pension "
           "dagger (negative control)",
           "UNFUNDED LIABILITY" not in page.inner_text("#recFlags").upper())
+
+    # ---- HONEST DEGRADATION. A failed detail fetch must name what
+    # failed and what still holds, and must never blank the record or
+    # leave a number that could be read as real.
+    # Fail the real request rather than monkeypatching fetch: this is the
+    # network path a reader actually hits when a detail file is missing.
+    _aborted = []
+
+    def _kill(route):
+        _aborted.append(route.request.url)
+        route.abort()
+
+    page.route("**/comp/**", _kill)
+    # a query string forces a NEW document: goto with only a changed
+    # fragment is a same-document navigation, so the page script never
+    # re-runs and no detail request is made — the earlier version of this
+    # test passed against the previous employer's successfully-rendered
+    # table, which is exactly the vacuous pass the guard below catches.
+    page.goto(f"{base}/compensation.html?degrade=1#e={nslug}")
+    page.wait_for_selector("#recTable", timeout=20000)
+    page.wait_for_timeout(900)
+    tbl = page.inner_text("#recTable")
+    check("v23a degradation: the detail request was actually intercepted "
+          "(guards the three assertions below from passing vacuously)",
+          len(_aborted) > 0, str(_aborted[:1]))
+    check("v23a degradation: a failed detail fetch names what failed",
+          "UNAVAILABLE" in tbl.upper())
+    check("v23a degradation: and says the totals above still stand",
+          "STILL SHOWN" in tbl.upper())
+    check("v23a degradation: and states plainly that nothing was estimated "
+          "or substituted", "estimated or substituted" in tbl)
+    check("v23a degradation: the failed table shows NO dollar figure that "
+          "could be mistaken for real data (negative control)",
+          "$" not in tbl, tbl[:80])
+    check("v23a degradation: the employer totals above it survive, because "
+          "they came from the index rather than the fetch",
+          "$" in page.inner_text("#recMeta"))
+    page.unroute("**/comp/**")
 
     # a K-12 record must carry the voluntary statement
     kslug = [sl for sl, e in d["entities"].items() if e["layer"] == "k12"][0]
