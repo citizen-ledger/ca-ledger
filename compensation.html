@@ -223,12 +223,22 @@
     .vintage.stale b{color:#f7ecc9}
   }
 
-  .layerpick{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0}
-  .layerpick button{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;padding:6px 12px;border:1px solid var(--hairline);background:transparent;color:var(--graphite);cursor:pointer}
-  .layerpick button.on{border-color:var(--ink);color:var(--ink);background:var(--wash)}
-  .entrow{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:7px 0;border-bottom:1px dotted var(--hairline);align-items:baseline;cursor:pointer}
-  .entrow:hover{background:var(--wash)}
-  .entrow .num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:var(--fs-micro)}
+  /* Picker styles are the site's, lifted verbatim from schools.html so
+     the interaction cannot drift page to page. Every other layer selects
+     an entity by typing; listing 4,132 employers made this the one page
+     a reader had to scroll to use. */
+  .pick-results{list-style:none;margin-top:6px;max-height:230px;overflow-y:auto;border:1px solid var(--ash);background:var(--surface);border-radius:2px;max-width:430px}
+  .pick-results:empty{display:none}
+  .pick-results button{display:flex;justify-content:space-between;gap:12px;width:100%;border:none;background:transparent;padding:8px 14px;cursor:pointer;font-size:var(--fs-note);text-align:left;border-bottom:1px solid var(--hairline)}
+  .pick-results button:hover{background:var(--wash-in)}
+  .pick-results small{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke)}
+  .picklbl{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-data);border:1px solid var(--ink);background:var(--ink);color:var(--parchment);border-radius:9999px;padding:8px 10px 8px 16px;cursor:pointer}
+  .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  .chip i{font-style:normal;font-size:var(--fs-label);opacity:.75}
+  .chip:hover{background:var(--graphite)}
+  .pickrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 8px}
   .dag{color:#b8860b;font-weight:700}
   .posrow{display:grid;grid-template-columns:1fr 1fr repeat(4,auto);gap:10px;padding:4px 0;border-bottom:1px dotted var(--hairline);font-size:.82rem;align-items:baseline}
   .posrow .num{font-variant-numeric:tabular-nums;text-align:right}
@@ -275,9 +285,13 @@
 
   <section id="statements"></section>
 
-  <div class="layerpick" id="layerPick"></div>
-  <input type="search" id="q" placeholder="Find an employer…" style="width:100%;max-width:420px;padding:7px 10px;font-size:.9rem;margin-bottom:10px">
-  <div id="entList"></div>
+  <div class="pickrow">
+    <div class="pillgroup" role="group" aria-label="Employer type" id="layerPick"></div>
+    <span class="picklbl" id="pickLbl"></span>
+  </div>
+  <input type="search" id="compSearch" placeholder="" aria-label="Search employers">
+  <ul class="pick-results" id="compList"></ul>
+  <div class="chips" id="compChips"></div>
 
   <section id="recordSec" hidden aria-live="polite">
     <h2 id="recTitle"></h2>
@@ -347,40 +361,55 @@
   var S = { layer: "city", q: "", sel: null };
   var LAYERS = Object.keys(M.layers);
 
-  function renderPicker(){
-    $("layerPick").innerHTML = LAYERS.map(function(k){
-      var t = M.layers[k];
-      return '<button data-layer="' + k + '"' + (k===S.layer?' class="on"':'') + '>'
-        + esc(t.label.toUpperCase()) + ' · ' + fmt(t.employers) + '</button>';
-    }).join("");
+  function layerCount(k){
+    var n = 0;
+    for (var sl in D.entities) if (D.entities[sl].layer === k) n++;
+    return n;
   }
 
-  function renderList(){
-    var q = S.q.toLowerCase();
-    var rows = [];
+  function renderPicker(){
+    $("layerPick").innerHTML = LAYERS.map(function(k){
+      return '<button data-layer="' + k + '"' + (k===S.layer?' class="on"':'') + '>'
+        + esc(M.layers[k].label) + '</button>';
+    }).join("");
+    $("pickLbl").textContent = M.layers[S.layer].label
+      + (M.layers[S.layer].mandate === "voluntary" ? " · voluntary reporting" : "");
+    /* "Search 479 cities…" reads; "Search 479 cities employers…" does not */
+    var NOUN = {city: "cities", county: "counties",
+                district: "special districts", k12: "K-12 employers"};
+    $("compSearch").placeholder = "Search " + fmt(layerCount(S.layer)) + " "
+      + (NOUN[S.layer] || M.layers[S.layer].label.toLowerCase()) + "\u2026";
+  }
+
+  /* ---- RESULTS BY NAME, NEVER BY MONEY. The same rule the payload and
+     the record follow: this layer does not rank, and a result list
+     ordered by pay would be a ranking whatever it is called. */
+  function renderResults(){
+    var q = S.q.trim().toLowerCase(), list = $("compList");
+    if (!q){ list.innerHTML = ""; return; }
+    var hits = [];
     for (var sl in D.entities){
       var e = D.entities[sl];
       if (e.layer !== S.layer) continue;
-      if (q && e.name.toLowerCase().indexOf(q) < 0) continue;
-      rows.push([sl, e]);
+      if (e.name.toLowerCase().indexOf(q) < 0
+          && (e.county||"").toLowerCase().indexOf(q) < 0) continue;
+      hits.push([sl, e]);
     }
-    /* SORTED BY NAME, NEVER BY PAY. A payload or a list ordered by money
-       is a ranking whatever it is called, and this layer does not rank. */
-    rows.sort(function(a,b){ return a[1].name.localeCompare(b[1].name); });
-    var head = '<div class="entrow" style="border-bottom:1px solid var(--ink)">'
-      + '<span class="poshead">EMPLOYER</span>'
-      + '<span class="poshead num">POSITIONS REPORTED</span>'
-      + '<span class="poshead num">TOTAL WAGES</span></div>';
-    $("entList").innerHTML = head + rows.slice(0, 400).map(function(r){
+    hits.sort(function(a,b){ return a[1].name.localeCompare(b[1].name); });
+    list.innerHTML = hits.slice(0, 40).map(function(r){
       var sl = r[0], e = r[1];
-      return '<div class="entrow" data-sl="' + sl + '"><span>' + esc(e.name)
-        + (e.unfundedInRetirement ? ' <span class="dag" title="retirement figure includes unfunded liability">&dagger;</span>' : '')
-        + (e.county ? ' <span style="color:var(--graphite)">· ' + esc(e.county) + '</span>' : '')
-        + '</span><span class="num">' + fmt(e.positions) + '</span>'
-        + '<span class="num">' + money(e.wages) + '</span></div>';
-    }).join("") + (rows.length > 400
-      ? '<p class="recmeta">Showing the first 400 of ' + fmt(rows.length)
-        + ' — narrow the search to see the rest.</p>' : "");
+      return '<button data-sl="' + sl + '"><span>' + esc(e.name)
+        + (e.unfundedInRetirement ? ' <span class="dag">\u2020</span>' : '')
+        + '</span><small>' + (e.county ? esc(e.county).toUpperCase() + ' CO. \u00b7 ' : '')
+        + fmt(e.positions) + ' POSITIONS</small></button>';
+    }).join("");
+  }
+
+  function renderChip(){
+    var box = $("compChips");
+    if (!S.sel || !D.entities[S.sel]){ box.innerHTML = ""; return; }
+    box.innerHTML = '<button class="chip" data-clear="1"><span>'
+      + esc(D.entities[S.sel].name) + '</span><i>\u00d7</i></button>';
   }
 
   function renderRecord(sl){
@@ -478,22 +507,48 @@
   }
 
   document.addEventListener("click", function(ev){
-    var b = ev.target.closest("[data-layer]");
-    if (b){ S.layer = b.dataset.layer; S.sel = null; $("recordSec").hidden = true;
-            renderPicker(); renderList(); return; }
-    var r = ev.target.closest("[data-sl]");
-    if (r) renderRecord(r.dataset.sl);
+    /* switching layer clears the selection and the query, exactly as the
+       cities/counties and schools switches do */
+    var b = ev.target.closest("button[data-layer]");
+    if (b){
+      if (b.dataset.layer === S.layer) return;
+      S.layer = b.dataset.layer; S.sel = null; S.q = "";
+      $("compSearch").value = "";
+      $("recordSec").hidden = true;
+      location.hash = "";
+      renderPicker(); renderResults(); renderChip();
+      return;
+    }
+    if (ev.target.closest("[data-clear]")){
+      S.sel = null; $("recordSec").hidden = true; location.hash = "";
+      renderChip(); return;
+    }
+    var r = ev.target.closest("#compList button[data-sl]");
+    if (r){
+      S.q = ""; $("compSearch").value = ""; renderResults();
+      renderRecord(r.dataset.sl); renderChip();
+    }
   });
-  $("q").addEventListener("input", function(){ S.q = this.value; renderList(); });
+  $("compSearch").addEventListener("input", function(){
+    S.q = this.value; renderResults();
+  });
+  /* Escape clears the query, as it does in the other pickers */
+  $("compSearch").addEventListener("keydown", function(ev){
+    if (ev.key === "Escape"){ S.q = ""; this.value = ""; renderResults(); }
+  });
 
   function applyHash(){
     var m = /e=([^&]+)/.exec(location.hash);
     if (m){
       var sl = decodeURIComponent(m[1]);
-      if (D.entities[sl]){ S.layer = D.entities[sl].layer; renderPicker(); renderList();
-                           renderRecord(sl); return; }
+      if (D.entities[sl]){
+        S.layer = D.entities[sl].layer; S.sel = sl;
+        renderPicker(); renderResults(); renderRecord(sl); renderChip();
+        return;
+      }
     }
-    renderPicker(); renderList();
+    S.sel = null; $("recordSec").hidden = true;
+    renderPicker(); renderResults(); renderChip();
   }
   window.addEventListener("hashchange", applyHash);
   applyHash();

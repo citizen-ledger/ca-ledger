@@ -9842,7 +9842,7 @@ def test_v23a_compensation(page, base):
 
     # ---- THE PAGE ------------------------------------------------------
     page.goto(f"{base}/compensation.html")
-    page.wait_for_selector("#entList .entrow", timeout=20000)
+    page.wait_for_selector("#compSearch", timeout=20000)
     band = page.inner_text("#tierBand")
     check("v23a page: the tier band says as-filed and unreconciled",
           "AS FILED" in band and "UNRECONCILED" in band)
@@ -9859,6 +9859,83 @@ def test_v23a_compensation(page, base):
                  "CANNOT REBUILD ITSELF"):
         check(f"v23a page: the record carries its {want} statement",
               any(want in h.upper() for h in heads), str(heads))
+
+    # ---- THE PICKER: same pattern as every other layer -----------------
+    page.goto(f"{base}/compensation.html")
+    page.wait_for_selector("#compSearch", timeout=20000)
+    check("v23a picker: the page does NOT list every employer on load — "
+          "4,132 rows is not a picker (negative control)",
+          page.eval_on_selector("#compList", "e=>e.innerHTML") == "")
+    check("v23a picker: it uses the site's own picker markup, so the "
+          "interaction is the one a reader already knows",
+          page.query_selector("ul.pick-results") is not None
+          and page.query_selector("#layerPick.pillgroup") is not None)
+    check("v23a picker: the search input is labelled for screen readers",
+          page.get_attribute("#compSearch", "aria-label") is not None)
+    check("v23a picker: and the layer switch is a labelled group",
+          page.get_attribute("#layerPick", "role") == "group"
+          and page.get_attribute("#layerPick", "aria-label") is not None)
+    ph = page.get_attribute("#compSearch", "placeholder")
+    check("v23a picker: the placeholder counts the layer being searched",
+          "479" in ph and "cities" in ph, ph)
+
+    page.fill("#compSearch", "anah")
+    page.wait_for_selector("#compList button", timeout=10000)
+    hits = page.eval_on_selector_all("#compList button",
+                                     "els=>els.map(e=>e.textContent)")
+    check("v23a picker: typing filters to matching employers",
+          len(hits) >= 1 and any("Anaheim" in h for h in hits), str(hits[:3]))
+    check("v23a picker: results are real buttons, so they are focusable and "
+          "take Enter and Space without extra handling",
+          page.eval_on_selector("#compList button", "e=>e.tagName") == "BUTTON")
+
+    # ordering: by name, never by money
+    page.fill("#compSearch", "a")
+    page.wait_for_selector("#compList button", timeout=10000)
+    # the NAME span only: "button span" also matches the inner dagger span,
+    # which would salt the list with stray daggers and fail spuriously
+    names = page.eval_on_selector_all(
+        "#compList button > span:first-child",
+        "els=>els.map(e=>e.firstChild.textContent.trim())")
+    check("v23a picker: results are ordered BY NAME — this layer does not "
+          "rank, and a list ordered by pay would be a ranking whatever it "
+          "is called",
+          names == sorted(names, key=str.lower), str(names[:4]))
+
+    page.click("#compList button")
+    page.wait_for_selector("#recTable .posrow", timeout=20000)
+    check("v23a picker: selecting an employer renders its record below",
+          page.eval_on_selector("#recTitle", "e=>e.textContent") != "")
+    check("v23a picker: and clears the query and results, as the other "
+          "pickers do",
+          page.eval_on_selector("#compSearch", "e=>e.value") == ""
+          and page.eval_on_selector("#compList", "e=>e.innerHTML") == "")
+    check("v23a picker: the selection shows as a chip",
+          "×" in page.inner_text("#compChips"))
+
+    # layer switching behaves like the cities/counties switch
+    page.click('#layerPick button[data-layer="county"]')
+    page.wait_for_timeout(400)
+    check("v23a picker: switching layer clears the selection and the query",
+          page.eval_on_selector("#compSearch", "e=>e.value") == ""
+          and page.inner_text("#compChips").strip() == ""
+          and page.eval_on_selector("#recordSec", "e=>e.hidden") is True)
+    check("v23a picker: and re-labels for the new layer",
+          "57" in page.get_attribute("#compSearch", "placeholder"))
+    check("v23a picker: the K-12 label carries its voluntary-reporting note "
+          "in the picker too, not only on the record",
+          (page.click('#layerPick button[data-layer="k12"]'),
+           page.wait_for_timeout(300),
+           "voluntary" in page.inner_text("#pickLbl"))[-1])
+
+    # a deep link still opens the record directly
+    dslug0 = [sl for sl, e in d["entities"].items() if e["layer"] == "city"][0]
+    page.goto(f"{base}/compensation.html#e={dslug0}")
+    page.wait_for_selector("#recTable .posrow", timeout=20000)
+    check("v23a picker: a permalink opens its employer directly, with the "
+          "picker set to that employer's layer",
+          page.eval_on_selector("#recTitle", "e=>e.textContent")
+          == d["entities"][dslug0]["name"])
 
     # a daggered employer's record
     dslug = [sl for sl, e in d["entities"].items()
