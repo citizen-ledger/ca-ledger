@@ -28,7 +28,7 @@ basemap tiles — see STATUS.md; everything else stays dependency-free.)
 | `pipeline/fetch_school_data.py` | Regenerates `school-data.js` from CDE's SACS archives. Refuses to write unless every district-year reproduces CDE's published figure (in practice to the cent) and the ledger reproduces CDE's own rollups cell-by-cell. Needs mdbtools + openpyxl. |
 | `districts.html` | The special districts layer, deliberately a different evidentiary tier: the finding first (the measured condition of the layer, recomputed live), the directory second (every district on record, with per-year filing status and a link to its own SCO filing), the as-filed numbers last — caveat on the face, no per-resident figures, no comparison, no totals. |
 | `district-data.js` | ~5,200 districts × 8 years of as-filed figures, filing statuses, and the computed finding (2.2 MB — the largest data file, loaded only by districts.html). |
-| `pipeline/fetch_district_data.py` | Regenerates `district-data.js` from the SCO portal. There is no reconciliation gate for this layer because no control-total dataset exists — that absence is the finding, and the pipeline computes every figure the finding states. |
+| `pipeline/fetch_district_data.py` | Regenerates `district-data.js` from the SCO portal. There is no reconciliation gate for this layer: three of its four fund-class columns have no published total, and the Ledger does not yet gate on the one that does — that limit is the finding, and the pipeline computes every figure the finding states. |
 | `pipeline/verify_digest.py` | Recomputes each data file's SHA-256 integrity digest (also shown on both pages under RECORD INTEGRITY). |
 | `pipeline/make_ca_outline.py` | Regenerates the California outline embedded in `cities.html` from the Census cartographic boundary file (public domain), with the map's shared projection constants. |
 | `pipeline/make_city_boundaries.py` | Regenerates `city-geo.js` — all 482 incorporated-place boundaries (Census, public domain), stdlib-only with hand-rolled Douglas-Peucker; fails with a named report unless every city matches. |
@@ -246,7 +246,7 @@ published control total (`miui-wb29`) or nothing is written.
 ## Special districts — a different tier, and it says so
 
 `districts.html` is built finding-first, per the V5 investigation:
-no control-total dataset exists for special districts, so the
+three of the four fund-class columns have no published total, so the
 reconciliation gate that protects every other figure on the site is
 structurally impossible for this layer. The page leads with that
 finding (every figure in it recomputed from the live data by the

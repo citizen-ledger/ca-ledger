@@ -227,7 +227,7 @@
 
 <div class="prov" id="dataBanner"></div>
 
-<div class="tierband" id="tierBand"><span class="tiermark" aria-hidden="true"></span>THIS LAYER IS AS FILED — UNRECONCILED. NO CONTROL-TOTAL DATASET EXISTS FOR SPECIAL DISTRICTS, SO NOTHING ON THIS PAGE CAN PASS THE RECONCILIATION GATE EVERY STATE, CITY, AND COUNTY FIGURE ON THIS SITE PASSES. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.</div>
+<div class="tierband" id="tierBand"><span class="tiermark" aria-hidden="true"></span>THIS LAYER IS AS FILED — UNRECONCILED. THREE OF THE FOUR FUND-CLASS COLUMNS BELOW HAVE NO PUBLISHED TOTAL TO CHECK AGAINST: FOR ENTERPRISE, INTERNAL-SERVICE AND CONDUIT FUNDS THE CONTROLLER PUBLISHES OPERATING AND NONOPERATING COMPONENTS AND NEVER THEIR SUM. A CONTROL DOES EXIST FOR THE GOVERNMENTAL COLUMN, AND THE LEDGER DOES NOT YET GATE ON IT. SO NOTHING ON THIS PAGE HAS PASSED THE RECONCILIATION GATE EVERY STATE, CITY, AND COUNTY FIGURE ON THIS SITE PASSES. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.</div>
 
 <main>
   <div class="po" id="recordSheet"></div>
@@ -273,7 +273,7 @@
   <section id="recordSec" style="margin-top:44px" hidden aria-labelledby="recTitle">
     <div class="schedlbl">AS-FILED RECORD — NOT A LEDGER SCHEDULE. THIS TIER CARRIES NO SCHEDULE NUMBER.</div>
     <div class="record unrec" id="districtRecord">
-      <div class="caveat" id="recCaveat"><span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span><span>As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.</span></div>
+      <div class="caveat" id="recCaveat"><span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span><span>As filed with the State Controller. Not reconciled: three of the four fund-class columns have no published total to check against, and the Ledger does not yet gate on the one that does. The Ledger has not verified this figure.</span></div>
       <h3 id="recTitle"></h3>
       <div class="recmeta" id="recMeta"></div>
       <div class="recmeta" id="recFilings"></div>
@@ -296,7 +296,7 @@
     <div class="mgrid">
       <div class="mcol">
         <div class="microlbl">METHOD NOTES</div>
-        <div class="mnote"><b>D-1</b><span><strong>The tier, stated.</strong> Every state, city, and county figure on this site passes a hard reconciliation gate against an independently published control total before publication. No control-total dataset exists for special districts, so that gate is structurally impossible here — the one layer of the Ledger where this is true. District figures appear exactly as filed, with the caveat on the face of every record, every CSV, and every citation.</span></div>
+        <div class="mnote"><b>D-1</b><span><strong>The tier, stated.</strong> Every state, city, and county figure on this site passes a hard reconciliation gate against an independently published control total before publication. Three of the four fund-class columns here have no published total to check against — for enterprise, internal-service and conduit funds the Controller publishes operating and nonoperating components and never their sum. A control does exist for the governmental column, and the Ledger does not yet gate on it, so that gate is structurally impossible here — the one layer of the Ledger where this is true. District figures appear exactly as filed, with the caveat on the face of every record, every CSV, and every citation.</span></div>
         <div class="mnote"><b>D-2</b><span><strong>No per-resident figures, anywhere on this page.</strong> Special districts have no resident denominator — they serve connections, parcels, students, ratepayers, or service areas, and the filings carry no population field. Dividing district dollars by any population would fabricate a statistic, so the data file for this layer carries no population at all.</span></div>
         <div class="mnote"><b>D-3</b><span><strong>No comparison, no total.</strong> The two largest district types by count are legal forms (joint powers authorities, county service areas), not functions, so even within-type comparison would assert a likeness the data cannot support — none is offered. Dependent districts' finances also appear within the reporting of the city or county that governs them, so summing this layer would count the same dollars more than once — the Ledger publishes no total for it, and this layer is never compared to or summed with the state, city, or county layers.</span></div>
         <div class="mnote"><b>D-4</b><span><strong>Enterprise and governmental funds are kept apart</strong>, exactly as on the city and county pages: most as-filed district dollars sit in ratepayer-funded enterprise funds (water, sewer, hospitals, transit), which are not commensurable with tax-funded governmental activity.</span></div>
@@ -348,7 +348,7 @@
   const F = D.meta.finding;
   const ALL = Object.keys(D.districts);
   const STATUS_WORD = {F:"filed", L:"filed late", M:"did not file", "-":"no filing on record"};
-  const CAVEAT = "As filed with the State Controller. Not reconciled against any published control total. The Ledger cannot verify this figure.";
+  const CAVEAT = "As filed with the State Controller. Not reconciled: three of the four fund-class columns have no published total to check against, and the Ledger does not yet gate on the one that does. The Ledger has not verified this figure.";
 
   const S = { d: null, q: "" };
 
@@ -420,7 +420,7 @@
       [fmtN(F.expectedFilers), "EXPECTED FILERS · FY " + F.year],
       [fmtN(F.filedLate), "FILED LATE"],
       [fmtN(F.failedToFile), "DID NOT FILE"],
-      ["NONE", "CONTROL TOTAL PUBLISHED"]
+      ["1 OF 4", "COLUMNS WITH A PUBLISHED TOTAL"]
     ].map(([v,k]) => '<div class="stat"><div class="v">'+v+'</div><div class="k">'+k+'</div></div>').join("");
 
     const jpa = F.typeCounts["Joint Powers Authority (JPA)"] || 0;
@@ -434,10 +434,14 @@
       + "deadline, per the Controller's published list; " + fmtN(F.failedToFile) + " did not file. Filing status is "
       + "reported per district and per year in the directory below, because it is a fact this page can stand behind.",
 
-      "No control-total dataset exists for special districts. Every state, city, and county figure on this site is "
-      + "reconciled against an independently published total before it is allowed onto the page; for this layer no "
-      + "such total exists, so that gate is structurally impossible — the only layer of the Ledger where this is "
-      + "true. The figures in the records below are published as filed and labeled so, on their face.",
+      "Three of the four fund-class columns on this page have no published total to check against. Every state, "
+      + "city, and county figure on this site is reconciled against an independently published total before it is "
+      + "allowed onto the page; for enterprise, internal-service and conduit funds the Controller publishes "
+      + "operating and nonoperating components and never their sum, so there is no single figure to reconcile "
+      + "against. A control DOES exist for the governmental column — in the Controller’s own Financial "
+      + "Transactions Report workbook — and the Ledger does not yet gate on it, because gating one column of "
+      + "four would put two evidentiary tiers inside one row. The figures in the records below are published as "
+      + "filed and labeled so, on their face.",
 
       fmtN(F.dependentCount) + " of the districts that filed for FY " + F.year + " are dependent districts, "
       + "governed by a city or a county; their finances also appear within that government's reporting. A further "
@@ -520,8 +524,9 @@
     return h;
   }
   /* THIS LAYER'S SHEET MUST NOT LOOK LIKE THE GATED LAYERS' SHEETS. The
-     special-district layer is published as filed and unreconciled, because
-     no control-total dataset exists for it. A sheet in the same dress as a
+     special-district layer is published as filed and unreconciled: three of
+     its four fund-class columns have no published total, and the Ledger does
+     not yet gate on the one that does. A sheet in the same dress as a
      city or school sheet would collapse the tier distinction the layer is
      built around. So the caveat leads, the gate block says plainly that the
      Ledger cannot verify the figure, and there is NO per-resident figure —
@@ -537,10 +542,13 @@
       + 'SHEET \u00b7 SPECIAL DISTRICTS \u00b7 AS FILED, UNRECONCILED</div>'
       + '<div class="rs-warn"><b>WHAT THIS SHEET IS NOT</b>'
       + 'These figures are reported AS FILED with the California State Controller and are '
-      + 'NOT RECONCILED against any published control total, because no control-total '
-      + 'dataset exists for special districts. <strong>The Ledger cannot verify these '
+      + 'NOT RECONCILED. Three of the four fund-class columns have no published '
+      + 'total to check against: for enterprise, internal-service and conduit funds '
+      + 'the Controller publishes operating and nonoperating components and never '
+      + 'their sum. A control does exist for the governmental column, and the Ledger '
+      + 'does not yet gate on it. <strong>The Ledger has not verified these '
       + 'figures.</strong> Every other layer on this site reproduces a total its source '
-      + 'publishes; this one cannot, and is published at a visibly different evidentiary '
+      + 'publishes; this one does not, and is published at a visibly different evidentiary '
       + 'tier for that reason.</div>'
       + '<div class="rs-basis"><b>NO PER-RESIDENT FIGURE</b>None appears here or anywhere '
       + 'on this site for special districts. They serve overlapping service areas rather '
@@ -582,7 +590,8 @@
           + ' (district-data.js). Verify with <span class="rs-mono">python3 '
           + 'pipeline/verify_digest.py</span> from the repository. The digest proves the '
           + 'file is the one the pipeline wrote; it does NOT verify the filed figures '
-          + '\u2014 nothing on this layer does.</div>' : '')
+          + '\u2014 and no figure on this layer has been reconciled against a published '
+          + 'total.</div>' : '')
       + '<div><b>REVISIONS</b>The Ledger\u2019s record of changes begins on the day it '
       + 'shipped; an absence of recorded change before then means \u201cnot recorded\u201d, '
       + 'not \u201cdid not happen\u201d.</div></div>';
@@ -634,6 +643,38 @@
     $("recFilings").textContent = "FILING RECORD: " + YEARS.map((y,i)=>y+" "+STATUS_WORD[r.filings[i]].toUpperCase()).join(" · ");
     let notes = "";
     if (r.nameVariants) notes += '<div class="recmeta">Spelled in earlier filings as: ' + r.nameVariants.map(esc).join("; ") + '.</div>';
+    // THE FIDUCIARY GAP, ON THE RECORD OF THE DISTRICT IT AFFECTS.
+    // These four filers' published figures are understated because SCO
+    // declares fiduciary-fund activity in its own workbook that it never
+    // publishes through the feed this layer reads. A reader looking at
+    // Western Riverside's $13.5M needs to know that beside it, not in a
+    // method note three sections away.
+    if (r.fiduciaryGap){
+      const yrs = Object.keys(r.fiduciaryGap).sort();
+      notes += '<div class="caveat" style="margin:10px 0">'
+        + '<span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span>'
+        + '<span><b>THIS RECORD IS UNDERSTATED — MONEY THE CONTROLLER DECLARES BUT DOES NOT PUBLISH HERE.</b> '
+        + 'The State Controller\u2019s own Financial Transactions Report workbook declares '
+        + 'fiduciary-fund activity for this district that the published dataset this page is '
+        + 'built from does not contain at all: '
+        + yrs.map(y => 'FY ' + y + ', $' + fmtN(r.fiduciaryGap[y])).join('; ')
+        + '. Those dollars are in none of the four columns below. This is not a figure that '
+        + 'failed a check \u2014 there is nothing in the feed to check \u2014 it is a hole in what '
+        + 'the Controller makes available. ' + esc(D.meta.fiduciaryGapSource || '') + '</span></div>';
+    }
+    // THE CONTROLLER'S OWN MISLABEL, stated on the record rather than
+    // applied to it. The Ledger does not quietly rename an entity on the
+    // strength of its own inference; it shows what was filed and says
+    // what it found.
+    if (r.mislabel){
+      notes += '<div class="caveat" style="margin:10px 0">'
+        + '<span class="tiermark" style="flex:none;margin-top:3px" aria-hidden="true"></span>'
+        + '<span><b>THE CONTROLLER FILED THESE YEARS UNDER THE WRONG NAME.</b> '
+        + esc(r.mislabel.note) + ' Affected years: '
+        + r.mislabel.years.map(esc).join(', ') + '. Entity ID '
+        + esc(r.mislabel.entityId) + ' \u2014 ' + esc(r.mislabel.trueName)
+        + '.</span></div>';
+    }
     if (r.listOnly) notes += '<div class="recmeta">This entry comes from the Controller’s late/failed-to-file lists; no line items for it appear in the published datasets in any year shown, and its name appears exactly as the Controller printed it (the lists cut names at about 40 characters).</div>';
     $("recNotes").innerHTML = notes;
     const row = (y, i, vals) => '<div class="u-row"><span class="y">'+y+'</span>'

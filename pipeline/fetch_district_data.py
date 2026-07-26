@@ -17,13 +17,51 @@ Sources (SCO "By the Numbers", Socrata SODA API):
     uiun-snc7 (2018-19)  rbwh-942r (2019-20)  fbdc-d5ib (2020-21)
     udxr-rcgh (2021-22)  en47-vkkk (2022-23)  9whd-sig6 (2023-24)
 
-WHY THERE IS NO RECONCILIATION GATE HERE. Every other layer of the
-Ledger refuses to publish unless each entity-year reproduces an
-independently published control total (Schedule 6 for the state,
-per-capita totals datasets for cities and counties). No such dataset
-exists for special districts — there is nothing to reconcile against.
-That absence is reported on the page itself; figures are published
-as filed, and labeled so.
+WHY THIS LAYER IS STILL AS FILED — MEASURED, NOT ASSUMED.
+
+Every other layer refuses to publish unless each entity-year reproduces
+an independently published control total. This layer does not, and the
+reason has been re-measured (V21 follow-up, 2026-07-25). The earlier
+wording — "no control-total dataset exists for special districts" — was
+WRONG, and is corrected here and everywhere it appeared.
+
+WHAT SCO ACTUALLY PUBLISHES. The Financial Transactions Report raw
+workbooks (Socrata blobby view dp5e-7wm8) carry, on sheet
+"16 SD_GOV_FUNDS_REV_EXP", a per-filer TOTAL GOVERNMENTAL FUNDS column
+for both revenues and expenditures. That is a real control and it is the
+same accounting object as this layer's `gov` bucket.
+
+WHY THE LAYER STILL CANNOT BE GATED AS A WHOLE. Of the four buckets this
+page publishes, only `gov` has such a control:
+
+  gov  published total exists (sheet 16, plus sheet 15 for the
+       Transportation filers, so it is a cross-sheet sum)
+  ent  NO published total. Each of the ten enterprise sheets prints
+       "Total Operating Expenses" and "Total Nonoperating Expenses" as
+       two SEPARATE columns — 22 columns across 11 sheets — and never
+       their sum. Gating against a figure we add up ourselves is not a
+       gate, it is our own arithmetic wearing a gate's clothes. The unit
+       differs too: accrual expenses including depreciation, not
+       modified-accrual expenditures.
+  isf  NO published total, same shape, and only 19 entities — too thin
+       to call tested either way.
+  cf   NO published total, and this one is a trap. Reconciling the
+       site's cf bucket against sheet 14 alone passes 14/14 — but only
+       because the site's bucket is conduit-financing-only while SCO
+       also declares FIDUCIARY-FUND activity on sheet 15 that the
+       Socrata feed never publishes at all. See FIDUCIARY_GAP below: a
+       cf gate defined to pass is a gate defined around the hole.
+
+TWO MORE REASONS ANY FUTURE GATE MUST BE BUILT CAREFULLY, both measured:
+201 of 7,158 governmental control cells are the literal STRING "NULL" —
+not blank, not zero — so a gate that coerces them to 0.0 would pass
+silently on cells where nothing was published; and the control is
+per-ROW, not per-entity (293 entity-years carry 2 to 7 rows), so an
+entity-level control is itself a sum the reader has to trust us to make.
+
+So: figures are still published as filed and labeled so. What changed is
+that the label now states a measured limit instead of an absence that
+was never true.
 
 WHAT IS STILL GATED (structurally, in this script):
   - slug uniqueness across the directory (write fails on collision);
@@ -62,6 +100,82 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates                                     # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
+
+# THE FIDUCIARY GAP, DECLARED PER ENTITY-YEAR.
+#
+# SCO's own Financial Transactions Report workbook (Socrata blobby view
+# dp5e-7wm8, sheet "15 SD_TRANSPORTATION", column "Total Expenditures/
+# Operating Expenses/Deductions_Fiduciary Fund") declares fiduciary-fund
+# activity for a handful of transportation filers. THE SOCRATA FEED THIS
+# PIPELINE READS PUBLISHES NONE OF IT: measured, m9u3-wdam contains zero
+# rows with "Fiduciary" in category, subcategory1, subcategory2 or
+# linedescription, in any year.
+#
+# So those districts' figures on this site are UNDERSTATED, and by a lot:
+# Western Riverside COG's whole published FY2024 expenditure is
+# $13,532,565 while the workbook declares $385,428,678 of fiduciary
+# deductions beside it. That is not a reconciliation failure — there is
+# nothing on the Socrata side to fail — it is a hole in what SCO makes
+# available through the feed, and the affected records say so on their
+# face rather than showing a small number without comment.
+#
+# DECLARED, never sniffed: read from the workbook by hand, stated here,
+# and asserted against the roster on every run. Amounts are whole dollars
+# as the workbook prints them.
+FIDUCIARY_GAP = {
+    ("Western Riverside Council of Governments", "Riverside"): {
+        "2022-23": 122253037, "2023-24": 385428678},
+    ("Santa Clara Valley Transportation Authority", "Santa Clara"): {
+        "2022-23": 71169000, "2023-24": 72360000},
+    ("Fresno County Transportation Authority", "Fresno"): {
+        "2022-23": 67677678, "2023-24": 63417754},
+    ("Madera County Transportation Authority", "Madera"): {
+        "2022-23": 8114034, "2023-24": 8150678},
+}
+# THE SCO MISLABEL — this project's own hazard, inverted.
+#
+# fetch_amounts() records a real hazard: "Rural North Vacaville Water
+# District" resolves to TWO agencies, a Solano community-services district
+# and a Sutter levee district, and grouping by name alone silently added
+# them together. Keying on (name, county) fixed that.
+#
+# The Sutter agency is not called that at all. Measured: SCO publishes
+# Levee District No. 9 (Sutter) — Entity ID 4599, Yuba City — for FY2003
+# through FY2017 and again FY2021 through FY2024, and publishes nothing
+# for it in FY2018, FY2019, FY2020. In exactly those three years, and only
+# those, a "Rural North Vacaville Water District" appears in SUTTER county
+# with activity "Levee" and a Yuba City address, 100 miles from Vacaville.
+# The two series are exactly complementary and never overlap, and of all
+# 68 Sutter filers LD9 is the only one with a hole in those years.
+#
+# So the name in the Socrata feed is SCO's own error, and the Entity ID —
+# which the feed does not expose — is the truth. The Ledger keeps the
+# name as filed, because that is what the record says, and states the
+# correction on the record rather than silently renaming an entity on the
+# strength of its own inference.
+MISLABELS = {
+    ("Rural North Vacaville Water District", "Sutter"): {
+        "years": ["2018-19", "2019-20"],
+        "trueName": "Levee District No. 9 (Sutter)",
+        "entityId": "4599",
+        "note": "The State Controller published this district's filings for "
+                "these years under the wrong name. Entity ID 4599 is Levee "
+                "District No. 9 (Sutter), of Yuba City; the Controller's own "
+                "series for that district stops and resumes exactly around "
+                "these years, and no other Sutter filer has such a gap. The "
+                "name here is left as the Controller filed it, and the "
+                "correction is stated rather than applied \u2014 a name is "
+                "evidence, and the Ledger does not quietly rewrite it. Not to "
+                "be confused with the Solano County community services "
+                "district that genuinely bears this name.",
+    },
+}
+
+FIDUCIARY_GAP_SOURCE = ("California State Controller, Financial Transactions "
+                        "Report raw workbook (Socrata view dp5e-7wm8), sheet "
+                        "\u201c15 SD_TRANSPORTATION\u201d, column \u201cTotal "
+                        "Expenditures/Operating Expenses/Deductions_Fiduciary "
+                        "Fund\u201d.")
 
 BASE = "https://bythenumbers.sco.ca.gov/resource"
 EXP, REV = "m9u3-wdam", "nkv3-m73r"
@@ -445,6 +559,34 @@ def main():
     gates.require_rows(len(districts), 4000, "special districts loaded",
                        "SCO publishes upward of five thousand.")
 
+    # ---- attach the declared fiduciary gap, and ASSERT it lands.
+    # A declaration that matches nothing is a declaration describing some
+    # other build (docs/OPEN.md 2d, the dormant-declaration failure), so a
+    # key that finds no district stops the write rather than sitting
+    # quietly in the file forever.
+    for (nm, county), info in MISLABELS.items():
+        hit = [r for r in districts.values()
+               if r["name"] == nm and r.get("county") == county]
+        if not hit:
+            raise SystemExit(
+                f"MISLABELS declares {nm} ({county}) but no such district is "
+                "in the roster; nothing written")
+        hit[0]["mislabel"] = dict(info)
+
+    for (nm, county), by_year in FIDUCIARY_GAP.items():
+        hit = [r for r in districts.values()
+               if r["name"] == nm and r.get("county") == county]
+        if not hit:
+            raise SystemExit(
+                f"FIDUCIARY_GAP declares {nm} ({county}) but no such district "
+                "is in the roster — the declaration is stale or the name "
+                "changed at the source; nothing written")
+        bad = [fy for fy in by_year if fy not in YEAR_LABELS]
+        if bad:
+            raise SystemExit(f"FIDUCIARY_GAP {nm}: year(s) {bad} outside the "
+                             "published window; nothing written")
+        hit[0]["fiduciaryGap"] = dict(by_year)
+
     # THE CLASSIFICATION-SHAPE GATE (hard): statewide, governmental and
     # enterprise buckets must both be nonzero in every year (unknown
     # categories already stop the write via classify()).
@@ -463,14 +605,45 @@ def main():
             "sourceLabel": "California State Controller — special "
                            "districts financial transactions reports, "
                            "as filed",
+            # WHAT A CONTROL WOULD LOOK LIKE, measured 2026-07-25, so the
+            # tier statement on the page is renderable from data rather
+            # than written into the markup.
+            "control": {
+                "govBucketHasPublishedTotal": True,
+                "otherBucketsHavePublishedTotal": False,
+                "where": "State Controller Financial Transactions Report raw "
+                         "workbook (Socrata view dp5e-7wm8), sheet "
+                         "\u201c16 SD_GOV_FUNDS_REV_EXP\u201d.",
+                "whyNotGated": "For enterprise, internal-service and "
+                               "conduit-financing funds the Controller "
+                               "publishes operating and nonoperating "
+                               "components and never their sum, so three of "
+                               "the four buckets on this page have no "
+                               "published total. Gating only the fourth "
+                               "would put two evidentiary tiers inside one "
+                               "row of figures; the Ledger has not done that "
+                               "here.",
+                "nullControlCells": 201,
+                "nullControlCellsOf": 7158,
+                "nullNote": "201 of the 7,158 governmental control cells are "
+                            "the literal string \u201cNULL\u201d \u2014 not "
+                            "blank and not zero. Any future gate must abstain "
+                            "on those rather than read them as $0.",
+            },
+            "fiduciaryGapSource": FIDUCIARY_GAP_SOURCE,
             "datasets": {"expenditures": EXP, "revenues": REV,
                          "lateOrFailedLists": DELINQUENCY},
-            "basis": "REPORTED AS FILED — UNRECONCILED. No control-total "
-                     "dataset exists for special districts, so no figure "
-                     "in this file can be verified against an "
-                     "independently published total. This is the only "
-                     "Ledger layer where the reconciliation gate is "
-                     "structurally impossible.",
+            "basis": "REPORTED AS FILED — UNRECONCILED. Three of the "
+                     "four fund-class buckets on this page have no "
+                     "published total to check against: for enterprise, "
+                     "internal-service and conduit funds the State "
+                     "Controller publishes operating and nonoperating "
+                     "components and never their sum. A control DOES "
+                     "exist for the governmental-funds bucket, in the "
+                     "Controller's own Financial Transactions Report "
+                     "workbook, and the Ledger does not yet gate on it. "
+                     "So no figure in this file has been verified "
+                     "against an independently published total.",
             "units": "as-filed dollars",
             "generated": date.today().isoformat(),
             "noPopulationByDesign": "special districts have no resident "

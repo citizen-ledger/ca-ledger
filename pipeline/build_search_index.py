@@ -118,8 +118,8 @@ LAYERS = [
              "its per-ADA statistic. Each record states how the school filed."},
     {"key": "district", "name": "Special districts", "page": "districts.html",
      "param": "d", "unit": "as filed",
-     "basis": "AS FILED · UNRECONCILED · no published control total exists",
-     "full": "No control-total dataset exists for special districts, so no "
+     "basis": "AS FILED · UNRECONCILED · no published total for three of four fund-class columns",
+     "full": "Three of the four fund-class columns have no published total to check against, so no "
              "figure in this layer can be verified against an independently "
              "published total. It is published at a visibly different tier."},
     {"key": "ccc", "name": "Community college districts", "page": "ccc.html",
@@ -183,8 +183,24 @@ def ccc_titlecase(s):
 
 
 def flag_count(rec):
-    f = rec.get("flags") or {}
-    return sum(1 for v in f.values() if v)
+    """UC comparability flags live on the YEAR, not the campus.
+
+    They were moved there when the UC layer went multi-year (V18b) and
+    this function was not moved with them, so it read {} and every UC
+    campus silently lost its note marker. The shipped search index went
+    stale in the same commit and the staleness hid it: the test that
+    checks UCSF surfaces its notes was passing against an index built
+    before the restructure. Read the latest year that has flags.
+    """
+    f = rec.get("flags")
+    if not f:
+        years = rec.get("years") or {}
+        for fy in sorted(years, reverse=True):
+            y = years[fy]
+            if isinstance(y, dict) and y.get("flags"):
+                f = y["flags"]
+                break
+    return sum(1 for v in (f or {}).values() if v)
 
 
 def build():
