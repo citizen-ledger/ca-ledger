@@ -1129,8 +1129,17 @@ def test_districts(page, base):
     check("districts finding: no dollar figure appears in the finding "
           "(counts and shares, never a layer total)",
           "$" not in finding_dom)
-    check("districts finding: control-total absence stated",
-          "structurally impossible" in finding_dom)
+    # The layer is still as-filed, but for a MEASURED limit rather than an
+    # absence that was never true. The test now pins the precise claim.
+    check("districts finding: the control limit is stated precisely — three "
+          "of four columns have no published total",
+          "no published total to check against" in finding_dom)
+    check("districts finding: and it does NOT claim no control exists, "
+          "because one does (negative control against the old wording)",
+          "no control-total dataset exists" not in finding_dom.lower())
+    check("districts finding: the control that DOES exist is named, along "
+          "with why the layer still is not gated on it",
+          "does not yet gate on it" in finding_dom)
     check("districts finding: per-year filing table includes "
           "no-list-published years",
           page.inner_text("#yearTbl").count("no list published") == 4)
@@ -1153,9 +1162,10 @@ def test_districts(page, base):
     rec = DIST["districts"][slug]
     page.goto(f"{base}/districts.html#d={slug}")
     page.wait_for_selector("#districtRecord")
-    caveat = ("As filed with the State Controller. Not reconciled against "
-              "any published control total. The Ledger cannot verify this "
-              "figure.")
+    caveat = ("As filed with the State Controller. Not reconciled: three of "
+              "the four fund-class columns have no published total to check "
+              "against, and the Ledger does not yet gate on the one that "
+              "does. The Ledger has not verified this figure.")
     check("district record: the caveat is on the face",
           caveat in page.inner_text("#recCaveat"))
     check("district record: named and linked to its own SCO filing",
@@ -5622,7 +5632,10 @@ def test_frontdoor_about(page, base):
           and "the pipeline refuses to write" in body
           and "Current Expense of Education" in body)
     check("about: the as-filed exception is stated, not hidden",
-          "no published control total exists for special districts" in body)
+          "no single total for three of the four fund-class columns" in body)
+    check("about: and the corrected claim replaced the false one everywhere "
+          "on this page (negative control)",
+          "no published control total exists for special districts" not in body)
     check("about: SHA-256 verification anyone can run",
           "SHA-256" in body and "verify_digest.py" in body)
     check("about: the mutation-testing discipline is stated on the record",
@@ -7416,16 +7429,20 @@ def test_print_remaining(page, base):
     ds = page.inner_text("#recordSheet")
     check("print districts: the as-filed caveat leads the sheet",
           "AS FILED, UNRECONCILED" in ds.upper())
-    check("print districts: states plainly that the Ledger cannot verify it",
-          "cannot verify" in ds.lower())
-    check("print districts: states that no control total exists",
-          "no control-total dataset exists" in ds.lower())
+    check("print districts: states plainly that the Ledger has not verified it",
+          "has not verified" in ds.lower())
+    check("print districts: states the precise control limit",
+          "no published total to check against" in ds.lower())
+    check("print districts: and no longer claims no control exists "
+          "(negative control against the corrected sentence)",
+          "no control-total dataset exists" not in ds.lower())
     check("print districts: NO per-resident figure appears",
           "per resident" not in ds.lower(), ds[:200])
     check("print districts: and says why none is shown",
           "no denominator" in ds.lower())
     check("print districts: the digest caveat is the as-filed one",
-          "does NOT verify the filed figures" in ds)
+          "does NOT verify the filed figures" in ds
+          and "has been reconciled against a published" in ds)
     for ph in ("SOURCE", "PERMALINK", "SHA-256", "REVISIONS"):
         check(f"print districts: carries {ph}", ph in ds, ph)
 
@@ -9491,6 +9508,143 @@ def test_v21_k12_revenue(page, base):
           "no district row" in tier or "never independently confirmed" in tier)
 
 
+
+
+def test_v21_district_tier(page, base):
+    """V21 follow-up: the special-district tier, corrected. The layer stays
+    as-filed, but for a MEASURED limit rather than an absence that was
+    never true — and the money SCO declares but does not publish is marked
+    on the records it affects. Shipped payload only."""
+    d = DIST
+    C = d["meta"].get("control")
+    check("v21 districts: the payload states what control actually exists",
+          bool(C))
+    check("v21 districts: a control DOES exist for the governmental bucket "
+          "— the old 'none exists' claim was false",
+          C["govBucketHasPublishedTotal"] is True)
+    check("v21 districts: and does NOT exist for the other three",
+          C["otherBucketsHavePublishedTotal"] is False)
+    check("v21 districts: the reason the layer is still not gated is "
+          "stated — components, never their sum",
+          "never their sum" in C["whyNotGated"])
+    check("v21 districts: the workbook and sheet are named, so the claim "
+          "is checkable", "dp5e-7wm8" in C["where"] and "16 SD_GOV" in C["where"])
+    check("v21 districts: the literal-'NULL' control cells are recorded, "
+          "because a future gate that reads them as $0 would pass silently",
+          C["nullControlCells"] == 201 and C["nullControlCellsOf"] == 7158)
+    check("v21 districts: and the payload says a gate must abstain on them",
+          "abstain" in C["nullNote"])
+
+    # ---- the corrected basis, and the false sentence is gone -----------
+    b = d["meta"]["basis"]
+    check("v21 districts: meta.basis states the measured limit",
+          "no published total to check against" in b)
+    check("v21 districts: meta.basis no longer claims no control exists "
+          "(negative control)",
+          "no control-total dataset exists" not in b.lower())
+    check("v21 districts: and it still says plainly that nothing here has "
+          "been verified — the tier did not change",
+          "no figure in this file has been verified" in b)
+
+    # ---- THE FIDUCIARY GAP, on the records it affects -----------------
+    gapped = {k: v for k, v in d["districts"].items() if "fiduciaryGap" in v}
+    check("v21 districts: the four affected districts carry the gap",
+          len(gapped) == 4, str(sorted(x["name"] for x in gapped.values())))
+    total = sum(sum(v["fiduciaryGap"].values()) for v in gapped.values())
+    check("v21 districts: the gap totals the measured $798,570,859 across "
+          "the two years SCO declares it", total == 798570859, str(total))
+    wr = [v for v in gapped.values()
+          if v["name"] == "Western Riverside Council of Governments"][0]
+    check("v21 districts: Western Riverside's FY2023-24 gap is the measured "
+          "$385,428,678", wr["fiduciaryGap"]["2023-24"] == 385428678,
+          str(wr["fiduciaryGap"]))
+    check("v21 districts: the gap is bigger than what the site publishes "
+          "for that district — which is why it is marked rather than "
+          "left as a small number without comment",
+          wr["fiduciaryGap"]["2023-24"] > sum(wr["exp"][-1] or [0, 0, 0, 0]))
+    check("v21 districts: the source of the gap figure is named in meta",
+          "dp5e-7wm8" in d["meta"]["fiduciaryGapSource"]
+          and "SD_TRANSPORTATION" in d["meta"]["fiduciaryGapSource"])
+    check("v21 districts: no district carries an empty or zero gap — a "
+          "marker that says nothing is worse than none (negative control)",
+          all(all(x > 0 for x in v["fiduciaryGap"].values())
+              for v in gapped.values()))
+    src = (ROOT / "pipeline" / "fetch_district_data.py").read_text()
+    check("v21 districts: a declared gap that matches no district STOPS "
+          "the build rather than sitting stale in the file",
+          "no such district" in src and "nothing written" in src)
+
+    # ---- the page: the corrected band, tile and per-record marker -----
+    page.goto(f"{base}/districts.html")
+    page.wait_for_selector("#tierBand")
+    band = page.inner_text("#tierBand")
+    check("v21 districts page: the persistent band states the measured "
+          "limit", "NO PUBLISHED TOTAL TO CHECK AGAINST" in band.upper())
+    check("v21 districts page: and no longer asserts no control exists "
+          "(negative control on the most-read surface)",
+          "NO CONTROL-TOTAL DATASET EXISTS" not in band.upper())
+    check("v21 districts page: the band still marks the tier as unreconciled",
+          "UNRECONCILED" in band.upper())
+    stats = page.inner_text("#statRow") if page.query_selector("#statRow") \
+        else page.inner_text("body")
+    check("v21 districts page: the headline tile counts the columns that "
+          "have a control instead of claiming none do",
+          "COLUMNS WITH A PUBLISHED TOTAL" in stats.upper()
+          and "1 OF 4" in stats.upper())
+
+    slug = [k for k, v in gapped.items()
+            if v["name"] == "Western Riverside Council of Governments"][0]
+    page.goto(f"{base}/districts.html#d={slug}")
+    page.wait_for_selector("#recNotes")
+    notes = page.inner_text("#recNotes")
+    check("v21 districts page: the affected record says on its face that it "
+          "is understated", "UNDERSTATED" in notes.upper())
+    check("v21 districts page: with the amount, per year",
+          "385,428,678" in notes and "122,253,037" in notes)
+    check("v21 districts page: and says the money is in none of the four "
+          "columns, so a reader does not hunt for it",
+          "none of the four columns" in notes)
+    check("v21 districts page: it is framed as a hole at the source, not a "
+          "failed check", "nothing in the feed to check" in notes)
+
+    # ---- THE CONTROLLER'S OWN MISLABEL — the project's hazard inverted
+    ml = {k: v for k, v in d["districts"].items() if "mislabel" in v}
+    check("v21 districts: the Sutter entity carries the mislabel finding",
+          len(ml) == 1 and list(ml)[0].endswith("-sutter"), str(list(ml)))
+    rec = list(ml.values())[0]
+    check("v21 districts: it names the true entity and its Entity ID — the "
+          "field the Socrata feed does not expose",
+          rec["mislabel"]["entityId"] == "4599"
+          and "Levee District No. 9" in rec["mislabel"]["trueName"])
+    check("v21 districts: the NAME IS LEFT AS FILED — the Ledger states the "
+          "correction rather than silently renaming an entity on its own "
+          "inference",
+          rec["name"] == "Rural North Vacaville Water District")
+    check("v21 districts: and the note says so explicitly",
+          "does not quietly rewrite" in rec["mislabel"]["note"])
+    check("v21 districts: the genuinely-named Solano district is a SEPARATE "
+          "record and carries no mislabel (positive control — the two must "
+          "not be merged, which was the original hazard)",
+          any(v["name"] == "Rural North Vacaville Water District"
+              and v.get("county") == "Solano" and "mislabel" not in v
+              for v in d["districts"].values()))
+    page.goto(f"{base}/districts.html#d={list(ml)[0]}")
+    page.wait_for_selector("#recNotes")
+    mn = page.inner_text("#recNotes")
+    check("v21 districts page: the mislabel is stated on the record",
+          "WRONG NAME" in mn.upper() and "4599" in mn)
+
+    # a district WITHOUT the gap must carry no marker (positive control on
+    # the other side: the marker is per-entity, not page furniture)
+    plain = [k for k, v in d["districts"].items()
+             if "fiduciaryGap" not in v and v.get("exp") and any(v["exp"])][0]
+    page.goto(f"{base}/districts.html#d={plain}")
+    page.wait_for_selector("#districtRecord")
+    check("v21 districts page: a district with no declared gap shows no "
+          "understatement marker (negative control)",
+          "UNDERSTATED" not in page.inner_text("#recNotes").upper())
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -9568,6 +9722,7 @@ def main():
             test_v21_state_revenue(page, base)
             test_v21_ccc_revenue(page, base)
             test_v21_k12_revenue(page, base)
+            test_v21_district_tier(page, base)
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

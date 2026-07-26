@@ -73,7 +73,18 @@ filed late or failed to file — roughly one in six expected filers**,
 against 11-late/0-failed for counties. Any given year of this layer is
 materially incomplete in ways that shift year to year.
 
-**Control total: none exists.** There is no per-capita or totals
+**Control total: none for three of the four buckets.**
+
+> **Corrected 2026-07-25 (V21 follow-up).** This section originally read
+> “none exists”. That is wrong and was wrong when written: SCO's own
+> Financial Transactions Report workbook publishes a per-filer total for
+> GOVERNMENTAL funds. What does not exist is a published total for the
+> other three fund classes — enterprise, internal service and conduit —
+> where the Controller prints operating and nonoperating components and
+> never their sum. The layer is still as-filed, now for a measured reason
+> rather than an absence that was never true.
+
+There is no per-capita or totals
 dataset for special districts — nothing independently published to
 reconcile an entity-year against. **This is a material downgrade from
 the city standard and must be disclosed as such**: district records

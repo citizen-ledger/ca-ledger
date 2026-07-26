@@ -362,6 +362,84 @@ should never be a literal in prose when it can be a measurement in code
 — that is the same rule the site applies to the data it publishes, and
 it applies to the findings too.
 
+### 2i. A gate that passes may be a gate drawn around the hole
+
+The special-district expenditure layer was queued to be re-tiered from
+as-filed to gated. The case looked strong: the site publishes four
+per-fund-class buckets, SCO publishes a control per fund class, and a
+prior measurement reported **4,869 of 4,870 bucket figures exact to the
+dollar**, zero failures. Re-verification reproduced that arithmetic
+exactly — **and the layer still must not be gated.**
+
+**Only one bucket of four has a control whose unit is the same object.**
+
+| bucket | what SCO publishes |
+|---|---|
+| `gov` | a real per-filer total — same accounting object |
+| `ent` | `Total Operating` and `Total Nonoperating` as **separate** columns, 22 across 11 sheets, never their sum |
+| `isf` | same shape; 19 entities, too thin to call tested |
+| `cf` | same shape — **and the pass is the problem** |
+
+For `ent`/`isf`/`cf`, "reconciling" means adding the components up
+ourselves and confirming our own arithmetic. That is not a gate. The
+unit differs too: enterprise figures are accrual *expenses* including
+depreciation, not modified-accrual *expenditures*.
+
+**The `cf` bucket is the lesson.** It reconciles 14/14 and 13/13 —
+perfectly — but only because the site's bucket is conduit-financing-only
+while SCO *also* declares **fiduciary-fund activity the Socrata feed
+never publishes at all**: measured, zero rows anywhere in `m9u3-wdam`
+mention Fiduciary, in any year, while the workbook declares
+**$798,570,859** across four transportation filers in two years. Western
+Riverside COG publishes **$13.5M** on this site against **$385.4M** of
+fiduciary deductions declared beside it — a 28× understatement.
+
+A `cf` gate defined to pass is a gate defined *around* that hole. The
+100% would have been the evidence for shipping it.
+
+**The general rule.** Before accepting a reconciliation, ask what the
+control is a control *of*, and what it would look like if the source
+simply never published part of the answer. A gate that passes at 100%
+deserves more suspicion than one that passes at 99%: the residual is
+where the questions live, and a perfect score can mean the boundary was
+drawn where the residual isn't.
+
+### 2j. The stale claim landed in 74 places, in six wordings
+
+"No control-total dataset exists for special districts" has been on the
+site since V5. It is false — a governmental-funds control exists — and
+correcting it meant finding every place it had spread. **74 occurrences
+across 17 files**, in at least six distinct wordings, of which **36
+asserted non-existence** (and had to change) while 32 said only that no
+gate is *used* (and stayed true). The two that a search for the sentence
+would have missed:
+
+- a headline **stat tile** rendering `["NONE", "CONTROL TOTAL PUBLISHED"]`
+- a **causal clause** — "…because no control-total dataset exists" —
+  whose *reason* dies with the claim even though the conclusion survives
+
+Also caught: **six test assertions that pinned the false sentence**,
+including one whose stated purpose was to guarantee it stayed on the
+page. A test can hold a claim in place long after it stops being true.
+
+This is the M-7 lesson repeating, and the count is the point: when a
+claim is corrected, enumerate before editing, and classify each hit by
+*what it asserts* rather than by the words it uses.
+
+### 2k. A stale build artifact hid a real regression
+
+Rebuilding `search-index.js` as part of this work made a passing test
+fail. The test was right and the index was stale: UC's comparability
+flags moved to the year level when that layer went multi-year (V18b),
+`flag_count()` was not moved with them, and every UC campus silently lost
+its note marker. The shipped index had been built *before* that
+restructure, so the assertion kept passing against data that no longer
+matched the code that produced it. CCC was affected the same way.
+
+**Generated files that are committed can hold a fixed answer in place
+across the very change that breaks them.** Rebuild them when the shape
+of their inputs changes, not only when their content is supposed to.
+
 ---
 
 ## Part 3 — Test-quality debt

@@ -304,6 +304,20 @@ and per-vintage declarations are proven.
 > as-filed today because no control was known. This control may gate it
 > too — meaning an already-shipped layer may be **under-claiming** its
 > tier. Untested; flagged, not asserted.
+>
+> **Tested, 2026-07-25 — and the answer is no.** The layer stays
+> as-filed. Only the `gov` bucket has a control whose unit is the same
+> object; for `ent`, `isf` and `cf` the Controller publishes operating
+> and nonoperating components and never their sum, so "reconciling"
+> them means confirming our own arithmetic. Worse, the `cf` bucket
+> reconciles 14/14 **only because** the site's bucket is
+> conduit-financing-only while SCO separately declares
+> **$798,570,859** of fiduciary-fund activity that the Socrata feed
+> publishes nowhere — a gate there would have been drawn around the
+> hole. What was corrected instead is the claim: "no control-total
+> dataset exists" was false, and is now stated as the measured limit
+> everywhere it appeared (74 occurrences, 17 files). See docs/OPEN.md
+> 2i–2k.
 
 ---
 

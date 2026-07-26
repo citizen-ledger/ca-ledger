@@ -370,6 +370,10 @@ think V4 overclaimed.
 **The special-district findings — no, and this is the clearest
 novelty in the project.** Nobody — not SCO, LHC, the Auditor, CSDA,
 academics, or press — has published (a) the observation that no
+[CORRECTED 2026-07-25: see docs/V5_DISTRICTS_FINDING.md — a governmental-funds
+control does exist in SCO's FTR workbook; what is absent is a total for the
+other three fund classes. The originality claim below is left as written and
+is superseded by that correction.]
 independent control-total dataset exists for districts so
 reconciliation is structurally impossible, (b) any quantified
 non-timely-filing rate (SCO publishes the raw per-year lists; we
