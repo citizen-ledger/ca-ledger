@@ -90,6 +90,12 @@ LAYERS = {
     # derived from it while no nominal figure changes, which is exactly
     # the movement this record exists to make visible.
     "deflator": ("deflator-data.js", "deflator-revisions.js", "Price deflator"),
+    # As-filed compensation. Recorded like any other layer: an employer
+    # that restates a figure between vintages must reach the change feed,
+    # and because this layer's source cannot be re-fetched automatically
+    # the record is the only way a restatement would ever be noticed.
+    "compensation": ("compensation-data.js", "compensation-revisions.js",
+                     "Public employee compensation"),
 }
 
 GLOBAL_NAME = {"state": "CA_LEDGER_REVISIONS_STATE"}
@@ -371,6 +377,16 @@ def flatten(layer, payload):
             years = _school_years(rec.get("years") or {}, fams)
             for k, v in _leaves(years, "", {}).items():
                 out[f"{ident}\t{k}"] = v
+    elif layer == "compensation":
+        # ENTITY-LEVEL FIGURES ONLY. The per-position detail lives in
+        # comp/*.json and is deliberately not flattened: 1.4M leaves would
+        # bury a restated total under noise, and an individual position
+        # changing is not a fact about the government's payroll. What must
+        # never move silently is an employer's own totals.
+        for sl, e in (payload.get("entities") or {}).items():
+            for k in ("positions", "wages", "retHealth", "elected"):
+                if k in e:
+                    out[f"employer:{sl}\t{k}"] = e[k]
     elif layer == "csu":
         for k, v in _leaves(payload.get("systemwide") or {}, "", {}).items():
             out[f"systemwide\t{k}"] = v

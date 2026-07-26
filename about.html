@@ -125,7 +125,7 @@
     <a href="ccc.html">Community colleges</a>
     <a href="uc.html">UC campuses</a>
     <a href="districts.html">Special districts</a>
-    <a href="address.html">Your governments</a>
+    <a href="compensation.html">Compensation</a>
     <span class="active">About &amp; method</span>
   </nav>
 </header>
@@ -177,13 +177,13 @@
       <span class="layer">CSU campuses</span>
       <span>The California State University's audited systemwide financial statements (GAAP/GASB), campus by campus, plus the CSU Fact Book for enrollment. The 23 campuses and a visible systemwide &amp; eliminations line reconcile to CSU's audited University total.</span>
       <span>Audited GAAP accrual — exact to the thousand, the finest resolution CSU publishes (a different, accurately-named tier from K-12's to-the-cent). NOT the state budget's enacted basis. Per enrolled student uses headcount, not FTES.</span>
-      <span>Annually. This is the one layer that is NOT auto-reproducible: the CSU source is bot-gated, so refreshing it requires a manual browser download — stated plainly on the CSU page and in docs/SCOPE.md.</span>
+      <span>Annually, by manual download. TWO layers on this site are NOT auto-reproducible, and they are named together because two documented exceptions are a limit while two one-offs are how a rebuild claim quietly stops being true. <b>CSU</b>: the audited financial statements are bot-gated. <b>Public employee compensation</b>: gcc.sco.ca.gov expressly excludes automated retrieval — its robots.txt names ClaudeBot, GPTBot and others, with Content-Signal ai-train=no. Both refresh by manual browser download; neither can be rebuilt by <span class="codebit">--refresh</span>. Each carries its vintage on its own page, and a scheduled check opens an issue when either goes stale.</span>
     </div>
     <div class="src-row">
       <span class="layer">Community colleges</span>
       <span>The Chancellor's Office CCFS-311 public reporting portal — every district's Current Expense of Education (ECS 84362), the community-college analog of K-12's, for fifteen fiscal years — plus the SCFF apportionment Exhibit C and the MIS codes for the college roster. The 73 districts reconcile to the Chancellor's Office's own printed statewide total, every year.</span>
       <span>Modified-accrual on the CCC Budget and Accounting Manual (the same shape as K-12's SACS) — exact to the dollar, the resolution the portal publishes, and independently validated by each district's mandatory CPA audit (Ed Code 84040). NOT the state budget's enacted basis. The apportionment-derived figures — funded FTES, state general fund, per-FTES, community-supported status — reach only the five years with a readable Exhibit C (FY2018-19 through FY2023-24, FY2021-22 excepted), and not every fact in each; where a figure the source does not publish would appear, it is shown as not-published rather than derived. The college roster is the current MIS list and is not asserted about earlier years.</span>
-      <span>Annually. Unlike CSU, this layer IS auto-reproducible: every source is a public endpoint the pipeline fetches without credentials (<span class="codebit">python3 pipeline/fetch_ccc_data.py --refresh</span>).</span>
+      <span>Annually. Unlike the two manual-cache layers (CSU and compensation), this layer IS auto-reproducible: every source is a public endpoint the pipeline fetches without credentials (<span class="codebit">python3 pipeline/fetch_ccc_data.py --refresh</span>).</span>
     </div>
     <div class="src-row">
       <span class="layer">UC campuses</span>
@@ -261,7 +261,7 @@
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
-  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="address.html">YOUR GOVERNMENTS</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 

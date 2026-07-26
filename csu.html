@@ -120,6 +120,17 @@
   .actions{display:flex;gap:8px}
 
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
+  /* VINTAGE, ALWAYS ON — the reader's half of the staleness notice.
+     CSU is one of the site's two manual-cache layers: its source is
+     bot-gated, so it cannot refresh itself and will go stale silently
+     unless the record says so. Same construction and same threshold as
+     the compensation page and pipeline/check_vintage.py, so a reader and
+     a maintainer learn the same fact in the same words. */
+  .vintage{padding:9px 40px;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;border-bottom:1px solid var(--hairline);color:var(--graphite);background:var(--wash-in)}
+  .vintage b{color:var(--ink)}
+  .vintage.stale{background:#fff4e5;border-bottom:2px solid #b8860b;color:#5c4304}
+  .vintage.stale b{color:#5c4304}
+  @media (max-width:780px){ .vintage{padding-left:20px;padding-right:20px} }
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
   .basis-strip{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);margin-top:10px;line-height:1.6}
 
@@ -198,10 +209,11 @@
     <a href="ccc.html">Community colleges</a>
     <a href="uc.html">UC campuses</a>
     <a href="districts.html">Special districts</a>
-    <a href="address.html">Your governments</a>
+    <a href="compensation.html">Compensation</a>
     <a href="about.html">About &amp; method</a>
   </nav>
 </header>
+<div class="vintage" id="vintageBand"></div>
 
 <div class="prov">
   <span>SOURCE: CSU AUDITED FINANCIAL STATEMENTS (GAAP)</span>
@@ -277,7 +289,7 @@
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
-  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="address.html">YOUR GOVERNMENTS</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 
@@ -285,8 +297,31 @@
 <script>
   const D = window.CA_CSU_DATA;
   const $ = id => document.getElementById(id);
+
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const M = D.meta, SW = D.systemwide;
+  /* ---- VINTAGE BAND. CSU is a manual-cache layer; meta.year is the
+     fiscal year of the audited statements, which is what ages — never
+     meta.generated, which is only the day we last ran the pipeline. */
+  (function(){
+    const band = $("vintageBand"); if (!band) return;
+    const fy = String((M && M.year) || "");
+    const mm = /^(\d{4})-(\d{2})$/.exec(fy);
+    if (!mm){ band.hidden = true; return; }
+    const ends = new Date(Date.UTC(+mm[1] + 1, 5, 30));   // 30 June
+    const days = Math.floor((Date.now() - ends.getTime()) / 86400000);
+    const LIMIT_MONTHS = 30, limit = LIMIT_MONTHS * 31, stale = days > limit;
+    band.className = "vintage" + (stale ? " stale" : "");
+    band.innerHTML = stale
+      ? '<b>THIS RECORD IS NO LONGER CURRENT.</b> It reports fiscal year ' + fy
+        + ', which ended ' + days.toLocaleString() + ' days ago. CSU has almost '
+        + 'certainly published newer audited statements. This layer cannot refresh '
+        + 'itself \u2014 its source is bot-gated \u2014 so a person must fetch it again.'
+      : '<b>VINTAGE FY ' + fy + '</b> \u00b7 audited statements for a fiscal year that '
+        + 'ended ' + days.toLocaleString() + ' days ago \u00b7 this layer is refreshed '
+        + 'by hand, not automatically \u2014 one of two such layers on this site, with '
+        + 'public employee compensation';
+  })();
   const money0 = v => "$" + Math.round(v).toLocaleString("en-US");
   const moneyB = k => "$" + (k/1e6).toFixed(2) + "B";        // k = thousands
   const moneyK = k => "$" + Math.round(k).toLocaleString("en-US") + "k";

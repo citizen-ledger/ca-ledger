@@ -1,0 +1,108 @@
+# Staleness notice for the site's two manual-cache layers.
+#
+# CSU and compensation cannot refresh themselves — one source is
+# bot-gated, the other expressly excludes automated retrieval — so both
+# go stale silently while their pages keep rendering. This job is the
+# maintainer's half of the notice; the vintage band on each layer's page
+# is the reader's half, and both use the same threshold and wording.
+#
+# IT READS DATES FROM THE REPOSITORY AND FETCHES NEITHER SOURCE. For
+# compensation that is not an optimisation, it is the point: the source's
+# robots.txt excludes exactly this kind of automated access, and a
+# staleness checker that ignored that would contradict the reason the
+# exception exists.
+name: Vintage check
+
+on:
+  schedule:
+    # Mondays, 14:00 UTC. Weekly is enough for a threshold measured in
+    # months, and keeps the issue from being re-opened noisily.
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check layer vintages
+        id: vintage
+        run: |
+          python3 pipeline/check_vintage.py | tee vintage.txt
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Collect result
+        id: result
+        run: |
+          python3 pipeline/check_vintage.py --json > vintage.json || true
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          rows = json.load(open("vintage.json"))
+          bad = [r for r in rows if r.get("status") != "current"]
+          print("stale=" + ("true" if bad else "false"))
+          PY
+
+      - name: Open or update an issue when a layer is stale
+        if: steps.result.outputs.stale == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const rows = JSON.parse(fs.readFileSync('vintage.json', 'utf8'));
+            const bad = rows.filter(r => r.status !== 'current');
+            if (!bad.length) return;
+            const title = 'Manual-cache layer is stale: ' +
+              bad.map(r => r.layer).join(', ');
+            const body = [
+              'A layer that **cannot refresh itself** has passed its staleness threshold.',
+              '',
+              'This is one of the site\'s two documented manual-cache exceptions. The',
+              'reader already sees it: the vintage band on the layer\'s page turns',
+              'conspicuous at the same threshold this job uses.',
+              '',
+              ...bad.flatMap(r => [
+                `### ${r.layer}`,
+                '',
+                r.status === 'stale'
+                  ? `- vintage **${r.vintage}**, **${r.ageDays} days** old (limit ${r.limitDays})`
+                  : `- status: **${r.status}** — ${r.detail || ''}`,
+                r.why ? `- cannot self-refresh: ${r.why}` : '',
+                r.how ? `- to refresh: \`${r.how}\`` : '',
+                r.page ? `- page: \`${r.page}\`` : '',
+                '',
+              ]),
+              '_Opened by the scheduled vintage check. It reads dates from this',
+              'repository and does not fetch either source._',
+            ].join('\n');
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'vintage',
+            });
+            const match = existing.data.find(i => i.title.startsWith('Manual-cache layer is stale'));
+            if (match) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: match.number, title, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['vintage'],
+              });
+            }
+
+      - name: Fail the run when a layer is stale
+        if: steps.result.outputs.stale == 'true'
+        run: |
+          cat vintage.txt
+          exit 1
