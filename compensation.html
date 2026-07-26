@@ -259,7 +259,7 @@
     <a href="ccc.html">Community colleges</a>
     <a href="uc.html">UC campuses</a>
     <a href="districts.html">Special districts</a>
-    <span class="active">Compensation</span>
+    <a href="address.html">Your governments</a>
     <a href="about.html">About &amp; method</a>
   </nav>
 </header>
@@ -294,7 +294,7 @@
 
 <footer class="ft">
   <span>CITIZEN LEDGER · PUBLIC RECORD</span>
-  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="address.html">YOUR GOVERNMENTS</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="compensation.html">COMPENSATION</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
   <span>DATA CC0 · CITE FREELY</span>
 </footer>
 <script src="compensation-data.js"></script>
@@ -450,8 +450,29 @@
           + '</span></div>';
       }).join("");
     }).catch(function(){
-      $("recTable").innerHTML = '<p class="recmeta">Position detail could not be loaded '
-        + 'for this employer.</p>';
+      /* DEGRADE THE WAY THE MAP DOES: name what failed, name what still
+         shows, and never leave a blank or a number that might be read as
+         a real one. The likeliest cause is opening the page straight from
+         a file:// path, where browsers refuse the per-employer fetch —
+         this is the one page on the site that needs a server, so the
+         message says so rather than looking broken. */
+      $("recTable").innerHTML =
+        '<div class="statement warn"><b>POSITION DETAIL UNAVAILABLE — '
+        + 'THE TOTALS ABOVE ARE STILL SHOWN</b>'
+        + 'The per-position file for this employer could not be loaded. No '
+        + 'figure has been estimated or substituted; the position table is '
+        + 'simply absent, and the employer totals above come from the index '
+        + 'that loaded with the page. '
+        + (location.protocol === "file:"
+            ? 'This page was opened directly from a file, and browsers block '
+              + 'the per-employer request in that mode. Every other page on '
+              + 'this site works from a file; this is the one that needs a '
+              + 'local server \u2014 run <span class="mono">python3 -m '
+              + 'http.server</span> in the repository and open '
+              + '<span class="mono">http://localhost:8000/compensation.html</span>.'
+            : 'If this persists, the file may be missing from the '
+              + 'deployment \u2014 please report it.')
+        + '</div>';
     });
     location.hash = "e=" + encodeURIComponent(sl);
   }

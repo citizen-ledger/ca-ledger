@@ -45,17 +45,27 @@ requires no key, no account, no billing relationship, and its failure
 breaks nothing. Anything requiring an API key, a server, or per-use
 cost does not qualify — by default, without a new finding.
 
-## Reproducibility — where it fully holds, and the one exception
+## Reproducibility — where it fully holds, and the three named exceptions
+
+**There are three exceptions, and they are named here together on
+purpose.** Two are about how the data is *fetched* (CSU, compensation);
+one is about how it is *loaded by the reader* (compensation again). A
+single exception invites the sentence "the one layer that…", which is
+exactly the sentence that became false the moment a second one shipped.
+Listing them in one place is what keeps the claim checkable: if a fourth
+is ever added, it goes here, and every surface that describes the claim
+gets updated in the same commit.
 
 Every layer regenerates from its official source by re-running its
-pipeline against public data — **except CSU.** State, cities, counties,
+pipeline against public data — **except CSU and compensation.** State, cities, counties,
 special districts, K-12, the community-college districts, and UC all
 fetch their sources automatically (SCO, DOF, CDE, the Chancellor's
 Office CCFS-311 portal, and ucop.edu), so anyone can reproduce every
 figure from scratch. That is a core honesty claim of the site.
 
-**The CSU (higher-education) layer is the one exception, and it is
-stated loudly wherever CSU appears** — the CSU page's method box reads
+### Exception 1 — CSU cannot be fetched by script
+
+**The CSU (higher-education) layer is stated loudly wherever CSU appears** — the CSU page's method box reads
 `NOT AUTO-REPRODUCIBLE`, and the about-page source table and the
 pipeline docstring say the same. CSU's only source of an audited control total is
 the systemwide financial statements PDF on `calstate.edu`, which is
@@ -69,6 +79,83 @@ statements and Fact Book into `pipeline/cache/csu/`, then re-running
 the extractor. This is the same class of exception as the one
 bot-gated file the K-12 pipeline already documents (`pubschls.txt`),
 scaled up to a gate source.
+
+### Exception 2 — compensation cannot be fetched at all
+
+`gcc.sco.ca.gov` (where `publicpay.ca.gov` redirects) **expressly
+excludes automated retrieval**: its `robots.txt` carries a Cloudflare
+managed block naming `ClaudeBot`, `GPTBot`, `CCBot`, `Google-Extended`
+and others, with `Content-Signal: ai-train=no, use=reference`. A person
+with a browser is welcome to the files; a pipeline is not, and the site
+does not work around an access policy it can read.
+
+So the four reporting-year exports are downloaded **by hand** into
+`pipeline/cache/compensation/`, and `fetch_compensation_data.py` refuses
+to run without them, printing the download instruction rather than
+failing obscurely. This is the same class of exception as CSU, arrived
+at for a different reason: CSU's source resists scripts, this one
+forbids them.
+
+Both are watched. `pipeline/check_vintage.py`, run weekly by
+`.github/workflows/vintage-check.yml`, opens an issue when either layer
+ages past its threshold, and each layer's page carries an always-visible
+vintage band that turns conspicuous at the same threshold. The scheduled
+job **reads dates from the repository and fetches neither source** — for
+compensation that is the point, not an optimisation.
+
+### Exception 3 — compensation is the one page that needs a server
+
+This is an *architectural* exception rather than a sourcing one, and it
+is the first of its kind on this site.
+
+**The rule it departs from.** Every other page is a file that works from
+a double-click. Data arrives by `<script src="…-data.js">`, which a
+browser will load from a `file://` path, so the whole site can be
+cloned, opened, and read with no server, no build step and no network.
+Verified: **`compensation.html` is the only page in the repository that
+calls `fetch()` at runtime.** Every other page was re-checked from a
+`file://` URL after this layer shipped and renders completely.
+
+**Why it departs.** The layer is 1,407,216 position rows. Encoded as
+tightly as the site encodes anything — shared vocabularies for position
+and department titles, rows as fixed-length integer arrays — that is
+**46.1 MB raw, 14.3 MB gzipped**. Shipping it as one `-data.js` would
+make every reader of the page download all of it to look at one city,
+against a current site-wide largest of 14.8 MB. So the index
+(`compensation-data.js`, 4.6 MB raw / 0.9 MB gzipped: employers, totals,
+flags, vintage, vocabularies) loads with the page, and the per-position
+detail sits in `comp/<slug>.json`, one file per employer, fetched only
+when a reader opens that employer.
+
+**What it costs, measured.** A shallow clone of the branch against one
+without it:
+
+| | working tree | `.git` | files | clone |
+|---|---|---|---|---|
+| without `comp/` | 41 MB | 10 MB | 125 | 0.22 s |
+| with `comp/` | 117 MB | 25 MB | 4,264 | 0.66 s |
+
+So "anyone can clone it and rebuild" survives — the repository roughly
+triples and the clone takes about three times as long, from a fifth of a
+second to two thirds of a second locally. The file count is the larger
+change: 125 files to 4,264.
+
+**How it fails, and why that is acceptable.** The page degrades the way
+the map does when basemap tiles do not load — it names what failed and
+what still holds, and it never shows a blank or a substituted number.
+On a fetch failure the employer's totals stay on screen (they came from
+the index) and the position table is replaced by a notice saying the
+detail could not be loaded, that nothing has been estimated in its
+place, and — when the page was opened from a `file://` path, the
+likeliest cause — that this is the one page needing a local server, with
+the command to start one.
+
+**What would end this exception.** If the source ever publishes a
+narrower export, or the layer is reduced to something that fits one
+payload, the per-entity files and the `fetch()` should go and the page
+should return to the double-click rule. It is an exception, not a new
+default: a second page that wants on-demand loading is a decision to
+take deliberately and record here, not a precedent already set.
 
 Why CSU ships anyway (per docs/V10B_HIGHERED_FINDING.md): the gate is
 real and proven — the 23 campuses plus a visible systemwide &
