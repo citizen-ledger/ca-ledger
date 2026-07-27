@@ -52,6 +52,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cache_guard                               # noqa: E402
+import strict                                    # noqa: E402
 
 CACHE = Path(__file__).resolve().parent / "cache" / "ftr"
 UA = {"User-Agent": "Citizen Ledger data pipeline"}
@@ -157,14 +158,14 @@ def _key_columns(header, view_id):
 
 
 def _find_one(header, view_id, *aliases):
-    want = {a.replace(" ", "").lower() for a in aliases}
-    hits = [i for i, h in enumerate(header)
-            if h and str(h).replace(" ", "").lower() in want]
-    if len(hits) != 1:
-        raise SystemExit(
-            f"{view_id}: expected exactly one of {sorted(want)} among the "
-            f"columns, found {len(hits)}; nothing written")
-    return hits[0]
+    """Thin adapter over strict.column so this module and every other
+    header-reading site share ONE implementation. Kept as a function
+    rather than inlined because it converts the shared guard's KeyError
+    into this pipeline's nothing-written SystemExit."""
+    try:
+        return strict.column(header, *aliases, source=view_id)
+    except KeyError as e:
+        raise SystemExit(f"{view_id}: {e}; nothing written")
 
 
 def _column(header, view_id):

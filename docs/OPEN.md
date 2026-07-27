@@ -541,6 +541,51 @@ about the failure it was supposed to cause. A negative-path test that
 cannot tell "the failure was handled well" from "the failure never
 occurred" is not a test.
 
+### 2p. A guard is only as wide as the formats it covers
+
+`strict.py` has protected `.mdb` column reads since the K-12 pipeline hit
+four confident wrong numbers. It could not protect anything that never
+bound names at all — a spreadsheet row read as `row[2]`, a TSV split into
+`parts[5]`, a fixed-width line indexed by position. **That is not a
+different defect. It is the same one with the failure moved earlier**, and
+it duly happened: the FY2016-17 city workbook orders its columns
+differently from the FY2022-23 one, so a positional read correct on the
+newer vintage returned entity ids where the fiscal year belonged.
+
+**The header was in the file both times. Nothing read it.**
+
+An audit of every source read in the project found the pattern in four
+places and, more usefully, found that **the two worst were the ones with
+no gate downstream**:
+
+| site | positional read | protected by |
+|---|---|---|
+| CSU TSV `headcount` | `parts[5]` | **nothing** — the module's own note says there is no independent figure to reconcile it against, and it is the denominator of every per-student figure |
+| district Socrata `co` | `.get()` on a raw dict | **nothing** — it is the county half of the (name, county) identity that keeps two same-named governments apart |
+| school LCFF codes | `row[1]`, `row[2]` | header detection pinned column 0 only |
+| Schedule 6 history row | `f[4]`, `fields[6]` | a cross-document gate — a shift fails loudly |
+
+**The distinction worth keeping:** a positional read whose output is
+immediately reconciled against an independent source is self-protecting;
+one whose output is *published* is not. Audit for the second kind first.
+
+Two details that made the fix better than a search-and-replace:
+
+- **The CSU TSV already declared its own schema**, in a comment line the
+  parser skipped along with every other comment. The fix was to read the
+  declaration that was already there, and to refuse outright when it is
+  absent rather than fall back to position.
+- **`dict(zip(header, row))` is not a safe binding.** It silently drops a
+  row *wider* than its header, so the columns a newer vintage added
+  vanish with no error. `strict.bind` refuses that, while still allowing
+  a *shorter* row — whose missing names then simply do not exist, which
+  is the honest shape for a ragged publisher row.
+
+**Nothing depended on the silent behaviour:** every payload rebuilt
+byte-identical (district) or identical but for the build date (CSU), and
+the K-12 gates passed unchanged. A guard that changes no output is doing
+its job — it changes what happens on the day the source moves.
+
 ---
 
 ## Part 3 — Test-quality debt

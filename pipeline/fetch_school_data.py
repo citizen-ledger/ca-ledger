@@ -73,6 +73,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates  # noqa: E402
+import strict  # noqa: E402
 import cache_guard                              # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
@@ -891,7 +892,10 @@ def process_year(yy, fy):
             continue
         if row[0] is None:
             continue
-        rec = dict(zip(header, row))
+        # strict.bind, not dict(zip(...)): zip silently drops a row that
+        # is WIDER than the header, so the columns a newer vintage added
+        # would vanish with no error. bind refuses that.
+        rec = strict.bind(header, row, f"Current Expense {fy} {V['sheet']}")
         c = str(rec[V["co"]]).zfill(2)
         d = str(rec[V["dcode"]]).zfill(5)
         ce[(c, d)] = {"name": str(rec[V["dname"]]).strip(),
@@ -979,6 +983,12 @@ def process_year(yy, fy):
         if header is None:
             if row and str(row[0]).strip() == "County Code":
                 header = [str(x or "").strip() for x in row]
+                col["co"] = strict.column(header, "County Code",
+                                          source=f"LCFF {fy}")
+                col["dist"] = strict.column(header, "District Code",
+                                            "LEA Code", source=f"LCFF {fy}")
+                col["school"] = strict.column(header, "School Code",
+                                              source=f"LCFF {fy}")
                 for i, h in enumerate(header):
                     if h.startswith("Total LCFF Entitlement"): col["ent"] = i
                     elif "Local Revenue" in h: col["local"] = i
@@ -992,13 +1002,26 @@ def process_year(yy, fy):
                 # does publish local revenue. So the floor is per year,
                 # taken from LCFF_PUBLISHES.
                 need = 3 if LCFF_PUBLISHES.get(yy, {}).get("basicAid", True) else 2
+                # COUNT THE VALUE COLUMNS ONLY. The three identity codes
+                # are now located by name in `col` too, and counting them
+                # here would satisfy this floor on its own — the gate
+                # would pass while proving nothing about the figures it
+                # exists to protect.
+                VALUE_COLS = ("ent", "local", "ada")
                 gates.require_rows(
-                    len(col), need, f"FY {fy} LCFF header columns located",
+                    sum(1 for k in VALUE_COLS if k in col), need,
+                    f"FY {fy} LCFF value columns located",
                     f"header was {header}.")
             continue
         if row[0] is None:
             continue
-        c, d, s = str(row[0]).zfill(2), str(row[1]).zfill(5), str(row[2]).zfill(7)
+        # The identity codes BY NAME. Header detection pinned column 0
+        # (it is how the header row is recognised) but columns 1 and 2
+        # were assumed adjacent; a vintage inserting a column between
+        # them would have mis-keyed every district.
+        c = str(row[col["co"]]).zfill(2)
+        d = str(row[col["dist"]]).zfill(5)
+        s = str(row[col["school"]]).zfill(7)
         def num(i):
             v = row[i]
             return float(v) if isinstance(v, (int, float)) else 0.0

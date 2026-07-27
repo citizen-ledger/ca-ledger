@@ -10203,6 +10203,111 @@ def _has_money_near(blob, phrase):
     return i >= 0 and any(c == "$" for c in blob[i:i + 400])
 
 
+
+
+def test_v25_column_guard():
+    """V25: the column-name guard, generalised past .mdb reads. Every
+    source read resolves columns by NAME and refuses absence, in every
+    format — the FY2016-17 defect (#96) was a spreadsheet instance of the
+    class StrictRow already covered for .mdb."""
+    import importlib, sys as _sys
+    _sys.path.insert(0, str(ROOT / "pipeline"))
+    strict = importlib.import_module("strict")
+
+    # ---- the guard itself ---------------------------------------------
+    hdr = ["Entity Name", "Entity ID", "Fiscal Year"]
+    check("v25: column() resolves by name across spelling variants, so a "
+          "vintage writing 'EntityID' still binds",
+          strict.column(hdr, "Entity ID", "EntityID", source="t") == 1)
+    for label, call in (
+            ("an absent column", lambda: strict.column(hdr, "Nope", source="t")),
+            ("an ambiguous one", lambda: strict.column(["A", "a"], "A", source="t"))):
+        raised = False
+        try:
+            call()
+        except KeyError:
+            raised = True
+        check(f"v25: column() REFUSES {label} rather than picking or "
+              "returning None", raised)
+    check("v25: and returns None for a column declared optional "
+          "(positive control that the refusal is deliberate, not blanket)",
+          strict.column(hdr, "Nope", source="t", required=False) is None)
+
+    row = strict.bind(hdr, ["X", "7", "2024"], "t")
+    check("v25: bind() produces a StrictRow, so reads go through the same "
+          "refusal the .mdb path already had",
+          isinstance(row, strict.StrictRow) and row["Entity ID"] == "7")
+    raised = False
+    try:
+        row.get("Nope")
+    except KeyError:
+        raised = True
+    check("v25: a bound row refuses .get() on an absent column — the form "
+          "that used to be silent", raised)
+    raised = False
+    try:
+        strict.bind(hdr, ["a", "b", "c", "d"], "t")
+    except KeyError:
+        raised = True
+    check("v25: bind() refuses a row WIDER than its header, because zip() "
+          "would drop the overflow and a vintage that grew a column would "
+          "lose it silently", raised)
+    check("v25: but a SHORTER row is allowed — its missing names simply do "
+          "not exist, and reading one then refuses (the honest shape for a "
+          "ragged publisher row)",
+          dict(strict.bind(hdr, ["a", "b"], "t")) == {"Entity Name": "a",
+                                                      "Entity ID": "b"})
+
+    # ---- every reader is routed through it ----------------------------
+    SRC = {n: (ROOT / "pipeline" / f"{n}.py").read_text()
+           for n in ("fetch_csu_data", "fetch_district_data",
+                     "fetch_school_data", "negative_balance",
+                     "fetch_city_data", "fetch_compensation_data")}
+    check("v25: the CSU TSV reads its own declared schema line rather than "
+          "positions — the file carried the names all along",
+          "fields[0] == \"kind\"" in SRC["fetch_csu_data"]
+          and "strict.bind(" in SRC["fetch_csu_data"])
+    check("v25: and refuses outright if that schema line is missing, rather "
+          "than falling back to position",
+          "no schema line found" in SRC["fetch_csu_data"])
+    check("v25: CSU no longer indexes parts[] positionally (negative "
+          "control on the specific defect)",
+          "int(parts[5])" not in SRC["fetch_csu_data"]
+          and "parts[6]" not in SRC["fetch_csu_data"])
+    check("v25: the district pipeline's own Socrata reader wraps rows in "
+          "StrictRow, as city and county already did",
+          "StrictRow(row, f\"{dataset}" in SRC["fetch_district_data"])
+    check("v25: the school Current Expense workbook binds its header "
+          "instead of dict(zip()), which silently drops a wide row",
+          "strict.bind(header, row" in SRC["fetch_school_data"]
+          and "rec = dict(zip(header, row))" not in SRC["fetch_school_data"])
+    check("v25: the school LCFF identity codes are located by name, not "
+          "assumed adjacent to the one column header detection pinned",
+          'col["co"] = strict.column(' in SRC["fetch_school_data"])
+    check("v25: and the LCFF column-count gate still counts only the VALUE "
+          "columns, so adding the identity codes to that dict did not "
+          "let the gate pass while proving nothing",
+          "VALUE_COLS" in SRC["fetch_school_data"])
+    check("v25: negative_balance uses the shared guard rather than a "
+          "private copy, so there is one implementation to keep correct",
+          "strict.column(" in SRC["negative_balance"])
+
+    # ---- no reader may reintroduce the pattern -------------------------
+    import re as _re
+    offenders = []
+    for name, src in SRC.items():
+        for i, line in enumerate(src.splitlines(), 1):
+            s = line.strip()
+            if s.startswith("#") or "noqa: positional" in s:
+                continue
+            if _re.search(r'\bparts\s*\[\s*\d+\s*\]', s):
+                offenders.append(f"{name}:{i}")
+    check("v25: no reader indexes a split() result positionally — the "
+          "shape that produced the FY2016-17 defect (negative control "
+          "across every module routed through the guard)",
+          not offenders, str(offenders[:4]))
+
+
 # ----------------------------------------------------------------------
 def main():
     from playwright.sync_api import sync_playwright
@@ -10283,6 +10388,7 @@ def main():
             test_v21_district_tier(page, base)
             test_v23a_compensation(page, base)
             test_v24a_negative_balance(page, base)
+            test_v25_column_guard()
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)

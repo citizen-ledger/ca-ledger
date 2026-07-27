@@ -97,3 +97,84 @@ def amount_column(row, *candidates):
         f"are: {', '.join(sorted(k for k in row if k))}. Summing an absent "
         "column would report zero dollars for every row, which reads as a "
         "government that raised no revenue rather than as a bug.")
+
+# ---------------------------------------------------------------- headers
+#
+# THE SAME DEFECT, IN EVERY OTHER FORMAT.
+#
+# StrictRow above guards a row that already HAS names — an .mdb table, a
+# Socrata JSON object, a csv.DictReader mapping. It cannot help a reader
+# that never bound names at all: a spreadsheet row read as `row[2]`, a
+# TSV split into `parts[5]`, a fixed-width line indexed by position.
+#
+# That is not a different defect. It is the same one with the failure
+# moved earlier, and it has now happened here: the FY2016-17 city
+# workbook puts Entity ID / Name / Fiscal Year in different columns from
+# the FY2022-23 one, so a positional read that was correct on the newer
+# vintage returned entity ids where the fiscal year belonged on the older
+# one — a wrong column producing confident values, silently, exactly what
+# StrictRow exists to make loud.
+#
+# The header was present in the file both times. Nothing read it.
+#
+# So: bind the header, then read by name. `bind` for a whole row,
+# `column` when a caller needs one index (openpyxl streaming, where
+# rebinding every row would cost more than it is worth).
+
+def column(header, *aliases, source="source", required=True):
+    """Resolve ONE column index by name, refusing ambiguity and absence.
+
+    Aliases are compared on a whitespace- and case-insensitive form,
+    because publishers vary "Entity ID" / "EntityID" / "entity id" across
+    vintages of the same file. Exactly one column must match: zero means
+    the caller would read nothing, and more than one means the caller
+    cannot know which it got — both are refusals rather than a pick.
+    """
+    want = {str(a).replace(" ", "").lower() for a in aliases}
+    hits = [i for i, h in enumerate(header)
+            if h is not None and str(h).replace(" ", "").lower() in want]
+    if len(hits) == 1:
+        return hits[0]
+    if not hits and not required:
+        return None
+    names = [str(h) for h in header if h is not None][:40]
+    raise KeyError(
+        f"COLUMN {sorted(want)!r} MATCHED {len(hits)} COLUMNS in {source}. "
+        f"Its headers are: {names}. Reading a column by position instead "
+        "would produce a confident wrong value rather than an error.")
+
+
+def bind(header, row, source="source", strict_width=True):
+    """Bind a positional row to its header and return a StrictRow.
+
+    `strict_width` refuses a row that is longer than the header, because
+    zip() would silently drop the overflow — the trailing columns of a
+    vintage that grew would vanish with no error. A SHORTER row is
+    allowed and its missing names simply do not exist, which StrictRow
+    then refuses on read: that is the honest representation of a row the
+    publisher left ragged.
+    """
+    if strict_width and len(row) > len(header):
+        raise KeyError(
+            f"ROW IS WIDER THAN THE HEADER in {source}: {len(row)} values "
+            f"against {len(header)} names. zip() would drop the last "
+            f"{len(row) - len(header)} silently, so the columns a newer "
+            "vintage added would vanish without an error.")
+    names = [None if h is None else str(h).strip() for h in header]
+    return StrictRow({n: v for n, v in zip(names, row) if n}, source)
+
+
+def first_present(row, *aliases):
+    """The first alias this row actually has, or a refusal.
+
+    Same intent as amount_column above, for the header-bound case: a
+    publisher (or our own cache format) may spell one column two ways
+    across vintages, and the caller lists the spellings it accepts rather
+    than falling back to a position.
+    """
+    for name in aliases:
+        if name in row:
+            return name
+    raise KeyError(
+        f"NONE OF {aliases!r} EXISTS in this row. Its columns are: "
+        f"{sorted(k for k in row if k)}.")

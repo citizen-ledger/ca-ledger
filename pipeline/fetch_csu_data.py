@@ -79,6 +79,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates                                     # noqa: E402
+import strict  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -92,18 +93,51 @@ RECONCILE_MAX_SHARE = 0.05   # the CO & eliminations line vs University total
 
 
 def parse_tsv(path):
+    """Read the cached TSV BY HEADER NAME, never by position.
+
+    The file declares its own schema in a comment line —
+    `# kind\tname\topexp_k\tstate_approp_k\top_rev_k\theadcount\tafr_page`
+    — and this function used to skip every comment and read parts[0..6]
+    positionally instead. Inserting or reordering a column would have
+    shifted every field silently.
+
+    The reconciliation gate below covers the dollar columns: a shifted
+    opexpK fails the combining identity. It does NOT cover `headcount`,
+    which this module's own header note says has no independent figure to
+    reconcile against — so a shifted headcount would have changed every
+    per-student figure on the CSU page with nothing to catch it.
+
+    The schema line was in the file the whole time. Now it is read, and
+    its absence is a refusal rather than a fallback to position.
+    """
     campuses, sysrow, univ, comp = [], None, None, None
+    header = None
     for ln in path.read_text(encoding="utf-8").splitlines():
-        if not ln.strip() or ln.startswith("#"):
+        if ln.startswith("#"):
+            fields = [f.strip() for f in ln.lstrip("#").strip().split("\t")]
+            if fields and fields[0] == "kind":
+                header = fields
             continue
-        parts = ln.split("\t")
-        if parts[0] == "kind":            # header
+        if not ln.strip():
             continue
-        kind, name = parts[0], parts[1]
-        def k(i):
-            return None if parts[i] == "=RECONCILE" else int(parts[i])
-        rec = {"name": name, "opexpK": k(2), "stateAppropK": k(3),
-               "opRevK": k(4), "headcount": int(parts[5]), "afrPage": int(parts[6])}
+        if header is None:
+            raise SystemExit(
+                f"{path.name}: no schema line found. The file must declare "
+                "its columns in a comment beginning '# kind<TAB>name<TAB>…' "
+                "before any data row; reading it positionally instead is "
+                "what that line exists to prevent. Nothing written.")
+        row = strict.bind(header, ln.split("\t"), path.name)
+        kind, name = row["kind"], row["name"]
+
+        def k(*aliases):
+            v = row[strict.first_present(row, *aliases)]
+            return None if v == "=RECONCILE" else int(v)
+        rec = {"name": name,
+               "opexpK": k("opexp_k", "opexpK"),
+               "stateAppropK": k("state_approp_k", "stateAppropK"),
+               "opRevK": k("op_rev_k", "opRevK"),
+               "headcount": int(row["headcount"]),
+               "afrPage": int(row[strict.first_present(row, "afr_page", "afrPage")])}
         if kind == "campus":
             campuses.append(rec)
         elif kind == "systemwide":

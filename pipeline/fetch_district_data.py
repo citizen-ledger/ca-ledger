@@ -98,6 +98,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates                                     # noqa: E402
+from strict import StrictRow                     # noqa: E402
 import negative_balance                          # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
@@ -219,7 +220,14 @@ def soda(dataset, **params):
         req = urllib.request.Request(
             url, headers={"User-Agent": "ca-ledger-pipeline/1.0"})
         page = json.loads(urllib.request.urlopen(req, timeout=300).read())
-        rows.extend(page)
+        # EVERY ROW IS A StrictRow, as the city and county pipelines
+        # already do. This module had its own soda() returning raw dicts,
+        # so `r.get("co")` on an absent alias returned None silently — and
+        # `co` is the county half of the (name, county) identity, the pair
+        # that keeps two governments sharing a name apart. An absent alias
+        # would have collapsed them, which is the Rural North Vacaville
+        # failure this file already documents further down.
+        rows.extend(StrictRow(row, f"{dataset} (SCO {BASE})") for row in page)
         if len(page) < int(p["$limit"]):
             return rows
         offset += len(page)
