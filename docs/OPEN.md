@@ -615,6 +615,50 @@ and the V24a deficit-beside-spending, and it is worth naming as one
 rule: **the site does not place two quantities together unless it can
 say how they reconcile.**
 
+### 2r. A field that exists is not a field that informs
+
+V26 asked for adoption provenance — who approved each budget, and when.
+The field turned out to **exist, be machine-readable, be point-in-time
+correct, and still not be worth shipping**, which is a failure mode the
+project had not yet named.
+
+`publicationDate` on DOF's eBudget API returns `"Enacted on June 26,
+2024"`. It is a genuine published fact and the pipeline already fetches
+it. But across the nine published years the value is **June 27, June 27,
+June 27, June 26, June 28, June 27, June 27, June 26, June 27** — a
+three-day range, six of nine identical, because the signing date is set
+by a constitutional deadline rather than by anything about the budget.
+
+The test that generalises: **before building a per-record field, measure
+its variance across the records.** A field that is constant, or nearly
+so, adds a column and no information, while *implying* a variability
+that does not exist. Three checks worth running first:
+
+- **How much does it vary?** Nine years, three distinct values.
+- **Does the site already say it better?** `index.html` already read
+  "fixed when each year's Budget Act is signed… typically signed in late
+  June" — one sentence carrying more than nine near-identical dates.
+- **Does it vary where it is unavailable?** Measured: 479 of 482 cities
+  close on June 30, but special districts show **9 distinct
+  fiscal-year-ends across 5,111 entities**. The population whose adoption
+  dates would genuinely differ is exactly the one with **0** adoption
+  fields in 27,916 SCO column names. **The date is near-constant where it
+  is published and unpublished where it would vary.**
+
+Two smaller lessons from the same probe:
+
+- **Storing is not showing.** Keeping `publicationDate` in the payload
+  for the change record is cheap and useful precisely because nothing
+  renders it; that remains a live V13 item. The refusal was to the
+  reader-facing label, and the two questions must not be answered
+  together.
+- **A sentinel is not a date.** For years not yet adopted the same
+  endpoint returns `"Enacted on January 01, 9999"` with an empty
+  `/statistics`, while still reporting `publication: "Enacted"`. A naive
+  build of this field ships *1 January 9999*. The pipeline's existing
+  guard is indirect — it drops years with no agency data — and nothing
+  checks the date itself.
+
 ---
 
 ## Part 3 — Test-quality debt
@@ -679,3 +723,16 @@ vacuous-gate audit (STATUS 2026-07-20/21) and after:
   Standing "no", including for a measure record attached to a district
   page — that still needs the name join, which merges 179 real
   districts.
+- **Adoption provenance — who approved a budget, and when.** Refused in
+  `docs/V26_ADOPTION_FINDING.md`, on the ground the brief allowed:
+  **merely decorative.** Only **1 of 11** layers publishes a figure
+  anyone adopted — every other layer is a year-end actual, so a
+  "adopted [date]" label there is a category error. On the one layer
+  that qualifies, the source carries exactly one adoption field
+  (`publicationDate`, a prose string), no adopting-body field, and nine
+  years of values spanning **three days**. The chapter number that would
+  make it a citation is only at `leginfo`, whose `robots.txt` is
+  `Disallow: /` — a third manual-cache exception for decoration.
+  **Still open and separate:** storing `publicationDate` in the payload
+  for the change record (V13 cheap improvement #5), which this refusal
+  does not touch.
