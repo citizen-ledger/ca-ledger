@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — Bulk data</title>
+<meta name="description" content="Complete CSV exports of every published layer — every entity, every shipped year — with a documented schema, the accounting basis and gate tier of each file, and an honest statement of what is and is not stable.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/bulk.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — Bulk data">
+<meta property="og:description" content="Complete CSV exports of every published layer — every entity, every shipped year — with a documented schema, the accounting basis and gate tier of each file, and an honest statement of what is and is not stable.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/bulk.html">
+<meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
+   Served from this repository, not a third party: no request leaves the
+   reader's machine to render the page. unicode-range keeps it lazy. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* Ledger design system — see index.html. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:var(--fs-label);font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:var(--fs-note);text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:900px;margin:0 auto;padding:0 40px}
+  .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:44px;padding-top:22px;border-top:1px solid var(--ink)}
+  .lead{font-size:16px;color:var(--graphite);margin-top:14px;line-height:1.6;max-width:64ch}
+  p{margin-top:14px;line-height:1.65;max-width:70ch}
+  .hero{margin-top:44px}
+  .secnote{font-size:var(--fs-note);color:var(--graphite);margin-top:12px;line-height:1.65;max-width:70ch}
+
+  .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:var(--fs-note);line-height:1.65}
+  .gatebox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:6px}
+
+  /* the file list is rendered from bulk-manifest.js, never hand-written —
+     a row count typed into this page would drift on the next build */
+  #files{margin-top:18px;border-top:1px solid var(--ink)}
+  .bf{display:grid;grid-template-columns:1fr 150px;gap:4px 20px;padding:14px 0;border-bottom:1px solid var(--hairline);align-items:baseline}
+  .bf-t{font-size:16px;font-weight:600}
+  .bf-b{font-size:var(--fs-note);color:var(--graphite);line-height:1.55;margin-top:3px;grid-column:1}
+  .bf-dl{font-family:var(--mono);font-size:var(--fs-data);text-align:right;white-space:nowrap}
+  .bf-m{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.06em;color:var(--smoke);text-align:right;margin-top:3px}
+  .bf-name{font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);display:block;margin-top:2px}
+
+  ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
+  ul.plain li{padding:10px 0;border-bottom:1px solid var(--hairline);line-height:1.6;font-size:var(--fs-note)}
+  .codebit{font-family:var(--mono);font-size:var(--fs-data);background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  @media print{
+    .np{display:none!important} .po{display:block!important}
+    body{background:#fff}
+    .roundel{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+    main{max-width:none;padding:0}
+    .bf{break-inside:avoid;page-break-inside:avoid}
+    h2{break-after:avoid;page-break-after:avoid}
+    .bf-dl a::after{content:" (" attr(href) ")";font-size:9px;color:#444}
+  }
+
+  /* last in the sheet so phone-width rules win over the base rules above */
+  @media(max-width:720px){
+    h1{font-size:40px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    .bf{grid-template-columns:1fr;gap:6px 0}
+    .bf-dl,.bf-m{text-align:left}
+    header.hd{padding:12px 20px;gap:10px}
+    nav.pn{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+    nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
+    .prov{padding:7px 20px;font-size:var(--fs-micro)}
+    .prov span+span{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="search.html">Search</a>
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html">Community colleges</a>
+    <a href="uc.html">UC campuses</a>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <a href="about.html">About &amp; method</a>
+  </nav>
+</header>
+
+<div class="prov">
+  <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
+  <span>RECONCILED BEFORE PUBLICATION · SPECIAL DISTRICTS AS FILED</span>
+  <span>DATA CC0 · CITE FREELY</span>
+  <span>PUBLIC RECORD</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="kicker">THE PUBLIC RECORD · BULK DATA</div>
+    <h1>Bulk data</h1>
+    <p class="lead">Every published layer as one complete CSV — every entity, every shipped year. Each file carries its own source, accounting basis, gate tier and generation date in its header, so it can be read a year from now by someone who never visited this site. The column-by-column schema is <a href="bulk/SCHEMA.md">bulk/SCHEMA.md</a>.</p>
+    <p class="secnote">These are plain files at fixed paths. There is no API, no key, no account, and no rate limit — the same architecture as the rest of the site. Download them, script against them, mirror them.</p>
+  </div>
+
+  <h2 id="before">Three things before you use these</h2>
+  <div class="gatebox"><b>READ THIS FIRST — IT CHANGES YOUR TOTALS</b>
+    <b style="margin-top:8px">An empty cell is not a zero</b>Every file carries figures that are absent because the source does not publish them — a district that did not file, a year outside a campus's coverage, a department whose actuals have not arrived. An empty cell means <i>not published</i>. A real reported zero is written <span class="codebit">0</span>. A spreadsheet that treats both as zero will produce totals no government ever reported.
+    <b style="margin-top:8px">The layers do not add up</b>The same dollar appears in more than one file: roughly half of what counties and school districts report receiving is money the state budget already shows sending. There is no combined total, and summing across files produces a number that describes nothing.
+    <b style="margin-top:8px">Bases and tiers differ per file</b>An enacted appropriation is a plan; an actual expenditure is a record; an audited GAAP figure is a third thing. And a <i>gated</i> figure reproduces a total its source published, while an <i>as-filed</i> figure has no published control to check against. Both are in this set. Each file's header names its own.
+  </div>
+
+  <h2 id="files">The files</h2>
+  <p>One per published layer. Row and column counts are generated with the files, not typed here.</p>
+  <div id="files"></div>
+  <p class="secnote" id="filesFoot"></p>
+
+  <h2 id="stability">What is stable, and what is not</h2>
+  <p><b>The shape of these files is not stable, and this page will not pretend otherwise.</b> The Ledger is actively developed. Columns get added when a layer gains a dimension, renamed when a name turns out to be wrong, and split when one column was carrying two meanings. A script that reads these files by column <i>position</i> will break. Read by column <i>name</i>, and pin a copy of the file if you need a result you can reproduce later.</p>
+  <p>Nothing here is a deprecation policy, because a two-person-scale project that promised one would break the promise. What the site does instead is record every change it makes to published figures in the <a href="revisions.html">record of changes</a>, and keep the reasoning for each layer's shape in its <a href="findings.html">finding document</a>.</p>
+  <p class="secnote"><b>That caveat is about shape, not licence.</b> The data is CC0 1.0 — public domain. Use it for anything, commercially or not, with no permission and no attribution required. A link back is welcome because it lets a reader check the figures, not because it is owed. The <i>code</i> is Apache 2.0; the <i>name</i> is neither, so a fork cannot present its own figures as this record.</p>
+
+  <h2 id="verify">Checking these against the source</h2>
+  <p>Nothing here asks to be taken on trust. Each file is generated by <span class="codebit">pipeline/build_bulk.py</span> from the same data files the pages read, and those are built by pipelines that each reconcile against a published control before writing anything. The data files carry a SHA-256 digest; <span class="codebit">pipeline/verify_digest.py</span> recomputes it.</p>
+  <p>Where a layer is published as filed rather than gated, that is not an oversight and the reason is measured: the <a href="findings.html">findings index</a> records what was tested, what the measurement showed, and what was decided for every layer — including the questions the Ledger investigated and refused to answer. For the sources and the gate itself, see <a href="about.html">about &amp; method</a>.</p>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="compensation.html">COMPENSATION</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+<script src="bulk-manifest.js"></script>
+<script>
+(function(){
+  var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+  var kb = function(b){
+    return b >= 1048576 ? (b/1048576).toFixed(1) + " MB" : Math.round(b/1024) + " KB"; };
+  var n = function(v){ return v.toLocaleString("en-US"); };
+  var host = document.getElementById("files");
+  if (typeof BULK === "undefined" || !host) return;
+  host.innerHTML = BULK.files.map(function(f){
+    return '<div class="bf">'
+      + '<div><div class="bf-t">' + esc(f.title) + '</div>'
+      + '<div class="bf-b">' + esc(f.blurb)
+      + '<span class="bf-name">bulk/' + esc(f.file) + '</span></div></div>'
+      + '<div><div class="bf-dl"><a href="bulk/' + esc(f.file) + '" download>Download CSV</a></div>'
+      + '<div class="bf-m">' + n(f.rows) + ' ROWS · ' + f.cols + ' COLS · ' + kb(f.bytes) + '</div></div>'
+      + '</div>';
+  }).join("");
+  var tot = BULK.files.reduce(function(a,f){ return a + f.rows; }, 0);
+  document.getElementById("filesFoot").textContent =
+    BULK.files.length + " files · " + n(tot) + " rows in total · generated "
+    + BULK.generated + " from the same data files the pages read.";
+})();
+</script>
+
+</body>
+</html>

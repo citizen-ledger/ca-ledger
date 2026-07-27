@@ -1,0 +1,37 @@
+# Citizen Ledger — CSU campuses — COMPLETE LAYER EXPORT
+# Source dataset: California State University — audited systemwide financial statements (GAAP/GASB) and CSU Fact Book
+# Accounting basis: Audited GAAP / GASB full accrual, from CSU's systemwide financial statements
+# Gate tier: GATED TO THE THOUSAND against the audited statement total — exact fidelity at the source's own denomination, which is thousands
+# Units: thousands of dollars, except per_student_usd which is dollars
+# Data generated: 2026-07-22
+# Exported: 2026-07-27
+# Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
+# Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
+# Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.
+# Schema: bulk/SCHEMA.md · Method: about.html · Findings: findings.html
+# This layer is a single fiscal year. Older years cannot be gated: the source returns HTTP 403 to every scripted request, so an older year's control total is uncomputable rather than merely unreconciled. See docs/V15_HISTORICAL_FINDING.md.
+# This is NOT the state budget's enacted basis and the two are never added.
+campus,fiscal_year,operating_expenses_kusd,state_appropriation_kusd,operating_revenue_kusd,headcount,per_student_usd
+CSU Bakersfield,2023-24,255182,36972,49263,9399,27150
+CSU Channel Islands,2023-24,209982,111262,53865,5127,40956
+CSU Chico,2023-24,373988,185609,99682,13999,26715
+CSU Dominguez Hills,2023-24,357308,169617,67615,14299,24988
+CSU East Bay,2023-24,308830,149087,97504,11771,26237
+CSU Fullerton,2023-24,796980,248412,254744,41326,19285
+CSU Long Beach,2023-24,859542,289564,241764,39530,21744
+CSU Maritime Academy,2023-24,70652,53145,20846,761,92841
+CSU Monterey Bay,2023-24,273429,114091,90553,6271,43602
+CSU Northridge,2023-24,757247,301437,199519,36368,20822
+CSU San Bernardino,2023-24,428853,112437,88539,18510,23169
+CSU San Marcos,2023-24,365233,48659,116593,13932,26215
+Cal Poly Humboldt,2023-24,320758,119980,58514,5976,53674
+Cal Poly Pomona,2023-24,571708,243742,179691,26415,21643
+Cal Poly San Luis Obispo,2023-24,759968,215096,428285,22279,34111
+Cal State LA,2023-24,554429,244998,110649,24673,22471
+Fresno State,2023-24,532137,228818,108344,23832,22329
+Sacramento State,2023-24,702302,279669,209950,30193,23260
+San Diego State University,2023-24,977055,255279,491901,37538,26028
+San Francisco State University,2023-24,621849,150218,219911,23700,26238
+San José State University,2023-24,743760,277609,311858,32229,23077
+Sonoma State University,2023-24,212765,106240,93095,5865,36277
+Stanislaus State,2023-24,275616,117480,63277,9440,29197

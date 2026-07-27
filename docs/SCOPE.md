@@ -140,6 +140,26 @@ triples and the clone takes about three times as long, from a fifth of a
 second to two thirds of a second locally. The file count is the larger
 change: 125 files to 4,264.
 
+**Two later additions to that measurement, recorded rather than folded
+in.** The table above describes one comparison made on one day, and two
+things have moved since:
+
+- **`bulk/` adds ~10 MB in 10 CSVs plus a manifest** (2026-07-27). These
+  are the complete per-layer exports offered at `bulk.html`. They are
+  *not* an exception to anything in this document — they are plain static
+  files at fixed paths, which is what the architecture is for — but they
+  are the second-largest thing in the tree after `comp/`, so they belong
+  in the cost record.
+- **`.git` has grown well beyond the 25 MB above** — measured at 104 MB
+  on the same date, against a 92 MB tracked working tree in 4,270 files.
+  History accumulates; that is not a regression, and it is stated because
+  a stale figure in a cost table is exactly the kind of claim this
+  project refuses to leave standing elsewhere.
+
+The rebuild claim is unaffected either way: `bulk/` is *derived*, and
+`pipeline/build_bulk.py` regenerates every file in it from the payloads
+already in the tree, with no network access.
+
 **How it fails, and why that is acceptable.** The page degrades the way
 the map does when basemap tiles do not load — it names what failed and
 what still holds, and it never shows a blank or a substituted number.

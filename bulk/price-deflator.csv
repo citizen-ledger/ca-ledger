@@ -1,0 +1,96 @@
+# Citizen Ledger — price deflator — COMPLETE LAYER EXPORT
+# Source dataset: California Department of Finance — national implicit price deflators, California fiscal-year averages
+# Accounting basis: Implicit Price Deflator for State and Local Government Purchases of Goods and Services
+# Gate tier: NOT A GATED LAYER — this is a published index the Ledger applies, and the choice to apply it is the Ledger's own methodological decision rather than reproduction of a source's figure
+# Units: index, base year 2024-25
+# Data generated: 2026-07-24
+# Exported: 2026-07-27
+# Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
+# Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
+# Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.
+# Schema: bulk/SCHEMA.md · Method: about.html · Findings: findings.html
+# Supporting series, not a spending layer. It is here because the real-dollar figures on the site cannot be reproduced without it.
+# is_forecast marks years the source projects rather than reports.
+fiscal_year,index_value,is_forecast
+1947-48,5.63875,false
+1948-49,6.1072500000000005,false
+1949-50,5.96625,false
+1950-51,6.3885000000000005,false
+1951-52,6.825,false
+1952-53,7.085,false
+1953-54,7.1145,false
+1954-55,7.27075,false
+1955-56,7.58,false
+1956-57,8.01925,false
+1957-58,8.2225,false
+1958-59,8.3855,false
+1959-60,8.49375,false
+1960-61,8.68475,false
+1961-62,8.939499999999999,false
+1962-63,9.1325,false
+1963-64,9.335999999999999,false
+1964-65,9.55175,false
+1965-66,9.916,false
+1966-67,10.4345,false
+1967-68,10.995750000000001,false
+1968-69,11.662749999999999,false
+1969-70,12.551,false
+1970-71,13.57675,false
+1971-72,14.496500000000001,false
+1972-73,15.424500000000002,false
+1973-74,16.658,false
+1974-75,18.72475,false
+1975-76,19.936500000000002,false
+1976-77,20.918499999999998,false
+1977-78,22.34375,false
+1978-79,23.886499999999998,false
+1979-80,26.407500000000002,false
+1980-81,29.42575,false
+1981-82,31.737000000000002,false
+1982-83,33.547,false
+1983-84,34.908,false
+1984-85,36.37375,false
+1985-86,37.633,false
+1986-87,39.01425,false
+1987-88,40.631249999999994,false
+1988-89,42.21275,false
+1989-90,44.2905,false
+1990-91,46.41075,false
+1991-92,47.912499999999994,false
+1992-93,49.4425,false
+1993-94,50.49225,false
+1994-95,51.988749999999996,false
+1995-96,53.18925,false
+1996-97,54.409749999999995,false
+1997-98,55.4795,false
+1998-99,56.986000000000004,false
+1999-00,59.64075,false
+2000-01,62.32825,false
+2001-02,63.66075,false
+2002-03,65.666,false
+2003-04,67.81575000000001,false
+2004-05,71.691,false
+2005-06,75.64824999999999,false
+2006-07,79.468,false
+2007-08,83.8155,false
+2008-09,85.54050000000001,false
+2009-10,86.35600000000001,false
+2010-11,89.1165,false
+2011-12,91.49825,false
+2012-13,94.07900000000001,false
+2013-14,96.88975,false
+2014-15,97.79625,false
+2015-16,97.35175000000001,false
+2016-17,98.57399999999998,false
+2017-18,102.04124999999999,false
+2018-19,105.01549999999999,false
+2019-20,106.938,false
+2020-21,111.5545,false
+2021-22,121.07475,false
+2022-23,126.84875,false
+2023-24,129.1035,false
+2024-25,131.52325,false
+2025-26,135.925325,true
+2026-27,140.069025,true
+2027-28,144.47760000000002,true
+2028-29,148.9512,true
