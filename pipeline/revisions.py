@@ -342,6 +342,14 @@ def flatten(layer, payload):
             years = _city_years(rec.get("years") or {}, lbls)
             for k, v in _leaves(years, "", {}).items():
                 out[f"{slug}\t{k}"] = v
+            # NEGATIVE FUND BALANCE (docs/V24A) reaches the change record,
+            # per the Schedule 8 lesson: a figure that can be restated must
+            # be able to move visibly. One leaf per negative year, keyed
+            # FY-FIRST so `_fy_of` can date it — so a filer restating a
+            # balance from negative to positive removes a leaf and raises
+            # an event, rather than the year silently vanishing.
+            for fy in ((rec.get("negBalance") or {}).get("years") or []):
+                out[f"{slug}\t{fy}.negBalance"] = 1
     elif layer == "district":
         years = payload.get("years") or []
         for slug, rec in (payload.get("districts") or {}).items():
@@ -353,6 +361,14 @@ def flatten(layer, payload):
                     for nm, val in _slots(slot, DISTRICT_SLOTS).items():
                         if isinstance(val, (int, float)) and not isinstance(val, bool):
                             out[f"{slug}\t{fy}.{field}.{nm}"] = val
+            # NEGATIVE FUND BALANCE (docs/V24A) reaches the change record,
+            # per the Schedule 8 lesson: a figure that can be restated must
+            # be able to move visibly. One leaf per negative year, keyed
+            # FY-FIRST so `_fy_of` can date it — so a filer restating a
+            # balance from negative to positive removes a leaf and raises
+            # an event, rather than the year silently vanishing.
+            for fy in ((rec.get("negBalance") or {}).get("years") or []):
+                out[f"{slug}\t{fy}.negBalance"] = 1
     elif layer == "school":
         # The GATED revenue scopes, per the Schedule 8 finding: a figure
         # that can be restated must be able to reach the change record.
@@ -831,6 +847,22 @@ FACTS_ADDED = [
                 "governmental-only `revenues` figure the record already "
                 "carried is unchanged and is NOT what the revenue gate "
                 "checks — see docs/V21_REVENUE_FINDING.md.",
+    },
+    {
+        "layer": "district",
+        "built": "2026-07-26",
+        "facts": ["negBalance"],
+        "note": "Our own change of what we publish. Districts that filed "
+                "a negative total governmental fund balance now carry WHICH "
+                "of the eight years, per docs/V24A. Years only \u2014 no "
+                "amount, and no field for one. Nothing moved.",
+    },
+    {
+        "layer": "city",
+        "built": "2026-07-26",
+        "facts": ["negBalance"],
+        "note": "Our own change of what we publish: the same for cities, "
+                "per docs/V24A. Years only, no amount. Nothing moved.",
     },
     {
         "layer": "school",

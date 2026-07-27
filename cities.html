@@ -649,8 +649,41 @@
     .filter(id=>cityYear(id,S.year));
 
   /* ---------- comparability notes ---------- */
+  /* SCO labels a fiscal year by its ending calendar year; the site
+     labels it 2023-24. Converted once, here. */
+  const fyLabel = y => (Number(y)-1) + "-" + String(y).slice(2);
+
   function cityNotes(id){
     const c = ENTS[id], yr = cityYear(id,S.year), notes = [];
+    /* ---- NEGATIVE FUND BALANCE (docs/V24A). Emitted before the
+       year-dependent notes and OUTSIDE the `if (!yr)` guard: the
+       eight-year history is a fact about the entity, not about the year
+       on screen, and a city with no filing for the selected year still
+       has one. The COUNT of years is the fact; no dollar figure is
+       carried, because one beside the spending figure on this record
+       invites the ratio V24 refused. */
+    if (c.negBalance){
+      const nb = c.negBalance;
+      notes.push({key:"negBalance", pinned:true, text:
+        "This city reported a negative fund balance in " + nb.years.length
+        + " of the last " + nb.of + " years. Its total governmental fund "
+        + "balance as filed with the State Controller was below zero in FY "
+        + nb.years.map(fyLabel).join(", FY ") + ". The Ledger cannot tell you "
+        + "why: the filing carries no cause field, note or flag, so this does "
+        + "not distinguish fiscal distress from spending that ran ahead of a "
+        + "reimbursement within the year. No amount is shown, because a "
+        + "deficit figure beside the spending figures here invites a "
+        + "comparison the data does not support. The figure is as filed and "
+        + "unverified \u2014 the Controller publishes no control total for "
+        + "fund balance, and the only available check that tests an "
+        + "independent quantity holds for 70.2% of entities reporting a "
+        + "negative balance against 84.8% of those reporting a positive one."
+        + (nb.windowEdge
+            ? " This count may understate: a negative year at either end of "
+              + "the eight-year window cannot be told from a longer run "
+              + "continuing outside it, and this city\u2019s does touch an edge."
+            : "")});
+    }
     if (!yr) return notes;
     if (S.layer === "county"){
       if (yr.unincorporated != null)

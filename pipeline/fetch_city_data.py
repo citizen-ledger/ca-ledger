@@ -86,6 +86,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates  # noqa: E402
+import negative_balance  # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 from strict import StrictRow  # noqa: E402
@@ -855,6 +856,43 @@ def build_payload(years_data, services, gaz, county_pops):
             prev_gov = gov
         if entry["years"]:
             cities_out[slug] = entry
+
+    # ---- NEGATIVE FUND BALANCE, per docs/V24A. The count of years is the
+    # published fact; no dollar figure is carried and there is no field
+    # for one, because a deficit figure beside the spending figure on the
+    # same record invites the ratio V24 refused. Joined on (name, county)
+    # with the county taken from the Controller's own ENTITIES tab.
+    negbal = negative_balance.history("city")
+    idx = {}
+    for rec in cities_out.values():
+        idx.setdefault((norm(rec["name"]), (rec.get("county") or "").lower()),
+                       []).append(rec)
+    n_att = n_amb = n_miss = 0
+    for eid, rec in negbal.items():
+        hit = idx.get((norm(rec["name"]), (rec.get("county") or "").lower())) or []
+        if len(hit) > 1:
+            n_amb += 1
+            continue
+        if not hit:
+            n_miss += 1
+            continue
+        hit[0]["negBalance"] = {
+            "years": rec["years"],
+            "of": len(negative_balance.YEARS),
+            "windowEdge": negative_balance.edge_cases(rec["years"]),
+        }
+        n_att += 1
+    if n_amb:
+        raise SystemExit(
+            f"NEGATIVE BALANCE: {n_amb} entities match more than one city by "
+            "(name, county); attaching a deficit history to the wrong "
+            "government is refused. Nothing written")
+    if not n_att:
+        raise SystemExit(
+            f"NEGATIVE BALANCE: computed a history for {len(negbal)} cities "
+            "and attached none — the join key is wrong; nothing written")
+    print(f"negative balance: {n_att} attached, {n_miss} unmatched",
+          file=sys.stderr)
 
     return {
         "meta": {
