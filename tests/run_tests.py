@@ -1576,7 +1576,8 @@ def test_rename(page, base):
              "ccc.html": "Community colleges",
              "uc.html": "UC campuses",
              "about.html": "About & method",
-             "reading.html": "Reading the Ledger"}
+             "reading.html": "Reading the Ledger",
+             "findings.html": "Findings"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
         esc_title = title.replace("&", "&amp;")
@@ -5587,6 +5588,166 @@ def test_reading(page, base):
           page.locator("#csvBtn").count() == 0 and page.locator("#citeToggle").count() == 0)
 
 
+def test_findings(page, base):
+    """The findings index: the investigations behind the record, promoted
+    from docs/ to a first-class page. Same shell as every page (polish/
+    shell/mobile already cover header, nav, footer, tokens and 360/390
+    across the page list this is now in); here: reachability, the archive
+    voice, and — the assertion this page exists to carry — every figure
+    printed on it still appearing in the finding document it came from.
+
+    A findings index is a restatement of other documents, so its
+    characteristic failure is DRIFT: the source is corrected and the
+    summary silently keeps the old number. Every claim below is therefore
+    checked against docs/, not against a copy of itself."""
+    page.goto(f"{base}/findings.html")
+    page.wait_for_selector("h1")
+    body = page.inner_text("body")
+    check("findings: the page renders its own heading", "Findings" in body)
+
+    # ---- reachable from the two entry points, and NOT from the primary nav
+    page.goto(f"{base}/index.html")
+    check("findings: reachable from the front door's discipline line",
+          page.locator('.fd-discipline a[href="findings.html"]').count() == 1)
+    page.goto(f"{base}/about.html")
+    check("findings: reachable from about & method",
+          page.locator('a[href="findings.html"]').count() >= 1)
+    # the ten-destination budget stands: this page sits where reading.html
+    # sits, not in the masthead. Positive control on the same selector —
+    # the nav is found and is exactly ten — so a broken selector cannot
+    # pass this as a false absence.
+    page.goto(f"{base}/findings.html")
+    nav_n = page.locator("nav.pn a").count()
+    check("findings: primary nav still has exactly ten destinations",
+          nav_n == 10, f"{nav_n} nav links")
+    check("findings: and findings.html is not one of them",
+          page.locator('nav.pn a[href="findings.html"]').count() == 0)
+    check("findings: the institutional footer is present",
+          "CITIZEN LEDGER · PUBLIC RECORD" in page.inner_text("footer.ft"))
+
+    # ---- archive voice: the same scan about.html and reading.html carry
+    src = (ROOT / "findings.html").read_text(encoding="utf-8")
+    low = src.lower()
+    for w in BANNED + ["empowering", "empower", "unlock", "revolution",
+                       "game-chang", "call to action", "join us", "sign up",
+                       "our mission"]:
+        check(f"findings voice: {w!r} absent", w not in low)
+    # and the specific editorialisation this page must not perform
+    for w in ("hiding", "cover-up", "scandal", "shocking", "outrageous",
+              "refuses to disclose", "what california is hiding"):
+        check(f"findings voice: {w!r} absent", w not in low)
+    # positive control for the scan itself: a term that IS present, so a
+    # scan that silently matched nothing would fail here
+    check("findings voice: the scan reads real text (positive control)",
+          "refused" in low and "measured" in low)
+
+    # ---- every figure on the page is still in the document it came from.
+    # Whitespace is normalised on both sides: the findings docs wrap prose,
+    # so a claim can be correct and still not match a raw substring.
+    import re as _re
+    def _norm(s):
+        return _re.sub(r"\s+", " ", s.replace("&nbsp;", " ")
+                       .replace("&times;", "×").replace("&middot;", "·"))
+    page_txt = _norm(page.inner_text("body"))
+    DOCS = {}
+    def doc(stem):
+        if stem not in DOCS:
+            DOCS[stem] = _norm((ROOT / "docs" / stem).read_text(encoding="utf-8"))
+        return DOCS[stem]
+
+    # (figure as printed on the page, source document) — the figure must
+    # appear on the PAGE and in the DOC, so this catches both a typo on the
+    # page and a number that never had a source.
+    CLAIMS = [
+        ("$4.807B",           "V4_VENDOR_FINDING.md"),
+        ("$40.897B",          "V4_VENDOR_FINDING.md"),
+        ("11.8%",             "V4_VENDOR_FINDING.md"),
+        ("$4,806,857,530",    "V16_RECIPIENT_FINDING.md"),
+        ("315,191",           "V16_RECIPIENT_FINDING.md"),
+        ("$40,897,014,501",   "V16_RECIPIENT_FINDING.md"),
+        ("3,930,969",         "V16_RECIPIENT_FINDING.md"),
+        ("11.75%",            "V16_RECIPIENT_FINDING.md"),
+        ("6,384,402",         "V16A_LA_RECIPIENT_FINDING.md"),
+        ("472,993",           "V16A_LA_RECIPIENT_FINDING.md"),
+        ("18,526",            "V16A_LA_RECIPIENT_FINDING.md"),
+        ("9,370",             "V16A_LA_RECIPIENT_FINDING.md"),
+        ("$114,363,062,810",  "V22_DEBT_FINDING.md"),
+        ("$115,830,469,221",  "V22_DEBT_FINDING.md"),
+        ("0.99",              "V22_DEBT_FINDING.md"),
+        ("16.3%",             "V24_RESERVES_FINDING.md"),
+        ("7.7%",              "V24_RESERVES_FINDING.md"),
+        ("294",               "V24A_NEGATIVE_BALANCE_FINDING.md"),
+        ("132",               "V24A_NEGATIVE_BALANCE_FINDING.md"),
+        ("87, 89, 83, 95, 93, 89, 89, 95", "V24A_NEGATIVE_BALANCE_FINDING.md"),
+        ("0 of 273",          "V25_MEASURES_FINDING.md"),
+        ("177 of 20,253",     "V25_MEASURES_FINDING.md"),
+        ("0.87%",             "V25_MEASURES_FINDING.md"),
+        ("84.6%",             "V25_MEASURES_FINDING.md"),
+        ("$8,740,953,847",    "V25_MEASURES_FINDING.md"),
+        ("June 26, 27 or 28", "V26_ADOPTION_FINDING.md"),
+        ("six of nine",       "V26_ADOPTION_FINDING.md"),
+        ("27,916",            "V26_ADOPTION_FINDING.md"),
+        ("six of eight",      "V15_HISTORICAL_FINDING.md"),
+        ("HTTP 403",          "V15_HISTORICAL_FINDING.md"),
+        ("188 of 188",        "V8_DEPTH_FINDING.md"),   # doc writes 188/188
+        ("2,797 of 2,799",    "V8_DEPTH_FINDING.md"),   # doc writes 2,797/2,799
+    ]
+    for figure, stem in CLAIMS:
+        check(f"findings claim on page: {figure!r}", figure in page_txt)
+        # the doc may write a ratio with a slash where the page writes "of"
+        needle = figure.replace(" of ", "/") if " of " in figure else figure
+        d = doc(stem)
+        check(f"findings claim sourced: {figure!r} in docs/{stem}",
+              needle in d or figure in d, f"{needle!r} not in {stem}")
+
+    # NEGATIVE CONTROL for the claim harness: a figure that is NOT in the
+    # document must fail the same lookup, or the check above proves nothing.
+    check("findings claim harness: a wrong figure is not found (negative control)",
+          "$999,999,999,999" not in doc("V22_DEBT_FINDING.md")
+          and "$999,999,999,999" not in page_txt)
+    # and the specific drift this page was built against: the reserves
+    # unassigned share is 16.3%, not the inflation finding's 14.7/22.8
+    check("findings: the reserves figure is not the inflation figure "
+          "(drift negative control)",
+          "16.3%" in doc("V24_RESERVES_FINDING.md")
+          and "unassigned 16.3%" in doc("V24_RESERVES_FINDING.md"))
+
+    # ---- every linked document exists on disk and is reachable as a URL
+    hrefs = page.eval_on_selector_all(
+        'main a[href^="docs/"]', "els => els.map(e => e.getAttribute('href'))")
+    check("findings: it links a substantial number of finding documents",
+          len(hrefs) >= 20, f"{len(hrefs)} doc links")
+    for h in sorted(set(hrefs)):
+        check(f"findings link exists: {h}", (ROOT / h).exists())
+    # positive control: the roster it links is the roster on disk, so a
+    # finding added to docs/ without an entry here is visible as a gap
+    on_disk = {f"docs/{p.name}" for p in (ROOT / "docs").glob("V*.md")}
+    missing = sorted(on_disk - set(hrefs))
+    check("findings: every V-numbered finding document is linked",
+          not missing, f"unlinked: {missing}")
+
+    # ---- the three decisions are named, and each is used
+    for word in ("Gated", "As filed", "Refused"):
+        check(f"findings: the decision vocabulary names {word!r}", word in body)
+    chips = page.eval_on_selector_all(
+        ".chip", "els => els.map(e => e.textContent.trim())")
+    check("findings: every finding record carries a decision chip",
+          len(chips) >= 15 and all(c for c in chips), f"{len(chips)} chips")
+    check("findings: refusals are chipped as such",
+          sum(1 for c in chips if "REFUSED" in c) >= 6, str(chips)[:200])
+
+    # ---- it states that refusals are not a concealment claim
+    check("findings: refusals are not presented as concealment",
+          "not a claim about concealment" in body)
+    check("findings: and it says which refusals are the Ledger's own judgement",
+          "own judgement" in body or "own editorial judgement" in body)
+
+    # ---- not a data page: no CSV/cite chrome to imply figures live here
+    check("findings: it is prose and record, not a data page",
+          page.locator("#csvBtn").count() == 0
+          and page.locator("#citeToggle").count() == 0)
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -6575,7 +6736,8 @@ def test_polish(page, base):
     its band, Download CSV wears the outline vocabulary, and the type
     scale is declared tokens rather than half-pixel drift."""
     PAGES = ["index.html", "cities.html", "schools.html",
-             "districts.html", "address.html", "about.html", "reading.html"]
+             "districts.html", "address.html", "about.html", "reading.html",
+             "findings.html"]
     # phone front door: statement within the first screen's ~250px
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{base}/index.html")
@@ -8287,9 +8449,9 @@ def test_runtime_origins():
     pages = sorted(p.name for p in ROOT.glob("*.html"))
     EXPECTED = sorted(["404.html", "about.html", "address.html", "ccc.html",
                        "cities.html", "compensation.html", "csu.html",
-                       "districts.html", "index.html", "reading.html",
-                       "revisions.html", "schools.html", "search.html",
-                       "uc.html"])
+                       "districts.html", "findings.html", "index.html",
+                       "reading.html", "revisions.html", "schools.html",
+                       "search.html", "uc.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -8353,7 +8515,8 @@ def test_shell(page, base):
     steward line in every footer, system-colored identity assets, a
     share card, and print styles that keep the figures."""
     PAGES = ["index.html", "cities.html", "schools.html",
-             "districts.html", "address.html", "about.html", "reading.html"]
+             "districts.html", "address.html", "about.html", "reading.html",
+             "findings.html"]
     # ---- 404 page: served, on-voice, absolute links (GitHub Pages
     # serves it at ANY missing depth, so relative links would break)
     src404 = (ROOT / "404.html").read_text(encoding="utf-8")
@@ -8547,7 +8710,8 @@ def test_mobile(browser, base):
     ctx = browser.new_context(viewport={"width": 360, "height": 780})
     p = ctx.new_page()
     for name in ("index.html", "cities.html", "schools.html",
-                 "districts.html", "address.html", "about.html", "reading.html"):
+                 "districts.html", "address.html", "about.html", "reading.html",
+                 "findings.html"):
         p.goto(f"{base}/{name}")
         p.wait_for_load_state("networkidle")
         sw = p.evaluate("Math.max(document.documentElement.scrollWidth,"
@@ -10376,6 +10540,7 @@ def main():
             test_zero_service(page, base)
             test_frontdoor_about(page, base)
             test_reading(page, base)
+            test_findings(page, base)
             test_map(page, base)
             test_mobile(browser, base)
             test_precision(page, base)

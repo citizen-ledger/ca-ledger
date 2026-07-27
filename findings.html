@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — Findings</title>
+<meta name="description" content="The investigations behind the record: what was tested, what was measured, and what was decided — every layer that shipped, the tier it earned, and every question the Ledger refused to answer, with the measurement behind each refusal.">
+<link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/findings.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Citizen Ledger">
+<meta property="og:title" content="Citizen Ledger — Findings">
+<meta property="og:description" content="The investigations behind the record: what was tested, what was measured, and what was decided — every layer that shipped, the tier it earned, and every question the Ledger refused to answer, with the measurement behind each refusal.">
+<meta property="og:url" content="https://citizen-ledger.github.io/ca-ledger/findings.html">
+<meta property="og:image" content="https://citizen-ledger.github.io/ca-ledger/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Citizen Ledger — A nonpartisan record of California government spending">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* IBM Plex Mono — self-hosted (vendor/fonts, SIL OFL 1.1, see OFL.txt).
+   Served from this repository, not a third party: no request leaves the
+   reader's machine to render the page. unicode-range keeps it lazy — the
+   latin-ext file is fetched only if a character in its range appears. */
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* Ledger design system — see index.html. This page is prose and record
+     in the same voice as the data pages: plain, precise, no persuasion. */
+  :root{
+    --parchment:#f6f3f1; --surface:#fdfcfb; --ink:#242424; --graphite:#4e4d4d;
+    --smoke:#797776; --faint:#b3aeaa; --ghost:#a5a09a; --ash:#cecac8;
+    --hairline:#e3ded8; --wash:#ece8e4; --wash-in:#f2ede7; --track:#efeae4;
+    --blue:#2b59d1; --blue-hover:#1f47b3;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
+  a{color:var(--blue)} a:hover{color:var(--blue-hover)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mono{font-family:var(--mono)}
+  .po{display:none}
+
+  header.hd{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid var(--ash);flex-wrap:wrap;gap:14px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .roundel{width:28px;height:28px;border-radius:9999px;background:var(--ink);color:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:var(--fs-label);font-family:var(--mono)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:-0.4px}
+  .tagline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.05em;color:var(--smoke);margin-top:2px}
+  @media(max-width:880px){.tagline{display:none}}
+  nav.pn{display:flex;gap:6px;flex-wrap:wrap}
+  nav.pn a,nav.pn span{padding:9px 18px;border-radius:9999px;font-size:var(--fs-note);text-decoration:none;color:var(--graphite)}
+  nav.pn a:hover{background:var(--wash);color:var(--graphite)}
+  nav.pn .active{background:var(--ink);color:var(--parchment);cursor:default}
+  .prov{display:flex;justify-content:space-between;gap:24px;padding:9px 40px;border-bottom:1px solid var(--ash);font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  main{max-width:900px;margin:0 auto;padding:0 40px}
+  .kicker{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;color:var(--smoke)}
+  h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
+  h2{font-family:var(--serif);font-size:28px;font-weight:400;margin-top:44px;padding-top:22px;border-top:1px solid var(--ink)}
+  .lead{font-size:16px;color:var(--graphite);margin-top:14px;line-height:1.6;max-width:64ch}
+  p{margin-top:14px;line-height:1.65;max-width:70ch}
+  .hero{margin-top:44px}
+  .secnote{font-size:var(--fs-note);color:var(--graphite);margin-top:12px;line-height:1.65;max-width:70ch}
+
+  .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:var(--fs-note);line-height:1.65}
+  .gatebox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:6px}
+
+  /* one investigation = one record. The decision chip is the first thing
+     read; the measurement is the evidence under it, never a summary. */
+  .fnd{border-top:1px solid var(--hairline);padding:18px 0}
+  .fnd:first-of-type{border-top:1px solid var(--ink)}
+  .fnd-hd{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .fnd-t{font-size:17px;font-weight:600;line-height:1.35}
+  .fnd-doc{font-family:var(--mono);font-size:var(--fs-label);white-space:nowrap}
+  .chip{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.09em;padding:3px 9px;border-radius:9999px;border:1px solid var(--ink);white-space:nowrap}
+  .chip.refused{background:var(--ink);color:var(--parchment)}
+  .chip.gated{background:transparent;color:var(--ink)}
+  .chip.asfiled{background:var(--wash);color:var(--graphite);border-color:var(--ash)}
+  .chip.held{background:var(--wash-in);color:var(--graphite);border-style:dashed}
+  .fnd-body{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px;margin-top:10px}
+  .fnd-cell{font-size:var(--fs-note);line-height:1.6}
+  .fnd-cell .lbl{display:block;font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.09em;color:var(--smoke);margin-bottom:3px}
+  .fnd-m{font-family:var(--mono);font-size:var(--fs-data);line-height:1.7}
+  .fnd-m b{font-weight:600}
+
+  ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
+  ul.plain li{padding:10px 0;border-bottom:1px solid var(--hairline);line-height:1.6;font-size:var(--fs-note)}
+  .codebit{font-family:var(--mono);font-size:var(--fs-data);background:var(--wash-in);border:1px solid var(--hairline);padding:2px 7px;border-radius:2px;white-space:nowrap}
+  footer.ft{border-top:1px solid var(--ash);margin-top:56px;padding:18px 40px;display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:var(--fs-label);color:var(--smoke);flex-wrap:wrap}
+
+  /* print: the record survives, the chrome does not. Chips carry their
+     meaning in a border rather than a fill, so a mono printer keeps them. */
+  @media print{
+    .np{display:none!important} .po{display:block!important}
+    body{background:#fff}
+    .roundel{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+    main{max-width:none;padding:0}
+    .fnd{break-inside:avoid;page-break-inside:avoid}
+    h2{break-after:avoid;page-break-after:avoid}
+    .chip{border:1px solid #000;background:#fff!important;color:#000!important}
+    .fnd-doc a::after{content:" (" attr(href) ")";font-size:9px;color:#444}
+  }
+
+  /* last in the sheet so phone-width rules win over the base rules above */
+  @media(max-width:720px){
+    h1{font-size:40px} main{padding:0 20px}
+    header.hd,.prov,footer.ft{padding-left:20px;padding-right:20px}
+    .fnd-body{grid-template-columns:1fr;gap:10px 0}
+    .fnd-hd{gap:8px}
+    .fnd-doc{white-space:normal}
+    header.hd{padding:12px 20px;gap:10px}
+    nav.pn{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+    nav.pn a,nav.pn span{padding:8px 12px;font-size:var(--fs-data)}
+    .prov{padding:7px 20px;font-size:var(--fs-micro)}
+    .prov span+span{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <span class="roundel" aria-hidden="true">CL</span>
+    <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
+  </div>
+  <nav class="pn np" aria-label="Primary">
+    <a href="search.html">Search</a>
+    <a href="index.html">State budget</a>
+    <a href="cities.html">City &amp; county spending</a>
+    <a href="schools.html">K-12 schools</a>
+    <a href="csu.html">CSU campuses</a>
+    <a href="ccc.html">Community colleges</a>
+    <a href="uc.html">UC campuses</a>
+    <a href="districts.html">Special districts</a>
+    <a href="address.html">Your governments</a>
+    <a href="about.html">About &amp; method</a>
+  </nav>
+</header>
+
+<div class="prov">
+  <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
+  <span>RECONCILED BEFORE PUBLICATION · SPECIAL DISTRICTS AS FILED</span>
+  <span>DATA CC0 · CITE FREELY</span>
+  <span>PUBLIC RECORD</span>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="kicker">THE PUBLIC RECORD · FINDINGS</div>
+    <h1>Findings</h1>
+    <p class="lead">Before anything is published here it is investigated: a question is asked of a source, the source is measured, and a decision is written down. This page collects those investigations — what was tested, what the measurement showed, and what was decided. Each links to its full document in the repository.</p>
+    <p class="secnote">Roughly half the decisions are refusals. That is not a claim about concealment. Some sources are good and simply cannot be linked to anything else; some are complete but measure a different kind of quantity than the rest of the record; and several refusals are the Ledger's own editorial judgement about what a reader would predictably misread. Which of those applies is stated in each entry, because they are different reasons and a reader may disagree with any of them on the evidence shown.</p>
+  </div>
+
+  <h2 id="decisions">The three decisions</h2>
+  <p>Every investigation ends in one of three places. The vocabulary is the same one the data pages use, so a tier named here is the tier printed on the record.</p>
+  <div class="gatebox"><b>WHAT A DECISION MEANS</b>
+    <b style="margin-top:8px">Gated</b>every entity-year reproduces a total the source itself published, to a named resolution. If it does not reproduce, nothing is written and the previous data stays. A gated layer names its reconciliation target.
+    <b style="margin-top:8px">As filed</b>published with a visible label saying no published control exists to check it against. The figures are the government's own; nobody has confirmed them, and the page says so on every record rather than in a method note.
+    <b style="margin-top:8px">Refused</b>not published, with the measurement that decided it. A refusal is a finding, not an absence of work — and it is recorded so it can be revisited when a source changes.
+  </div>
+  <p class="secnote">A fourth state appears inside otherwise-shipped layers: a <b>held</b> year or figure, where the source exists but cannot be reconciled, shown as a labelled absence rather than published at a lower standard.</p>
+
+  <h2 id="refused">Refused</h2>
+  <p>These are the questions the Ledger was asked, or asked itself, and answered no. The measurement is given rather than summarised, because the measurement is the argument.</p>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Vendor and contract search — who the state pays</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether a reader could ask what a named company received from the state, using the state's own vendor-payment files.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">In the most recent published month, payments carrying a vendor name totalled <b>$4.807B</b> against <b>$40.897B</b> of recorded spending — <b>11.8%</b>. Names are free text truncated at about thirty characters, so one company resolves to several strings: AT&amp;T appears as <b>8 distinct</b> names.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Don't ship. A per-vendor total built on this would be an unlabelled floor — roughly a tenth of the universe, with the remainder distributed unknowably per vendor. A later pass corrected this finding's phrasing that several large departments were &ldquo;absent entirely&rdquo;: they are present thinly, which is worse for a search product than clean absence, because a sliver looks like an answer.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V4_VENDOR_FINDING.md">docs/V4_VENDOR_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Recipient data — a second pass at every route</span>
+      <span class="chip refused">REFUSED AT STATE LEVEL</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span><b>Seven routes</b> to recipient, payee or vendor data, each tested against a live endpoint and given its own tier — including whether a <i>complete</i> slice for particular departments could be gated even if the whole could not.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">Vendor-named payments <b>$4,806,857,530</b> across <b>315,191</b> rows and 14,872 distinct names; the same month's full spending file <b>$40,897,014,501</b> across <b>3,930,969</b> rows — <b>11.75%</b> of recorded spending carries a vendor name. The subset test fails: per-department vendor-named dollars range from <b>0.7%</b> of that department's spending to <b>over 180%</b>, and a ratio above 100% is impossible if one were a subset of the other.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Mixed, and worth not flattening. <b>Four routes not buildable</b>; the state grants portal and the federal spending record <b>as-filed only</b>, the latter as an explicitly federal record; and <b>one route gated</b> — the San Francisco and Los Angeles check registers, each reconciling to its own city's audited statements. Nothing at the state level clears the gate. The one place a reconciled recipient layer is possible is local, and the entry below is what happened when that was tested.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V16_RECIPIENT_FINDING.md">docs/V16_RECIPIENT_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">The Los Angeles checkbook — a recipient index where the data is good</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether one city's unusually complete checkbook — <b>6,384,402</b> rows with a vendor identifier on all but two — could carry a recipient index the statewide files could not.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">The city's own privacy mask covers <b>472,993</b> rows, and has a hole exactly where the expectation of privacy is strongest: of <b>18,526</b> rows flagged as a settlement or judgment, only <b>622</b> fall under a privacy token. The remainder carry real payee names — <b>9,370 distinct, unredacted</b>, with a redaction-token scan matching approximately zero.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Don't build it. This refusal is the Ledger's own judgement rather than a limit of the source: the data is strong, and building an index over it would republish, sorted and searchable, the names of people who sued the city and settled.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V16A_LA_RECIPIENT_FINDING.md">docs/V16A_LA_RECIPIENT_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Debt and long-term obligations</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Five sources — CDIAC, the State Controller's city, county and district filings, state general-obligation debt, the two big pension systems, and K-12 and community-college bonds — against the question of whether a debt figure can sit on a page of annual spending.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">California cities filed <b>$114,363,062,810</b> of outstanding debt for FY2024 against published city expenditures of <b>$115,830,469,221</b> in the same year. The stock is <b>0.99×</b> the flow — numerically indistinguishable on a page whose entire vocabulary is annual spending.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship nothing, on all five sources. On three of them the data is better than expected and one gate reproduces a published control exactly. The refusal is a design verdict about stock and flow, not a data-quality verdict.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V22_DEBT_FINDING.md">docs/V22_DEBT_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Reserves and fund balances</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether a reserve figure — a total, a five-way GASB 54 breakdown, an unassigned-only figure, or a months-of-spending ratio — could be published for cities, counties, special districts, K-12 or the state.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">The classification is complete on three layers and the filers' arithmetic is perfect. No published control total exists on any local layer. Unassigned balance is <b>16.3%</b> of the total, with committed at 7.7% and nonspendable at 0.4% — so an unassigned-only figure would describe a sixth of the thing it appears to name.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship nothing, and no separate reserves page. One thing does ship: a refusal sentence on the layer pages, in the same dress as the existing per-resident and no-totals blocks.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V24_RESERVES_FINDING.md">docs/V24_RESERVES_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Negative fund balances — the narrow case reserves left open</span>
+      <span class="chip held">PER-RECORD STATEMENT ONLY</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the bare fact that an entity filed a negative total governmental fund balance could be published, where a reserve figure could not.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">Across eight fiscal years, <b>294</b> entities carry a negative total at least once. <b>132 of them — 45% — are negative in exactly one year of eight</b>; only <b>11</b> are negative in all eight. The steady annual count (87, 89, 83, 95, 93, 89, 89, 95) conceals a largely rotating population.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>No layer, no list, no count, no dollar figure. A neutral per-record statement on the entity's own record, carrying the count of years, because that count is the only thing in the data separating a one-year event from an eight-year condition.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V24A_NEGATIVE_BALANCE_FINDING.md">docs/V24A_NEGATIVE_BALANCE_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Voter-approved bonds against what is spent from them</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether an identifier chain survives from a ballot measure, to the bond issuance it authorised, to the fund the money is spent from.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">The chain breaks three times. <b>0 of 273</b> election-record district names match a bond-issuance issuer name exactly. Only <b>177 of 20,253</b> K-12 issues — <b>0.87%</b> — name a ballot measure at all, in free prose. And the school accounting has no measure dimension: <b>84.6%</b> of $8,740,953,847 of bond-fund spending sits in a single object code while ballots name a median of four purposes.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Don't ship. Closing any of the three links would require the Ledger's own judgement about which spending serves which measure, which is editorial. Placing a ballot purpose beside a spending figure implies they reconcile; they do not.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V25_MEASURES_FINDING.md">docs/V25_MEASURES_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Adoption provenance — who approved a budget, and when</span>
+      <span class="chip refused">REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether each published figure could carry the body that adopted it and the date, from the sources the site already reads.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">Only one layer's own figures were adopted by anybody; the rest are year-end accounting records, which nobody adopts. Where the date does exist it barely varies: nine Budget Acts signed on <b>June 26, 27 or 28</b>, six of nine on June 27. Across <b>27,916</b> State Controller column names there is <b>no</b> adoption date at all.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Don't ship — the field would be decorative. The site already carries the version that works, on the one layer whose provenance genuinely varies: community-college apportionments are stamped with their round, because those stages produce different numbers.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V26_ADOPTION_FINDING.md">docs/V26_ADOPTION_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Historical depth — how far back each layer honestly reaches</span>
+      <span class="chip held">PARTLY REFUSED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the record could answer &ldquo;how has this moved over decades&rdquo; rather than over a handful of years. Every local-government source reaches back twenty-two years, so availability was almost never the constraint.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">Yes for four layers, no for two, partly for three. Cities and counties stay at FY2016-17: twenty-two years are available and the totals reconcile, but the function split these pages are built on does not exist before then, and <b>six of eight functions change meaning at the boundary</b>. CSU cannot be extended at all — the source returns <b>HTTP 403</b> to every scripted request, so an older year's control total is uncomputable rather than merely unreconciled.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Extend where the older data still means the same thing; refuse where it does not. A year that cannot be gated does not ship.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V15_HISTORICAL_FINDING.md">docs/V15_HISTORICAL_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <h2 id="shipped">Shipped, and at what tier</h2>
+  <p>Each layer on the site earned a tier by measurement, not by category. Where a gate reproduces a published control the layer is gated and the resolution is named at the source's own precision; where no control exists the layer is published as filed and says so on every record.</p>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">K-12 school districts</span>
+      <span class="chip gated">GATED · TO THE CENT</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether district general-ledger filings could be compared per pupil against a control the Department of Education itself publishes.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship gated and comparable, with the comparison scoped to school districts — county offices and charters are published as records only and never enter the per-pupil statistic, matching the source's own exclusion.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">CDE's published Current Expense of Education.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V7_SCHOOLS_FINDING.md">docs/V7_SCHOOLS_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Community college districts</span>
+      <span class="chip gated">GATED · TO THE DOLLAR</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the Chancellor's Office's printed statewide total could serve as a control, and at what resolution.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship gated, at whole-dollar resolution, auto-fetchable — an upgrade from the as-filed tier the earlier higher-education finding had assigned it pending an empirical demonstration.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">The Chancellor's Office printed statewide Current Expense of Education, independently validated off the portal by each district's mandatory CPA audit.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V11_CCC_FINDING.md">docs/V11_CCC_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">UC campuses</span>
+      <span class="chip gated">GATED · TO THE THOUSAND</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether a UC campus figure means the same kind of thing as a CSU campus figure, given how much of UC's ledger is hospital.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship stripped and gated. Medical centres, auxiliaries and the Department of Energy laboratory are separated out on UC's own published lines and shown beside the teaching-and-research remainder — never deleted, and never silently mixed with CSU.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">UC's audited statement totals, at the thousand — the source's own denomination, which is exact fidelity rather than a looser check.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V12_UC_FINDING.md">docs/V12_UC_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Higher education, all three systems</span>
+      <span class="chip gated">GATED · PER SYSTEM</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether UC, CSU and the community colleges could each be gated, treated with the same scepticism as every other new source: the default answer was no until a control total was demonstrated.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>The three did not get the same answer. CSU gated and comparable; UC gated but only as a stripped education core; community colleges as-filed pending a demonstration that later upgraded them. One rule spans all three: each is gated to its own audited total, never to the state budget line.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">Each system's own audited statement total.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V10B_HIGHERED_FINDING.md">docs/V10B_HIGHERED_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">State actual spending beside the enacted plan</span>
+      <span class="chip gated">GATED · EXACT, IN THOUSANDS</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether actual expenditures could be published beside enacted appropriations without mixing accounting bases.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship. One source qualifies — the Department of Finance's own prior-year actuals, on the identical Budgetary-Legal basis, which is the state's own side-by-side presentation rather than a comparison the Ledger invented. The difference column is explained as what changed between enactment and year-end, never characterised.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">The Department of Finance's own statewide total.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V3_ACTUALS_FINDING.md">docs/V3_ACTUALS_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Special districts</span>
+      <span class="chip asfiled">AS FILED · PINNED, NOT RECONCILED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the thousands of single-purpose local governments could be published, and against what control.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Publish as filed, at a visibly different tier. Three of the four fund-class columns have no published total to check against, so no figure in the layer can be verified against an independently published total — stated on every record, not in a method note.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">Nothing. The figures carry a tamper-evident pin, which proves the file has not been altered since it was built and is not a claim that anyone confirmed it is right.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V5_DISTRICTS_FINDING.md">docs/V5_DISTRICTS_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Revenue, layer by layer</span>
+      <span class="chip gated">MIXED TIERS · PER LAYER</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the record could show where money comes from as well as where it goes, and whether one tier could cover every layer.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship revenue layer by layer, at the tier each layer earns rather than at one blended tier. No surplus or deficit is computed anywhere: revenue and spending are both flows but are measured on different scopes, so subtracting them would produce a number the source does not support.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">A different published control per layer; the K-12 layer ships as a declared split tier, with the difference legible on the district record itself.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V21_REVENUE_FINDING.md">docs/V21_REVENUE_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Public employee compensation</span>
+      <span class="chip asfiled">AS FILED · WITH CONDITIONS</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>First whether position-level compensation should be published at all, then — the decision having been reopened — whether it could be published accurately.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">A published control exists and can never be reconciled to: the export is a live database with no as-of-date total, so there is no instant at which it and the announced figure can be aligned. A quarter of city rows show pay below half the position's own stated minimum, and the source carries no hours field, so no average over the population would mean anything.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship as filed, or not at all. The earlier decision refused this layer on privacy grounds; that refusal was withdrawn, and the reason is recorded rather than left implicit. The conditions are not optional: no average or median, no ranking, no share of spending, and a mark on every employer whose pension reporting is not comparable.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V23A_COMPENSATION_BUILD_FINDING.md">docs/V23A_COMPENSATION_BUILD_FINDING.md</a> &middot; superseding <a href="docs/V23_COMPENSATION_FINDING.md">V23</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Inflation adjustment — a nominal/real toggle</span>
+      <span class="chip asfiled">SHIPPED · LABELLED AS A CHOICE</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Which deflator, if any, the Ledger could apply — the first feature that is a methodological choice rather than reproduction of a source's own published figure, and so given the rigour of a data layer.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship, using the deflator California statute itself names, on the Department of Finance's own fiscal-year file — and label it on the face as the Ledger's own choice rather than as reproduction.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">No control; it is a stated method, which is why it is labelled as one.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V14_INFLATION_FINDING.md">docs/V14_INFLATION_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Address lookup — the governments over one point</span>
+      <span class="chip gated">SHIPPED · NARROWED</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether a reader could enter an address and see the governments that tax and serve it.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship narrowed. Buildable on the existing boundaries for the layers whose geography is authoritative; the layers whose boundaries are not published are absent rather than approximated.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">Each layer's own published figures; the view is a join, and adds no figure of its own.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V6_ADDRESS_FINDING.md">docs/V6_ADDRESS_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">Drill-down depth, per layer</span>
+      <span class="chip gated">SHIPPED · WHERE CHILDREN SUM</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>How deep the record can go before the parts stop adding to the whole. The governing rule: children that do not sum exactly to the gated parent are worse than no drill-down at all.</div>
+      <div class="fnd-cell"><span class="lbl">MEASURED</span><span class="fnd-m">State fund detail sums to <b>$0</b> residual for <b>188 of 188</b> departments. School function &times; object family sums to <b>$0.00</b> for <b>2,797 of 2,799</b> district-years, the two exceptions being a known publication artifact of two cents. State program detail is internally exact but sits on an all-funds scope, so it ships only as a labelled all-funds view and never under the fund parents.</span></div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship the depths that sum; refuse the ones that do not, and refuse the full four-digit object detail on payload grounds rather than accuracy.</div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V8_DEPTH_FINDING.md">docs/V8_DEPTH_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">School funding sources, and the funding-source cross-tab</span>
+      <span class="chip gated">SHIPPED · DISTRICTS ONLY</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether school spending could be shown by where the money came from, and whether that could be crossed with what it was spent on.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship the funding-source view for districts only, as a hybrid. Ship the cross-tab in a reduced, on-demand form rather than in the full grid, which the payload could not carry.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">RECONCILES TO</span><span class="fnd-m">The same gated district total as the per-pupil figure.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V9_RESOURCE_FINDING.md">docs/V9_RESOURCE_FINDING.md</a> &middot; <a href="docs/V10A_CROSSTAB_FINDING.md">V10a cross-tab</a></div>
+    </div>
+  </div>
+
+  <div class="fnd">
+    <div class="fnd-hd">
+      <span class="fnd-t">The record of changes</span>
+      <span class="chip gated">SHIPPED · WHAT, NOT WHY</span>
+    </div>
+    <div class="fnd-body">
+      <div class="fnd-cell"><span class="lbl">INVESTIGATED</span>Whether the Ledger could publish what moved between refreshes, and whether it could say why.</div>
+      <div class="fnd-cell"><span class="lbl">DECIDED</span>Ship what changed and by how much, including figures that appear and disappear. Do not publish a cause: a source restating a figure and a source redefining it look identical from outside, differing only in intent. The one exception is a change the Ledger itself made, where the cause is its own commit.</div>
+    </div>
+    <div class="fnd-body" style="margin-top:8px">
+      <div class="fnd-cell"><span class="lbl">WHERE IT LIVES</span><span class="fnd-m">The <a href="revisions.html">record of changes</a>.</span></div>
+      <div class="fnd-cell fnd-doc"><span class="lbl">DOCUMENT</span><a href="docs/V13_CHANGEFEED_FINDING.md">docs/V13_CHANGEFEED_FINDING.md</a></div>
+    </div>
+  </div>
+
+  <h2 id="more">The rest of the record</h2>
+  <p>Several investigations are narrower than a layer — a parsing feasibility study, a re-keying prerequisite, a single fiscal year that would not read. They are kept for the same reason as the rest: a decision whose reasoning is not written down has to be re-argued from scratch the next time the question comes up.</p>
+  <ul class="plain">
+    <li><b>The landscape</b> — what else exists in this space, and what happened to it. <a href="docs/LANDSCAPE_FINDING.md">docs/LANDSCAPE_FINDING.md</a></li>
+    <li><b>UC segmentation, parse feasibility, and the six-year build</b> — three passes at how far the UC layer could reach and on what basis. <a href="docs/V18_UC_SEGMENTATION_FINDING.md">V18</a> &middot; <a href="docs/V18A_UC_PARSE_FEASIBILITY.md">V18a</a> &middot; <a href="docs/V18B_UC_SIX_YEAR_BUILD.md">V18b</a></li>
+    <li><b>Community-college apportionment vintages</b> — which years of the apportionment document can be read, and the one that could be read for a single fact only. <a href="docs/V19_CCC_EXHIBITC_VINTAGES.md">V19</a> &middot; <a href="docs/V20_CCC_2018_19_EXHIBITC_FINDING.md">V20</a></li>
+    <li><b>Charter school identity</b> — why charters are re-keyed on county and school code rather than on a name, and what had to be true first. <a href="docs/V17_CHARTER_SLUG_FINDING.md">V17</a> &middot; <a href="docs/V17A_CHARTER_REKEY_PREREQS.md">V17a</a></li>
+    <li><b>School district identifiers</b> — whether a national identifier could resolve districts across vintages. <a href="docs/V16_NCES_IDENTIFIER_FINDING.md">docs/V16_NCES_IDENTIFIER_FINDING.md</a></li>
+    <li><b>What is deliberately unfinished</b> — the open record, kept current: what is not published and why, and the defect shapes that have recurred often enough to be named. <a href="docs/OPEN.md">docs/OPEN.md</a></li>
+    <li><b>Scope</b> — what this project is and is not, and the architectural rules it holds itself to. <a href="docs/SCOPE.md">docs/SCOPE.md</a></li>
+  </ul>
+
+  <h2 id="disagree">Reading these against the record</h2>
+  <p>Each entry above states a measurement and a decision. The two are separable on purpose: a reader can accept every figure and still think a decision went the wrong way, and the documents are written so that argument can be had on the evidence rather than on trust. Where a decision was the Ledger's own judgement rather than a limit of the data — the Los Angeles checkbook, the ratio refusals, the compensation reversal — the entry says so, because that is the kind of decision most worth disputing.</p>
+  <p>The findings are also a record of the project's own errors. Investigations have been reopened, measurements retracted after a defect was found in the measuring code, and a published claim corrected in seventy-four places when a gate proved it wrong. Those reversals are recorded in the documents rather than edited away. For the method underneath all of it — every source, every gate, and what the site refuses to do — see <a href="about.html">about &amp; method</a>; for a plain-language guide to the record itself, see <a href="reading.html">reading the Ledger</a>.</p>
+</main>
+
+<footer class="ft">
+  <span>CITIZEN LEDGER · PUBLIC RECORD</span>
+  <span>MAINTAINED IN THE OPEN · <a href="https://github.com/citizen-ledger/ca-ledger">GITHUB.COM/CITIZEN-LEDGER/CA-LEDGER</a> · <a href="https://github.com/citizen-ledger/ca-ledger/issues">REPORT A PROBLEM</a> · <a href="search.html">SEARCH</a> · <a href="compensation.html">COMPENSATION</a> · <a href="about.html">ABOUT &amp; METHOD</a> · <a href="revisions.html">RECORD OF CHANGES</a></span>
+  <span>DATA CC0 · CITE FREELY</span>
+</footer>
+
+</body>
+</html>
