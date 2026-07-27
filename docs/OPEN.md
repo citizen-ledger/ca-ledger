@@ -615,6 +615,99 @@ and the V24a deficit-beside-spending, and it is worth naming as one
 rule: **the site does not place two quantities together unless it can
 say how they reconcile.**
 
+### 2r. A field that exists is not a field that informs
+
+V26 asked for adoption provenance — who approved each budget, and when.
+The field turned out to **exist, be machine-readable, be point-in-time
+correct, and still not be worth shipping**, which is a failure mode the
+project had not yet named.
+
+`publicationDate` on DOF's eBudget API returns `"Enacted on June 26,
+2024"`. It is a genuine published fact and the pipeline already fetches
+it. But across the nine published years the value is **June 27, June 27,
+June 27, June 26, June 28, June 27, June 27, June 26, June 27** — a
+three-day range, six of nine identical, because the signing date is set
+by a constitutional deadline rather than by anything about the budget.
+
+The contrast that makes the rule concrete is **already in the codebase**.
+The CCC layer stamps every apportionment with its round — `ROUND_NAME` at
+`ccc.html:309`, First Principal / Second Principal / Recalculation — and
+`meta.roundsDiffer` explains they "are computed at different points from
+different information, and they are not interchangeable." That is the
+same feature V26 proposed, shipped, on the one layer where the stamp
+changes the number. **Provenance earns its place by varying**; the CCC
+round does, the Budget Act signing date does not.
+
+The test that generalises: **before building a per-record field, measure
+its variance across the records.** A field that is constant, or nearly
+so, adds a column and no information, while *implying* a variability
+that does not exist. Three checks worth running first:
+
+- **How much does it vary?** Nine years, three distinct values.
+- **Does the site already say it better?** `index.html` already read
+  "fixed when each year's Budget Act is signed… typically signed in late
+  June" — one sentence carrying more than nine near-identical dates.
+- **Does it vary where it is unavailable?** Measured: 479 of 482 cities
+  close on June 30, but special districts show **9 distinct
+  fiscal-year-ends across 5,111 entities**. The population whose adoption
+  dates would genuinely differ is exactly the one with **0** adoption
+  fields in 27,916 SCO column names. **The date is near-constant where it
+  is published and unpublished where it would vary.**
+
+Three smaller lessons from the same probe:
+
+- **A robots block on the HTML front end is not a block on the data.**
+  This one nearly produced a wrong refusal. `leginfo.legislature.ca.gov`
+  serves `User-agent: * / Disallow: /`, and the first draft of V26 cited
+  that to conclude the Budget Act chapter number would need a third
+  manual-cache exception. It would not: the Legislature publishes bulk
+  session archives on `downloads.leginfo.legislature.ca.gov`, which
+  carries **no** exclusion — verified by content, a real Apache 404 for
+  `/robots.txt`, an 8,519-byte directory index, and `206 Partial
+  Content` with `50 4b 03 04` on a range read. **Check the publisher's
+  bulk/download host before recording an access refusal**, and never
+  infer a data-access policy from the policy on its web UI.
+- **Storing is not showing.** Keeping `publicationDate` in the payload
+  for the change record is cheap and useful precisely because nothing
+  renders it; that remains a live V13 item. The refusal was to the
+  reader-facing label, and the two questions must not be answered
+  together.
+- **A sentinel is not a date.** For years not yet adopted the same
+  endpoint returns `"Enacted on January 01, 9999"` with an empty
+  `/statistics`, while still reporting `publication: "Enacted"`. A naive
+  build of this field ships *1 January 9999*. The pipeline's existing
+  guard is indirect — it drops years with no agency data — and nothing
+  checks the date itself.
+
+**And the methodological lesson, which cost seven corrections in one
+finding.** V26's first draft asserted that only the state page shows an
+adopted figure, and that no source anywhere carries an adopting-body
+field. An adversarial pass refuted both — eBudget publishes a per-year
+`governor` string at `/api/home/getLink`, and `schools.html` renders "$81.6B
+enacted", `ccc.html` renders "$9.7 billion", `csu.html` exports a
+`state_appropriation_thousands` column. The same pass found that the
+layer count was mis-sourced, the `meta.basis` tally was off by one
+payload, and the FTR keyword sweep had omitted `appropriat` — which is
+28 header cells and the **Gann appropriations limit**, a genuinely
+board-adopted figure sitting in a corpus the finding had just called
+free of anything adopted.
+
+They are all one error: **an absence claim resting on a search whose
+terms I chose.** `/appInfo`'s nine keys were treated as the source's
+whole surface; the refuting agent enumerated the real API by reading
+eBudget's own JS bundle. The counts (27,916 cells, 25 columns) made the sweep
+*look* exhaustive while the keyword list quietly bounded it. Two habits
+follow:
+
+- **State the search terms next to the count**, so "0 hits" is legible as
+  "0 hits *for these words*" rather than as "nothing there".
+- **For any "the source contains no X" claim, have it refuted before
+  publishing it.** Enumerating what *is* present is weak evidence; a
+  reader hunting for a counterexample is strong evidence. Every one of
+  V26's substantive errors was invisible from inside the original method,
+  and the conclusion happened not to rest on any of them — which is luck,
+  not method.
+
 ---
 
 ## Part 3 — Test-quality debt
@@ -679,3 +772,19 @@ vacuous-gate audit (STATUS 2026-07-20/21) and after:
   Standing "no", including for a measure record attached to a district
   page — that still needs the name join, which merges 179 real
   districts.
+- **Adoption provenance — who approved a budget, and when.** Refused in
+  `docs/V26_ADOPTION_FINDING.md`, on the ground the brief allowed:
+  **merely decorative.** Only **1 of 11** layers publishes a figure
+  anyone adopted — every other layer is a year-end actual, so a
+  "adopted [date]" label there is a category error. On the one layer
+  that qualifies, the source carries exactly one adoption field
+  (`publicationDate`, a prose string), no adopting-body field, and nine
+  years of values spanning **three days**. And there is no single date to
+  show: a Budget Act is amended repeatedly and the Legislature cites it
+  as a *set* of chapters ("Chapters 12, 38, and 189 of the Statutes of
+  2023"). The chapter number **is** obtainable — the Legislature's bulk
+  host carries no robots exclusion, contrary to this finding's own first
+  draft — so the refusal rests on the field being uninformative, not on
+  access. **Still open and separate:** storing `publicationDate` in the
+  payload for the change record (V13 cheap improvement #5), which this
+  refusal does not touch.
