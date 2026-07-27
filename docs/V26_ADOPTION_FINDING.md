@@ -47,10 +47,10 @@ simplification the source itself declines to make.
 | layers whose **own** figures are adopted | **1 of 11** (the state page) |
 | further pages rendering a *borrowed* appropriation | **3** (K-12, CCC, CSU) |
 | adoption fields in the state source | **1** — a prose string |
-| adopting-body field in any source | **0** |
+| adopting-body field | **1**, naming an individual — out of scope per the brief |
 | range of nine Budget Act signing dates | **3 days** |
 | bills naming the Budget Act of 2023, one session | **244** |
-| SACS columns matching date/adopt/approve/board | **0 of 33**, across 4 vintages |
+| SACS columns matching date/adopt/approve/board | **0 of 25**, across 4 vintages |
 | SCO FTR header cells searched / adoption **dates** found | **27,916 / 0** |
 
 And the sharpest way to put it: **the date is nearly constant where it is
@@ -78,18 +78,19 @@ previousYear, currentYear, budgetYear, publication, publicationTitle,
 publicationDate, pit, proposedAppName, ebudgetHome
 ```
 
-**`publicationDate` is the only adoption field on the site's entire
-source surface.** Its value is a prose string:
+**`publicationDate` is the only adoption field on the endpoints the
+pipeline reads** (§2 records a second one, on an endpoint it does not). Its value is a prose string:
 
 ```
 2024-25  ->  "Enacted on June 26, 2024"
 2025-26  ->  "Enacted on June 27, 2025"
 ```
 
-Absent, confirmed against every published year: **no Budget Act chapter
-number, no bill number, no separate signing date, and no adopting-body
-field.** The word *Enacted* inside a prose string is the whole of the
-"who".
+Absent from these nine keys, confirmed against every published year:
+**no Budget Act chapter number, no bill number, and no separate signing
+date.** The word *Enacted* inside a prose string is the whole of the
+"who" *here* — but eBudget does publish a `governor` field on another
+endpoint, which §2 records and which I originally missed.
 
 The pipeline **already reads it and throws it away**
 (`pipeline/fetch_state_data.py:338`) — it is interpolated into a
@@ -165,15 +166,17 @@ unaudited-actuals archive.**
 
 `sacs2425.mdb` holds **9 tables** — `Charters, Function, Fund, Goal,
 LEAs, Object, Resource, UserGL, UserGL_Totals` — and, with system tables
-included, only Access's own `MSys*` catalog. Across all of them, **33
+included, only Access's own `MSys*` catalog. Across all of them, **25
 distinct column names, of which zero match** `date|adopt|approv|certif|
-board|resolut|submit|sign`. Verified on four vintages (FY2017-18,
+board|resolut|submit|sign` — 31 counting the Alternative Form files, and
+still zero. Verified on four vintages (FY2017-18,
 FY2020-21, FY2022-23, FY2024-25) and on the Alternative Form files.
 
-Two columns look like they might carry a stage and do not:
-**`Period` = `"A"` and `Colcode` = `"BA"` for all 1,600,940 rows**, in
-every vintage. Single-valued fields carry no distinction. The pipeline
-does not read either.
+Two columns look like they might carry a stage and do not: **`Period` =
+`"A"` and `Colcode` = `"BA"` are single-valued in every vintage tested** —
+FY2017-18 (1,275,011 `UserGL` rows), FY2022-23 (1,660,734) and FY2024-25
+(1,600,940) each return exactly one `(Period, Colcode)` pair. Single-valued
+fields carry no distinction. The pipeline does not read either.
 
 CDE does collect a separate budget-period SACS submission, which *is*
 board-adopted. **The site does not read it**, and reading it would be a
@@ -311,18 +314,44 @@ The brief's line is the right one, and it cuts more than expected.
 **A fact:** `"Enacted on June 26, 2024"` for FY2024-25. Printed in the
 source, machine-readable, one field.
 
-**Not in the source — the adopting body.** No field names the
-Legislature or the Governor. Writing "adopted by the Legislature and
-signed by the Governor" would be *our* knowledge of California's
-process. It is correct, and it is also **constant for every year on the
-page** — which makes it a one-line statement about the state layer, not
-a per-year fact. `about.html` already carries that sentence.
+**A second fact, which I first said did not exist.** I claimed no source
+carries an adopting-body field. **That is false.** One endpoint away from
+the ones the pipeline calls, on the same API root:
+
+```
+GET https://ebudget.ca.gov/api/home/getLink
+  2017-18, 2018-19        "Edmund G. Brown Jr. Governor"
+  2019-20 … 2026-27       "Gavin Newsom Governor"
+```
+
+Ten rows, keyed by budget year, machine-readable, and it **does vary**.
+So the honest position is not "the who is unavailable."
+
+Three things nonetheless keep it out:
+
+- **It names an individual, which the brief places out of scope.** "Who
+  approved this" was asked as an institutional question; this field
+  answers it with a person's name.
+- **It names one of two actors.** A Budget Act is passed by the
+  Legislature and signed by the Governor. A field carrying only the
+  Governor would be a partial answer presented as a whole one.
+- **It varies less than the date.** Two values across nine published
+  years — and the variation tracks an election, not anything about a
+  budget.
+
+It is also, on inspection, **publication attribution rather than an
+adoption record**: `getLink` drives the eBudget home page's list of
+budget documents, and the same `"Gavin Newsom Governor"` string is
+attached to FY2026-27, a year with **no enacted budget at all** (its
+`/statistics` is empty and its date is the 9999 sentinel). A field that
+names a signer for an unsigned budget is not recording a signing.
 
 **Out of scope by the brief:** who sat on the body, and naming
 individuals.
 
 So the honest inventory of what could be attached per year is: **one
-prose date, on one layer.** Not a body, not a citation, not a vote.
+prose date and one Governor's name, on one layer** — no citation, no
+chapter, no vote, and nothing naming the Legislature.
 
 ---
 
@@ -547,6 +576,16 @@ Worth separating, so a future reader does not over-read the "no":
 - I did not read the bill *text* members (`.lob`) that would let me date
   each amendment, so I cannot state how long a given Budget Act stays
   open.
+- **I claimed no source carries an adopting-body field. That was false**
+  — eBudget's `/api/home/getLink` returns a per-year `governor` string
+  (§2). I had treated `/appInfo`'s nine keys as the source's whole
+  surface; the refuting agent read eBudget's own JS bundle to enumerate
+  the API instead, which is the method I should have used. **Three
+  further stated numbers were also wrong** and are corrected in place:
+  SACS has **25** distinct column names, not 33 (31 with the Alternative
+  Form files); 1,600,940 is FY2024-25's `UserGL` row count, not every
+  vintage's; and §1.2's "not one occurrence of the word budget" was true
+  but concealed the Gann limit, which `appropriat` finds.
 - **My first draft claimed only the state page shows an adopted figure.
   That was false** — `schools.html`, `ccc.html` and `csu.html` all render
   a borrowed appropriation (§1.7). I found it by having the claim
@@ -555,9 +594,13 @@ Worth separating, so a future reader does not over-read the "no":
   `build_search_index.py` (which has ten entries and no compensation),
   the `meta.basis` tally was "eight of nine" when it is eight of ten with
   `deflator-data.js` also lacking one, and §1.2's keyword sweep omitted
-  `appropriat` and so missed the Gann limit. **Four errors in one
-  finding, all of the same kind: a claim of absence resting on a search I
-  chose the terms for.**
+  `appropriat` and so missed the Gann limit. Counting the `governor`
+  field above and the leginfo access claim below, **seven corrections in
+  one finding — and every one of the substantive ones is the same
+  mistake: a claim of absence resting on a search whose terms I chose.**
+  The conclusion survived all seven, which is worth stating plainly: the
+  recommendation was never load-bearing on any of them, but it could
+  have been, and I would not have known.
 - I did not open CDE's budget-period SACS submission to confirm it
   carries a board adoption date. §1.3's claim is only about the
   unaudited-actuals archive the site actually reads.

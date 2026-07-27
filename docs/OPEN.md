@@ -679,9 +679,11 @@ Three smaller lessons from the same probe:
   guard is indirect — it drops years with no agency data — and nothing
   checks the date itself.
 
-**And the methodological lesson, which cost four errors in one finding.**
-V26's first draft asserted that only the state page shows an adopted
-figure. An adversarial pass refuted it: `schools.html` renders "$81.6B
+**And the methodological lesson, which cost seven corrections in one
+finding.** V26's first draft asserted that only the state page shows an
+adopted figure, and that no source anywhere carries an adopting-body
+field. An adversarial pass refuted both — eBudget publishes a per-year
+`governor` string at `/api/home/getLink`, and `schools.html` renders "$81.6B
 enacted", `ccc.html` renders "$9.7 billion", `csu.html` exports a
 `state_appropriation_thousands` column. The same pass found that the
 layer count was mis-sourced, the `meta.basis` tally was off by one
@@ -690,8 +692,10 @@ payload, and the FTR keyword sweep had omitted `appropriat` — which is
 board-adopted figure sitting in a corpus the finding had just called
 free of anything adopted.
 
-All four are the same error: **an absence claim resting on a search whose
-terms I chose.** The counts (27,916 cells, 33 columns) made the sweep
+They are all one error: **an absence claim resting on a search whose
+terms I chose.** `/appInfo`'s nine keys were treated as the source's
+whole surface; the refuting agent enumerated the real API by reading
+eBudget's own JS bundle. The counts (27,916 cells, 25 columns) made the sweep
 *look* exhaustive while the keyword list quietly bounded it. Two habits
 follow:
 
@@ -699,8 +703,10 @@ follow:
   "0 hits *for these words*" rather than as "nothing there".
 - **For any "the source contains no X" claim, have it refuted before
   publishing it.** Enumerating what *is* present is weak evidence; a
-  reader hunting for a counterexample is strong evidence. Three of V26's
-  four errors were invisible from inside the original method.
+  reader hunting for a counterexample is strong evidence. Every one of
+  V26's substantive errors was invisible from inside the original method,
+  and the conclusion happened not to rest on any of them — which is luck,
+  not method.
 
 ---
 
