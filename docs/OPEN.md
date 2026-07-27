@@ -586,6 +586,35 @@ byte-identical (district) or identical but for the build date (CSU), and
 the K-12 gates passed unchanged. A guard that changes no output is doing
 its job — it changes what happens on the day the source moves.
 
+### 2q. Adjacency is a claim, and no caption retracts it
+
+V25 asked whether voter-approved bonds could be shown against what is
+spent from them. Every individual fact was publishable — CEDA's measure
+record, CDIAC's issuance, SACS Fund 21 spending — and the layer still
+fails, because **what is unreconciled is not a figure but a
+relationship**, and the site's tier vocabulary has no label for that.
+
+The three links and how each breaks are in
+`docs/V25_MEASURES_FINDING.md`. The transferable part is the shape:
+
+- **A per-figure tier label cannot mark a per-relationship problem.**
+  *As-filed* says *this number is unverified*. It has nothing to say
+  about two verified numbers placed so as to imply they reconcile.
+- **Layout asserts.** A purpose beside a figure reads as that purpose's
+  spending. That reading survives any note placed underneath it, because
+  the grammar of the page is stronger than the caption.
+- **The generic-code check belongs early in any drill-down question.**
+  One query settled this: Fund 21 carries **5 distinct resource codes
+  over 11,438 rows, 98.5% of them generic**, and **84.6% of $8.74B sits
+  in a single object code** while ballots name a median of 4 purposes.
+  When the dimension a reader wants does not exist in the source, no
+  amount of joining upstream creates it — ask that first, not last.
+
+This is the same refusal as the V21 §4 surplus, the V24 reserve ratio
+and the V24a deficit-beside-spending, and it is worth naming as one
+rule: **the site does not place two quantities together unless it can
+say how they reconcile.**
+
 ---
 
 ## Part 3 — Test-quality debt
@@ -638,3 +667,15 @@ vacuous-gate audit (STATUS 2026-07-20/21) and after:
   extended at all: `calstate.edu` returns HTTP 403 to every scripted
   request, so the control total for any older year is uncomputable, not
   merely unreconciled — and a year that cannot be gated does not ship.
+- **Voter-approved bonds against bond spending.** Refused in
+  `docs/V25_MEASURES_FINDING.md`. The sources are individually good —
+  CEDA carries the authorised amount for 97% of 2024 school bond
+  measures — but no identifier survives from measure to issuance to
+  fund. **0 of 273** CEDA district names match a CDIAC issuer name
+  exactly; **0.87%** of K-12 issues name a measure at all, in prose;
+  and SACS Fund 21 has no measure, issuance or project dimension, so
+  the 70.9% of districts carrying two or more authorisations commingle
+  them by construction. Closing any link would be our own judgement.
+  Standing "no", including for a measure record attached to a district
+  page — that still needs the name join, which merges 179 real
+  districts.
