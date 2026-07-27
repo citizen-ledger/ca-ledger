@@ -1577,7 +1577,8 @@ def test_rename(page, base):
              "uc.html": "UC campuses",
              "about.html": "About & method",
              "reading.html": "Reading the Ledger",
-             "findings.html": "Findings"}
+             "findings.html": "Findings",
+             "bulk.html": "Bulk data"}
     for f, title in PAGES.items():
         src = (ROOT / f).read_text(encoding="utf-8")
         esc_title = title.replace("&", "&amp;")
@@ -5748,6 +5749,184 @@ def test_findings(page, base):
           and page.locator("#citeToggle").count() == 0)
 
 
+def test_bulk(page, base):
+    """Bulk exports: one complete CSV per published layer.
+
+    The assertion this exists for is COVERAGE DERIVED FROM DISK. A list of
+    layers written here would be edited to agree with whatever shipped; a
+    new layer that never got an export would pass. So the payload set is
+    globbed from the publishing root and every one of them must produce a
+    file, whether or not anyone remembered.
+
+    The second thing it protects is the absent/zero distinction. In a
+    spreadsheet those collapse silently, so both directions are asserted
+    against real rows: a null in the payload must be an EMPTY cell, and a
+    real reported zero must still be 0."""
+    import csv as _csv, hashlib as _hl
+    BULK = ROOT / "bulk"
+
+    # ---- COVERAGE, from disk. Not a list.
+    payloads = sorted(p.name for p in ROOT.glob("*-data.js"))
+    if (ROOT / "data.js").exists():
+        payloads.append("data.js")
+    payloads = sorted(payloads)
+    # bulk-manifest.js is the page's own listing, not a layer — it must not
+    # be mistaken for one, and it carries no digest so the verifier skips it
+    check("bulk: the manifest is not itself counted as a shipped layer",
+          "bulk-manifest.js" not in payloads)
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("build_bulk", ROOT / "pipeline" / "build_bulk.py")
+    bb = _il.module_from_spec(spec); spec.loader.exec_module(bb)
+    check("bulk: the generator discovers the same payload set from disk",
+          sorted(bb.discover()) == payloads,
+          f"generator {sorted(bb.discover())} vs disk {payloads}")
+    missing = [p for p in payloads if p not in bb.EXPORTERS]
+    check("bulk: EVERY shipped payload has an exporter — a new layer "
+          "without one fails here", not missing, f"no exporter for {missing}")
+    stale = [p for p in bb.EXPORTERS if p not in payloads]
+    check("bulk: and no exporter names a payload that is not on disk",
+          not stale, f"stale exporters: {stale}")
+    # positive control: the sweep found real payloads, so an empty glob
+    # cannot pass the two negatives above vacuously
+    check("bulk: the payload sweep is non-empty (positive control)",
+          len(payloads) >= 9, f"{len(payloads)} payloads")
+
+    manifest = json.loads((ROOT / "bulk-manifest.js").read_text(encoding="utf-8")
+                          .split("=", 1)[1].strip().rstrip(";"))
+    on_disk = sorted(p.name for p in BULK.glob("*.csv"))
+    listed = sorted(f["file"] for f in manifest["files"])
+    check("bulk: the manifest lists exactly the CSVs on disk",
+          listed == on_disk, f"manifest {listed} vs disk {on_disk}")
+    check("bulk: one export per payload", len(on_disk) == len(payloads),
+          f"{len(on_disk)} exports for {len(payloads)} payloads")
+
+    # ---- every file carries the provenance block the per-view CSVs carry
+    REQUIRED = ["# Citizen Ledger", "# Source dataset:", "# Accounting basis:",
+                "# Gate tier:", "# Units:", "# Data generated:", "# Exported:",
+                "# Absent values:", "# Licence:", "# Stability:"]
+    for f in on_disk:
+        head = (BULK / f).read_text(encoding="utf-8")[:4000]
+        for r in REQUIRED:
+            check(f"bulk header {f}: carries {r!r}", r in head)
+        check(f"bulk header {f}: states the absent convention in full",
+              "It is NOT zero" in head)
+        check(f"bulk header {f}: does not promise a stable shape",
+              "not stable" in head)
+        check(f"bulk header {f}: names CC0", "CC0" in head)
+
+    # ---- digests: the manifest describes the files actually on disk
+    for f in manifest["files"]:
+        real = _hl.sha256((BULK / f["file"]).read_bytes()).hexdigest()
+        check(f"bulk digest {f['file']}: manifest matches the file",
+              real == f["sha256"])
+        check(f"bulk digest {f['file']}: is quoted in the schema",
+              f["sha256"] in (BULK / "SCHEMA.md").read_text(encoding="utf-8"))
+
+    def rows_of(fname):
+        with open(BULK / fname, encoding="utf-8") as fh:
+            return list(_csv.DictReader(l for l in fh if not l.startswith("#")))
+
+    # ---- ABSENT IS NOT ZERO, asserted in BOTH directions on real rows.
+    # Special districts is the layer with genuine per-year nulls.
+    sd = rows_of("special-districts.csv")
+    empties = [r for r in sd if r["rev_gov_usd"] == ""]
+    zeros = [r for r in sd if r["rev_gov_usd"] == "0"]
+    check("bulk absent: a not-published figure is an EMPTY cell",
+          len(empties) > 0, f"{len(empties)} empty")
+    check("bulk absent: a real reported zero is still 0 (positive control)",
+          len(zeros) > 0, f"{len(zeros)} zero")
+    check("bulk absent: the two are distinguishable, not collapsed",
+          len(empties) > 0 and len(zeros) > 0
+          and not any(r["rev_gov_usd"] == "0.0" for r in sd))
+    # and the payload agrees: a null year in district-data.js is empty here
+    dd = json.loads((ROOT / "district-data.js").read_text(encoding="utf-8")
+                    .split("=", 1)[1].strip().rstrip(";"))
+    yrs = dd["years"]
+    nulls = 0
+    idx = {(r["slug"], r["fiscal_year"]): r for r in sd}
+    for slug, e in dd["districts"].items():
+        for i, fy in enumerate(yrs):
+            rev = (e.get("rev") or [None] * len(yrs))[i]
+            r = idx.get((slug, fy))
+            if r is None or rev is not None:
+                continue
+            nulls += 1
+            if r["rev_gov_usd"] != "":
+                check(f"bulk absent: {slug} {fy} null renders empty", False)
+                break
+    check("bulk absent: every payload null round-trips as an empty cell",
+          nulls > 0, f"{nulls} nulls checked")
+
+    # ---- figures round-trip against the payloads (a sample of each layer)
+    cd = json.loads((ROOT / "city-data.js").read_text(encoding="utf-8")
+                    .split("=", 1)[1].strip().rstrip(";"))
+    cr = rows_of("cities.csv")
+    want = sum(1 for e in cd["cities"].values() for fy in cd["years"]
+               if (e.get("years") or {}).get(fy))
+    check("bulk cities: every entity-year in the payload is exported",
+          len(cr) == want, f"csv {len(cr)} vs payload {want}")
+    cidx = {(r["slug"], r["fiscal_year"]): r for r in cr}
+    bad = [k for k, e in cd["cities"].items()
+           for fy, y in (e.get("years") or {}).items()
+           if y.get("expenditures") is not None
+           and cidx.get((k, fy)) is not None
+           and float(cidx[(k, fy)]["expenditures_musd"]) != y["expenditures"]]
+    check("bulk cities: expenditure figures match the payload exactly",
+          not bad, f"{len(bad)} mismatches e.g. {bad[:3]}")
+
+    # ---- the schema exists, is written for an outsider, and names the traps
+    schema = (BULK / "SCHEMA.md").read_text(encoding="utf-8")
+    for phrase in ("An empty cell is not a zero", "do not add up",
+                   "not stable", "CC0", "_kusd", "_musd"):
+        check(f"bulk schema: states {phrase!r}", phrase in schema)
+    check("bulk schema: lists every shipped file",
+          all(f in schema for f in on_disk))
+
+    # ---- the page
+    page.goto(f"{base}/bulk.html")
+    page.wait_for_selector("h1")
+    body = page.inner_text("body")
+    check("bulk page: renders its own heading", "Bulk data" in body)
+    check("bulk page: the file list is rendered from the manifest",
+          page.locator("#files .bf").count() == len(on_disk),
+          f"{page.locator('#files .bf').count()} rendered")
+    hrefs = page.eval_on_selector_all(
+        '#files a[href^="bulk/"]', "els => els.map(e => e.getAttribute('href'))")
+    check("bulk page: every listed file resolves on disk",
+          hrefs and all((ROOT / h).exists() for h in hrefs), str(hrefs)[:200])
+    check("bulk page: states the stability position plainly, without a promise",
+          "not stable" in body and "pin a copy" in body.lower())
+    check("bulk page: separates shape from licence",
+          "shape, not licence" in body and "CC0" in body)
+    check("bulk page: carries the absent-is-not-zero warning above the files",
+          "not a zero" in body.lower() and "not published" in body.lower())
+    check("bulk page: says the layers do not add up",
+          "do not add up" in body)
+
+    # reachable from about and findings; NOT from the primary nav
+    page.goto(f"{base}/about.html")
+    check("bulk: reachable from about & method",
+          page.locator('a[href="bulk.html"]').count() >= 1)
+    page.goto(f"{base}/findings.html")
+    check("bulk: reachable from the findings index",
+          page.locator('a[href="bulk.html"]').count() >= 1)
+    page.goto(f"{base}/bulk.html")
+    nav_n = page.locator("nav.pn a").count()
+    check("bulk: primary nav still has exactly ten destinations",
+          nav_n == 10, f"{nav_n} nav links")
+    check("bulk: and bulk.html is not one of them",
+          page.locator('nav.pn a[href="bulk.html"]').count() == 0)
+
+    # ---- archive voice
+    src = (ROOT / "bulk.html").read_text(encoding="utf-8").lower()
+    for w in BANNED + ["empowering", "empower", "unlock", "revolution",
+                       "game-chang", "call to action", "join us", "sign up",
+                       "our mission"]:
+        check(f"bulk voice: {w!r} absent", w not in src)
+    check("bulk voice: the scan reads real text (positive control)",
+          "stability" in src and "licence" in src)
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -6737,7 +6916,7 @@ def test_polish(page, base):
     scale is declared tokens rather than half-pixel drift."""
     PAGES = ["index.html", "cities.html", "schools.html",
              "districts.html", "address.html", "about.html", "reading.html",
-             "findings.html"]
+             "findings.html", "bulk.html"]
     # phone front door: statement within the first screen's ~250px
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{base}/index.html")
@@ -8451,7 +8630,7 @@ def test_runtime_origins():
                        "cities.html", "compensation.html", "csu.html",
                        "districts.html", "findings.html", "index.html",
                        "reading.html", "revisions.html", "schools.html",
-                       "search.html", "uc.html"])
+                       "search.html", "uc.html", "bulk.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -8516,7 +8695,7 @@ def test_shell(page, base):
     share card, and print styles that keep the figures."""
     PAGES = ["index.html", "cities.html", "schools.html",
              "districts.html", "address.html", "about.html", "reading.html",
-             "findings.html"]
+             "findings.html", "bulk.html"]
     # ---- 404 page: served, on-voice, absolute links (GitHub Pages
     # serves it at ANY missing depth, so relative links would break)
     src404 = (ROOT / "404.html").read_text(encoding="utf-8")
@@ -8711,7 +8890,7 @@ def test_mobile(browser, base):
     p = ctx.new_page()
     for name in ("index.html", "cities.html", "schools.html",
                  "districts.html", "address.html", "about.html", "reading.html",
-                 "findings.html"):
+                 "findings.html", "bulk.html"):
         p.goto(f"{base}/{name}")
         p.wait_for_load_state("networkidle")
         sw = p.evaluate("Math.max(document.documentElement.scrollWidth,"
@@ -10541,6 +10720,7 @@ def main():
             test_frontdoor_about(page, base)
             test_reading(page, base)
             test_findings(page, base)
+            test_bulk(page, base)
             test_map(page, base)
             test_mobile(browser, base)
             test_precision(page, base)
