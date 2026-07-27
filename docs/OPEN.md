@@ -629,6 +629,15 @@ June 27, June 26, June 28, June 27, June 27, June 26, June 27** — a
 three-day range, six of nine identical, because the signing date is set
 by a constitutional deadline rather than by anything about the budget.
 
+The contrast that makes the rule concrete is **already in the codebase**.
+The CCC layer stamps every apportionment with its round — `ROUND_NAME` at
+`ccc.html:309`, First Principal / Second Principal / Recalculation — and
+`meta.roundsDiffer` explains they "are computed at different points from
+different information, and they are not interchangeable." That is the
+same feature V26 proposed, shipped, on the one layer where the stamp
+changes the number. **Provenance earns its place by varying**; the CCC
+round does, the Budget Act signing date does not.
+
 The test that generalises: **before building a per-record field, measure
 its variance across the records.** A field that is constant, or nearly
 so, adds a column and no information, while *implying* a variability
@@ -645,8 +654,19 @@ that does not exist. Three checks worth running first:
   fields in 27,916 SCO column names. **The date is near-constant where it
   is published and unpublished where it would vary.**
 
-Two smaller lessons from the same probe:
+Three smaller lessons from the same probe:
 
+- **A robots block on the HTML front end is not a block on the data.**
+  This one nearly produced a wrong refusal. `leginfo.legislature.ca.gov`
+  serves `User-agent: * / Disallow: /`, and the first draft of V26 cited
+  that to conclude the Budget Act chapter number would need a third
+  manual-cache exception. It would not: the Legislature publishes bulk
+  session archives on `downloads.leginfo.legislature.ca.gov`, which
+  carries **no** exclusion — verified by content, a real Apache 404 for
+  `/robots.txt`, an 8,519-byte directory index, and `206 Partial
+  Content` with `50 4b 03 04` on a range read. **Check the publisher's
+  bulk/download host before recording an access refusal**, and never
+  infer a data-access policy from the policy on its web UI.
 - **Storing is not showing.** Keeping `publicationDate` in the payload
   for the change record is cheap and useful precisely because nothing
   renders it; that remains a live V13 item. The refusal was to the
@@ -658,6 +678,29 @@ Two smaller lessons from the same probe:
   build of this field ships *1 January 9999*. The pipeline's existing
   guard is indirect — it drops years with no agency data — and nothing
   checks the date itself.
+
+**And the methodological lesson, which cost four errors in one finding.**
+V26's first draft asserted that only the state page shows an adopted
+figure. An adversarial pass refuted it: `schools.html` renders "$81.6B
+enacted", `ccc.html` renders "$9.7 billion", `csu.html` exports a
+`state_appropriation_thousands` column. The same pass found that the
+layer count was mis-sourced, the `meta.basis` tally was off by one
+payload, and the FTR keyword sweep had omitted `appropriat` — which is
+28 header cells and the **Gann appropriations limit**, a genuinely
+board-adopted figure sitting in a corpus the finding had just called
+free of anything adopted.
+
+All four are the same error: **an absence claim resting on a search whose
+terms I chose.** The counts (27,916 cells, 33 columns) made the sweep
+*look* exhaustive while the keyword list quietly bounded it. Two habits
+follow:
+
+- **State the search terms next to the count**, so "0 hits" is legible as
+  "0 hits *for these words*" rather than as "nothing there".
+- **For any "the source contains no X" claim, have it refuted before
+  publishing it.** Enumerating what *is* present is weak evidence; a
+  reader hunting for a counterexample is strong evidence. Three of V26's
+  four errors were invisible from inside the original method.
 
 ---
 
@@ -730,9 +773,12 @@ vacuous-gate audit (STATUS 2026-07-20/21) and after:
   "adopted [date]" label there is a category error. On the one layer
   that qualifies, the source carries exactly one adoption field
   (`publicationDate`, a prose string), no adopting-body field, and nine
-  years of values spanning **three days**. The chapter number that would
-  make it a citation is only at `leginfo`, whose `robots.txt` is
-  `Disallow: /` — a third manual-cache exception for decoration.
-  **Still open and separate:** storing `publicationDate` in the payload
-  for the change record (V13 cheap improvement #5), which this refusal
-  does not touch.
+  years of values spanning **three days**. And there is no single date to
+  show: a Budget Act is amended repeatedly and the Legislature cites it
+  as a *set* of chapters ("Chapters 12, 38, and 189 of the Statutes of
+  2023"). The chapter number **is** obtainable — the Legislature's bulk
+  host carries no robots exclusion, contrary to this finding's own first
+  draft — so the refusal rests on the field being uninformative, not on
+  access. **Still open and separate:** storing `publicationDate` in the
+  payload for the change record (V13 cheap improvement #5), which this
+  refusal does not touch.
