@@ -6489,6 +6489,119 @@ def test_touch_targets(page, base):
           seen > 40, f"{seen} controls across {len(pages)} pages")
 
 
+def test_tier_chip(page, base):
+    """The tier chip completes a vocabulary the site had half-built.
+
+    districts.html and compensation.html carry an OPEN square under a
+    sentence promising "a filled mark elsewhere on the Ledger means
+    reconciled". Measured before this change: NO page carried a filled
+    mark, so the contrast that sentence depends on did not exist.
+
+    Asserted here: the pair is distinguishable by glyph AND weight (never
+    by hue, never by solid-vs-dotted at one weight), the tier reaches a
+    reader in WORDS, and — the thing this could most easily undo —
+    districts' existing separation is untouched."""
+    LAYERS = {
+        "index.html": "gated", "cities.html": "gated", "schools.html": "gated",
+        "ccc.html": "gated", "csu.html": "gated", "uc.html": "gated",
+        "districts.html": "asfiled", "compensation.html": "asfiled",
+    }
+    JS = """() => {
+      const c = document.querySelector('.tierchip');
+      if (!c) return null;
+      const cs = getComputedStyle(c), m = c.querySelector('.tc-mark');
+      const ms = m ? getComputedStyle(m) : null;
+      const lbl = c.querySelector('.tc-label');
+      return {kind: c.className, visible: c.offsetParent !== null,
+              borderStyle: cs.borderTopStyle, borderWidth: cs.borderTopWidth,
+              markFill: ms ? ms.backgroundColor : null,
+              markWidth: ms ? ms.borderTopWidth : null,
+              markAria: m ? m.getAttribute('aria-hidden') : null,
+              label: lbl ? lbl.textContent.trim() : '',
+              inBodyText: document.body.innerText.includes(
+                            lbl ? lbl.textContent.trim() : 'ZZZ')};
+    }"""
+    seen = {}
+    for name, kind in sorted(LAYERS.items()):
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(900)
+        r = page.evaluate(JS)
+        check(f"tier chip {name}: the page carries one", r is not None)
+        if not r:
+            continue
+        check(f"tier chip {name}: it is visible", r["visible"])
+        check(f"tier chip {name}: it declares the {kind} tier",
+              f"is-{kind}" in r["kind"], r["kind"])
+        # THE TIER IS IN WORDS. Border style is not an encoding — a screen
+        # reader, a fast scan and a greyscale printout all need the text.
+        check(f"tier chip {name}: the tier is real text, not only a border",
+              len(r["label"]) > 6 and r["inBodyText"], r["label"])
+        check(f"tier chip {name}: the mark is decoration on top of the words",
+              r["markAria"] == "true")
+        seen[kind] = r
+
+    # ---- THE TWO TIERS MUST NOT LOOK ALIKE. Differentiated by fill AND
+    # weight; solid-vs-dotted at one weight would let as-filed collapse
+    # into gated at a glance, which is the failure the brief names.
+    g, a = seen.get("gated"), seen.get("asfiled")
+    check("tier chip: both tiers were exercised (positive control)",
+          g is not None and a is not None)
+    if g and a:
+        check("tier chip: the marks differ in FILL — gated is filled, "
+              "as-filed is not",
+              g["markFill"] != a["markFill"]
+              and "0)" not in g["markFill"] and "0)" in a["markFill"],
+              f"gated {g['markFill']} vs as-filed {a['markFill']}")
+        check("tier chip: and in WEIGHT",
+              g["markWidth"] != a["markWidth"],
+              f"{g['markWidth']} vs {a['markWidth']}")
+        check("tier chip: and the chip borders differ in style",
+              g["borderStyle"] != a["borderStyle"],
+              f"{g['borderStyle']} vs {a['borderStyle']}")
+        check("tier chip: the two labels say different things",
+              g["label"] != a["label"])
+
+    # ---- DISTRICTS KEEPS ITS SEPARATION. The chip is additive; it must not
+    # replace the prose band, the open marks on records, or the statement.
+    page.goto(f"{base}/districts.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
+    d = page.evaluate("""() => {
+      const band = document.querySelector('.tierband');
+      const marks = [...document.querySelectorAll('.tiermark')]
+                      .filter(e => e.offsetParent !== null);
+      const body = document.body.innerText;
+      return {band: !!band && band.offsetParent !== null,
+              bandLen: band ? band.textContent.trim().length : 0,
+              openMarks: marks.length,
+              prose: body.includes('THREE OF THE FOUR FUND-CLASS COLUMNS'),
+              claim: body.includes('A FILLED MARK ELSEWHERE')};
+    }""")
+    check("tier chip: districts keeps its full prose tier band",
+          d["band"] and d["bandLen"] > 300, f"{d['bandLen']} chars")
+    check("tier chip: districts keeps the open mark on its records",
+          d["openMarks"] >= 1, f"{d['openMarks']} marks")
+    check("tier chip: districts keeps the fuller statement — the chip does "
+          "not replace it", d["prose"])
+
+    # ---- AND THE SITE'S OWN CLAIM IS NOW TRUE. districts promises a filled
+    # mark exists elsewhere; before this change none did.
+    check("tier chip: districts still makes the filled-mark claim", d["claim"])
+    page.goto(f"{base}/schools.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(900)
+    filled = page.evaluate("""() => {
+      const m = document.querySelector('.tierchip.is-gated .tc-mark');
+      if (!m) return null;
+      const cs = getComputedStyle(m);
+      return {fill: cs.backgroundColor, weight: cs.borderTopWidth};
+    }""")
+    check("tier chip: and a gated layer now carries the filled mark that "
+          "claim promises — it did not before this change",
+          filled and "0)" not in filled["fill"], str(filled))
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -11405,6 +11518,7 @@ def main():
             test_frontdoor_about(page, base)
             test_design_hygiene(page, base)
             test_nav_sheet(page, base)
+            test_tier_chip(page, base)
             test_scroll_affordance(page, base)
             test_touch_targets(page, base)
             test_reading(page, base)

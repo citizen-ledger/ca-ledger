@@ -307,6 +307,31 @@
      a 44px box would open the note belonging to the row above. */
   .pillgroup>button,.pillgroup>select{min-height:44px}
   .btn{min-height:44px}
+
+  /* ---- TIER CHIP ------------------------------------------------------
+     The site already had half of this vocabulary: districts and
+     compensation carry an OPEN square under a sentence promising that "a
+     filled mark elsewhere on the Ledger means reconciled". No page carried
+     a filled mark, so the contrast that sentence relies on did not exist.
+     This is the missing half, not a new system.
+     GLYPH and WEIGHT carry the distinction — filled 2px for gated, open
+     1.5px for as-filed — never hue, and never solid-vs-dotted at one
+     weight, which would let as-filed collapse into gated at a glance.
+     The WORDS are always present and are what a screen reader receives;
+     the mark is aria-hidden because it is decoration on top of them. */
+  .tierchip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:var(--fs-micro);letter-spacing:.08em;color:var(--ink);
+    padding:4px 10px;border-radius:2px;background:var(--wash);vertical-align:middle}
+  .tierchip .tc-mark{display:inline-block;width:9px;height:9px;flex:none}
+  .tierchip.is-gated{border:1px solid var(--ink)}
+  .tierchip.is-gated .tc-mark{background:var(--ink);border:2px solid var(--ink)}
+  .tierchip.is-asfiled{border:1px dashed var(--graphite);color:var(--graphite)}
+  .tierchip.is-asfiled .tc-mark{background:transparent;border:1.5px solid var(--graphite)}
+  @media print{
+    .tierchip{background:#fff!important;border-color:#000!important;color:#000!important}
+    .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
+      print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  }
 </style>
 </head>
 <body>
@@ -364,6 +389,7 @@
     </div>
   </div>
 </div>
+<div class="tierrow" style="padding:10px 40px 0"><span class="tierchip is-asfiled" title="the source is a live database with no as-of-date total to align to"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">AS FILED — UNRECONCILED</span></span></div>
 <div class="tierband" id="tierBand"><span class="tiermark" aria-hidden="true"></span>THIS LAYER IS AS FILED — UNRECONCILED. THE STATE CONTROLLER PUBLISHES AN ANNUAL TOTAL IN A PRESS RELEASE, BUT THIS EXPORT IS A LIVE DATABASE WITH NO AS-OF-DATE TOTAL, SO THE TWO CANNOT BE ALIGNED AT ANY INSTANT. THIS IS NOT A GATE THAT FAILED; THERE IS NO INSTANT AT WHICH A GATE COULD BE APPLIED. THE OPEN SQUARE MARKS THIS TIER; A FILLED MARK ELSEWHERE ON THE LEDGER MEANS RECONCILED.</div>
 
 <div class="vintage" id="vintageBand"></div>

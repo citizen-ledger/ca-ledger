@@ -270,6 +270,31 @@
      a 44px box would open the note belonging to the row above. */
   .pillgroup>button,.pillgroup>select{min-height:44px}
   .btn{min-height:44px}
+
+  /* ---- TIER CHIP ------------------------------------------------------
+     The site already had half of this vocabulary: districts and
+     compensation carry an OPEN square under a sentence promising that "a
+     filled mark elsewhere on the Ledger means reconciled". No page carried
+     a filled mark, so the contrast that sentence relies on did not exist.
+     This is the missing half, not a new system.
+     GLYPH and WEIGHT carry the distinction — filled 2px for gated, open
+     1.5px for as-filed — never hue, and never solid-vs-dotted at one
+     weight, which would let as-filed collapse into gated at a glance.
+     The WORDS are always present and are what a screen reader receives;
+     the mark is aria-hidden because it is decoration on top of them. */
+  .tierchip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:var(--fs-micro);letter-spacing:.08em;color:var(--ink);
+    padding:4px 10px;border-radius:2px;background:var(--wash);vertical-align:middle}
+  .tierchip .tc-mark{display:inline-block;width:9px;height:9px;flex:none}
+  .tierchip.is-gated{border:1px solid var(--ink)}
+  .tierchip.is-gated .tc-mark{background:var(--ink);border:2px solid var(--ink)}
+  .tierchip.is-asfiled{border:1px dashed var(--graphite);color:var(--graphite)}
+  .tierchip.is-asfiled .tc-mark{background:transparent;border:1.5px solid var(--graphite)}
+  @media print{
+    .tierchip{background:#fff!important;border-color:#000!important;color:#000!important}
+    .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
+      print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  }
 </style>
 </head>
 <body>
@@ -346,6 +371,7 @@
     <div class="hero-right">
       <div class="hero-num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
+      <div class="tierrow"><span class="tierchip is-asfiled" title="no published control exists for three of the four fund-class columns"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">AS FILED — UNRECONCILED</span></span></div>
       <div class="hero-lbl">FINANCIAL TRANSACTIONS REPORTS · AS FILED</div>
     </div>
   </div>
