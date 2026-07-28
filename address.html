@@ -327,15 +327,21 @@
 <script src="county-data.js"></script>
 <script src="city-geo.js"></script>
 <script src="county-geo.js"></script>
-<script src="district-data.js"></script>
-<script src="school-data.js"></script>
+<!-- district-data.js (497 KB) and school-data.js (3,666 KB) are NOT loaded
+     here. They are 70% of this page's weight and neither is needed until an
+     address resolves: the chrome states city/county/state vintages, which
+     the lighter payloads above already carry. loadRecords() injects them as
+     <script> elements when a lookup starts. That is script injection, NOT a
+     runtime data request, so this page still opens from a file:// double-click
+     like every page but compensation.html. -->
 <script>
 (function(){
   "use strict";
   const ST = window.CA_LEDGER_DATA, CITY = window.CA_CITY_DATA,
         CTY = window.CA_COUNTY_DATA, CGEO = window.CA_CITY_GEO,
-        KGEO = window.CA_COUNTY_GEO, DIST = window.CA_DISTRICT_DATA,
-        SCH = window.CA_SCHOOL_DATA;
+        KGEO = window.CA_COUNTY_GEO;
+  // filled by loadRecords(); everything reading them runs after a lookup
+  let DIST = null, SCH = null;
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const fmt = n => n.toLocaleString("en-US");
@@ -348,24 +354,52 @@
   const S = { city: null, county: null, cdp: null, via: null,
               schools: [], schoolNote: null };
 
-  const SCH_FY = SCH.years[SCH.years.length-1];
-  const SCH_OL = SCH.meta.overlap.years[SCH.meta.overlap.latest];
+  // derived from the deferred payloads, so built once they arrive rather
+  // than at parse time
+  let SCH_FY = null, SCH_OL = null, BA_COUNT = 0, SD_COUNT = 0;
   const ncesToSlug = {};
-  Object.entries(SCH.districts).forEach(([slug, d]) =>
-    (d.nces || []).forEach(id => { ncesToSlug[id] = slug; }));
-  const BA_COUNT = Object.values(SCH.districts)
-    .filter(d => ((d.years[SCH_FY]||{}).basicAidStatus === "basic-aid")).length;
-  const SD_COUNT = Object.keys(SCH.districts).length;
+  const distCountByCounty = {};
+  function deriveRecords(){
+    SCH_FY = SCH.years[SCH.years.length-1];
+    SCH_OL = SCH.meta.overlap.years[SCH.meta.overlap.latest];
+    Object.entries(SCH.districts).forEach(([slug, d]) =>
+      (d.nces || []).forEach(id => { ncesToSlug[id] = slug; }));
+    BA_COUNT = Object.values(SCH.districts)
+      .filter(d => ((d.years[SCH_FY]||{}).basicAidStatus === "basic-aid")).length;
+    SD_COUNT = Object.keys(SCH.districts).length;
+    Object.values(DIST.districts).forEach(d => {
+      if (d.county) distCountByCounty[d.county] = (distCountByCounty[d.county]||0) + 1;
+    });
+  }
+
+  // ONE injection, memoised. Resolves false if a payload does not arrive, and
+  // the caller says so rather than rendering a record with holes in it.
+  let recordsPromise = null;
+  function loadRecords(){
+    if (recordsPromise) return recordsPromise;
+    recordsPromise = Promise.all(
+      ["district-data.js", "school-data.js"].map(src => new Promise(res => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = () => res(true);
+        s.onerror = () => res(false);
+        document.head.appendChild(s);
+      }))
+    ).then(oks => {
+      DIST = window.CA_DISTRICT_DATA || null;
+      SCH = window.CA_SCHOOL_DATA || null;
+      if (!oks.every(Boolean) || !DIST || !SCH){ recordsPromise = null; return false; }
+      deriveRecords();
+      return true;
+    });
+    return recordsPromise;
+  }
 
   const geoidToSlug = {};
   CGEO.features.forEach(f => { geoidToSlug[f.properties.geoid] = f.properties.slug; });
   const countyByName = {};
   Object.entries(CTY.counties).forEach(([slug, c]) => { countyByName[c.name] = slug; });
 
-  const distCountByCounty = {};
-  Object.values(DIST.districts).forEach(d => {
-    if (d.county) distCountByCounty[d.county] = (distCountByCounty[d.county]||0) + 1;
-  });
 
   /* ---------- chrome ---------- */
   $("dataBanner").innerHTML =
@@ -406,11 +440,11 @@
       S.county = uc;
     }
     const want = (p.get("sd")||"").split(",").filter(Boolean);
-    S.schools = want.filter(s => SCH.districts[s]).slice(0,2);
+    S.schools = SCH ? want.filter(s => SCH.districts[s]).slice(0,2) : [];
     // Same contract as schools.html: an identifier that several
     // same-named districts once shared resolves to none of them.
-    const amb = (SCH.meta.ambiguousSlugs || {}).districts || {};
-    const stale = want.filter(s => !SCH.districts[s] && amb[s]);
+    const amb = SCH ? ((SCH.meta.ambiguousSlugs || {}).districts || {}) : {};
+    const stale = SCH ? want.filter(s => !SCH.districts[s] && amb[s]) : [];
     S.schoolNote = stale.length
       ? "This link uses the identifier " + stale[0] + ", which more than one "
         + "district of that name has shared; it cannot say which was meant. "
@@ -459,7 +493,19 @@
       vintage: "Current_Current", layers: LAYERS}).toString();
   }
 
-  function resolveGeographies(g, label){
+  async function resolveGeographies(g, label){
+    // the records arrive here, not at page load. A failure is stated
+    // rather than rendered as an empty record: the same discipline the
+    // map already uses when its tiles do not load.
+    $("status").textContent = "Loading the records\u2026";
+    const ok = await loadRecords();
+    if (!ok){
+      fail("The record files could not be loaded, so no government "
+         + "record can be shown for that address. Nothing has been "
+         + "estimated in their place.");
+      return;
+    }
+    $("status").textContent = "";
     const inc = (g["Incorporated Places"]||[])[0];
     const cdp = (g["Census Designated Places"]||[])[0];
     const cty = (g["Counties"]||[])[0];
@@ -542,7 +588,7 @@
       }
       $("status").textContent = "";
       lastMatched = m[0].matchedAddress || null;
-      resolveGeographies(m[0].geographies || {}, "geocoder");
+      await resolveGeographies(m[0].geographies || {}, "geocoder");
     } catch(e){
       fail("The Census geocoder could not be reached.");
     }
@@ -673,7 +719,7 @@
       const data = await jsonp(geoUrlForPoint(lastPin[0], lastPin[1]));
       $("status").textContent = "";
       lastMatched = null;
-      resolveGeographies((((data||{}).result)||{}).geographies || {}, "pin");
+      await resolveGeographies((((data||{}).result)||{}).geographies || {}, "pin");
     } catch(e){
       fail("The Census geocoder could not be reached. “Resolve on this device” works without any network.");
     }
@@ -703,7 +749,15 @@
     }
     return false;
   }
-  function localResolve(lng, lat){
+  async function localResolve(lng, lat){
+    $("status").textContent = "Loading the records\u2026";
+    if (!await loadRecords()){
+      fail("The record files could not be loaded, so no government "
+         + "record can be shown for that point. Nothing has been "
+         + "estimated in their place.");
+      return;
+    }
+    $("status").textContent = "";
     const cityF = CGEO.features.find(f => pointInFeature(lng, lat, f));
     const ctyF = KGEO.features.find(f => pointInFeature(lng, lat, f));
     if (!cityF && !ctyF){ fail("That point is outside every boundary this site ships."); return; }
@@ -1247,10 +1301,32 @@
     a.download = "ca-ledger-your-governments-" + (S.city || "uninc-" + S.county) + ".csv";
     a.click(); URL.revokeObjectURL(a.href);
   });
-  window.addEventListener("hashchange", () => { applyHash(); render(); });
+  // A permalink that names a government needs the records; a bare visit
+  // does not, and must not pay 4.2 MB to see an empty form.
+  function hashWantsRecords(){
+    const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    return !!(p.get("c") || p.get("uc") || p.get("sd"));
+  }
+  async function applyHashAndRender(){
+    if (hashWantsRecords()){
+      // a permalink that names a government and cannot load it must SAY so.
+      // Rendering with the records missing would show an empty record sheet,
+      // which reads as "this government has no figures" rather than "the
+      // file did not arrive" — the absence/zero distinction, one level up.
+      if (!await loadRecords()){
+        applyHash(); render();
+        fail("The record files could not be loaded, so the government named "
+           + "in this link cannot be shown. Nothing has been estimated in "
+           + "their place.");
+        return;
+      }
+    }
+    applyHash(); render();
+  }
+  window.addEventListener("hashchange", applyHashAndRender);
 
   /* ---------- boot ---------- */
-  applyHash(); render();
+  applyHashAndRender();
   $("printCite").textContent = "Citizen Ledger — Your governments. Records stack and never sum. "
     + "Generated " + CITY.meta.generated + ".";
 })();

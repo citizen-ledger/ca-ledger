@@ -6048,6 +6048,92 @@ def test_revisions_event_legible(page, base):
                   "Event" in str(r["labelled"]), str(r["labelled"]))
 
 
+def test_mobile_blocked_tasks(page, base):
+    """Two things a phone reader could not do at all.
+
+    1. index.html's view group was overflow-x:hidden, which is
+       programmatically scrollable and user-scrollable by neither drag nor
+       scrollbar — so the fifth view (Revenue) was simply gone at 360 and
+       390. Asserted on REACHABILITY, per button, not on a CSS property.
+    2. address.html pulled every layer payload before it could answer one
+       lookup. Asserted on what is REQUESTED, and on the page still saying
+       so plainly when a deferred payload does not arrive."""
+    # ---- 1. every view of the state budget is on screen at every width
+    for width in (360, 390, 430):
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(f"{base}/index.html")
+        page.wait_for_selector("#viewGroup button")
+        r = page.evaluate("""(vw) => {
+          const g = document.getElementById('viewGroup');
+          const b = [...g.querySelectorAll('button')];
+          return {names: b.map(x => x.textContent.trim()),
+                  offscreen: b.filter(x => x.getBoundingClientRect().right > vw + 1)
+                              .map(x => x.textContent.trim()),
+                  hidden: g.scrollWidth - g.clientWidth};
+        }""", width)
+        check(f"blocked {width}: the view group renders every view "
+              f"({len(r['names'])} found)", len(r["names"]) >= 5, str(r["names"]))
+        check(f"blocked {width}: no view is off-screen", not r["offscreen"],
+              f"offscreen: {r['offscreen']}")
+        check(f"blocked {width}: and none is clipped inside the group",
+              r["hidden"] == 0, f"{r['hidden']}px hidden")
+        # behavioural: the last view can actually be activated
+        page.locator("#viewGroup button").last.click()
+        page.wait_for_timeout(400)
+        on = page.evaluate(
+            "() => [...document.querySelectorAll('#viewGroup button')]"
+            ".filter(b => b.classList.contains('on')).map(b => b.textContent.trim())")
+        check(f"blocked {width}: the last view activates when tapped",
+              len(on) == 1, str(on))
+
+    # ---- 2. address.html defers the heavy payloads
+    HEAVY = {"school-data.js", "district-data.js"}
+    page.set_viewport_size({"width": 390, "height": 800})
+    seen = set()
+    page.on("request", lambda r: seen.add(r.url.split("/")[-1].split("?")[0]))
+    page.goto(f"{base}/address.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(800)
+    got_heavy = seen & HEAVY
+    check("address: a bare visit does not pull the record payloads",
+          not got_heavy, f"pulled: {sorted(got_heavy)}")
+    # positive control: it DID load the payloads it genuinely needs, so the
+    # negative above cannot pass because nothing loaded at all
+    check("address: the light payloads it needs are still eager "
+          "(positive control)",
+          {"city-geo.js", "county-data.js"} <= seen, f"saw {sorted(seen)[:8]}")
+    check("address: the form renders without the record payloads",
+          page.locator("#dataBanner").inner_text().strip() != "")
+
+    # ---- and pulls them when a lookup actually needs them
+    seen.clear()
+    page.goto(f"{base}/address.html#c=oakland")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2500)
+    check("address: a permalink naming a government does pull them",
+          HEAVY <= seen, f"pulled: {sorted(seen & HEAVY)}")
+    check("address: and the record renders",
+          "Oakland" in page.inner_text("body"))
+
+    # ---- honest degradation: a payload that does not arrive is STATED
+    # a fresh context: the successful load above would otherwise be served
+    # from cache and the abort would never fire, passing this vacuously
+    page.context.clear_cookies()
+    page.route("**/school-data.js", lambda route: route.abort())
+    page.goto("about:blank")
+    page.goto(f"{base}/address.html#c=oakland")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2500)
+    body = page.inner_text("body")
+    check("address: a failed record load is stated, not rendered as an "
+          "empty record", "could not be loaded" in body)
+    check("address: and it says nothing was estimated in their place",
+          "estimated" in body.lower())
+    check("address: it still offers a route onward",
+          page.locator('a[href="cities.html"]').count() >= 1)
+    page.unroute("**/school-data.js")
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -10406,8 +10492,14 @@ def test_v23a_compensation(page, base):
 
     # ---- THE FILE:// RULE. Every page but this one must work from a
     # double-click, so no other page may acquire a runtime fetch.
+    # HTML comments are stripped first: this is a source-text check, and a
+    # comment saying "not fetch()" is not a runtime call. address.html's
+    # deferred-load comment tripped this before the strip was added.
+    def _code(f):
+        return _re_sub(r"<!--.*?-->", "", f.read_text(), flags=__import__("re").S)
+    _re_sub = __import__("re").sub
     fetchers = sorted(f.name for f in ROOT.glob("*.html")
-                      if "fetch(" in f.read_text())
+                      if "fetch(" in _code(f))
     check("v23a architecture: compensation.html is the ONLY page that "
           "fetches at runtime — every other page still works from a "
           "file:// double-click",
@@ -10947,6 +11039,7 @@ def main():
             test_findings(page, base)
             test_touch_caveats(page, base)
             test_revisions_event_legible(page, base)
+            test_mobile_blocked_tasks(page, base)
             test_bulk(page, base)
             test_map(page, base)
             test_mobile(browser, base)

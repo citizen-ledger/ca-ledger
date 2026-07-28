@@ -137,7 +137,21 @@
 
   /* controls */
   .controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:34px;flex-wrap:wrap}
-  .pillgroup{display:flex;align-items:center;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  /* WRAP RATHER THAN CLIP. overflow:hidden is here to clip the buttons
+     to the pill radius, but it also hid the fifth view: at 360px the
+     Revenue button's right edge sat at 405px, inside a container a
+     finger cannot scroll (hidden is programmatically scrollable and
+     user-scrollable by neither drag nor scrollbar). One of five views
+     of the state budget was simply gone on a phone.
+     flex-wrap costs nothing at desktop — there is room, so it does not
+     wrap — and at phone widths it puts every view on screen without a
+     scroll gesture to discover. The radius relaxes when wrapped,
+     because a two-row pill is not a pill. */
+  .pillgroup{display:flex;align-items:center;flex-wrap:wrap;border:1px solid var(--ash);border-radius:9999px;overflow:hidden}
+  @media(max-width:470px){
+    .pillgroup{border-radius:8px}
+    .pillgroup>button{flex:1 0 auto}
+  }
   .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:var(--fs-data);color:var(--ink);border-left:1px solid var(--ash)}
   .pillgroup>button:first-child{border-left:none}
   .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
