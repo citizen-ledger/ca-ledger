@@ -3,8 +3,9 @@
 # Accounting basis: Unaudited actual expenditures as filed under the state's Standardized Account Code Structure (SACS); Current Expense of Education
 # Gate tier: GATED TO THE CENT for school districts, against the Department of Education's published Current Expense of Education. County offices and charter schools are RECORDS ONLY — the Department excludes them from its per-pupil statistic and so does the Ledger
 # Units: dollars; ADA in average daily attendance
+# Measured as: UNAUDITED ACTUAL EXPENDITURES AS FILED UNDER THE STATE'S STANDARDIZED ACCOUNT CODE STRUCTURE (SACS) · DOLLARS · NOMINAL AS PUBLISHED · ALL SHIPPED YEARS · GATED TO THE CENT FOR SCHOOL DISTRICTS, AGAINST THE DEPARTMENT OF EDUCATION'S PUBLISHED CURRENT EXPENSE OF EDUCATION
 # Data generated: 2026-07-25
-# Exported: 2026-07-27
+# Exported: 2026-07-28
 # Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
 # Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
 # Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.

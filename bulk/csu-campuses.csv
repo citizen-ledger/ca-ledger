@@ -3,8 +3,9 @@
 # Accounting basis: Audited GAAP / GASB full accrual, from CSU's systemwide financial statements
 # Gate tier: GATED TO THE THOUSAND against the audited statement total — exact fidelity at the source's own denomination, which is thousands
 # Units: thousands of dollars, except per_student_usd which is dollars
+# Measured as: AUDITED GAAP / GASB FULL ACCRUAL, FROM CSU'S SYSTEMWIDE FINANCIAL STATEMENTS · THOUSANDS OF DOLLARS, EXCEPT PER_STUDENT_USD WHICH IS DOLLARS · NOMINAL AS PUBLISHED · ALL SHIPPED YEARS · GATED TO THE THOUSAND AGAINST THE AUDITED STATEMENT TOTAL
 # Data generated: 2026-07-22
-# Exported: 2026-07-27
+# Exported: 2026-07-28
 # Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
 # Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
 # Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.

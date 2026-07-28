@@ -450,6 +450,12 @@
     .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
       print-color-adjust:exact;-webkit-print-color-adjust:exact}
   }
+
+  /* the line sits ON the record, immediately above the figures, so a
+     screenshot that captures the number captures what it measures */
+  .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
+    padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -546,6 +552,7 @@
       <div class="hero-num" id="totalNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub"><span class="loading">Figures load with the record</span><span id="perCapNum" hidden></span><span id="yoyNum" hidden></span></div>
       <div class="tierrow"><span class="tierchip is-gated" title="reproduces the Department of Finance's published statewide total"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">GATED · EXACT, IN THOUSANDS</span></span></div>
+      <div class="basisline" id="basisLine"></div>
       <div class="hero-lbl" id="totalLbl">TOTAL APPROPRIATIONS · STATE FUNDS</div>
     </div>
   </div>
@@ -1546,6 +1553,37 @@
   /* ---------- citation / CSV ---------- */
   /* A citation of a real figure that does not name the index is exactly
      the artifact this feature would be attacked on. */
+
+  /* ---- THE BASIS LINE -------------------------------------------------
+     One mono restatement of exactly what is being measured. A screenshot
+     or a copied figure is otherwise ambiguous about unit, inflation basis
+     and federal scope — three things this page lets a reader change.
+     COMPOSED FROM LIVE STATE, never written out per view: a basis line
+     that can drift from the figure it describes is worse than none, so
+     every clause reads S.* at call time and the same function feeds the
+     page, the CSV header, the print sheet and the citation. */
+  const UNIT_WORDS = {dollars:"DOLLARS", perResident:"DOLLARS PER RESIDENT",
+                      percent:"PERCENT OF THE DISPLAYED TOTAL"};
+  function basisLine(){
+    const parts = [];
+    parts.push(S.view === "actuals"
+      ? "ENACTED APPROPRIATIONS AND DOF ACTUALS, BUDGETARY-LEGAL"
+      : S.view === "revenue" ? "REVENUE, BUDGETARY-LEGAL"
+      : "ENACTED APPROPRIATIONS, BUDGETARY-LEGAL");
+    parts.push(UNIT_WORDS[S.unit] || String(S.unit).toUpperCase());
+    parts.push(realOn()
+      ? "REAL, FY " + DEFM.baseYear + " DOLLARS (THE LEDGER'S OWN ADJUSTMENT)"
+      : "NOMINAL AS PUBLISHED");
+    parts.push(S.fed ? "FEDERAL FUNDS INCLUDED" : "FEDERAL FUNDS EXCLUDED");
+    parts.push("FY " + S.year);
+    parts.push("GATED · EXACT, IN THOUSANDS");
+    return parts.join(" · ");
+  }
+  function paintBasisLine(){
+    const el = document.getElementById("basisLine");
+    if (el) el.textContent = basisLine();
+  }
+
   function basisCitation(){
     if (!realOn())
       return "Figures in nominal dollars as published; not adjusted for inflation. ";
@@ -1623,6 +1661,7 @@
         "# View: " + (S.fed ? "state + federal funds" : "state funds (General + special + bond)"),
         "# Permalink: " + location.href,
         "# Units: billions of dollars",
+        "# Measured as: " + basisLine(),
         "# Dollar basis: " + csvBasisLine(),
         (S.drill?"Department":"Agency") + ",Enacted ($B),Actual ($B),Difference ($B),Difference (%)"
       ];
@@ -1651,7 +1690,8 @@
         + (S.q ? ' · filter: "' + S.q + '"' : ""),
       "# Permalink: " + location.href,
       "# Units: billions of dollars, except Share (percent) and Per resident (dollars)",
-      "# Dollar basis: " + csvBasisLine(),
+      "# Measured as: " + basisLine(),
+        "# Dollar basis: " + csvBasisLine(),
       (S.drill?"Department":"Agency") + ",General Fund ($B),Special Funds ($B),Bond Funds ($B)"
         + (S.fed?",Federal Funds ($B)":"") + ",Total ($B),Share of total (%),Per resident ($)"
     ];
@@ -2097,6 +2137,7 @@
     if (S.view==="trend") renderTrend(C);
     if (S.view==="actuals") renderActuals(C);
     if (S.view==="revenue") renderRevenue();
+    paintBasisLine();
     // shown wherever a direction glyph actually rendered — derived, so a lens
     // that gains or loses glyphs cannot drift out of step with its caveat
     (function(){

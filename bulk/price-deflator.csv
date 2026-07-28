@@ -3,8 +3,9 @@
 # Accounting basis: Implicit Price Deflator for State and Local Government Purchases of Goods and Services
 # Gate tier: NOT A GATED LAYER — this is a published index the Ledger applies, and the choice to apply it is the Ledger's own methodological decision rather than reproduction of a source's figure
 # Units: index, base year 2024-25
+# Measured as: IMPLICIT PRICE DEFLATOR FOR STATE AND LOCAL GOVERNMENT PURCHASES OF GOODS AND SERVICES · INDEX, BASE YEAR 2024-25 · NOMINAL AS PUBLISHED · ALL SHIPPED YEARS · NOT A GATED LAYER
 # Data generated: 2026-07-24
-# Exported: 2026-07-27
+# Exported: 2026-07-28
 # Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
 # Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
 # Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.

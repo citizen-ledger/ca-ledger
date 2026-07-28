@@ -1,5 +1,5 @@
 var BULK = {
- "generated": "2026-07-27",
+ "generated": "2026-07-28",
  "sourcePayloads": [
   "ccc-data.js",
   "city-data.js",
@@ -22,8 +22,8 @@ var BULK = {
    "blurb": "Reported actual revenues and expenditures by function, per city per year.",
    "rows": 3856,
    "cols": 22,
-   "bytes": 495374,
-   "sha256": "f4e740f22724aeb0077b41385c25b3614d5957e6201679a501ccae7d10c5f2d4"
+   "bytes": 495586,
+   "sha256": "77a64e67fdb171e4c2a5ff6bccb5e380d2d8472154dd26f31e1f73ada8d33b2a"
   },
   {
    "file": "community-colleges.csv",
@@ -31,8 +31,8 @@ var BULK = {
    "blurb": "District Current Expense of Education with apportionment figures where the source publishes them.",
    "rows": 1086,
    "cols": 15,
-   "bytes": 132326,
-   "sha256": "4a6fe526e94d43c0e4a79a6e0487840500e69c0b26ca7b0a33dac540ad52fe67"
+   "bytes": 132561,
+   "sha256": "39d41a79c6cad48e7dd5aa1a0ffc95b8b8d472b462bdd3277078b01e256067b3"
   },
   {
    "file": "compensation.csv",
@@ -40,8 +40,8 @@ var BULK = {
    "blurb": "Reported positions, wages and retirement/health per employer. Positions, not people.",
    "rows": 4132,
    "cols": 10,
-   "bytes": 503908,
-   "sha256": "aa8d87c69d2294f900464e200f784cf6e54bf40cd2c3a7ab8f1c5c50e1d382c5"
+   "bytes": 504121,
+   "sha256": "51fa1887809228a033b2a1b361a52c9870ca0b7d8b5449a303e3e3c7ca5f9390"
   },
   {
    "file": "counties.csv",
@@ -49,8 +49,8 @@ var BULK = {
    "blurb": "The same State Controller form, filed by counties. A county serves the whole county.",
    "rows": 456,
    "cols": 21,
-   "bytes": 64667,
-   "sha256": "6640815a3574fffcec51466cd39deeccfeb740d97250c5918cc77a8af8717051"
+   "bytes": 64879,
+   "sha256": "418120b45b0b6843c924af1fe02eaa431565c0d8dc04bf2d69afb28073e085e0"
   },
   {
    "file": "csu-campuses.csv",
@@ -58,8 +58,8 @@ var BULK = {
    "blurb": "Audited operating expense per campus. One fiscal year \u2014 older years cannot be gated.",
    "rows": 23,
    "cols": 7,
-   "bytes": 2806,
-   "sha256": "b7e4910164c8f42a1b6f372d0eb2c52bdfcf897a6f84c9c561c54e513da5f5f6"
+   "bytes": 3069,
+   "sha256": "e4257be380a0d2290009650774b81db1dfb24954f626322ff52769ddf797907d"
   },
   {
    "file": "k12-schools.csv",
@@ -67,8 +67,8 @@ var BULK = {
    "blurb": "Districts, county offices and charter schools, with the per-pupil denominator and the function split.",
    "rows": 16928,
    "cols": 27,
-   "bytes": 3165853,
-   "sha256": "97e7f36907a7c1f3b326be7f802cd94cf92903ce4d57e40eb3693d31fe941a51"
+   "bytes": 3166144,
+   "sha256": "63c8bdd0d98180f0713fc908e8f38b7b95ace13321b9707304459b03fa2c517a"
   },
   {
    "file": "price-deflator.csv",
@@ -76,8 +76,8 @@ var BULK = {
    "blurb": "The index behind every real-dollar figure on the site. A supporting series, not a layer.",
    "rows": 82,
    "cols": 3,
-   "bytes": 3405,
-   "sha256": "3a658e6af82403d5fdfced36b58fc7a7b40f13353e1ae8e2dffc86e26d0eb68b"
+   "bytes": 3601,
+   "sha256": "7f0578dbf364a96fac8e7d91e94df86bdbe22eea05b098ddd4936011f239a6e9"
   },
   {
    "file": "special-districts.csv",
@@ -85,8 +85,8 @@ var BULK = {
    "blurb": "Every filing district, by fund class, as filed and unreconciled.",
    "rows": 38015,
    "cols": 15,
-   "bytes": 6005241,
-   "sha256": "f34977fbf92a64c2a88e4dc17f88030a8c694634936ab566182429ad30d803ab"
+   "bytes": 6005392,
+   "sha256": "276ce0f067791e3b357965ca99f7e4f3be94ad23852b21a6ca90c024e929538c"
   },
   {
    "file": "state-budget.csv",
@@ -94,8 +94,8 @@ var BULK = {
    "blurb": "Enacted appropriations by agency and department, with Department of Finance actuals on the same basis where published.",
    "rows": 1837,
    "cols": 12,
-   "bytes": 173695,
-   "sha256": "bc162c0dbc4a3faa9be3c0eb55003b037594a0eb094ac35e46d97ecae4d96409"
+   "bytes": 173934,
+   "sha256": "3fce840a953b96b5b4e6e5c7962dc1188457ae3d60c5be4a82d3e33144a38a09"
   },
   {
    "file": "uc-campuses.csv",
@@ -103,8 +103,8 @@ var BULK = {
    "blurb": "Audited expense with medical centres and auxiliaries separated on UC's own lines.",
    "rows": 50,
    "cols": 20,
-   "bytes": 8163,
-   "sha256": "d18fc422d2db50ddcbcc359871c3c9a4d7fac368d09b65265e3146da9f615a84"
+   "bytes": 8455,
+   "sha256": "63c8aa98aa60599fac797bb5468281853cf4ce438a56df5a51f4fb2795c5b3c4"
   }
  ]
 };
