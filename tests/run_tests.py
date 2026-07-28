@@ -6602,6 +6602,115 @@ def test_tier_chip(page, base):
           filled and "0)" not in filled["fill"], str(filled))
 
 
+def test_basis_line(page, base):
+    """One mono restatement of exactly what is being measured.
+
+    The point is that a screenshot or a copied figure is otherwise
+    ambiguous about unit, inflation basis and federal scope. So the
+    assertion that matters is not that the line EXISTS — it is that the
+    line MOVES when the thing it describes moves. A fixed default would
+    pass an existence check and be worse than nothing."""
+    LAYERS = ["index.html", "cities.html", "schools.html", "districts.html",
+              "csu.html", "ccc.html", "uc.html"]
+    for name in LAYERS:
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1500)
+        r = page.evaluate("""() => {
+          const el=document.getElementById('basisLine');
+          if(!el) return null;
+          const cs=getComputedStyle(el);
+          return {text:el.textContent.trim(), visible:el.offsetParent!==null,
+                  mono:cs.fontFamily.toLowerCase().includes('mono'),
+                  inBody:document.body.innerText.includes(el.textContent.trim())};
+        }""")
+        check(f"basis line {name}: the layer carries one", r is not None)
+        if not r:
+            continue
+        check(f"basis line {name}: it is visible on the record", r["visible"])
+        check(f"basis line {name}: set in the mono voice — it is provenance, "
+              "not prose", r["mono"], r.get("mono"))
+        check(f"basis line {name}: it is real text a copy or a reader-mode "
+              "extraction carries", r["inBody"])
+        # it must state a PERIOD and a TIER — the two a bare figure loses first
+        check(f"basis line {name}: names the fiscal year or span",
+              "FY " in r["text"], r["text"][:80])
+        check(f"basis line {name}: names the tier",
+              "GATED" in r["text"] or "AS FILED" in r["text"]
+              or "RECORDS ONLY" in r["text"], r["text"][:80])
+        check(f"basis line {name}: names the inflation basis",
+              "NOMINAL" in r["text"] or "REAL" in r["text"], r["text"][:80])
+
+    # ---- THE ASSERTION THIS EXISTS FOR: the line tracks the view.
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#basisLine")
+    page.wait_for_timeout(1200)
+    read = lambda: page.inner_text("#basisLine").strip()
+    start = read()
+    check("basis line: the default states dollars, nominal, federal excluded",
+          "DOLLARS" in start and "NOMINAL" in start
+          and "FEDERAL FUNDS EXCLUDED" in start, start)
+
+    moved = {}
+    for label, sel, expect in (
+            ("unit", "#unitGroup button:nth-child(2)", "PER RESIDENT"),
+            ("federal scope", "#fedToggle", "FEDERAL FUNDS INCLUDED"),
+            ("inflation basis", "#basisGroup button:nth-child(2)", "REAL")):
+        before = read()
+        b = page.locator(sel)
+        check(f"basis line: the {label} control exists to drive it "
+              "(positive control)", b.count() > 0, sel)
+        if not b.count():
+            continue
+        b.first.click()
+        page.wait_for_timeout(700)
+        after = read()
+        moved[label] = after != before
+        check(f"basis line: changing the {label} changes the line",
+              after != before, f"unchanged: {after[:70]}")
+        check(f"basis line: and it says so — {expect!r} appears",
+              expect in after, after[:90])
+    check("basis line: every dimension the brief names moved it",
+          all(moved.values()) and len(moved) == 3, str(moved))
+
+    # NEGATIVE CONTROL: a control that changes only how the same measure is
+    # DRAWN must not rewrite what it says is measured. Lens is not basis.
+    before = read()
+    lens = page.locator("#viewGroup button", has_text="Trend")
+    # assert the control is THERE before asserting anything about tapping it —
+    # a guarded check that silently does not run is the vacuity the suite's
+    # own guard exists to catch, and it caught this one
+    check("basis line: the lens control exists (positive control)",
+          lens.count() > 0)
+    lens.first.click()
+    page.wait_for_timeout(700)
+    after = read()
+    check("basis line: the unit/inflation/federal clauses survive a lens "
+          "change — a lens redraws, it does not remeasure",
+          after.split(" · ")[1:4] == before.split(" · ")[1:4],
+          f"{before[:60]} -> {after[:60]}")
+
+    # ---- and the SAME line reaches the CSV, not a second hand-written one
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#basisLine")
+    page.wait_for_timeout(1000)
+    src = (ROOT / "index.html").read_text(encoding="utf-8")
+    check("basis line: the CSV header is fed by the same function the page "
+          "renders, not a separate string",
+          '"# Measured as: " + basisLine()' in src)
+
+    # ---- the bulk exports carry it too
+    for f in sorted((ROOT / "bulk").glob("*.csv")):
+        head = f.read_text(encoding="utf-8")[:3000]
+        check(f"basis line: bulk/{f.name} carries a Measured as line",
+              "# Measured as:" in head)
+        line = [l for l in head.split("\n") if l.startswith("# Measured as:")][0]
+        check(f"basis line: bulk/{f.name} states its inflation basis",
+              "NOMINAL" in line or "REAL" in line, line[:90])
+        check(f"basis line: bulk/{f.name} states a period rather than "
+              "inventing a single year", "YEAR" in line.upper(), line[:90])
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -11519,6 +11628,7 @@ def main():
             test_design_hygiene(page, base)
             test_nav_sheet(page, base)
             test_tier_chip(page, base)
+            test_basis_line(page, base)
             test_scroll_affordance(page, base)
             test_touch_targets(page, base)
             test_reading(page, base)

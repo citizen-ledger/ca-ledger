@@ -3,8 +3,9 @@
 # Accounting basis: Reported actual revenues and expenditures from standardized annual financial reports filed with the State Controller; governmental activities only — ratepayer-funded enterprise funds, internal service funds and conduit financing are excluded from the function figures
 # Gate tier: AS FILED — reconciled to the Controller's published statewide totals where one exists; the function split is the Controller's own
 # Units: millions of dollars; population in persons
+# Measured as: REPORTED ACTUAL REVENUES AND EXPENDITURES FROM STANDARDIZED ANNUAL FINANCIAL REPORTS FILED WITH THE STATE CONTROLLER · MILLIONS OF DOLLARS · NOMINAL AS PUBLISHED · ALL SHIPPED YEARS · AS FILED
 # Data generated: 2026-07-24
-# Exported: 2026-07-27
+# Exported: 2026-07-28
 # Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
 # Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
 # Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.

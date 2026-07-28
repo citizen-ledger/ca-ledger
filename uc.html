@@ -310,6 +310,12 @@
     .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
       print-color-adjust:exact;-webkit-print-color-adjust:exact}
   }
+
+  /* the line sits ON the record, immediately above the figures, so a
+     screenshot that captures the number captures what it measures */
+  .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
+    padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -388,6 +394,7 @@
       <div class="hero-num num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
       <div class="tierrow"><span class="tierchip is-gated" title="reproduces UC's audited statement total at the source's own denomination"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">GATED · TO THE THOUSAND</span></span></div>
+      <div class="basisline" id="basisLine"></div>
       <div class="hero-lbl" id="heroLbl">CORE (EDUCATION &amp; RESEARCH) AFTER UC'S OWN STRIP</div>
     </div>
   </div>
@@ -687,7 +694,25 @@
     if (b) b.addEventListener("click", function(){ if (!this.disabled) window.print(); });
   })();
 
+  
+  /* ---- THE BASIS LINE. Composed from live state; see index.html. */
+  const UNIT_WORDS = {core:"THOUSANDS OF DOLLARS, EDUCATION CORE",
+                      total:"THOUSANDS OF DOLLARS, ALL ACTIVITIES",
+                      perStudent:"DOLLARS PER STUDENT FTE"};
+  function basisLine(){
+    return ["UC AUDITED GAAP / GASB FULL ACCRUAL",
+            UNIT_WORDS[S.unit] || String(S.unit).toUpperCase(),
+            (S.basis === "real" ? "REAL DOLLARS (THE LEDGER'S OWN ADJUSTMENT)"
+                                : "NOMINAL AS PUBLISHED"),
+            "FY " + S.year,
+            "GATED \u00b7 TO THE THOUSAND"].join(" \u00b7 ");
+  }
+  function paintBasisLine(){
+    const el=document.getElementById("basisLine"); if(el) el.textContent=basisLine();
+  }
+
   function render(){
+    paintBasisLine();
     const fy = S.year, sw = SWY(fy);
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderRecordSheet();

@@ -293,6 +293,12 @@
     .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
       print-color-adjust:exact;-webkit-print-color-adjust:exact}
   }
+
+  /* the line sits ON the record, immediately above the figures, so a
+     screenshot that captures the number captures what it measures */
+  .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
+    padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -372,6 +378,7 @@
       <div class="hero-num num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
       <div class="tierrow"><span class="tierchip is-gated" title="reproduces CSU's audited statement total at the source's own denomination"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">GATED · TO THE THOUSAND</span></span></div>
+      <div class="basisline" id="basisLine"></div>
       <div class="hero-lbl" id="heroLbl">UNIVERSITY TOTAL OPERATING EXPENSES · GAAP ACCRUAL · FY 2023-24</div>
     </div>
   </div>
@@ -584,7 +591,26 @@
     });
   })();
 
+  
+  /* ---- THE BASIS LINE. Composed from live state; see index.html. This
+     layer is a single gated fiscal year (older years are uncomputable, see
+     docs/V15) and has no inflation toggle, so it claims neither. */
+  const UNIT_WORDS = {total:"THOUSANDS OF DOLLARS",
+                      perStudent:"DOLLARS PER STUDENT",
+                      percent:"PERCENT OF THE DISPLAYED TOTAL"};
+  function basisLine(){
+    return ["CSU AUDITED GAAP / GASB FULL ACCRUAL",
+            UNIT_WORDS[S.unit] || String(S.unit).toUpperCase(),
+            "NOMINAL AS PUBLISHED",
+            "FY " + (D.meta.year || D.meta.vintage || ""),
+            "GATED \u00b7 TO THE THOUSAND"].join(" \u00b7 ");
+  }
+  function paintBasisLine(){
+    const el=document.getElementById("basisLine"); if(el) el.textContent=basisLine();
+  }
+
   function render(){
+    paintBasisLine();
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderRecordSheet();
     $("heroNum").textContent = moneyB(SW.universityOpexpK);

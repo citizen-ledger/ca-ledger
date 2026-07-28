@@ -1,6 +1,6 @@
 # Citizen Ledger — bulk data schema
 
-*Generated 2026-07-27. One CSV per published layer, covering every entity and every shipped year.*
+*Generated 2026-07-28. One CSV per published layer, covering every entity and every shipped year.*
 
 ## Before you use these
 
@@ -45,16 +45,16 @@ shasum -a 256 bulk/<file>.csv
 
 | file | sha256 |
 |---|---|
-| `cities.csv` | `f4e740f22724aeb0077b41385c25b3614d5957e6201679a501ccae7d10c5f2d4` |
-| `community-colleges.csv` | `4a6fe526e94d43c0e4a79a6e0487840500e69c0b26ca7b0a33dac540ad52fe67` |
-| `compensation.csv` | `aa8d87c69d2294f900464e200f784cf6e54bf40cd2c3a7ab8f1c5c50e1d382c5` |
-| `counties.csv` | `6640815a3574fffcec51466cd39deeccfeb740d97250c5918cc77a8af8717051` |
-| `csu-campuses.csv` | `b7e4910164c8f42a1b6f372d0eb2c52bdfcf897a6f84c9c561c54e513da5f5f6` |
-| `k12-schools.csv` | `97e7f36907a7c1f3b326be7f802cd94cf92903ce4d57e40eb3693d31fe941a51` |
-| `price-deflator.csv` | `3a658e6af82403d5fdfced36b58fc7a7b40f13353e1ae8e2dffc86e26d0eb68b` |
-| `special-districts.csv` | `f34977fbf92a64c2a88e4dc17f88030a8c694634936ab566182429ad30d803ab` |
-| `state-budget.csv` | `bc162c0dbc4a3faa9be3c0eb55003b037594a0eb094ac35e46d97ecae4d96409` |
-| `uc-campuses.csv` | `d18fc422d2db50ddcbcc359871c3c9a4d7fac368d09b65265e3146da9f615a84` |
+| `cities.csv` | `77a64e67fdb171e4c2a5ff6bccb5e380d2d8472154dd26f31e1f73ada8d33b2a` |
+| `community-colleges.csv` | `39d41a79c6cad48e7dd5aa1a0ffc95b8b8d472b462bdd3277078b01e256067b3` |
+| `compensation.csv` | `51fa1887809228a033b2a1b361a52c9870ca0b7d8b5449a303e3e3c7ca5f9390` |
+| `counties.csv` | `418120b45b0b6843c924af1fe02eaa431565c0d8dc04bf2d69afb28073e085e0` |
+| `csu-campuses.csv` | `e4257be380a0d2290009650774b81db1dfb24954f626322ff52769ddf797907d` |
+| `k12-schools.csv` | `63c8bdd0d98180f0713fc908e8f38b7b95ace13321b9707304459b03fa2c517a` |
+| `price-deflator.csv` | `7f0578dbf364a96fac8e7d91e94df86bdbe22eea05b098ddd4936011f239a6e9` |
+| `special-districts.csv` | `276ce0f067791e3b357965ca99f7e4f3be94ad23852b21a6ca90c024e929538c` |
+| `state-budget.csv` | `3fce840a953b96b5b4e6e5c7962dc1188457ae3d60c5be4a82d3e33144a38a09` |
+| `uc-campuses.csv` | `63c8aa98aa60599fac797bb5468281853cf4ce438a56df5a51f4fb2795c5b3c4` |
 
 The digests above describe *these* files. The `-data.js` payloads they are derived from carry their own digests, verified by `pipeline/verify_digest.py`.
 

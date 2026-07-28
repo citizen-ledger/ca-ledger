@@ -321,6 +321,12 @@
     .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
       print-color-adjust:exact;-webkit-print-color-adjust:exact}
   }
+
+  /* the line sits ON the record, immediately above the figures, so a
+     screenshot that captures the number captures what it measures */
+  .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
+    padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -397,6 +403,7 @@
       <div class="hero-num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
       <div class="tierrow"><span class="tierchip is-gated" title="reproduces CDE's published Current Expense of Education"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">GATED · TO THE CENT</span></span></div>
+      <div class="basisline" id="basisLine"></div>
       <div class="hero-lbl" id="heroLbl">SACS UNAUDITED ACTUALS · GATED TO CDE'S PUBLISHED FIGURES</div>
     </div>
   </div>
@@ -1296,7 +1303,28 @@
     });
   })();
 
+  
+  /* ---- THE BASIS LINE. Composed from live state; see index.html. */
+  const UNIT_WORDS = {perAda:"DOLLARS PER ADA", total:"DOLLARS",
+                      dollars:"DOLLARS", percent:"PERCENT OF THE DISPLAYED TOTAL"};
+  function basisLine(){
+    const kind = S.type === "districts" ? "SCHOOL DISTRICTS"
+               : S.type === "coes" ? "COUNTY OFFICES (RECORDS ONLY)"
+               : "CHARTER SCHOOLS (RECORDS ONLY)";
+    return ["SACS UNAUDITED ACTUALS, CURRENT EXPENSE OF EDUCATION \u00b7 " + kind,
+            UNIT_WORDS[S.unit] || String(S.unit).toUpperCase(),
+            (S.basis === "real" ? "REAL DOLLARS (THE LEDGER'S OWN ADJUSTMENT)"
+                                : "NOMINAL AS PUBLISHED"),
+            "FY " + S.year,
+            (S.type === "districts" ? "GATED \u00b7 TO THE CENT"
+                                    : "RECORDS ONLY \u00b7 NEVER COMPARED")].join(" \u00b7 ");
+  }
+  function paintBasisLine(){
+    const el=document.getElementById("basisLine"); if(el) el.textContent=basisLine();
+  }
+
   function render(){
+    paintBasisLine();
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     try { renderRecordSheet(); } catch (e) { console.error('record sheet:', e); }
     renderChrome(); renderPicker();

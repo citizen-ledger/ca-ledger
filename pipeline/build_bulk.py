@@ -66,7 +66,26 @@ def num(v):
     return v
 
 
-def header(meta, title, basis, tier, units, extra=()):
+def basis_line(basis, units, tier, span):
+    """The one-line restatement the pages carry, adapted for a whole-layer file.
+
+    A per-view CSV can name ONE fiscal year because a view has one. A bulk
+    export spans every shipped year, so it states the span instead of
+    inventing a single year — the line must describe the file it is in.
+    Composed from the same four things the pages state: what is measured,
+    the unit, the inflation basis, and the period. Nominal is stated
+    explicitly rather than assumed: every bulk figure is as the source
+    published it, and the Ledger's real-dollar adjustment is a VIEW, not
+    something baked into an export.
+    """
+    return " · ".join([basis.split(";")[0].split("—")[0].strip().upper(),
+                       units.split(";")[0].strip().upper(),
+                       "NOMINAL AS PUBLISHED",
+                       span.upper(),
+                       tier.split(".")[0].split("—")[0].strip().upper()])
+
+
+def header(meta, title, basis, tier, units, extra=(), span="ALL SHIPPED YEARS"):
     """The provenance block every export carries, matching the per-view CSVs."""
     lines = [
         f"# Citizen Ledger — {title} — COMPLETE LAYER EXPORT",
@@ -74,6 +93,9 @@ def header(meta, title, basis, tier, units, extra=()):
         f"# Accounting basis: {basis}",
         f"# Gate tier: {tier}",
         f"# Units: {units}",
+        # the same restatement the layer page shows above its figures, so a
+        # bulk row and a screenshot of the site describe themselves alike
+        f"# Measured as: {basis_line(basis, units, tier, span)}",
         f"# Data generated: {meta.get('generated', 'unknown')}",
         f"# Exported: {date.today().isoformat()}",
         f"# Absent values: {ABSENT}",

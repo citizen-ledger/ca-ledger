@@ -401,6 +401,12 @@
     .tierchip.is-gated .tc-mark{background:#000!important;border-color:#000!important;
       print-color-adjust:exact;-webkit-print-color-adjust:exact}
   }
+
+  /* the line sits ON the record, immediately above the figures, so a
+     screenshot that captures the number captures what it measures */
+  .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
+    padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -477,6 +483,7 @@
       <div class="hero-num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
       <div class="tierrow"><span class="tierchip is-gated" title="every city-year reproduces the State Controller's published total"><span class="tc-mark" aria-hidden="true"></span><span class="tc-label">GATED · TO THE CONTROLLER'S PUBLISHED TOTAL</span></span></div>
+      <div class="basisline" id="basisLine"></div>
       <div class="hero-lbl">GOVERNMENTAL ACTIVITIES · REPORTED ACTUALS</div>
     </div>
   </div>
@@ -1526,7 +1533,27 @@
     });
   })();
 
+  
+  /* ---- THE BASIS LINE. Composed from live state; see index.html. This
+     layer has unit, inflation basis, fiscal year and a city/county switch,
+     and no federal control — so it states four things and not a fifth. */
+  const UNIT_WORDS = {perResident:"DOLLARS PER RESIDENT", total:"MILLIONS OF DOLLARS",
+                      dollars:"MILLIONS OF DOLLARS", percent:"PERCENT OF THE DISPLAYED TOTAL"};
+  function basisLine(){
+    return [(S.layer === "county" ? "COUNTY" : "CITY")
+            + " REPORTED ACTUALS, GOVERNMENTAL ACTIVITIES",
+            UNIT_WORDS[S.unit] || String(S.unit).toUpperCase(),
+            (S.basis === "real" ? "REAL DOLLARS (THE LEDGER'S OWN ADJUSTMENT)"
+                                : "NOMINAL AS PUBLISHED"),
+            "FY " + S.year,
+            "GATED · TO THE CONTROLLER'S PUBLISHED TOTAL"].join(" \u00b7 ");
+  }
+  function paintBasisLine(){
+    const el=document.getElementById("basisLine"); if(el) el.textContent=basisLine();
+  }
+
   function render(){
+    paintBasisLine();
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     renderChrome(); renderPicker();
     $("unitGroup").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.unit===S.unit));
