@@ -5927,6 +5927,127 @@ def test_bulk(page, base):
           "stability" in src and "licence" in src)
 
 
+def test_touch_caveats(page, base):
+    """The caveats have to be reachable with a finger.
+
+    A dagger opens the comparability note attached to a figure. At 7x12px
+    it is not hittable on touch, so the figure gets read without the
+    warning — which inverts the mark's purpose. This asserts the HIT AREA,
+    behaviourally, and separately asserts the GLYPH did not grow: making
+    the mark bigger would have been a different (and worse) fix.
+
+    The classes are SWEPT from the stylesheets rather than listed. The
+    brief named csu/ccc/uc; the same pattern was also on cities.html under
+    a different class name (.dagger, service-structure notes, 276 cities),
+    and a list would have missed it exactly as the page list missed
+    revisions.html."""
+    import re as _re
+    # every rule that styles a note-opening mark, discovered from source
+    classes = set()
+    for f in sorted(ROOT.glob("*.html")):
+        src = f.read_text(encoding="utf-8")
+        for m in _re.finditer(r'class="(dag|dagger)"', src):
+            classes.add(m.group(1))
+    check("touch caveats: the mark classes were swept from source",
+          classes == {"dag", "dagger"}, str(sorted(classes)))
+
+    # pages that actually render one, and a fragment that makes it appear
+    CASES = [("ccc.html", "", "dag"), ("csu.html", "", "dag"),
+             ("uc.html", "", "dag"), ("cities.html", "#c=adelanto", "dagger")]
+    covered = set()
+    for name, frag, cls in CASES:
+        page.set_viewport_size({"width": 390, "height": 800})
+        page.goto(f"{base}/{name}{frag}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1800)
+        info = page.evaluate("""(cls) => {
+          const d=[...document.querySelectorAll('.'+cls)].filter(e=>e.offsetParent!==null);
+          if(!d.length) return {n:0};
+          const el=d[Math.min(2,d.length-1)];
+          el.scrollIntoView({block:'center'});
+          const g=el.getBoundingClientRect();
+          const cx=g.left+g.width/2, cy=g.top+g.height/2;
+          const at=(dx,dy)=>{const e=document.elementFromPoint(cx+dx,cy+dy);
+            return !!e && (e===el || el.contains(e));};
+          return {n:d.length, glyphW:Math.round(g.width), glyphH:Math.round(g.height),
+                  left:at(-20,0), right:at(20,0), up:at(0,-19), down:at(0,19),
+                  beyond:at(0,-30), cx, cy};
+        }""", cls)
+        check(f"touch caveats: {name} renders marks to test", info["n"] > 0,
+              f"{info['n']} visible .{cls}")
+        if not info["n"]:
+            continue
+        covered.add(cls)
+        # THE GLYPH DID NOT GROW — the fix is hit area, not type size
+        check(f"touch caveats: {name} mark is still small ({info['glyphW']}x"
+              f"{info['glyphH']}px) — the fix is the hit area, not the glyph",
+              info["glyphW"] <= 16 and info["glyphH"] <= 18)
+        # THE HIT AREA IS THERE, on all four sides
+        for side in ("left", "right", "up", "down"):
+            check(f"touch caveats: {name} hit area extends {side} of the mark",
+                  info[side] is True)
+        # AND STOPS: 30px up is the row, not the dagger above it. Rows are
+        # 42px apart, so an unbounded 44px box would open a neighbour's note.
+        check(f"touch caveats: {name} hit area stops before the next row "
+              "(negative control)", info["beyond"] is False)
+        # BEHAVIOURAL: a tap 18px off the glyph opens the note
+        before = page.locator(".note-row").count()
+        page.mouse.click(info["cx"] - 18, info["cy"])
+        page.wait_for_timeout(500)
+        after = page.locator(".note-row").count()
+        check(f"touch caveats: {name} a tap 18px off the mark opens the note",
+              after > before, f"note-rows {before} -> {after}")
+    check("touch caveats: both mark classes were exercised, not just one",
+          covered == {"dag", "dagger"}, str(sorted(covered)))
+
+
+def test_revisions_event_legible(page, base):
+    """The change record's Event column says "appeared" or "disappeared" —
+    opposite facts. It was the last column of a table that overflowed the
+    page with no scroller, so it truncated to DISAPPE / APPEARE and the
+    page would not pan to finish the word.
+
+    Asserted on the VALUE, not on the layout: the cell must contain a whole
+    word and sit inside the viewport at every phone width."""
+    for width in (360, 390, 430):
+        page.set_viewport_size({"width": width, "height": 800})
+        page.goto(f"{base}/revisions.html")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(600)
+        r = page.evaluate("""() => {
+          const de=document.documentElement;
+          const cells=[...document.querySelectorAll('.evt td.kind')]
+                        .filter(e=>e.offsetParent!==null);
+          if(!cells.length) return {n:0};
+          const bad=[];
+          for (const c of cells.slice(0,25)) {
+            c.scrollIntoView({block:'center'});
+            const r=c.getBoundingClientRect();
+            const clipped = r.right > de.clientWidth+1 || c.scrollWidth > c.clientWidth+1;
+            if (clipped) bad.push(c.textContent.trim().slice(0,20));
+          }
+          return {n:cells.length, bad,
+                  words:[...new Set(cells.map(c=>c.textContent.trim()))].slice(0,6),
+                  labelled: getComputedStyle(cells[0],'::before').content};
+        }""")
+        check(f"revisions {width}: the Event column renders values to check",
+              r["n"] > 0, f"{r['n']} cells")
+        if not r["n"]:
+            continue
+        check(f"revisions {width}: no Event value is clipped", not r["bad"],
+              f"clipped: {r['bad'][:4]}")
+        # the words themselves are whole — a positive control on the content,
+        # so "nothing clipped" cannot pass on an empty or truncated set
+        whole = [w for w in r["words"] if w in
+                 ("appeared", "disappeared", "changed", "corrected")]
+        check(f"revisions {width}: Event values are whole words "
+              f"({', '.join(r['words'][:3])})", len(whole) > 0, str(r["words"]))
+        if width <= 430:
+            check(f"revisions {width}: each cell carries its own column label "
+                  "(the header row is dropped when stacked)",
+                  "Event" in str(r["labelled"]), str(r["labelled"]))
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -8900,14 +9021,7 @@ def test_mobile(browser, base):
 
     # A page is exempt ONLY with a reason, and the reason is a defect being
     # fixed rather than a decision. Empty is the target state.
-    KNOWN_PANNING = {
-        "revisions.html":
-            "table.evt has no scroll container and the page will not pan; "
-            "the Event column truncates DISAPPEARED/APPEARED to "
-            "near-identical strings meaning opposite facts. Declared here "
-            "so this sweep can land while the fix is prepared; the tier-1 "
-            "PR removes this entry.",
-    }
+    KNOWN_PANNING = {}
 
     all_pages = sorted(f.name for f in ROOT.glob("*.html"))
     check("mobile: the page sweep discovered pages from disk rather than "
@@ -10831,6 +10945,8 @@ def main():
             test_frontdoor_about(page, base)
             test_reading(page, base)
             test_findings(page, base)
+            test_touch_caveats(page, base)
+            test_revisions_event_legible(page, base)
             test_bulk(page, base)
             test_map(page, base)
             test_mobile(browser, base)
