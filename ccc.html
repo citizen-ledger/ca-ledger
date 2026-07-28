@@ -123,6 +123,10 @@
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
   .cmpbox{margin-top:12px}
+  /* the label is a heading for the sentence under it, not a run-in:
+     inline, these rendered as "…FY 2023-24The 73 districts reported".
+     Same rule .nosum b already carries. */
+  .cmpbox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:6px}
   .cmp{border-left:4px solid var(--ink);background:var(--wash);padding:11px 15px;margin-top:8px;font-size:var(--fs-note);line-height:1.6}
   .cmp b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.06em;display:block;margin-bottom:5px}
   .basis-strip{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);margin-top:10px;line-height:1.6}
