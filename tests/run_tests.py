@@ -6277,6 +6277,218 @@ def test_design_hygiene(page, base):
           "investigat" in page.inner_text("body").lower())
 
 
+def test_nav_sheet(page, base):
+    """The phone navigation sheet.
+
+    Ten flat destinations and 44px targets provably cannot both hold at
+    390px, so the phone header became a menu button and the sheet carries
+    EVERY destination — including the six the flat nav had pushed into the
+    footer for want of room. Desktop keeps the flat nav, where the space
+    exists and nothing is truncated."""
+    pages = sorted(f.name for f in ROOT.glob("*.html"))
+    check("nav sheet: pages discovered from disk", len(pages) >= 14)
+
+    # the sheet must offer every destination the SITE has, derived from the
+    # page census rather than a list — a new page without a sheet entry is
+    # the drift this is built to catch. 404 is a fallback, not a destination.
+    expected = {p for p in pages if p != "404.html"}
+    for name in pages:
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(300)
+        r = page.evaluate("""() => {
+          const btn=document.getElementById('navBtn'), sheet=document.getElementById('navSheet');
+          const nav=document.querySelector('nav.pn');
+          const vis=e=>e&&e.offsetParent!==null;
+          const links=sheet?[...sheet.querySelectorAll('a')]:[];
+          return {btn:!!btn, sheet:!!sheet, btnVisible:vis(btn), navVisible:vis(nav),
+                  btnH:btn?Math.round(btn.getBoundingClientRect().height):0,
+                  hrefs:links.map(a=>a.getAttribute('href').split('/').pop()),
+                  groups:sheet?[...sheet.querySelectorAll('h3')].map(h=>h.textContent):[]};
+        }""")
+        check(f"nav sheet {name}: the page carries the sheet and its trigger",
+              r["btn"] and r["sheet"])
+        check(f"nav sheet {name}: at 390 the trigger is shown and the flat "
+              "nav is not", r["btnVisible"] and not r["navVisible"], str(r)[:120])
+        check(f"nav sheet {name}: the trigger is a 44px target",
+              r["btnH"] >= 44, f"{r['btnH']}px")
+        missing = expected - set(r["hrefs"])
+        check(f"nav sheet {name}: offers every destination the site has",
+              not missing, f"missing: {sorted(missing)}")
+        check(f"nav sheet {name}: destinations are grouped, not a flat list",
+              len(r["groups"]) >= 4, str(r["groups"]))
+
+    # ---- the six the flat nav could not fit are IN the sheet, and that is
+    # the whole point of the change
+    page.goto(f"{base}/index.html")
+    page.wait_for_load_state("networkidle")
+    flat = set(page.eval_on_selector_all(
+        "nav.pn a", "els => els.map(e => e.getAttribute('href'))"))
+    sheet = set(page.eval_on_selector_all(
+        "#navSheet a", "els => els.map(e => e.getAttribute('href'))"))
+    gained = sheet - flat
+    check("nav sheet: it carries destinations the flat nav had no room for",
+          {"search.html", "compensation.html", "reading.html", "findings.html",
+           "bulk.html", "revisions.html"} <= sheet, str(sorted(gained)))
+    check("nav sheet: and that is strictly more than the flat nav showed",
+          len(sheet) > len(flat), f"sheet {len(sheet)} vs flat {len(flat)}")
+
+    # ---- every link in it is 44px and resolves on disk
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#navBtn")
+    page.click("#navBtn")
+    page.wait_for_timeout(400)
+    r = page.evaluate("""() => {
+      const s=document.getElementById('navSheet');
+      const a=[...s.querySelectorAll('a')];
+      return {open:!s.hidden, n:a.length,
+              minH:Math.min(...a.map(x=>Math.round(x.getBoundingClientRect().height))),
+              expanded:document.getElementById('navBtn').getAttribute('aria-expanded')};
+    }""")
+    check("nav sheet: opens on tap", r["open"] and r["expanded"] == "true", str(r))
+    check("nav sheet: every destination is a 44px target", r["minH"] >= 44,
+          f"min {r['minH']}px")
+    for h in page.eval_on_selector_all(
+            "#navSheet a", "els => els.map(e => e.getAttribute('href'))"):
+        check(f"nav sheet: {h} exists on disk", (ROOT / h.split('/')[-1]).exists())
+
+    # ---- it closes, and by more than one route (a sheet a reader cannot
+    # dismiss is worse than no sheet)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(300)
+    check("nav sheet: Escape closes it and returns the trigger's state",
+          page.evaluate("() => document.getElementById('navSheet').hidden")
+          and page.evaluate("() => document.getElementById('navBtn')"
+                            ".getAttribute('aria-expanded')") == "false")
+    page.click("#navBtn"); page.wait_for_timeout(300)
+    page.click("#navClose"); page.wait_for_timeout(300)
+    check("nav sheet: the close control closes it",
+          page.evaluate("() => document.getElementById('navSheet').hidden"))
+
+    # ---- DESKTOP IS UNCHANGED: the flat nav is what the space allows there
+    page.set_viewport_size({"width": 1280, "height": 900})
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("nav.pn")
+    page.wait_for_timeout(300)
+    r = page.evaluate("""() => {
+      const vis=e=>e&&e.offsetParent!==null;
+      return {nav:vis(document.querySelector('nav.pn')),
+              btn:vis(document.getElementById('navBtn')),
+              sheetShown:vis(document.getElementById('navSheet')),
+              // the CURRENT page renders as <span class="active">, not a
+              // link — counting only <a> under-reports by one on any page
+              // that is itself in the nav
+              n:document.querySelectorAll('nav.pn a, nav.pn span').length};
+    }""")
+    check("nav sheet: desktop keeps the flat nav and hides the trigger",
+          r["nav"] and not r["btn"] and not r["sheetShown"], str(r))
+    check("nav sheet: desktop still shows exactly ten destinations",
+          r["n"] == 10, f"{r['n']}")
+
+
+def test_scroll_affordance(page, base):
+    """A reader cannot tell a table scrolls unless it says so.
+
+    Every horizontal scroll container carries an edge hint, painted by the
+    scroller itself: `local` layers travel with the content and cover the
+    `scroll` layers when there is nothing further that way, so the hint
+    shows only while it is true and needs no JS.
+
+    Containers are SWEPT from the stylesheets, so a new scroller is covered
+    the day it ships rather than when someone remembers this test."""
+    import re as _re
+    found = []
+    for f in sorted(ROOT.glob("*.html")):
+        src = f.read_text(encoding="utf-8")
+        for m in _re.finditer(r"^  (\.[A-Za-z-]+)\{[^}]*overflow-x:\s*auto", src, _re.M):
+            found.append((f.name, m.group(1)))
+    check("scroll affordance: containers discovered from source, not listed",
+          len(found) >= 6, f"{len(found)} found")
+    checked = 0
+    for name, sel in found:
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(400)
+        n = page.evaluate("""(s) => {
+          const e = document.querySelector(s);
+          if (!e) return -1;
+          return ((getComputedStyle(e).backgroundImage || '')
+                  .match(/linear-gradient/g) || []).length;
+        }""", sel)
+        if n == -1:
+            continue           # not on this page's rendered path
+        checked += 1
+        check(f"scroll affordance: {name} {sel} shows there is more to the right",
+              n >= 4, f"{n} gradient layers")
+    # positive control: the sweep reached real containers, so the passes
+    # above cannot come from every selector being absent
+    check("scroll affordance: the sweep found containers in the DOM "
+          "(positive control)", checked >= 5, f"{checked} checked")
+
+
+def test_touch_targets(page, base):
+    """Every interactive control, every page, discovered from disk.
+
+    The original tier-3 brief named five controls. This sweep found ~30
+    more across eight pages, and the sweep was right — so it is the sweep
+    that ships, not the list. Anything under 44px fails unless it is
+    declared below with a measured reason."""
+    # THE ONE EXEMPTION, and it is a smaller target ON PURPOSE. The
+    # comparability daggers sit in a table whose row pitch is 42px; a 44px
+    # box overlaps the row above and opens the WRONG note. Measured in
+    # PR #103: forcing 88x88 makes neighbouring boxes steal each other's
+    # taps. Capped at the pitch, and test_touch_caveats covers them
+    # behaviourally — hit area on four sides, and stopping before the next row.
+    EXEMPT = {"button.dag": "hit area capped at the 42px row pitch; a 44px "
+                            "box opens the neighbouring row's note. Covered "
+                            "behaviourally by test_touch_caveats.",
+              "button.dagger": "same, on the cities service-structure notes."}
+    pages = sorted(f.name for f in ROOT.glob("*.html"))
+    check("touch targets: pages discovered from disk", len(pages) >= 14)
+    JS = """() => {
+      const bad = {};
+      const SEL = 'button, select, summary, [role=button], .dir-row .nm, .dir-row .ext';
+      for (const el of document.querySelectorAll(SEL)) {
+        if (el.offsetParent === null) continue;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        // EFFECTIVE hit area, not the box: a control may carry a larger
+        // target via an ::after overlay without growing its glyph.
+        const a = getComputedStyle(el, '::after');
+        const ah = (a && a.content !== 'none') ? (parseFloat(a.height) || 0) : 0;
+        if (Math.max(r.height, ah) >= 44) continue;
+        if (el.closest('.po')) continue;      // print-only, never touched
+        let k = el.tagName.toLowerCase();
+        const c = String(el.className || '').split(' ')[0];
+        if (c) k += '.' + c;
+        const cur = bad[k] || {n: 0, minH: 99};
+        cur.n++; cur.minH = Math.min(cur.minH, Math.round(r.height));
+        bad[k] = cur;
+      }
+      return bad;
+    }"""
+    page.set_viewport_size({"width": 390, "height": 800})
+    seen = 0
+    for name in pages:
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(900)
+        bad = page.evaluate(JS)
+        bad = {k: v for k, v in bad.items() if k not in EXEMPT}
+        seen += page.evaluate(
+            "() => [...document.querySelectorAll('button,select')]"
+            ".filter(e => e.offsetParent !== null).length")
+        check(f"touch targets: {name} — every control is at least 44px",
+              not bad, "; ".join(f"{k} x{v['n']} min {v['minH']}px"
+                                 for k, v in sorted(bad.items())))
+    # positive control: the sweep saw real controls, so "no failures" cannot
+    # come from a selector that matched nothing
+    check("touch targets: the sweep found real controls (positive control)",
+          seen > 40, f"{seen} controls across {len(pages)} pages")
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -7273,14 +7485,27 @@ def test_polish(page, base):
     page.wait_for_selector(".fd-statement")
     top = page.evaluate(
         "document.querySelector('.fd-statement').getBoundingClientRect().top")
-    # ten nav destinations wrap to five two-column rows on a phone. Search
-    # was added as the eleventh and the change record moved out of the
-    # primary nav to keep it at ten: a sixth row pushes this statement to
-    # 374px, outside the top 40% of an 844px screen. The record of changes
-    # is a provenance surface like About & method and stays reachable from
-    # every footer and from about.html's own section on it.
-    check("polish: masthead statement above the fold at 390",
-          top <= 340, f"top {top}")
+    # THE GUARANTEE CHANGED, AND THE OLD ONE COULD NOT HAVE HELD.
+    #
+    # It used to read "<= 340px", defending against a flat ten-destination
+    # nav wrapping to five two-column rows. That budget and a 44px tap
+    # target are mutually exclusive: measured, 44px rows put this statement
+    # at 352px even at the tightest possible spacing (2px row gap, 8px
+    # header padding). The site chose accessible targets.
+    #
+    # It also chose a nav that is no longer truncated. The flat list showed
+    # ten of fifteen destinations — Search, Compensation, Reading, Findings,
+    # Bulk and the record of changes sat in the footer because the nav ran
+    # out of room, not because they were secondary. The phone sheet carries
+    # all fifteen at 44px.
+    #
+    # The new threshold is TIGHTER, not looser: the phone header dropped
+    # from 263px to 69px, so the statement now sits at ~140px. 200px is a
+    # deliberate ceiling well above the measured value — it will fail if the
+    # header starts growing again, which is what this assertion is for.
+    check("polish: masthead statement above the fold at 390 (phone header is "
+          "a menu button, not a wrapped ten-item nav)",
+          top <= 200, f"top {top}")
     cols = page.evaluate(
         "getComputedStyle(document.querySelector('nav.pn'))"
         ".gridTemplateColumns.split(' ').length")
@@ -11179,6 +11404,9 @@ def main():
             test_zero_service(page, base)
             test_frontdoor_about(page, base)
             test_design_hygiene(page, base)
+            test_nav_sheet(page, base)
+            test_scroll_affordance(page, base)
+            test_touch_targets(page, base)
             test_reading(page, base)
             test_findings(page, base)
             test_touch_caveats(page, base)

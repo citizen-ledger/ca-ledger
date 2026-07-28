@@ -153,6 +153,12 @@
      making the reader pan to undo it. The wrapper stays for the widths
      that keep the grid. */
   .evtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* A READER CANNOT TELL A TABLE SCROLLS UNLESS IT SAYS SO. The `local`
+     layers travel with the content and cover the `scroll` layers when
+     there is nothing further that way, so the hint shows only while it
+     is true — and needs no JS. */
+  .evtwrap{background:linear-gradient(to right,var(--parchment),var(--parchment)) left/14px 100% no-repeat local,linear-gradient(to left,var(--parchment),var(--parchment)) right/14px 100% no-repeat local,linear-gradient(to right,rgba(36,36,36,.16),rgba(36,36,36,0)) left/9px 100% no-repeat scroll,linear-gradient(to left,rgba(36,36,36,.16),rgba(36,36,36,0)) right/9px 100% no-repeat scroll}
+
   @media (max-width:560px){
     .lrec-head{flex-direction:column;gap:2px}
     .evtwrap{overflow-x:visible}
@@ -167,6 +173,44 @@
     .evt td.kind{margin-top:3px;font-weight:600}
   }
   @media print{ .checker{display:none} }
+
+  /* ---- PHONE NAVIGATION SHEET -------------------------------------
+     Ten flat destinations and 44px tap targets provably cannot both hold
+     at 390px: measured, 44px rows put index's masthead statement at 352px
+     against a 340px fold guarantee, even at the tightest spacing. The site
+     chose accessible targets and a shorter header over a truncated flat
+     list — and the flat list WAS truncated, since Search, Compensation,
+     Reading, Findings, Bulk and the record of changes sat in the footer
+     only because the nav ran out of room.
+     The sheet carries all fifteen destinations at 44px. Desktop keeps the
+     flat nav, where the space exists and no truncation is needed. */
+  .navbtn{display:none;min-height:44px;min-width:44px;align-items:center;gap:8px;
+    padding:0 14px;border:1px solid var(--ash);border-radius:9999px;background:transparent;
+    font-family:var(--mono);font-size:var(--fs-label);letter-spacing:.06em;
+    color:var(--graphite);cursor:pointer}
+  .navsheet{position:fixed;inset:0;z-index:60;background:rgba(36,36,36,.45)}
+  .ns-panel{position:absolute;inset:auto 0 0 0;max-height:88vh;overflow-y:auto;
+    background:var(--parchment);border-radius:18px 18px 0 0;padding:8px 20px 26px}
+  .ns-grab{width:38px;height:4px;border-radius:2px;background:var(--ash);margin:8px auto 4px}
+  .ns-head{display:flex;justify-content:space-between;align-items:center;
+    padding:6px 0 10px;border-bottom:1px solid var(--ash);font-family:var(--mono);
+    font-size:var(--fs-micro);letter-spacing:.09em;color:var(--smoke)}
+  .ns-close{min-height:44px;min-width:44px;border:none;background:transparent;
+    font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite);cursor:pointer}
+  .ns-grp{margin-top:16px}
+  .ns-grp h3{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.09em;
+    color:var(--smoke);font-weight:400;margin-bottom:2px}
+  .ns-grp a{display:flex;align-items:center;min-height:44px;text-decoration:none;
+    color:var(--ink);font-size:var(--fs-body);border-bottom:1px solid var(--hairline)}
+  .ns-grp a[aria-current]{font-weight:600}
+  @media(max-width:720px){
+    .navbtn{display:inline-flex}
+    nav.pn{display:none!important}
+  }
+  @media(min-width:721px){ .navsheet{display:none!important} }
+
+  /* ---- TOUCH TARGETS (cont.) ---- */
+  .btn{min-height:44px}
 </style>
 
 </head>
@@ -177,6 +221,7 @@
     <span class="roundel" aria-hidden="true">CL</span>
     <div><span class="wordmark">Citizen Ledger</span><div class="tagline">State budget · cities &amp; counties · K-12 schools · special districts</div></div>
   </div>
+  <button class="navbtn np" id="navBtn" aria-expanded="false" aria-controls="navSheet">MENU</button>
   <nav class="pn np" aria-label="Primary">
     <a href="search.html">Search</a>
     <a href="index.html">State budget</a>
@@ -190,6 +235,41 @@
     <a href="about.html">About &amp; method</a>
   </nav>
 </header>
+
+<div class="navsheet np" id="navSheet" hidden>
+  <div class="ns-panel" role="dialog" aria-modal="true" aria-label="All destinations">
+    <div class="ns-grab" aria-hidden="true"></div>
+    <div class="ns-head"><span>ALL DESTINATIONS</span>
+      <button class="ns-close" id="navClose" aria-label="Close navigation">CLOSE ✕</button></div>
+    <div class="ns-grp">
+      <h3>GOVERNMENTS</h3>
+      <a href="index.html">State budget</a>
+      <a href="cities.html">City &amp; county spending</a>
+      <a href="schools.html">K-12 schools</a>
+      <a href="csu.html">CSU campuses</a>
+      <a href="ccc.html">Community colleges</a>
+      <a href="uc.html">UC campuses</a>
+      <a href="districts.html">Special districts</a>
+    </div>
+    <div class="ns-grp">
+      <h3>LOOK UP</h3>
+      <a href="address.html">Your governments</a>
+      <a href="search.html">Search</a>
+      <a href="compensation.html">Compensation</a>
+    </div>
+    <div class="ns-grp">
+      <h3>THE METHOD</h3>
+      <a href="reading.html">Reading the Ledger</a>
+      <a href="about.html">About &amp; method</a>
+      <a href="findings.html">Findings</a>
+      <a href="revisions.html" aria-current="page">Record of changes</a>
+    </div>
+    <div class="ns-grp">
+      <h3>THE DATA</h3>
+      <a href="bulk.html">Bulk data</a>
+    </div>
+  </div>
+</div>
 
 <div class="prov">
   <span>EVERY FIGURE FROM AN OFFICIAL STATE SOURCE</span>
@@ -509,5 +589,38 @@
 })();
 </script>
 
+
+<script>
+/* Phone navigation sheet. Vanilla, no framework, no build step — the same
+   idiom as every other control here. Focus is trapped while open and
+   returned to the trigger on close; Escape closes. */
+(function(){
+  var btn=document.getElementById("navBtn"), sheet=document.getElementById("navSheet"),
+      close=document.getElementById("navClose");
+  if(!btn||!sheet||!close) return;
+  function focusable(){ return sheet.querySelectorAll("a[href],button"); }
+  function open(){
+    sheet.hidden=false; btn.setAttribute("aria-expanded","true");
+    document.body.style.overflow="hidden";
+    var f=focusable(); if(f.length) f[f.length-1].focus();
+  }
+  function shut(){
+    sheet.hidden=true; btn.setAttribute("aria-expanded","false");
+    document.body.style.overflow=""; btn.focus();
+  }
+  btn.addEventListener("click", function(){ sheet.hidden ? open() : shut(); });
+  close.addEventListener("click", shut);
+  sheet.addEventListener("click", function(e){ if(e.target===sheet) shut(); });
+  document.addEventListener("keydown", function(e){
+    if(sheet.hidden) return;
+    if(e.key==="Escape"){ shut(); return; }
+    if(e.key!=="Tab") return;
+    var f=focusable(); if(!f.length) return;
+    var first=f[0], last=f[f.length-1];
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  });
+})();
+</script>
 </body>
 </html>
