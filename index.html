@@ -51,6 +51,13 @@
     --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  /* The hidden ATTRIBUTE must win. Without this, any author rule that
+     sets display (.caps{display:flex}, .map-panel) beats the UA
+     stylesheet's [hidden]{display:none} and the element stays on
+     screen while the code believes it is gone. Found when a mutation
+     that set rail.hidden=true changed nothing. */
+  [hidden]{display:none!important}
+
   body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
   a{color:var(--blue)} a:hover{color:var(--blue-hover)}
   button{font-family:inherit}
@@ -131,6 +138,13 @@
   h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
   .dek{font-size:var(--fs-body);color:var(--graphite);margin-top:12px;max-width:480px;line-height:1.5}
   .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  /* THE EM DASH MEANS NOT PUBLISHED. It is load-bearing vocabulary on
+     this site, so it must never also mean "not loaded yet" — a reader
+     (or a crawler, or a share preview) catching the page mid-hydration
+     would read an absent source where there is only an absent script.
+     The pre-hydration state says so in words instead. */
+  .loading{font-family:var(--sans);font-size:var(--fs-note);font-weight:400;letter-spacing:0;color:var(--smoke)}
+
   .hero-sub{font-family:var(--mono);font-size:var(--fs-data);color:var(--graphite);margin-top:10px}
   .hero-lbl{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-top:4px}
   .hero-right{text-align:right}
@@ -410,8 +424,8 @@
       <p class="dek">Where the State of California appropriates its money — by agency and department, across all state funds. Enacted figures; no commentary.</p>
     </div>
     <div class="hero-right">
-      <div class="hero-num" id="totalNum">—</div>
-      <div class="hero-sub">≈ <span id="perCapNum">—</span> PER RESIDENT · <span id="yoyNum">—</span> VS PRIOR YEAR</div>
+      <div class="hero-num" id="totalNum"><span class="loading">Loading the record…</span></div>
+      <div class="hero-sub"><span class="loading">Figures load with the record</span><span id="perCapNum" hidden></span><span id="yoyNum" hidden></span></div>
       <div class="hero-lbl" id="totalLbl">TOTAL APPROPRIATIONS · STATE FUNDS</div>
     </div>
   </div>
@@ -512,7 +526,6 @@
         </div>
         <div class="caps">
           <span id="capLeft">† METHOD NOTE — CLICK TO EXPAND</span>
-          <span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span>
         </div>
       </div>
     </div>
@@ -526,7 +539,7 @@
         <div class="chg-axishead"><span>◂ DECREASES</span><span style="text-align:right">INCREASES ▸</span></div>
         <div id="changeRows"></div>
         <div class="chg-sum" id="chgSum"></div>
-        <div class="caps" id="chgCaps"><span></span><span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span></div>
+        <div class="caps" id="chgCaps"><span></span><span></span></div>
       </div>
       <div class="empty" id="chgEmpty" hidden>No prior fiscal year in the record window. Step forward a year to view change.</div>
     </div>
@@ -576,7 +589,6 @@
           <div class="chg-sum" id="actSum"></div>
           <div class="caps">
             <span id="actCapLeft"></span>
-            <span>▲▼ SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES</span>
           </div>
         </div>
         <div class="empty" id="actEmpty" hidden></div>
@@ -592,22 +604,30 @@
     <div id="funds" style="margin-top:14px"></div>
   </div>
 
+  <!-- The neutrality caveat, stated ONCE for whichever lens is active.
+       It used to sit inline in three of the five view blocks, which meant a
+       reader saw it at most once but saw it NOT AT ALL on trend, actuals and
+       revenue — three lenses that each render direction glyphs. Under-
+       coverage, not repetition: measured on the live page, 16/15/2/2/2
+       glyphs against 1/1/0/0/0 caveats. -->
+  <div class="caps" id="dirRail" hidden><span></span><span id="dirNote"></span></div>
+
   <section class="method" id="methodology">
     <h2>Methodology</h2>
     <p class="lead">The Ledger records appropriations as enacted. It does not rank, characterize, or evaluate them. Every figure on this page comes from the official dataset described below and can be independently verified.</p>
     <div class="mgrid">
       <div class="mcol">
         <div class="microlbl">METHOD NOTES</div>
+        <div class="mnote" id="mGate"><b>M-0</b><span></span></div>
         <div class="mnote"><b>M-1</b><span>Scope is all state funds: General Fund, special funds, and bond funds, matching the enacted budget's Summary Charts. Federal pass-through dollars are excluded by default and shown via the "Federal funds" control. Per-resident figures use Department of Finance report E-4 population estimates for each fiscal year.</span></div>
         <div class="mnote"><b>M-2</b><span>Negative appropriations exist in the source data and are kept as published — they are offsets and transfers (for example, Statewide General Administrative Expenditures Pro Rata, and the Public School System Stabilization Account in 2021-22 through 2024-25), not errors. Rows carrying them are marked with a † method note.</span></div>
         <div class="mnote"><b>M-3</b><span>Department rows may not sum to the agency total: agency totals come from the source's agency-level table, while the department list is the set of rows the source publishes for web display. Where the gap exceeds rounding, the schedule says so.</span></div>
-        <div class="mnote" id="mGate"><b>M-0</b><span></span></div>
         <div class="mnote"><b>M-4</b><span>Agency groupings reflect the Department of Finance's current organizational mapping, which for earlier years can differ from the structure printed in that year's budget documents; statewide totals are unaffected.</span></div>
-        <div class="mnote"><b>M-8</b><span>The <a href="schools.html">K-12 schools page</a> shows the same money this page's "K thru 12 Education" agency appropriates, seen from the receiving end — school districts' reported actuals, reconciled to CDE's published figures. About half of what schools report receiving is this page's K-12 money; the rest is chiefly local property tax and federal grants that never appear here. The two pages are never added; the schools page carries the full computed statement.</span></div>
         <div class="mnote"><b>M-5</b><span>The <a href="cities.html">city view</a> shows reported actual revenues and expenditures from cities' standardized State Controller filings — a different accounting basis from this page's enacted appropriations. Its police and fire service-provision notes derive from the State Controller's services checklist, whose most recent published vintage is FY 2015-16, and service arrangements may have changed since then. The supplementary flag on cities reporting under $5 per resident for a service is a heuristic backstop for the checklist's age, not a current-year survey of who provides the service.</span></div>
         <div class="mnote"><b>M-6</b><span>The Actuals view places actual expenditures beside enacted appropriations — both under the Budgetary-Legal basis, from the Department of Finance's own Schedule 9 ("Comparative Statement of Expenditures"). Actuals for a fiscal year first publish about six and a half months after it closes and may be restated in later publications; the vintage used is named on the view and in every citation. Extraction is verified against Schedule 6 statewide control totals before publication — a year that cannot be verified (currently FY 2020-21, whose source PDFs do not extract reliably) shows no actuals rather than approximate ones. The difference column reflects mid-year legislation, re-appropriations and carryover of multi-year authority, reversions, and fund reclassifications between publications; it is not a judgment of any kind, and actuals legitimately exceed enactment for some agencies.</span></div>
-        <div class="mnote"><b>M-9</b><span><strong>What this nine-year record spans.</strong> The window begins at FY 2017-18 because that is where the Department of Finance's structured budget API begins &mdash; every earlier year returns an empty result, not an error, so the floor is the source's and not a choice. Two events inside the window mean the line is not measuring one steady thing throughout. <strong>COVID-19 federal relief</strong> (FY 2019-20 through FY 2022-23, peaking in FY 2020-21 and FY 2021-22) is one-off money whose rise and fall reads on a chart like an expansion followed by a cut; it was neither. <strong>SB 1</strong>, the Road Repair and Accountability Act, phased in new fuel taxes and vehicle fees from November 2017, so transportation figures step up at the start of the window because of a state tax change rather than a local choice. The record stops above the larger structural breaks in California's finances &mdash; redevelopment dissolution and realignment (2011-12), LCFF (2013-14), the ACA Medi-Cal expansion (2013-14) and GASB 68 (2014-15) all fall before FY 2017-18 and are not crossed by this series.</span></div>
-        <div class="mnote"><b>M-10</b><span><strong>Per-resident figures begin at FY 2020-21.</strong> The population denominator is the Department of Finance's E-4 estimate on the <strong>2020 census benchmark</strong>. DOF's estimates for FY 2017-18 through FY 2019-20 rest on the 2010 benchmark instead, and the two are not one continuous series &mdash; splicing them would put a denominator break inside a per-resident line and present it as a trend. Those three years therefore show no per-resident figure. Dollar and percent-of-total figures cover all nine years.</span></div>
+        <div class="mnote"><b>M-7</b><span>The <a href="schools.html">K-12 schools page</a> shows the same money this page's "K thru 12 Education" agency appropriates, seen from the receiving end — school districts' reported actuals, reconciled to CDE's published figures. About half of what schools report receiving is this page's K-12 money; the rest is chiefly local property tax and federal grants that never appear here. The two pages are never added; the schools page carries the full computed statement.</span></div>
+        <div class="mnote"><b>M-8</b><span><strong>What this nine-year record spans.</strong> The window begins at FY 2017-18 because that is where the Department of Finance's structured budget API begins &mdash; every earlier year returns an empty result, not an error, so the floor is the source's and not a choice. Two events inside the window mean the line is not measuring one steady thing throughout. <strong>COVID-19 federal relief</strong> (FY 2019-20 through FY 2022-23, peaking in FY 2020-21 and FY 2021-22) is one-off money whose rise and fall reads on a chart like an expansion followed by a cut; it was neither. <strong>SB 1</strong>, the Road Repair and Accountability Act, phased in new fuel taxes and vehicle fees from November 2017, so transportation figures step up at the start of the window because of a state tax change rather than a local choice. The record stops above the larger structural breaks in California's finances &mdash; redevelopment dissolution and realignment (2011-12), LCFF (2013-14), the ACA Medi-Cal expansion (2013-14) and GASB 68 (2014-15) all fall before FY 2017-18 and are not crossed by this series.</span></div>
+        <div class="mnote"><b>M-9</b><span><strong>Per-resident figures begin at FY 2020-21.</strong> The population denominator is the Department of Finance's E-4 estimate on the <strong>2020 census benchmark</strong>. DOF's estimates for FY 2017-18 through FY 2019-20 rest on the 2010 benchmark instead, and the two are not one continuous series &mdash; splicing them would put a denominator break inside a per-resident line and present it as a trend. Those three years therefore show no per-resident figure. Dollar and percent-of-total figures cover all nine years.</span></div>
       </div>
       <div class="mcol">
         <div class="microlbl">SOURCES &amp; RECORD</div>
@@ -1957,6 +1977,18 @@
     if (S.view==="trend") renderTrend(C);
     if (S.view==="actuals") renderActuals(C);
     if (S.view==="revenue") renderRevenue();
+    // shown wherever a direction glyph actually rendered — derived, so a lens
+    // that gains or loses glyphs cannot drift out of step with its caveat
+    (function(){
+      const rail = $("dirRail"), note = $("dirNote");
+      if (!rail || !note) return;
+      const host = document.querySelector(".record") || document.body;
+      const hasGlyph = /[\u25b2\u25bc]/.test(host.innerText || "");
+      note.textContent = hasGlyph
+        ? "\u25b2\u25bc SHOW DIRECTION ONLY; THE LEDGER DOES NOT CHARACTERIZE CHANGES"
+        : "";
+      rail.hidden = !hasGlyph;
+    })();
     renderFunds();
     $("printCite").textContent = citationText();
   }

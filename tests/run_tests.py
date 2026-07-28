@@ -196,6 +196,29 @@ BANNED = ["ballooning", "skyrocket", "soaring", "surging", "plummet",
           # a difference column must never be characterized:
           "waste", "overrun", "savings", "underspend", "mismanage"]
 
+# Investigative framing, banned on READER-FACING INSTRUMENT COPY only.
+# Scope matters and is stated in docs/GUARDRAILS.md §9: "investigate"
+# describing the LEDGER'S OWN WORK ON A SOURCE is this project's core noun —
+# findings.html and docs/ are built on it — while "investigate" describing a
+# GOVERNMENT is the framing the record refuses. The scan enforces the second
+# by running only where a government is the subject.
+# Only the terms whose framing is wrong REGARDLESS of subject are scannable.
+# Measured against the live pages, the other three are load-bearing method
+# vocabulary and banning them would mean rewriting correct copy:
+#   "flag"        — "the Ledger shows the figures, flags these differences,
+#                    and never ranks districts" (ccc/uc); "basic-aid flag"
+#                    (a source field); "a single flag per employer" (SCO's
+#                    own column). Marking a caveat on our own figure.
+#   "detect"      — "it cannot detect a transfer between two agencies"
+#                    (index M-3). A stated limit of our own method.
+#   "investigate" — the findings register's core noun.
+# A substring scan cannot express "the subject must not be a government", so
+# it enforces the part it can and GUARDRAILS.md §9 carries the rest.
+BANNED_FRAMING = ["expose", "wasteful", "efficient"]
+# surfaces where the findings vocabulary is correct and the framing ban is
+# therefore NOT applied
+FRAMING_EXEMPT = {"findings.html", "reading.html", "about.html", "bulk.html"}
+
 def banned_scan(page, label):
     text = page.inner_text("body").lower()
     # "solid waste" is an SCO expenditure CATEGORY on the city page, not a
@@ -6134,6 +6157,126 @@ def test_mobile_blocked_tasks(page, base):
     page.unroute("**/school-data.js")
 
 
+def test_design_hygiene(page, base):
+    """Phase A of the July 2026 UI audit: the three defects a sceptical
+    reader meets first, plus the guardrail record and the scoped ban."""
+    import re as _re
+
+    # ---- D-1: method notes are contiguous, ordered, and none renders empty.
+    # Ids are STABLE KEYS: index.html's own prose and JS cite M-3 and M-6 by
+    # name, so those must not move. The order was emergent (M-1,2,3,0,4,8,5,
+    # 6,9,10 with M-7 absent) which is why a citation to a position could not
+    # be trusted; it is declared now and asserted here.
+    for name, prefix in (("index.html", "M"), ("cities.html", "M"),
+                         ("schools.html", "S")):
+        page.goto(f"{base}/{name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1200)
+        notes = page.evaluate("""() => [...document.querySelectorAll('.mnote')]
+            .map(n => ({id:(n.querySelector('b')||{}).textContent||'',
+                        len:((n.querySelector('span')||{}).textContent||'').trim().length}))""")
+        check(f"notes {name}: the page renders method notes", len(notes) >= 5,
+              f"{len(notes)} notes")
+        nums = [int(n["id"].split("-")[1]) for n in notes if _re.match(rf"^{prefix}-\d+$", n["id"])]
+        check(f"notes {name}: every note id parses as {prefix}-n",
+              len(nums) == len(notes), str([n["id"] for n in notes]))
+        check(f"notes {name}: rendered in ascending order",
+              nums == sorted(nums), str(nums))
+        check(f"notes {name}: the sequence is contiguous — no gap like the "
+              "absent M-7",
+              nums == list(range(nums[0], nums[0] + len(nums))), str(nums))
+        empty = [n["id"] for n in notes if n["len"] == 0]
+        check(f"notes {name}: no note renders empty", not empty, str(empty))
+        # the citations the page makes to its OWN notes must resolve
+        body = page.inner_text("body")
+        for ref in set(_re.findall(rf"METHOD NOTE ({prefix}-\d+)", body)):
+            check(f"notes {name}: its reference to {ref} resolves to a note",
+                  ref in [n["id"] for n in notes], str([n["id"] for n in notes]))
+
+    # ---- C-4: the em dash means NOT PUBLISHED and must not also mean
+    # NOT LOADED. Asserted on the SERVED HTML, which is what a crawler, a
+    # share preview and a reader mid-hydration actually get.
+    for name in ("index.html", "cities.html", "schools.html", "districts.html",
+                 "csu.html", "ccc.html", "uc.html"):
+        src = (ROOT / name).read_text(encoding="utf-8")
+        hero = _re.findall(r'<div class="hero-num[^"]*" id="[^"]+">([^<]*)<', src)
+        check(f"loading {name}: the hero figure is not an em dash before "
+              "hydration", not any("—" in h for h in hero), str(hero))
+        check(f"loading {name}: it says so in words instead",
+              "Loading the record" in src or "load with the record" in src)
+    # and the em dash is STILL the not-published glyph where that is its job
+    dsrc = (ROOT / "districts.html").read_text(encoding="utf-8")
+    check("loading: the em dash is still used for a not-published figure "
+          "(negative control — this fix must not have removed the vocabulary)",
+          "'<span class=\"dim\">—</span>'" in dsrc or '"—"' in dsrc
+          or "—</span>" in dsrc)
+
+    # ---- C-3: one neutrality caveat, on every lens that draws a glyph.
+    # The audit read this as over-statement (3x in markup). Measured on the
+    # live page it was UNDER-coverage: 16/15/2/2/2 glyphs against 1/1/0/0/0
+    # caveats, so trend, actuals and revenue drew direction glyphs with no
+    # caveat at all.
+    page.goto(f"{base}/index.html")
+    page.wait_for_selector("#viewGroup button")
+    page.wait_for_timeout(1200)
+    JS = """() => {
+      const vis = e => e.offsetParent !== null;
+      const glyphs = [...document.querySelectorAll('*')].filter(e => vis(e)
+        && e.children.length === 0 && /[\u25b2\u25bc]/.test(e.textContent || ''));
+      const note = [...document.querySelectorAll('span')].filter(s =>
+        /SHOW DIRECTION ONLY/.test(s.textContent) && vis(s));
+      return {glyphs: glyphs.length, notes: note.length};
+    }"""
+    seen_glyph_lens = 0
+    for lens in ("Allocation", "Change", "Trend", "Actuals", "Revenue"):
+        b = page.locator("#viewGroup button", has_text=lens)
+        if not b.count():
+            continue
+        b.first.click()
+        page.wait_for_timeout(800)
+        r = page.evaluate(JS)
+        if r["glyphs"]:
+            seen_glyph_lens += 1
+            check(f"caveat {lens}: a lens drawing {r['glyphs']} direction "
+                  "glyphs carries the caveat", r["notes"] == 1, str(r))
+        else:
+            check(f"caveat {lens}: a lens drawing no glyph carries no caveat",
+                  r["notes"] == 0, str(r))
+    check("caveat: every lens was exercised and at least four draw glyphs "
+          "(positive control)", seen_glyph_lens >= 4, f"{seen_glyph_lens} lenses")
+    check("caveat: it appears exactly once in the source, not per view block",
+          (ROOT / "index.html").read_text(encoding="utf-8")
+          .count("SHOW DIRECTION ONLY") == 1)
+
+    # ---- the guardrail record exists and names its own scope
+    g = (ROOT / "docs" / "GUARDRAILS.md").read_text(encoding="utf-8")
+    for clause in ("No ranking", "No judgment colour", "No derived scores",
+                   "No analytics", "No investigative framing",
+                   "Scope of the banned-terms scan"):
+        check(f"guardrails: records {clause!r}", clause in g)
+    check("guardrails: states that the findings register keeps 'investigation'",
+          "findings.html" in g and "investigation" in g)
+
+    # ---- the framing ban, scoped. Reader-facing instruments only.
+    for f in sorted(ROOT.glob("*.html")):
+        if f.name in FRAMING_EXEMPT:
+            continue
+        page.goto(f"{base}/{f.name}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(300)
+        body = page.inner_text("body").lower()
+        for w in BANNED_FRAMING:
+            check(f"framing {f.name}: {w!r} absent from instrument copy",
+                  w not in body)
+    # and the exemption is REAL — findings.html genuinely uses the word, so
+    # the scoping is load-bearing rather than decorative
+    page.goto(f"{base}/findings.html")
+    page.wait_for_load_state("networkidle")
+    check("framing: findings.html keeps 'investigat' as its core noun "
+          "(the exemption is doing work, not hiding a violation)",
+          "investigat" in page.inner_text("body").lower())
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -11035,6 +11178,7 @@ def main():
             test_legibility(page, base)
             test_zero_service(page, base)
             test_frontdoor_about(page, base)
+            test_design_hygiene(page, base)
             test_reading(page, base)
             test_findings(page, base)
             test_touch_caveats(page, base)

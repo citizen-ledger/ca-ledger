@@ -50,6 +50,13 @@
     --fs-micro:10.5px; --fs-label:11.5px; --fs-data:12.5px; --fs-note:13.5px; --fs-body:15px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  /* The hidden ATTRIBUTE must win. Without this, any author rule that
+     sets display (.caps{display:flex}, .map-panel) beats the UA
+     stylesheet's [hidden]{display:none} and the element stays on
+     screen while the code believes it is gone. Found when a mutation
+     that set rail.hidden=true changed nothing. */
+  [hidden]{display:none!important}
+
   body{background:var(--parchment);color:var(--ink);font-family:var(--sans);font-size:var(--fs-body);line-height:1.5}
   a{color:var(--blue)} a:hover{color:var(--blue-hover)}
   button{font-family:inherit}
