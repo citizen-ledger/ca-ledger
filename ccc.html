@@ -141,6 +141,21 @@
   .r .v{font-family:var(--mono);font-size:var(--fs-data);text-align:right;font-variant-numeric:tabular-nums}
   .r.foot{border-bottom:1px solid var(--ink);font-weight:600}
   .dag{border:none;background:transparent;color:var(--blue);cursor:pointer;font-size:var(--fs-micro);padding:0 1px;font-family:var(--serif)}
+  /* THE CAVEAT MUST BE REACHABLE ON TOUCH. The mark is 7-13px wide and
+     12px tall — it opens the comparability note, so a reader who cannot
+     hit it reads the figure without the warning attached to it, which
+     inverts the mark's purpose.
+     The HIT AREA grows; the GLYPH does not. A centred pseudo-element
+     costs nothing in layout, so the table's density and the inline text
+     flow are byte-identical to before.
+     Height is 42px, not 44: the table's row pitch IS 42px, so a 44px box
+     would overlap the dagger in the row above and below and the wrong
+     note would open. Capped at the pitch deliberately — a target that
+     opens the wrong caveat is worse than a small one. */
+  .dag{position:relative}
+  .dag::after{content:"";position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);width:44px;height:42px}
+
   .hd-sort{background:none;border:none;font:inherit;color:inherit;cursor:pointer;text-align:right;padding:0}
   .hd-sort.on{color:var(--ink)}
   .note-row{padding:10px 14px 12px 16px;border-bottom:1px solid var(--hairline);background:var(--parchment);font-size:var(--fs-data);color:var(--graphite);line-height:1.5}

@@ -143,9 +143,28 @@
   .more{margin-top:8px}
   .empty-rec{font-size:var(--fs-note);color:var(--graphite);margin-top:8px}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  /* The table must never widen the page: at 360px it overflowed by 78px
+     with no scroller, and the column that fell off the right was EVENT —
+     whose values are "appeared" and "disappeared", opposite facts that
+     truncate to near-identical strings. A column whose values must be
+     distinguishable is the worst possible one to clip, so below 560px the
+     table stops being a table: the header row is dropped and every cell
+     labels itself from data-l, which removes the truncation rather than
+     making the reader pan to undo it. The wrapper stays for the widths
+     that keep the grid. */
+  .evtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   @media (max-width:560px){
-    .evt td.path{max-width:38vw}
     .lrec-head{flex-direction:column;gap:2px}
+    .evtwrap{overflow-x:visible}
+    .evt,.evt tbody,.evt tr,.evt td{display:block;width:100%}
+    .evt thead{display:none}
+    .evt tr{padding:9px 0;border-bottom:1px solid var(--hairline)}
+    .evt td{border:none;padding:1px 0;max-width:none}
+    .evt td.path{max-width:none;word-break:break-word}
+    .evt td.num,.evt th.num{text-align:left;white-space:normal}
+    .evt td::before{content:attr(data-l);display:block;font-family:var(--mono);
+      font-size:var(--fs-micro);letter-spacing:.07em;color:var(--smoke)}
+    .evt td.kind{margin-top:3px;font-weight:600}
   }
   @media print{ .checker{display:none} }
 </style>
@@ -365,15 +384,18 @@
              + 'covered is listed below as usual.</p>';
         if (b.note) body += '<p class="batch-note">' + esc(b.note) + '</p>';
         var rows = b.events.slice(0, SHOWN).map(function(e){
-          return '<tr><td>' + labelHtml(r, e.e) + '</td>'
-               + '<td class="path">' + esc(e.k) + '</td>'
-               + '<td class="num">' + num(e.o) + '</td>'
-               + '<td class="num">' + num(e.n) + '</td>'
-               + '<td class="kind">' + kindOf(e) + '</td></tr>';
+          // data-l carries the column name into the cell, because below
+          // 560px the header row is dropped and each cell labels itself
+          return '<tr><td data-l="Entity">' + labelHtml(r, e.e) + '</td>'
+               + '<td class="path" data-l="Figure">' + esc(e.k) + '</td>'
+               + '<td class="num" data-l="Was">' + num(e.o) + '</td>'
+               + '<td class="num" data-l="Now">' + num(e.n) + '</td>'
+               + '<td class="kind" data-l="Event">' + kindOf(e) + '</td></tr>';
         }).join("");
-        body += '<table class="evt"><thead><tr><th>Entity</th><th>Figure</th>'
+        body += '<div class="evtwrap"><table class="evt">'
+             + '<thead><tr><th>Entity</th><th>Figure</th>'
              + '<th class="num">Was</th><th class="num">Now</th><th>Event</th></tr></thead>'
-             + '<tbody>' + rows + '</tbody></table>';
+             + '<tbody>' + rows + '</tbody></table></div>';
         if (b.events.length > SHOWN){
           body += '<p class="more microlbl">Showing ' + SHOWN + ' of ' + b.events.length
                + '. The full record is in <span class="mono-sm">' + esc(layer[0])
