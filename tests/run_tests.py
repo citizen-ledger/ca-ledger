@@ -8886,17 +8886,128 @@ def test_mobile(browser, base):
     viewport — an amount that must be panned to is an amount nobody sees.
     Content inside an overflow-x container (the comparison, the district
     year tables) is exempt only when the page body itself does not pan."""
+    # EVERY page, DISCOVERED FROM DISK. An enumerated page list here is the
+    # same defect class as the enumerated digest list verify_digest.discover()
+    # replaced: it drifts, and the drift is invisible because the check still
+    # reports a clean sweep over whatever it happens to name. This one globbed
+    # 9 of 16 pages, and revisions.html — the one that actually panned — was
+    # not among them.
+    #
+    # Three widths, not one: revisions overflowed by 78px at 360, 48 at 390
+    # and 8 at 430, so a 360-only guard would have called a 430px failure a
+    # pass. The widths are the three the audit ran.
+    PHONE_WIDTHS = (360, 390, 430)
+
+    # A page is exempt ONLY with a reason, and the reason is a defect being
+    # fixed rather than a decision. Empty is the target state.
+    KNOWN_PANNING = {
+        "revisions.html":
+            "table.evt has no scroll container and the page will not pan; "
+            "the Event column truncates DISAPPEARED/APPEARED to "
+            "near-identical strings meaning opposite facts. Declared here "
+            "so this sweep can land while the fix is prepared; the tier-1 "
+            "PR removes this entry.",
+    }
+
+    all_pages = sorted(f.name for f in ROOT.glob("*.html"))
+    check("mobile: the page sweep discovered pages from disk rather than "
+          "being handed a list", len(all_pages) >= 14, f"{len(all_pages)} pages")
+
+    CULPRIT_JS = """() => {
+      const vw = document.documentElement.clientWidth;
+      const sw = Math.max(document.documentElement.scrollWidth,
+                          document.body.scrollWidth);
+      let worst = null;
+      for (const el of document.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        const over = Math.round(r.right - vw);
+        if (over <= 1) continue;
+        let p = el.parentElement, nested = false;
+        while (p && p !== document.body) {
+          if (p.getBoundingClientRect().right - vw > 1) { nested = true; break; }
+          p = p.parentElement;
+        }
+        if (nested) continue;
+        if (!worst || over > worst.over)
+          worst = {over, tag: el.tagName.toLowerCase(),
+                   cls: String(el.className || '').slice(0, 40),
+                   id: el.id || ''};
+      }
+      return {vw, sw, worst};
+    }"""
+
+    for width in PHONE_WIDTHS:
+        ctx = browser.new_context(viewport={"width": width, "height": 780})
+        p = ctx.new_page()
+        for name in all_pages:
+            p.goto(f"{base}/{name}")
+            p.wait_for_load_state("networkidle")
+            p.wait_for_timeout(250)
+            r = p.evaluate(CULPRIT_JS)
+            over = r["sw"] - r["vw"]
+            w = r["worst"]
+            where = (f" — widest offender <{w['tag']} class={w['cls']!r} "
+                     f"id={w['id']!r}> over by {w['over']}px") if w else ""
+            if name in KNOWN_PANNING:
+                # a declared failure must STILL be failing; if it is fixed the
+                # declaration is stale and has to go, or it silences a
+                # regression later
+                check(f"mobile {width}: {name} is a DECLARED panning defect "
+                      f"({KNOWN_PANNING[name]}) — remove the declaration once "
+                      "it is fixed", over > 1,
+                      f"{name} no longer pans at {width}; delete its "
+                      "KNOWN_PANNING entry")
+                continue
+            check(f"mobile {width}: {name} does not scroll horizontally",
+                  over <= 1, f"scrollWidth {r['sw']} vs viewport {r['vw']}{where}")
+        ctx.close()
+
     ctx = browser.new_context(viewport={"width": 360, "height": 780})
     p = ctx.new_page()
-    for name in ("index.html", "cities.html", "schools.html",
-                 "districts.html", "address.html", "about.html", "reading.html",
-                 "findings.html", "bulk.html"):
-        p.goto(f"{base}/{name}")
-        p.wait_for_load_state("networkidle")
-        sw = p.evaluate("Math.max(document.documentElement.scrollWidth,"
-                        " document.body.scrollWidth)")
-        check(f"mobile 360: {name} does not scroll horizontally",
-              sw <= 361, f"scrollWidth {sw}")
+
+    # ---- a run-in label is a rendering defect, not a style choice.
+    # ccc's revenue strip rendered "GENERAL FUND REVENUE · FY 2023-24The 73
+    # districts reported…" because .cmpbox never got the `b{display:block}`
+    # rule .nosum has. Swept across every page rather than fixed in place,
+    # and counted only where it actually RENDERS — the same labels exist
+    # inside print-only blocks on csu/uc, where they are invisible on screen
+    # and are not defects.
+    RUNON_JS = """() => {
+      const out = [];
+      for (const b of document.querySelectorAll('b,strong')) {
+        const t = (b.textContent || '').trim();
+        if (t.length < 12 || t !== t.toUpperCase()) continue;
+        const r = b.getBoundingClientRect();
+        if (!(r.width > 0 && r.height > 0 && b.offsetParent !== null)) continue;
+        if (getComputedStyle(b).display !== 'inline') continue;
+        const nx = b.nextSibling;
+        if (!nx || nx.nodeType !== 3) continue;
+        const s = nx.textContent || '';
+        if (s.length && !/^[\s,.;:)\u2014-]/.test(s))
+          out.push(t.slice(0, 40) + ' -> ' + s.trim().slice(0, 26));
+      }
+      return out;
+    }"""
+    ctx2 = browser.new_context(viewport={"width": 390, "height": 800})
+    p2 = ctx2.new_page()
+    runon_total = 0
+    for name in all_pages:
+        p2.goto(f"{base}/{name}")
+        p2.wait_for_load_state("networkidle")
+        p2.wait_for_timeout(200)
+        bad = p2.evaluate(RUNON_JS)
+        runon_total += len(bad)
+        check(f"mobile label: {name} has no all-caps label running into its "
+              "own sentence", not bad, str(bad[:3]))
+    # positive control: the sweep visited real pages and read real labels,
+    # so "0 run-ons" cannot be a selector that matched nothing
+    labels = p2.evaluate(
+        "() => [...document.querySelectorAll('b,strong')]"
+        ".filter(b => b.offsetParent !== null).length")
+    check("mobile label: the sweep reads real labels (positive control)",
+          labels > 0, f"{labels} visible labels on the last page")
+    ctx2.close()
 
     offscreen_js = """(sel) => {
       let n = 0;
