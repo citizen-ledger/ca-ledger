@@ -104,6 +104,13 @@
   h1{font-family:var(--serif);font-size:58px;font-weight:400;letter-spacing:-1.16px;margin-top:10px;line-height:1.05}
   .dek{font-size:var(--fs-body);color:var(--graphite);margin-top:12px;max-width:620px;line-height:1.5}
   .hero-num{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-0.9px;line-height:1}
+  /* THE EM DASH MEANS NOT PUBLISHED. It is load-bearing vocabulary on
+     this site, so it must never also mean "not loaded yet" — a reader
+     (or a crawler, or a share preview) catching the page mid-hydration
+     would read an absent source where there is only an absent script.
+     The pre-hydration state says so in words instead. */
+  .loading{font-family:var(--sans);font-size:var(--fs-note);font-weight:400;letter-spacing:0;color:var(--smoke)}
+
   .hero-sub{font-family:var(--mono);font-size:var(--fs-data);color:var(--graphite);margin-top:10px}
   .hero-lbl{font-family:var(--mono);font-size:var(--fs-micro);color:var(--smoke);margin-top:4px}
   .hero-right{text-align:right}
@@ -244,7 +251,7 @@
       <p class="dek">Every district's Current Expense of Education (ECS 84362), reconciled exactly — to the dollar — against the Chancellor's Office's own statewide total. Seventy-three districts running 116 colleges; modified-accrual figures, not the state budget's enacted basis.</p>
     </div>
     <div class="hero-right">
-      <div class="hero-num num" id="heroNum">—</div>
+      <div class="hero-num num" id="heroNum"><span class="loading">Loading the record…</span></div>
       <div class="hero-sub" id="heroSub"></div>
       <div class="hero-lbl" id="heroLbl">CURRENT EXPENSE OF EDUCATION · ECS 84362</div>
     </div>
