@@ -482,6 +482,22 @@
     history.replaceState(null, "", h ? "#"+h : location.pathname);
   }
 
+  /* AN UNRECOGNISED STATUS MUST NOT RENDER AS NOTHING.
+     This is how the community-supported caveat vanished when a third value
+     was introduced: two branches, three values, and the third fell through
+     both — silently, and precisely where the caveat mattered. Every status
+     branch now ends in a declared fallback that SAYS the state is
+     unrecognised rather than omitting the note, so the next value added to
+     the payload is visible on the page instead of invisible. */
+  const BASIC_AID_KNOWN = ["basic-aid", "state-funded", "not-published", "held"];
+  function unknownStatusNote(field, value){
+    return [field.toUpperCase() + ": UNRECOGNISED STATE",
+      "This record carries the status \u201c" + String(value) + "\u201d, which "
+      + "this page does not have a description for. The figure is shown as "
+      + "published; the caveat is missing rather than absent. Please report "
+      + "this — it means the data gained a state the page was not taught."];
+  }
+
   // structural-comparability daggers, data-derived from the flags in ccc-data.js
   function districtNotes(r){
     const v = yr(r), f = v.flags || {}, notes = [];
@@ -491,15 +507,33 @@
     // three-valued, matching the K-12 encoding: a status string, never a
     // bare boolean, because "not community-supported" is a real answer
     if (f.basicAidStatus === "basic-aid") notes.push(["COMMUNITY-SUPPORTED", M.daggers.basicAid]);
-    else if (f.basicAidStatus === "not-published") notes.push(["COMMUNITY-SUPPORTED: NOT KNOWN",
-      "Whether this district is community-supported (basic aid) is derived "
+    else if (f.basicAidStatus === "state-funded") { /* a real answer; no caveat */ }
+    else if (f.basicAidStatus === "not-published") notes.push(["COMMUNITY-SUPPORTED: NOT PUBLISHED",
+      v.basicAidUnpublishedReason
+      || ("Whether this district is community-supported (basic aid) is derived "
       + "from the apportionment schedule, which is absent for this record, "
-      + "so it has not been determined either way."]);
+      + "so it has not been determined either way.")]);
+    // HELD IS NOT NOT-PUBLISHED. The source DID publish a count here; it
+    // published one its own rows contradict, and the Ledger refused to
+    // choose between them. That is a different fact about the world, and a
+    // reader who cannot tell them apart learns the wrong thing about the
+    // source. The reason travels with the record.
+    else if (f.basicAidStatus === "held") notes.push(["COMMUNITY-SUPPORTED: HELD",
+      "The Chancellor's Office publishes a community-supported count for "
+      + "this year that its own district rows contradict, so the Ledger has "
+      + "not published a status either way rather than choose between the "
+      + "source's two answers. "
+      + (v.basicAidUnpublishedReason || "")]);
+    else if (BASIC_AID_KNOWN.indexOf(f.basicAidStatus) === -1)
+      notes.push(unknownStatusNote("community-supported", f.basicAidStatus));
     if (f.noncreditHeavyStatus === "noncredit-heavy") notes.push(["NONCREDIT-HEAVY",
       Math.round(v.noncreditShare*100) + "% of funded FTES is noncredit or adult-education. " + M.daggers.noncreditHeavy]);
-    else if (f.noncreditHeavyStatus === "not-published") notes.push(["NONCREDIT SHARE: NOT KNOWN",
+    else if (f.noncreditHeavyStatus === "not-published") notes.push(["NONCREDIT SHARE: NOT PUBLISHED",
       "The noncredit and adult-education share is taken from the "
       + "apportionment schedule, which is absent for this record."]);
+    else if (["noncredit-heavy", "not-noncredit-heavy", "not-published"]
+             .indexOf(f.noncreditHeavyStatus) === -1)
+      notes.push(unknownStatusNote("noncredit share", f.noncreditHeavyStatus));
     if (r.multiCollege && f.basicAidStatus === "basic-aid") notes.push(["MOST MISLEADING CELL", M.daggers.dangerousCell.split(":")[0] + "."]);
     // The reason travels WITH the record. This used to be one hardcoded
     // sentence about Calbright, rendered for any district whose
@@ -710,6 +744,17 @@
           + " Current Expense of Education is unaffected and is gated for this year like every other;"
           + " it is the apportionment-derived figures — funded FTES, state general fund, per-FTES,"
           + " community-supported status — that are not published here.");
+      } else if (w.apportionmentStatus){
+        /* THE SILENT TAIL. This chain ends here, so a year with no round and
+           a status this page does not recognise rendered NO comparability
+           note — reading exactly like a year with nothing to caveat. The
+           strip is derived from live state, so it must say when the state is
+           one it cannot describe. */
+        parts.push('<b>APPORTIONMENT · UNRECOGNISED STATE FOR FY ' + esc(S.year) + '</b>'
+          + "This record carries the apportionment status “"
+          + esc(String(w.apportionmentStatus)) + "”, which this page does not "
+          + "have a description for. Treat the apportionment-derived figures as "
+          + "uncaveated rather than uncaveatable, and please report this.");
       }
       // 2. the district roster changes INSIDE the window
       if (M.districtCountBreak){

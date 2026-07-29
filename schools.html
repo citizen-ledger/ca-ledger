@@ -545,6 +545,17 @@
   const isBasicAid    = v => v && v.basicAidStatus === "basic-aid";
   const baKnown       = v => v && v.basicAidStatus !== "not-published";
   const adaKnown      = v => v && typeof v.fundedADA === "number";
+  /* AND THE STATES ARE ENUMERATED, so a fourth one cannot arrive quietly.
+     `baKnown` is written as "not not-published", which means any value the
+     payload gains in future reads as KNOWN and, not being basic-aid, falls
+     through to the silent branch — rendering as state-funded, the most
+     reassuring reading available. That is how the community-supported
+     caveat disappeared from ccc.html. The caveat a reader does not see is
+     indistinguishable from a caveat that does not apply, so an unrecognised
+     state says so out loud instead. */
+  const BASIC_AID_KNOWN = ["basic-aid", "state-funded", "not-published"];
+  const baUnknownState = v =>
+    v && v.basicAidStatus && BASIC_AID_KNOWN.indexOf(v.basicAidStatus) === -1;
 
   const BA_COUNT = Object.values(D.districts)
     .filter(d => isBasicAid(d.years[latest])).length;
@@ -619,7 +630,13 @@
     const d = D.districts[id], v = d.years[y];
     if (!v) return [];
     const notes = [];
-    if (!baKnown(v)) notes.push({key:"basicAid", text:
+    if (baUnknownState(v)) notes.push({key:"basicAid", text:
+      "BASIC-AID STATUS: UNRECOGNISED STATE. This record carries the status "
+      + "“" + String(v.basicAidStatus) + "”, which this page does "
+      + "not have a description for. It is shown as neither basic-aid nor "
+      + "state-funded, because it is not known to be either. Please report "
+      + "this — it means the data gained a state the page was not taught."});
+    else if (!baKnown(v)) notes.push({key:"basicAid", text:
       "Basic-aid status is not known for FY " + S.year + ". "
       + (unpubWhy(S.year, "basicAid") || "The source does not publish it for this year.")
       + " This is not a finding that the district is state-funded \u2014 the "

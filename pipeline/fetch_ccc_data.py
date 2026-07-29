@@ -250,6 +250,24 @@ APPORTIONMENT_FACTS = {
     "2022-23": {"fundedFtes": True, "stateGf": True, "communitySupported": True},
     "2023-24": {"fundedFtes": True, "stateGf": True, "communitySupported": False},
 }
+# WHY EACH ENTRY CARRIES A STATUS AS WELL AS A REASON.
+# Two different facts were arriving under one label. "The document prints no
+# such figure" is NOT-PUBLISHED: the source is silent. "The document prints a
+# count that its own rows contradict" is HELD: the source spoke, and the
+# Ledger refused to choose between its two answers. The prose below already
+# drew that line — the 2018-19 entry says "no control exists to agree or
+# disagree", against 2019-20's "prints 7 ... but EIGHT" — but only in prose,
+# so nothing downstream could tell them apart. Now the status does.
+FACT_NOT_PUBLISHED = "not-published"
+FACT_HELD = "held"
+
+APPORTIONMENT_FACT_STATUS = {
+    ("2018-19", "fundedFtes"): FACT_NOT_PUBLISHED,
+    ("2018-19", "communitySupported"): FACT_NOT_PUBLISHED,
+    ("2019-20", "communitySupported"): FACT_HELD,
+    ("2023-24", "communitySupported"): FACT_HELD,
+}
+
 APPORTIONMENT_FACT_UNPUBLISHED = {
     ("2018-19", "fundedFtes"):
         "The FY2018-19 Exhibit C prints no funded-FTES figure: the label "
@@ -1173,7 +1191,14 @@ def build(refresh):
                         "This district does not appear in the Chancellor's "
                         "Office Table IV.1 for this year.")
             else:
-                yr["revenueStatus"] = "not-published"
+                # HELD, NOT NOT-PUBLISHED. The source DOES publish this year's
+                # revenue — it publishes two figures that disagree, and the
+                # Ledger refused to choose between them (OPEN.md 1b-ii). That
+                # is a different fact about the world from "the source does
+                # not publish this", and a reader cannot tell them apart if
+                # both arrive labelled the same. The local variable has always
+                # been called iv1Held; the status now says so too.
+                yr["revenueStatus"] = "held"
                 yr["revenueReason"] = yd["iv1Held"] or ""
             a = yd["code2app"].get(code)
             if a:
@@ -1190,7 +1215,9 @@ def build(refresh):
                     yr["basicAidStatus"] = ("basic-aid" if a["ptaxExcess"] < -1
                                             else "state-funded")
                 else:
-                    yr["basicAidStatus"] = "not-published"
+                    # held vs not-published, from the declared table
+                    yr["basicAidStatus"] = APPORTIONMENT_FACT_STATUS.get(
+                        (fy, "communitySupported"), "not-published")
                     yr["basicAidUnpublishedReason"] = \
                         APPORTIONMENT_FACT_UNPUBLISHED.get(
                             (fy, "communitySupported"), "")
@@ -1261,7 +1288,8 @@ def build(refresh):
             if apportionment_fact_published(fy, "communitySupported"):
                 sw["communitySupported"] = app_sw.get("communitySupported")
             else:
-                sw["communitySupportedStatus"] = "not-published"
+                sw["communitySupportedStatus"] = APPORTIONMENT_FACT_STATUS.get(
+                    (fy, "communitySupported"), "not-published")
                 sw["communitySupportedReason"] = APPORTIONMENT_FACT_UNPUBLISHED.get(
                     (fy, "communitySupported"), "")
         else:
@@ -1276,7 +1304,8 @@ def build(refresh):
                              "local": yd["iv1Statewide"]["local"],
                              "tot": yd["iv1Statewide"]["tot"]}
         else:
-            sw["revenueStatus"] = "not-published"
+            # same distinction at the statewide level
+            sw["revenueStatus"] = "held"
             sw["revenueReason"] = yd["iv1Held"] or ""
         statewide[fy] = sw
 
