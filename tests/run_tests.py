@@ -6930,6 +6930,108 @@ def test_print_greyscale():
                   'aria-hidden="true"' in frag)
 
 
+def test_reconciliation_footer(page, base):
+    """D · THE RECONCILIATION IS STATED AT THE FIGURE, NOT IN A METHOD NOTE.
+
+    A reader looking at a parent and its children should not have to trust
+    that they add up, nor leave for a method note to find out. The gate
+    proves these identities at build time; this says so where the reader
+    meets them.
+
+    Three depths on the state page, three different answers, and the middle
+    one is why this exists: departments NEVER sum to their agency, in any
+    year, because the Budget carries items with no department attribution.
+
+    THE RESIDUAL IS ITS OWN LINE. Distributing it would make every child
+    slightly wrong and the total exactly right — the most misleading
+    arrangement available. Leaving it implied asks the reader to subtract."""
+    import re as _re
+
+    def foot(url):
+        page.goto(f"{base}/index.html{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2300)
+        return _re.sub(r"\s+", " ", page.inner_text("#reconFoot"))
+
+    st = load_data_js(ROOT / "data.js")
+    gy = st["meta"]["gate"]["years"]
+    exact = [fy for fy, v in gy.items() if not v["residualK"]]
+    off = [fy for fy, v in gy.items() if v["residualK"]]
+    # POSITIVE CONTROLS BOTH WAYS: the payload really does contain a year
+    # that reconciles and a year that does not, so neither branch below is
+    # asserted against data that cannot exercise it.
+    check("recon: the payload has years that reconcile exactly",
+          len(exact) >= 5, str(sorted(exact)))
+    check("recon: and years where DOF's own publications disagree",
+          sorted(off) == ["2019-20", "2025-26"], str(sorted(off)))
+
+    # ---- AGENCY LEVEL, exact year
+    fy0 = sorted(exact)[-1]
+    f = foot(f"#y={fy0}")
+    check(f"recon agency {fy0}: the footer states the reconciliation at the "
+          "figure", "RECONCILIATION" in f and "AGENCY ROWS" in f, f[:110])
+    check(f"recon agency {fy0}: it shows both sides of the identity",
+          gy[fy0]["agencyRowsK"].__format__(",") in f
+          and gy[fy0]["publishedControlK"].__format__(",") in f, f[:200])
+    check(f"recon agency {fy0}: and says the residual is zero",
+          "Residual" in f and "agree exactly" in f)
+
+    # ---- AGENCY LEVEL, the two residual years, each by its exact figure
+    for fy, want in (("2019-20", "$2.353M"), ("2025-26", "$1.638M")):
+        f = foot(f"#y={fy}")
+        check(f"recon agency {fy}: the residual is a LINE OF ITS OWN",
+              "RESIDUAL" in f and "never distributed" in f, f[:160])
+        check(f"recon agency {fy}: stated at its exact value {want}, not "
+              "rounded to one decimal", want in f, f[:220])
+        # the two sides must be shown at a precision where they DIFFER —
+        # rounded to billions both read "$321B" and the residual looks like
+        # a contradiction
+        a, c = gy[fy]["agencyRowsK"], gy[fy]["publishedControlK"]
+        check(f"recon agency {fy}: both figures shown at a precision where "
+              "they visibly differ",
+              f"{a:,}" in f and f"{c:,}" in f and a != c, f[:200])
+        check(f"recon agency {fy}: and the difference is attributed to the "
+              "source, not to the Ledger",
+              "publications disagree" in f)
+
+    # ---- DEPARTMENT LEVEL: the gap that exists in every year
+    ag = st["budgets"][fy0]["agencies"][0]["id"]
+    f = foot(f"#y={fy0}&a={ag}")
+    check("recon dept: the footer re-states itself for the open depth",
+          "DEPARTMENTS TO THEIR AGENCY" in f, f[:110])
+    check("recon dept: the unattributed items are their own line",
+          "RESIDUAL" in f and "no department attribution" in f)
+    check("recon dept: and it says this is true in every year, so a reader "
+          "does not read it as this agency's anomaly",
+          "they never do" in f)
+    check("recon dept: it refuses to push the gap into the departments",
+          "would make every department slightly wrong" in f)
+
+    # ---- FUND LEVEL: exact, and the rounding named as OURS
+    dd = st["budgets"][fy0]["agencies"][0]["departments"][0]["code"]
+    f = foot(f"#y={fy0}&a={ag}&dd={dd}")
+    check("recon fund: the footer states the fund identity",
+          "FUNDS TO THEIR DEPARTMENT" in f, f[:110])
+    check("recon fund: the sub-$1M difference is named as this record's own "
+          "rounding, not as a source discrepancy",
+          "own rounding" in f and "not the" in f, f[:260])
+    # NEGATIVE CONTROL: it must not describe our rounding as a finding
+    check("recon fund: and it is not reported as a residual against DOF",
+          "publications disagree" not in f)
+
+    # ---- SCOPE: the two sides of the fund identity must match scope.
+    # Summing all funds against a state-only department figure reported a
+    # $99.5 BILLION residual on a department that reconciles exactly.
+    f_state = foot(f"#y={fy0}&a={ag}&dd={dd}")
+    f_fed = foot(f"#y={fy0}&a={ag}&dd={dd}&fed=1")
+    for label, ff in (("state-only", f_state), ("with federal", f_fed)):
+        check(f"recon fund {label}: no spurious residual from a scope "
+              "mismatch", "own rounding" in ff, ff[:200])
+    check("recon fund: the federal toggle changes the identity shown, so it "
+          "is composed from live state and not written once",
+          f_state != f_fed)
+
+
 def test_all_zero_filings_held(page, base):
     """AN ALL-ZERO FILING IS HELD, AND NOTHING IS DERIVED FROM IT.
 
@@ -12205,6 +12307,7 @@ def main():
             test_tier_chip(page, base)
             test_basis_line(page, base)
             test_status_exhaustiveness(page, base)
+            test_reconciliation_footer(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()

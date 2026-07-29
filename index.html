@@ -460,6 +460,27 @@
   .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
     color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
     padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
+
+  /* ---- D · RECONCILIATION FOOTER --------------------------------------
+     States, at the figure, whether the children on screen sum to the
+     parent above them — and where they do not, names the residual as its
+     own line. Never distributed into a child, never left implied.
+     Greyscale by construction: weight and rule, no hue. */
+  .reconfoot{margin-top:10px;border-top:1px solid var(--ink);padding-top:9px;
+    font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);line-height:1.6}
+  .reconfoot b{display:block;color:var(--ink);letter-spacing:.09em;margin-bottom:4px}
+  .reconfoot .rf-row{display:flex;justify-content:space-between;gap:16px;
+    padding:2px 0;border-bottom:1px dotted var(--hairline)}
+  .reconfoot .rf-row:last-child{border-bottom:0}
+  .reconfoot .rf-res{border-top:1px solid var(--ink);margin-top:3px;padding-top:4px;
+    color:var(--ink);font-weight:600}
+  .reconfoot .rf-say{margin-top:6px;font-family:var(--sans);font-size:var(--fs-note);
+    letter-spacing:0;line-height:1.5;color:var(--graphite)}
+  @media print{
+    .reconfoot{border-color:#000;color:#000}
+    .reconfoot b,.reconfoot .rf-res{color:#000}
+  }
 </style>
 </head>
 <body>
@@ -655,6 +676,11 @@
           <span class="num dim">100.0%</span>
           <span class="num delta" id="fDelta"></span>
         </div>
+        <!-- D · THE RECONCILIATION, AT THE FIGURE. A reader who sees a
+             parent and its children should not have to trust that they add
+             up, nor go to a method note to find out. Composed from live
+             state, so it re-states itself at whichever depth is open. -->
+        <div class="reconfoot" id="reconFoot"></div>
         <div class="caps">
           <span id="capLeft">† METHOD NOTE — CLICK TO EXPAND</span>
         </div>
@@ -1229,6 +1255,159 @@
             + " AGENCY TOTAL — SEE METHOD NOTE M-3";
     }
     $("capLeft").textContent = cap;
+    renderReconFoot(C);
+  }
+
+  /* ---- D · THE RECONCILIATION FOOTER ----------------------------------
+     THE V8 DEPTH RULE, SAID WHERE A READER MEETS IT. The gate proves these
+     identities at build time and the method note describes them; neither
+     helps a reader looking at a parent and its children on screen and
+     wondering whether they add up. This states it at the figure.
+
+     Three depths, three different answers, and the middle one is the
+     reason this exists:
+
+       agency level      12 agency rows vs DOF's own published statewide
+                         total — exact in 7 of 9 years, and in two years
+                         DOF's two publications disagree with each other
+       department level  departments NEVER sum to their agency, in any
+                         year, because agencies carry items with no
+                         department attribution ($4.8B–$13.2B)
+       fund level        funds sum to their department exactly, in every
+                         department-year measured (6,916 of 6,916)
+
+     THE RESIDUAL IS ITS OWN LINE. Distributing it across the children
+     would make every child slightly wrong and the total exactly right,
+     which is the most misleading arrangement available. Leaving it implied
+     asks the reader to subtract. So it is stated, labelled, and attributed
+     to whichever publication disagrees.
+
+     Composed from live state — the open depth, the fiscal year, the
+     federal toggle — never hand-written per view, so it cannot describe a
+     reconciliation the page is not showing. */
+  /* Residuals are small and exact, and the exact value is the point:
+     $1.638M rounded to one decimal is $1.6M, which reads as an estimate.
+     kThousands in, dollars-with-3-decimals out. */
+  const fmtResid = k => (k < 0 ? MINUS : "") + "$"
+    + (Math.abs(k) / 1e3).toLocaleString("en-US", {maximumFractionDigits: 3}) + "M";
+  function renderReconFoot(C){
+    const el = $("reconFoot");
+    if (!el) return;
+    const g = (D.meta.gate || {});
+    const gy = (g.years || {})[S.year];
+    const row = (lbl, val) => '<div class="rf-row"><span>' + esc(lbl)
+      + '</span><span class="num">' + val + '</span></div>';
+    const res = (lbl, val) => '<div class="rf-row rf-res"><span>' + esc(lbl)
+      + '</span><span class="num">' + val + '</span></div>';
+    let h = "";
+
+    if (!S.drill) {
+      /* AGENCY LEVEL — against DOF's own published control. */
+      if (!gy) { el.innerHTML = ""; el.hidden = true; return; }
+      const exact = !gy.residualK;
+      h = '<b>RECONCILIATION · AGENCY ROWS TO DOF’S PUBLISHED TOTAL · FY '
+        + esc(S.year) + '</b>'
+        /* EXACT THOUSANDS, NOT ROUNDED BILLIONS. Rounded to $321B both
+           lines read identically and the residual beneath them looks like
+           a contradiction. The difference is the point of this block, so
+           the figures are shown at the precision at which they differ —
+           the same precision DOF publishes them at. */
+        + row(C.rows.length + " agency rows, summed — thousands of dollars",
+              gy.agencyRowsK.toLocaleString("en-US"))
+        + row("DOF’s own published statewide total — thousands",
+              gy.publishedControlK.toLocaleString("en-US"));
+      if (exact) {
+        h += res("Residual", "0");
+        h += '<div class="rf-say">They agree exactly, in thousands of dollars. '
+          + 'The build refuses to write this year if they ever stop agreeing.</div>';
+      } else {
+        h += res("RESIDUAL — stated, never distributed",
+                 fmtResid(gy.residualK));
+        h += '<div class="rf-say">Two Department of Finance publications '
+          + 'disagree with each other for this year by '
+          + esc(fmtResid(Math.abs(gy.residualK))) + '. The agency rows above are '
+          + 'shown exactly as DOF published them; the difference is not spread '
+          + 'across them to make the column add up, and it is not left for you '
+          + 'to subtract. It is recorded as an exact reviewed figure, and the '
+          + 'build fails if it changes.</div>';
+      }
+    } else if (!S.dept) {
+      /* DEPARTMENT LEVEL — the one that never reconciles, in any year. */
+      const a = drillAgency();
+      if (!a) { el.innerHTML = ""; el.hidden = true; return; }
+      const agencyTotal = itemTotal(a, S.fed);
+      const deptSum = C.total;
+      const gap = agencyTotal - deptSum;
+      h = '<b>RECONCILIATION · DEPARTMENTS TO THEIR AGENCY · FY '
+        + esc(S.year) + '</b>'
+        /* millions, not rounded billions: the gap is millions-scale and
+           two lines both reading "$115B" make it look like a contradiction */
+        + row(C.rows.length + " department rows, summed — $ millions",
+              Math.round(deptSum * 1000).toLocaleString("en-US"))
+        + row("The agency figure above — $ millions",
+              Math.round(agencyTotal * 1000).toLocaleString("en-US"))
+        + res("RESIDUAL — items with no department attribution",
+              fmtB(gap));
+      h += '<div class="rf-say">Departments do not sum to their agency, and '
+        + 'they never do — in any agency, in any year. The Budget carries '
+        + 'items at agency level with no department attached, so the gap is a '
+        + 'real feature of the source rather than missing data. It is shown as '
+        + 'its own line instead of being pushed into the departments, which '
+        + 'would make every department slightly wrong in order to make the '
+        + 'column look right.</div>';
+    } else {
+      /* FUND LEVEL — exact, and worth saying so.
+         S.dept holds the department CODE, not the department object — the
+         drill state is a string so it can round-trip through the URL. */
+      const ag = drillAgency();
+      const dept = ag && (ag.departments || []).find(x => x.code === S.dept);
+      if (!dept) { el.innerHTML = ""; el.hidden = true; return; }
+      /* THE TWO SIDES MUST HAVE THE SAME SCOPE. The fund list carries
+         federal rows (letter F) whether or not the page is showing federal
+         funds, while the department figure follows the toggle. Summing all
+         funds against a state-only figure reported a $99.5 BILLION residual
+         on a department that reconciles exactly — a scope mismatch dressed
+         as a source discrepancy, which is precisely the error this footer
+         exists to prevent. */
+      const LETTERS = S.fed ? ["G", "S", "B", "F"] : ["G", "S", "B"];
+      const funds = (dept.funds || []).filter(f => LETTERS.indexOf(f[1]) !== -1);
+      const sumK = funds.reduce((s, f) => s + f[2], 0);
+      const declared = ((dept.gf || 0) + (dept.sp || 0) + (dept.bd || 0)
+                        + (S.fed ? (dept.fed || 0) : 0)) * 1e6;
+      const gap = sumK - declared;
+      const ROUNDED = Math.abs(gap) < 1000;   // < $1M: our storage, not DOF
+      h = '<b>RECONCILIATION · FUNDS TO THEIR DEPARTMENT</b>'
+        + row(funds.length + " fund rows, summed — thousands",
+              Math.round(sumK).toLocaleString("en-US"))
+        + row("The department figure above — thousands",
+              Math.round(declared).toLocaleString("en-US"))
+        /* THE ROUNDING IS OURS, AND SAYING SO IS THE POINT.
+           The department figure is stored in this payload to three decimal
+           places of a billion — $1M granularity — while the fund rows are
+           exact thousands. So the two differ by up to $1M for reasons that
+           have nothing to do with the source, and reporting that as a
+           residual would be the same error as distributing a real one:
+           a number presented as a finding about California when it is a
+           finding about our own storage. Measured across every
+           department-year: 6,916 of 6,916 agree within this rounding. */
+        + res(ROUNDED ? "Residual — within this record’s own rounding" : "RESIDUAL",
+              ROUNDED ? "under $1M" : fmtResid(gap));
+      h += '<div class="rf-say">'
+        + (ROUNDED
+            ? 'Every fund this department draws on is listed, and they sum to '
+              + 'its figure. The department figure is stored here to the '
+              + 'nearest $1 million and the fund rows are exact thousands, so '
+              + 'the two can differ by less than $1M for that reason alone — '
+              + 'that difference is this record’s rounding, not the '
+              + 'Budget’s. Measured across every department-year in this '
+              + 'record: 6,916 of 6,916.'
+            : 'These do not agree, and they should. Please report this — the '
+              + 'build gates on this identity, so a difference beyond the '
+              + 'rounding above means something changed after it was checked.')
+        + '</div>';
+    }
+    el.innerHTML = h;
+    el.hidden = false;
   }
   const arrow = k => S.sortKey===k ? (S.sortDir<0 ? " ↓" : " ↑") : "";
 
