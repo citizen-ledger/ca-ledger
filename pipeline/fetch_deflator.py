@@ -82,6 +82,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gates                                     # noqa: E402
+import cache_guard                                # noqa: E402
 from integrity import stamp  # noqa: E402
 import revisions  # noqa: E402
 
@@ -120,7 +121,12 @@ def fetch(refresh=False):
     if blob[:2] != b"PK":                       # xlsx is a zip
         raise SystemExit("deflator: response is not an .xlsx — refusing to "
                          "parse. Nothing written.")
-    dest.write_bytes(blob)
+    # THROUGH THE GUARD, like every other cached source. This wrote the
+    # xlsx directly, so a refreshed deflator landed mode 0o644 inside the
+    # tree cache_guard keeps read-only — permanently writable, until some
+    # later `cache_guard lock` swept it up. Unlike the CCC scratch files
+    # this one does not clear itself; it is a source, and it stays.
+    cache_guard.write_cached(dest, blob, binary=True)
     return blob
 
 

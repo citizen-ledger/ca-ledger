@@ -89,6 +89,7 @@ Requires: pypdf (for the two PDF sources), standard library otherwise.
 
 import argparse
 import html
+import io
 import json
 import re
 import sys
@@ -766,11 +767,15 @@ def fetch_table_iv1(refresh, portal_val=None, fy=None):
 # ── source 2: MIS District & College Codes PDF ───────────────────────
 def fetch_roster(refresh):
     import pypdf
+    # NO SCRATCH FILE. This used to write the blob back out as
+    # CACHE/_dcc_tmp.pdf purely because pypdf wanted something to open —
+    # a writable byte-for-byte copy of a cached source, created INSIDE the
+    # directory cache_guard exists to keep read-only. The reader is handed
+    # the bytes it already has instead. Nothing is written, so there is no
+    # window in which the invariant is false and no file to orphan.
     blob = _cached("DistrictCollegeCodes.pdf", lambda: _get(DCC_URL, binary=True), refresh, binary=True)
-    (CACHE / "_dcc_tmp.pdf").write_bytes(blob)
-    r = pypdf.PdfReader(CACHE / "_dcc_tmp.pdf")
+    r = pypdf.PdfReader(io.BytesIO(blob))
     lines = [l.strip() for l in "\n".join(p.extract_text() for p in r.pages).split("\n") if l.strip()]
-    (CACHE / "_dcc_tmp.pdf").unlink(missing_ok=True)
     roster, cur, i = {}, None, 0
     while i < len(lines):
         l = lines[i]
@@ -806,10 +811,18 @@ def fetch_apportionment(refresh, fy=None):
     # below caught it, which is what it is for; the live URL is now keyed to
     # the year it actually publishes.
     if fy == EXHIBITC_LIVE_FY:
-        blob = _cached("apportionment-2022-23-R1-ExhibitC.pdf",
-                       lambda: _get(EXHIBITC_URL, binary=True), refresh, binary=True)
-        (CACHE / "_exc_tmp.pdf").write_bytes(blob)
-        src = CACHE / "_exc_tmp.pdf"
+        # READ THE CACHED SOURCE ITSELF, not a copy of it. _cached() has
+        # already written these bytes to CACHE/<name> through the guard and
+        # returned them; writing them back out as CACHE/_exc_tmp.pdf made a
+        # WRITABLE byte-for-byte duplicate inside the read-only tree, and
+        # five SystemExit paths downstream could orphan it. Read-only is
+        # readable, so the duplicate bought nothing.
+        # It also tightens the evidence chain: the extractor now parses the
+        # exact file the integrity digest covers, rather than a copy of it.
+        exc_name = "apportionment-2022-23-R1-ExhibitC.pdf"
+        _cached(exc_name, lambda: _get(EXHIBITC_URL, binary=True),
+                refresh, binary=True)
+        src = CACHE / exc_name
     else:
         src = CACHE / "exhibitc" / f"exhibitc-{fy}.pdf"
         if not src.exists():
@@ -952,7 +965,7 @@ def fetch_apportionment(refresh, fy=None):
         denom = d.get("fundedFtes")
         d["noncreditShare"] = round(nc / denom, 4) if denom else None
         appn[name] = d
-    (CACHE / "_exc_tmp.pdf").unlink(missing_ok=True)
+    # the cleanup that used to live here is gone with the file it cleaned up
     return appn, statewide
 
 
