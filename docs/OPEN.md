@@ -708,6 +708,72 @@ follow:
   and the conclusion happened not to rest on any of them — which is luck,
   not method.
 
+### 2s. A two-branch conditional on an N-valued field drops the Nth
+
+Phase C3 taught the payload to distinguish three absence states —
+**a real reported zero, not-published, and held**. The data change was
+correct and the tests for the data passed. The page broke.
+
+`ccc.html` branched on `basicAidStatus` in two arms, `basic-aid` and
+`not-published`, written when the field had exactly those two meanings
+plus a silent third (`state-funded`, which correctly renders nothing).
+The moment the pipeline emitted `held`, that value matched neither arm
+and fell out of the chain. The COMMUNITY-SUPPORTED caveat did not render
+wrong — **it did not render at all**, on precisely the 144 district-years
+whose figure most needed it, because held means the source published two
+figures that disagree.
+
+**The failure is silent by construction, and it fails toward reassurance.**
+A missing caveat and an inapplicable caveat are the same pixels. A reader
+cannot tell "this page has nothing to warn you about" from "this page has
+a warning it does not know how to say", and the first is what an absent
+note looks like. The same shape appeared in three more places, found by
+sweeping rather than by memory:
+
+| site | shape | what an unrecognised value did |
+|---|---|---|
+| `ccc.html` `basicAidStatus` | two arms of three | dropped the caveat entirely |
+| `schools.html` `basicAidStatus` | `!== "not-published"` reads as KNOWN | rendered as **state-funded** |
+| `address.html` `schoolNotes` | same as schools | same |
+| `ccc.html` `apportionmentStatus` | `if round / else if not-published` | no comparability strip |
+
+`schools.html` is the sharpest: `baKnown = v.basicAidStatus !==
+"not-published"` means *any* future value is treated as known, and being
+not `basic-aid`, it renders as state-funded — **an unrecognised state
+displayed as a specific, reassuring one.**
+
+**The rule.** Where a field has N values, a chain of N−1 tests is a
+defect even when it is currently exhaustive, because exhaustive-today is
+a property of the data and the chain is a property of the code, and the
+two drift apart without a diff. Enumerate the states in a named list next
+to the branch, and give the chain a final arm that says the state was not
+recognised. The unrecognised arm should be **noisy and legible to a
+reader** — the person harmed by a missing caveat is the reader, not the
+maintainer, so a console warning is the wrong instrument.
+
+This is the same defect class as the **enumerated page list**, the
+**enumerated digest list** and the **enumerated GATED list** already
+recorded here, arriving through a different door. Those enumerate
+*subjects* and go stale when a subject is added; this enumerates *states*
+and goes stale when a state is added. The remedy is the same in shape —
+derive, or fail loudly — but it cannot be "glob the disk", because the
+states live in the data. So the guard is a swept assertion:
+`test_status_exhaustiveness` discovers every `\w+Status ===` comparison
+across the HTML on disk and requires that file to declare what it does
+with a value it does not recognise. A new branch is covered the day it
+ships, which is the property the enumerated lists lacked.
+
+**And the tests did not catch it, twice over.** The data assertions
+passed, because the data was right. The UI assertion that *should* have
+caught it was pinned to the old two-state encoding: it built a set named
+`held` by filtering on `"not-published"` — the name recorded the intent,
+the filter recorded the world before the change, and for as long as the
+two states were one value the discrepancy was invisible. **A variable
+whose name and whose filter disagree is a comment that lies**, and it
+survived review because it passed.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

@@ -6711,6 +6711,84 @@ def test_basis_line(page, base):
               "inventing a single year", "YEAR" in line.upper(), line[:90])
 
 
+def test_status_exhaustiveness(page, base):
+    """A three-valued field branched on in two places drops the third.
+
+    This is how the COMMUNITY-SUPPORTED caveat vanished from ccc.html the
+    moment the payload learned to say "held": two branches, three values,
+    and the third fell through both — silently, and exactly where the
+    caveat mattered. Asserted two ways: the DATA must distinguish the
+    states, and every page that branches on a status must render something
+    for a value it does not recognise."""
+    import re as _re
+
+    # ---- 1. THE DATA. held and not-published must be different values, not
+    # one value carrying two facts. Derived from the payload, never inferred.
+    ccc = load_data_js(ROOT / "ccc-data.js")
+    sw = ccc["statewide"]
+    rev = {fy: s.get("revenueStatus") for fy, s in sw.items()
+           if s.get("revenueStatus")}
+    cs = {fy: s.get("communitySupportedStatus") for fy, s in sw.items()
+          if s.get("communitySupportedStatus")}
+    check("status: the payload uses BOTH values for revenue, so one is not "
+          "doing two jobs", set(rev.values()) >= {"held"}, str(rev))
+    check("status: and for community-supported",
+          set(cs.values()) == {"held", "not-published"}, str(cs))
+    # the classification matches the reason each carries — held means the
+    # source spoke and disagreed with itself; not-published means it was silent
+    for fy, st in cs.items():
+        why = (sw[fy].get("communitySupportedReason") or "").lower()
+        if st == "not-published":
+            check(f"status {fy}: not-published because the source is SILENT",
+                  "no community-supported count" in why or "appears nowhere" in why,
+                  why[:80])
+        else:
+            check(f"status {fy}: held because the source CONTRADICTS itself",
+                  "but eight" in why or "prints" in why, why[:80])
+
+    # ---- 2. THE PAGES. Every status branch must have a fallback.
+    # Swept from source rather than listed: a new branch is covered the day
+    # it ships, which is the property the enumerated page list lacked.
+    branched = []
+    for f in sorted(ROOT.glob("*.html")):
+        src = f.read_text(encoding="utf-8")
+        for m in _re.finditer(r"(\w+Status)\s*===\s*[\"']", src):
+            branched.append((f.name, m.group(1)))
+    branched = sorted(set(branched))
+    check("status: pages branching on a status were discovered from source",
+          len(branched) >= 3, str(branched))
+    for name, field in branched:
+        src = (ROOT / name).read_text(encoding="utf-8")
+        # a declared known-value list, or an explicit unrecognised-state note
+        guarded = ("unknownStatusNote" in src
+                   or "_KNOWN" in src
+                   or "UNRECOGNISED" in src.upper())
+        check(f"status: {name} branches on {field} and declares what it does "
+              "with a value it does not recognise", guarded)
+
+    # ---- 3. BEHAVIOURAL: the held caveat actually renders, with its reason.
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1800)
+    page.click('#unitGroup button[data-unit="perFtes"]')
+    page.wait_for_timeout(250)
+    sm = page.locator('#tbl .r:has-text("San Mateo") .dag')
+    check("status: the held district still carries a dagger (positive control)",
+          sm.count() == 1, f"{sm.count()} daggers")
+    sm.first.click()
+    page.wait_for_timeout(250)
+    note = page.inner_text("#tbl .note-row")
+    check("status: the held state renders as HELD, not as nothing and not as "
+          "not-published", "COMMUNITY-SUPPORTED: HELD" in note, note[:120])
+    check("status: and it says WHY it is held — the source contradicting "
+          "itself, not the source being silent",
+          "contradict" in note.lower() or "not published a status" in note.lower(),
+          note[:160])
+    # NEGATIVE CONTROL: the two states must not render the same words
+    check("status: held does not render the not-published wording",
+          "COMMUNITY-SUPPORTED: NOT PUBLISHED" not in note, note[:120])
+
+
 def test_frontdoor_about(page, base):
     """The front door reaches every layer; the method page states the
     bases and names the gate; both hold the archive voice."""
@@ -10468,7 +10546,17 @@ def test_v21_ccc_revenue(page, base):
 
     sw = d["statewide"]
     pub = {fy: s["revenue"] for fy, s in sw.items() if "revenue" in s}
-    held = {fy: s for fy, s in sw.items() if s.get("revenueStatus") == "not-published"}
+    # STRENGTHENED, not relaxed. This filtered on "not-published" while the
+    # variable it built was called `held` and the assertion below called the
+    # year HELD — the test always knew the fact, and the payload had only one
+    # value to encode two facts with. It now reads the field that says held,
+    # so a year mislabelled not-published would fail here instead of passing.
+    held = {fy: s for fy, s in sw.items() if s.get("revenueStatus") == "held"}
+    notpub = {fy: s for fy, s in sw.items()
+              if s.get("revenueStatus") == "not-published"}
+    check("v21 ccc: held and not-published are different values in the "
+          "payload, not one value doing two jobs",
+          "held" not in {s.get("revenueStatus") for s in notpub.values()})
     check("v21 ccc: fourteen of the fifteen years publish revenue",
           len(pub) == 14, str(len(pub)))
     check("v21 ccc: FY2019-20 is HELD, and the reason is the source's own "
@@ -11629,6 +11717,7 @@ def main():
             test_nav_sheet(page, base)
             test_tier_chip(page, base)
             test_basis_line(page, base)
+            test_status_exhaustiveness(page, base)
             test_scroll_affordance(page, base)
             test_touch_targets(page, base)
             test_reading(page, base)
