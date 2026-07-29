@@ -4973,19 +4973,30 @@ def test_county_zero_control(page, base):
               ("mendocino", "2021-22")]
     for cid, yr in ABSENT:
         body = county_record(cid, yr)
-        check(f"county zero: FY{yr} {cid} says the filing is absent, not "
-              f"that the county spent nothing",
-              "reported no governmental expenditure" in body
-              and "absent filing" in body)
-        check(f"county zero: FY{yr} {cid} names the published zero as the "
-              f"reason there is nothing to reconcile",
-              "nothing to reconcile" in body)
+        # STRENGTHENED, not relaxed, and the old wording is the reason.
+        # This asserted the page says "this is an absent filing" — a
+        # CONCLUSION the source does not support. SCO publishes no
+        # filing-status for counties, so a report of zero and a report
+        # never filed are indistinguishable at source, and declaring the
+        # filing absent was exactly the inference this layer is not
+        # entitled to make. The page now states the ambiguity instead, and
+        # the assertion follows it. The substance the old check protected —
+        # that a published zero is no control — is kept below.
+        check(f"county zero: FY{yr} {cid} states the year is HELD rather than "
+              f"asserting the county spent nothing",
+              "IS HELD" in body, body[:100])
+        check(f"county zero: FY{yr} {cid} says WHY — the source cannot "
+              f"distinguish a zero report from a missing one",
+              "cannot tell a report of zero" in body)
+        check(f"county zero: FY{yr} {cid} still names the published zero as "
+              f"the reason there is nothing to reconcile",
+              "nothing to reconcile" in body and "prove nothing" in body)
 
     # the note must be earned by the absence, not printed on every county
     for cid, yr in [("humboldt", "2018-19"), ("los-angeles", "2019-20")]:
         body = county_record(cid, yr)
-        check(f"county zero: FY{yr} {cid} filed, so it carries no absence "
-              f"note", "reported no governmental expenditure" not in body)
+        check(f"county zero: FY{yr} {cid} filed, so it carries no held "
+              f"note (negative control)", "IS HELD" not in body)
 
     # ---- the published claim no longer overstates what was checked
     csrc2 = (ROOT / "cities.html").read_text(encoding="utf-8")
@@ -5009,8 +5020,10 @@ def test_county_zero_control(page, base):
           "Every county-year in this layer reconciles" not in sheet)
     check("county zero: the record sheet states the exception",
           "not claimed as reconciled" in sheet, sheet[:0])
-    check("county zero: and the absent filing is named on the printed sheet",
-          "reported no governmental expenditure" in sheet)
+    check("county zero: and the held year is named on the printed sheet, in "
+          "the same words the screen uses",
+          "IS HELD" in sheet and "cannot tell a report of zero" in sheet,
+          sheet[:120])
     # the same paragraph serves the city layer; it must be true there too
     page.goto(f"{base}/cities.html#c=oakland")
     page.wait_for_selector("#recordBody .det-row")
@@ -6915,6 +6928,138 @@ def test_print_greyscale():
             check(f"greyscale {f.name}: and the mark is hidden from assistive "
                   "technology, being decoration on top of the words",
                   'aria-hidden="true"' in frag)
+
+
+def test_all_zero_filings_held(page, base):
+    """AN ALL-ZERO FILING IS HELD, AND NOTHING IS DERIVED FROM IT.
+
+    The Mt. Shasta shape a second time: a bad input produced confident
+    derived flags. Hollister, Novato and Woodland are published by SCO as
+    a COMPLETE schedule of zeros — every expenditure and revenue line —
+    between years in the ordinary range. lowPolice and lowFire fired
+    because $0 divided by a real population is below any threshold, and
+    bigSwing fired because the ratio to a real prior year is zero. The
+    live site therefore stated, of three real cities, that they spend
+    unusually little on police and fire.
+
+    Six entity-years, eleven false derived claims. Three of the six
+    (Woodland, and Humboldt twice) were found only by sweeping the source
+    rather than checking the two that had been reported.
+
+    HELD, NOT NOT-PUBLISHED, and the distinction is the finding: SCO
+    publishes no filing-status for cities or counties, so a report of zero
+    and a report never filed are indistinguishable AT SOURCE. The Ledger
+    refuses to choose rather than inferring one. Humboldt FY2020-21 is the
+    reason suppression must be explicit — it carried no bigSwing flag only
+    because the PRIOR year was also all-zero, so `prev_gov > 0` was false.
+    Absence of a flag there was luck, not correctness."""
+    DERIVED = {"lowPolice", "lowFire", "bigSwing"}
+
+    for payload, coll, label in (("city-data.js", "cities", "city"),
+                                 ("county-data.js", "counties", "county")):
+        d = load_data_js(ROOT / payload)
+        ents = d[coll]
+        held, allyears = [], 0
+        for slug, e in ents.items():
+            for fy, y in (e.get("years") or {}).items():
+                allyears += 1
+                if y.get("filingStatus") == "held":
+                    held.append((slug, fy, y))
+        # POSITIVE CONTROL: there are years to check at all
+        check(f"held {label}: entity-years were read from the payload",
+              allyears > 400, str(allyears))
+        check(f"held {label}: at least one all-zero filing is marked held",
+              len(held) >= 3, str([(s, f) for s, f, _ in held]))
+
+        for slug, fy, y in held:
+            # THE STATE IS IN THE DATA, with its reason — never inferred at
+            # render time from a falsy figure (OPEN.md 2s, C3)
+            check(f"held {label} {slug} {fy}: carries a reason, not just a flag",
+                  len(y.get("filingHeldReason") or "") > 120)
+            check(f"held {label} {slug} {fy}: the reason says the Ledger cannot "
+                  "tell a zero report from a missing one",
+                  "cannot tell a report of zero" in (y.get("filingHeldReason") or ""))
+            check(f"held {label} {slug} {fy}: NO derived flag fires on it",
+                  not (set(y.get("notes") or []) & DERIVED),
+                  str(sorted(set(y.get("notes") or []) & DERIVED)))
+            check(f"held {label} {slug} {fy}: and it is flagged as held in notes",
+                  "filingHeld" in (y.get("notes") or []))
+            # it really is all-zero — so "held" is not being applied to a
+            # year that has figures
+            bf = y.get("byFunction") or {}
+            check(f"held {label} {slug} {fy}: every function is zero, so held "
+                  "describes this year correctly",
+                  not any(bf.values()) and not y.get("expenditures")
+                  and not y.get("revenues"),
+                  f"exp={y.get('expenditures')} rev={y.get('revenues')}")
+            # AND THE YEAR AFTER MUST NOT SWING OFF A FLOOR THAT WAS NEVER THERE
+            yrs = d["years"]
+            if fy in yrs and yrs.index(fy) + 1 < len(yrs):
+                nxt = (ents[slug].get("years") or {}).get(yrs[yrs.index(fy) + 1])
+                if nxt:
+                    check(f"held {label} {slug}: the year AFTER {fy} draws no "
+                          "swing against a held year",
+                          "bigSwing" not in (nxt.get("notes") or []))
+
+        # NEGATIVE CONTROL, the important half: EACH flag must still fire on
+        # real filings. This first counted the UNION of the three, and a
+        # mutation that silenced lowPolice and lowFire everywhere still
+        # passed, because bigSwing alone fires on 274 city-years and carried
+        # the check. A control that one surviving member can satisfy is not
+        # a control over the others.
+        # WHICH flags this layer computes is read from its PIPELINE SOURCE,
+        # not from the payload. Reading it from the payload would be
+        # circular: a global suppression empties the payload and the check
+        # would then have nothing to require. Counties compute only
+        # bigSwing; lowPolice and lowFire are city-only.
+        src = (ROOT / "pipeline" / f"fetch_{label}_data.py").read_text(
+            encoding="utf-8")
+        computes = sorted(f for f in DERIVED if f'"{f}"' in src)
+        check(f"held {label}: the flags this layer computes were read from "
+              "its pipeline source", computes, str(computes))
+        for flag in computes:
+            fired = sum(1 for e in ents.values()
+                        for y in (e.get("years") or {}).values()
+                        if flag in (y.get("notes") or []))
+            check(f"held {label}: {flag} still fires on real filings — "
+                  "suppression is scoped to held years, not global",
+                  fired >= 1, f"{flag} fired {fired}x")
+
+    # ---- THE BULK EXPORT CARRIES IT TOO. A CSV has no notes panel, so a
+    # row of zeros without a status reproduces the defect in the artefact
+    # people load into a spreadsheet and never revisit.
+    for name in ("cities.csv", "counties.csv"):
+        f = ROOT / "bulk" / name
+        check(f"held bulk: {name} exists", f.exists())
+        if not f.exists():
+            continue
+        txt = f.read_text(encoding="utf-8")
+        check(f"held bulk: {name} declares a filing_status column",
+              "filing_status" in txt)
+        check(f"held bulk: {name} marks the held rows",
+              txt.count(",held,") >= 3, str(txt.count(",held,")))
+        check(f"held bulk: {name} explains what held means in its header",
+              "must not be read as a measurement of zero" in txt)
+
+    # ---- BEHAVIOURAL: the page says so, and says nothing else.
+    page.goto(f"{base}/cities.html#c=hollister&y=2021-22")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2600)
+    rec = " ".join(page.eval_on_selector_all(".record", "e => e.map(x => x.innerText)"))
+    check("held UI: the record says the year is HELD", "IS HELD" in rec, rec[:120])
+    check("held UI: and why — the source cannot distinguish the two",
+          "cannot tell a report of zero" in rec)
+    for gone in ("under $5 per resident", "reported as zero",
+                 "changed by more than 40%"):
+        check(f"held UI: the record does not claim {gone!r}", gone not in rec)
+    # POSITIVE CONTROL: a real year on the SAME city is unaffected
+    page.goto(f"{base}/cities.html#c=hollister&y=2022-23")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2600)
+    ok = " ".join(page.eval_on_selector_all(".record", "e => e.map(x => x.innerText)"))
+    check("held UI: the city's OTHER years are untouched", "IS HELD" not in ok)
+    check("held UI: and still show their figures (positive control)",
+          "$63.9M" in ok or "63.9" in ok, ok[:160])
 
 
 def test_print_completeness(page, base):
@@ -12060,6 +12205,7 @@ def main():
             test_tier_chip(page, base)
             test_basis_line(page, base)
             test_status_exhaustiveness(page, base)
+            test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
             test_no_scratch_in_protected_dirs()

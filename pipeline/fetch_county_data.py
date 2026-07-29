@@ -242,9 +242,16 @@ def fetch_year(source_year):
             "revenuesEnterprise": 0.0,
             # all-funds revenue — what the published control certifies
             "revTotal": 0.0, "revByCategory": {},
-            "revUnexplained": 0.0, "revTopLine": ("", 0.0)})
+            "revUnexplained": 0.0, "revTopLine": ("", 0.0),
+            # AN ALL-ZERO FILING IS NOT A MEASUREMENT OF ZERO — see
+            # fetch_city_data.py for the finding this comes from. Tracked
+            # while READING, because a built total of zero can also come
+            # from real figures that offset, and those are different facts.
+            "anyNonZero": False})
         c["pop"] = max(c["pop"], int(float(r.get("pop") or 0)))
         v = float(r.get("v") or 0)
+        if v != 0:
+            c["anyNonZero"] = True
         kind, key = classify(r.get("category"), r.get("subcategory_1"))
         if kind == "gov":
             c["byFunction"][key] = c["byFunction"].get(key, 0.0) + v
@@ -268,6 +275,8 @@ def fetch_year(source_year):
         line = norm(r.optional("line_description"))
         v = float(r.optional("v") or 0)
         c = out[name]
+        if v != 0:
+            c["anyNonZero"] = True
         # ALL FUNDS, because that is what the published control is.
         c["revTotal"] += v
         c["revByCategory"][cat] = c["revByCategory"].get(cat, 0.0) + v
@@ -483,10 +492,12 @@ def main():
     for name in all_names:
         entry = {"name": name, "years": {}}
         prev_gov = None
+        prev_all_zero = False
         for sy in SOURCE_YEARS:
             c = years_data[sy].get(name)
             if not c:
                 prev_gov = None
+                prev_all_zero = False
                 continue
             fy = fy_label(sy)
             gov = sum(c["byFunction"].values())
@@ -592,12 +603,40 @@ def main():
             if round(c["conduit"] / 1e6, 3):
                 yr["conduitFinancing"] = m(c["conduit"])
             n = []
-            if prev_gov and prev_gov > 0 and (gov / prev_gov > 1.4 or gov / prev_gov < 0.6):
+            # AN ALL-ZERO FILING IS HELD, AND NOTHING IS DERIVED FROM IT.
+            # Humboldt FY2019-20 and FY2020-21 and Mendocino FY2021-22 are
+            # published as a complete schedule of zeros, expenditures and
+            # revenues together, between years in the ordinary range. SCO
+            # publishes no filing-status for counties, so a report of zero
+            # and a report never filed are indistinguishable at source.
+            #
+            # Humboldt FY2020-21 carried no bigSwing flag only because the
+            # PRIOR year was also all-zero, so `prev_gov > 0` was false —
+            # luck, not correctness, which is why this is explicit.
+            all_zero = not c.get("anyNonZero", True)
+            if all_zero:
+                n.append("filingHeld")
+                yr["filingStatus"] = "held"
+                yr["filingHeldReason"] = (
+                    "The State Controller publishes a complete schedule for "
+                    "this year in which every expenditure and revenue line is "
+                    "zero. This county reports figures in the ordinary range "
+                    "in the years either side, and the Controller publishes "
+                    "no filing-status for counties, so the Ledger cannot tell "
+                    "a report of zero from a report that was never filed. The "
+                    "Controller’s own published control for this year is also "
+                    "zero, so there is nothing to reconcile against — "
+                    "reproducing a published zero would prove nothing. The "
+                    "figures are shown exactly as filed; nothing is derived "
+                    "from them, and no comparison to another year is drawn.")
+            if (prev_gov and prev_gov > 0 and not all_zero and not prev_all_zero
+                    and (gov / prev_gov > 1.4 or gov / prev_gov < 0.6)):
                 n.append("bigSwing")
             if n:
                 yr["notes"] = n
             entry["years"][fy] = yr
             prev_gov = gov
+            prev_all_zero = all_zero
         counties_out[slugify(name)] = entry
 
     latest_sy = SOURCE_YEARS[-1]

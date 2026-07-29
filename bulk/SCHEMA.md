@@ -1,6 +1,6 @@
 # Citizen Ledger — bulk data schema
 
-*Generated 2026-07-28. One CSV per published layer, covering every entity and every shipped year.*
+*Generated 2026-07-29. One CSV per published layer, covering every entity and every shipped year.*
 
 ## Before you use these
 
@@ -24,10 +24,10 @@ Each file's provenance header carries the generation date of the data and the ex
 
 | file | rows | columns | layer |
 |---|---|---|---|
-| [`cities.csv`](cities.csv) | 3,856 | 22 | Cities — Reported actual revenues and expenditures by function, per city per year. |
+| [`cities.csv`](cities.csv) | 3,856 | 23 | Cities — Reported actual revenues and expenditures by function, per city per year. |
 | [`community-colleges.csv`](community-colleges.csv) | 1,086 | 15 | Community colleges — District Current Expense of Education with apportionment figures where the source publishes them. |
 | [`compensation.csv`](compensation.csv) | 4,132 | 10 | Compensation — Reported positions, wages and retirement/health per employer. Positions, not people. |
-| [`counties.csv`](counties.csv) | 456 | 21 | Counties — The same State Controller form, filed by counties. A county serves the whole county. |
+| [`counties.csv`](counties.csv) | 456 | 22 | Counties — The same State Controller form, filed by counties. A county serves the whole county. |
 | [`csu-campuses.csv`](csu-campuses.csv) | 23 | 7 | CSU campuses — Audited operating expense per campus. One fiscal year — older years cannot be gated. |
 | [`k12-schools.csv`](k12-schools.csv) | 16,928 | 27 | K-12 schools — Districts, county offices and charter schools, with the per-pupil denominator and the function split. |
 | [`price-deflator.csv`](price-deflator.csv) | 82 | 3 | Price deflator — The index behind every real-dollar figure on the site. A supporting series, not a layer. |
@@ -45,16 +45,16 @@ shasum -a 256 bulk/<file>.csv
 
 | file | sha256 |
 |---|---|
-| `cities.csv` | `77a64e67fdb171e4c2a5ff6bccb5e380d2d8472154dd26f31e1f73ada8d33b2a` |
-| `community-colleges.csv` | `39d41a79c6cad48e7dd5aa1a0ffc95b8b8d472b462bdd3277078b01e256067b3` |
-| `compensation.csv` | `51fa1887809228a033b2a1b361a52c9870ca0b7d8b5449a303e3e3c7ca5f9390` |
-| `counties.csv` | `418120b45b0b6843c924af1fe02eaa431565c0d8dc04bf2d69afb28073e085e0` |
-| `csu-campuses.csv` | `e4257be380a0d2290009650774b81db1dfb24954f626322ff52769ddf797907d` |
-| `k12-schools.csv` | `63c8bdd0d98180f0713fc908e8f38b7b95ace13321b9707304459b03fa2c517a` |
-| `price-deflator.csv` | `7f0578dbf364a96fac8e7d91e94df86bdbe22eea05b098ddd4936011f239a6e9` |
-| `special-districts.csv` | `276ce0f067791e3b357965ca99f7e4f3be94ad23852b21a6ca90c024e929538c` |
-| `state-budget.csv` | `3fce840a953b96b5b4e6e5c7962dc1188457ae3d60c5be4a82d3e33144a38a09` |
-| `uc-campuses.csv` | `63c8aa98aa60599fac797bb5468281853cf4ce438a56df5a51f4fb2795c5b3c4` |
+| `cities.csv` | `baa1b340805746ba3a0a42bf1f66fe9b4996cb8d70145f383b6d40b17a7b59b7` |
+| `community-colleges.csv` | `201f662c6225a54c1dd1a1f132e0c128ca5e063d2277b059cbb6d17a4cf76d81` |
+| `compensation.csv` | `137155073df9794751c271a31ba41c67dea42397c11da55a95957b0e4bec92b1` |
+| `counties.csv` | `f3879c923191b14fbe95171c9ef886238debe80dec2a794cabe1793eedd763af` |
+| `csu-campuses.csv` | `7755842f7701868c5002593d4f790f119d5899273fbbefef4a49c4c510fa27c0` |
+| `k12-schools.csv` | `beff8b2238177bf9be25e1bad1c3c7b4577f614dbfb94c9cef852d61d3c092c2` |
+| `price-deflator.csv` | `1a40f06fbc2377c35afe76aa948a2f9af3e7a91c9e5dd6e1cd832e385df5be3d` |
+| `special-districts.csv` | `0425ce3b9b227daf699a2f8396e574eaa9ff982243d6b998862d703f579bb330` |
+| `state-budget.csv` | `f55514b05b19d45a53cb66ae9521dc15a7f81883b719a3b067b50aa6691ce094` |
+| `uc-campuses.csv` | `ccf98f81f652018fd078a60db0e0934f690457bbe75e1cd46f1ce30ac168ace3` |
 
 The digests above describe *these* files. The `-data.js` payloads they are derived from carry their own digests, verified by `pipeline/verify_digest.py`.
 

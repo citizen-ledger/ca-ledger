@@ -897,6 +897,85 @@ would have quietly broken.
 
 ---
 
+### 2v. A bad input does not stay contained — it becomes a confident claim
+
+Mt. Shasta filed a population of ~86,000 against a real ~3,200, and every
+per-resident figure derived from it stopped measuring anything. That was
+recorded, guarded, and treated as a one-off. It was a shape.
+
+**Six city- and county-years are published by the State Controller as a
+COMPLETE schedule of zeros** — all 237 rows, none null, every value the
+string `"0"`, expenditures and revenues together — sitting between years in
+the ordinary range:
+
+| entity | year | prior year | false derived claims |
+|---|---|---|---|
+| Hollister | 2021-22 | $69.9M | lowPolice, lowFire, bigSwing |
+| Novato | 2021-22 | $58.8M | lowPolice, lowFire, bigSwing |
+| Woodland | 2022-23 | $74.8M | lowPolice, lowFire, bigSwing |
+| Humboldt County | 2019-20 | — | bigSwing |
+| Humboldt County | 2020-21 | (also zero) | **none — by luck** |
+| Mendocino County | 2021-22 | — | bigSwing |
+
+The zeros were never the harm. **The derived flags were.** `lowPolice` and
+`lowFire` fire when a function divided by a real population falls under
+$5/resident, and $0 is under any threshold; `bigSwing` fires when the ratio
+to a real prior year leaves a 40% band, and zero leaves every band. So the
+live site stated, of three real cities, that **they spend unusually little
+on police and fire** — eleven affirmative false claims, each one derived,
+each one looking like analysis rather than like a missing input.
+
+**Humboldt FY2020-21 is the entry that matters most.** It carried no flag
+at all — not because a guard worked, but because the *prior* year was also
+all-zero, so `prev_gov > 0` was false. The absence of a false claim there
+was arithmetic luck. A defect whose visible symptom depends on whether the
+neighbouring row happens to be broken too is a defect you cannot find by
+looking at symptoms.
+
+**Three of the six were found only by sweeping.** Two were reported; the
+other four came from querying every entity-year at source for the shape.
+Checking the named cases would have fixed half the problem and closed it.
+
+**HELD, not not-published, and the distinction is the whole finding.** SCO
+publishes **no filing-status for cities or counties** — the delinquency
+lists with `Filed Late` / `Failed to File` cover special districts only.
+So at source, a report of zero and a report never filed are
+indistinguishable, and *"this is an absent filing"* — which the county
+note asserted for a year before this — was a conclusion the data does not
+support. It was the Ledger's inference wearing the clothes of a fact.
+
+The honest state is the C3 third one: the source spoke, the Ledger will not
+choose. Corroborated rather than assumed — **SCO's own published control
+for these entity-years is also zero**, so the gate reproduces zero against
+zero and proves nothing, which the county pipeline had already been saying
+in its own output (*"control is zero"*) without anything downstream acting
+on it.
+
+**Derived in the pipeline, from whether ANY non-zero value appeared while
+reading the source** — not reconstructed afterwards by testing the built
+total for falsiness. A total of zero can also come from real figures that
+offset, and those are different facts. `cities.html` had been inferring the
+county note from `if (!yr.expenditures)`, which is precisely what C3
+forbids; it now reads the status the pipeline wrote.
+
+**The negative control is where this nearly went wrong.** The first version
+asserted that "the derived flags still fire on real filings" by counting
+the **union** of the three. A mutation that silenced `lowPolice` and
+`lowFire` *globally* passed it, because `bigSwing` alone fires on 274
+city-years and carried the check by itself. **A control that one surviving
+member can satisfy is not a control over the others.** It now requires each
+flag independently, and reads which flags a layer computes from that
+layer's **pipeline source** rather than from its payload — reading the
+payload would be circular, since a global suppression empties it and the
+check would have nothing left to require.
+
+And the same status travels into `bulk/cities.csv` and `bulk/counties.csv`
+as a `filing_status` column, because a CSV has no notes panel: a row of
+zeros without a marker reproduces the defect in the artefact people load
+into a spreadsheet and never revisit.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt
