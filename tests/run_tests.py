@@ -6711,6 +6711,127 @@ def test_basis_line(page, base):
               "inventing a single year", "YEAR" in line.upper(), line[:90])
 
 
+def test_no_scratch_in_protected_dirs():
+    """NOTHING MUTATES A GUARD-PROTECTED DIRECTORY EXCEPT THE GUARD.
+
+    cache_guard makes every cached source read-only so a stray write fails
+    loudly instead of quietly poisoning the evidence a gate is measured
+    against. Two shapes broke that, and only one of them was noisy:
+
+    SCRATCH (CCC, self-clearing). fetch_ccc_data wrote _dcc_tmp.pdf and
+    _exc_tmp.pdf INTO the cache — writable byte-for-byte copies of files
+    already sitting there, created only because a PDF reader wanted a path.
+    Five SystemExit paths sat between the write and the unlink.
+
+    WHY IT SURVIVED SINCE THE CCC LAYER SHIPPED: it heals itself. Run one
+    finds the orphan and fails the cache guard; a later pipeline invocation
+    inside that same run reaches the unlink and clears it; run two is
+    green. A defect that repairs itself between runs presents as flakiness,
+    and flakiness gets re-run rather than fixed.
+
+    SOURCE (deflator, persistent). fetch_deflator wrote its xlsx with a
+    bare dest.write_bytes, bypassing the guard, so a refreshed deflator
+    landed mode 0o644 and STAYED writable. Quieter still: no orphan, no
+    flake, just a permanently unprotected source until some later lock
+    sweep happened over it.
+
+    Static and swept from the pipelines on disk, so a new pipeline is
+    covered the day it lands."""
+    import ast as _ast
+
+    DIRECT = {"write_bytes", "write_text", "touch", "rename", "replace",
+              "unlink", "chmod"}
+    SHUTIL = {"copy", "copy2", "copyfile", "move", "rmtree"}
+
+    def names(n):
+        return {x.id for x in _ast.walk(n) if isinstance(x, _ast.Name)}
+
+    pipes = [f for f in sorted((ROOT / "pipeline").glob("*.py"))
+             if f.name != "cache_guard.py"]
+    check("scratch guard: the pipelines were discovered from disk, not "
+          "listed", len(pipes) >= 20, str(len(pipes)))
+
+    offences, protected = [], []
+    for f in pipes:
+        tree = _ast.parse(f.read_text(encoding="utf-8"))
+        # THE PROTECTED ROOT IS DERIVED FROM THE FILE'S OWN CODE: a name
+        # assigned a path ending in the literal "cache" directory. Never a
+        # hardcoded variable name — CACHE and CACHE_DIR both exist today
+        # and a third spelling would otherwise slip the net.
+        roots = set()
+        for n in _ast.walk(tree):
+            if isinstance(n, _ast.Assign):
+                u = _ast.unparse(n.value)
+                if "/ 'cache'" in u or '/ "cache"' in u:
+                    roots |= {t.id for t in n.targets
+                              if isinstance(t, _ast.Name)}
+        # and any path JOINED off one of those is protected too, to a
+        # fixpoint — `dest = CACHE / IPD_FILE` is the deflator's whole bug
+        prot, changed = set(roots), True
+        while changed:
+            changed = False
+            for n in _ast.walk(tree):
+                if (isinstance(n, _ast.Assign)
+                        and isinstance(n.value, _ast.BinOp)
+                        and isinstance(n.value.op, _ast.Div)
+                        and names(n.value) & prot):
+                    new = {t.id for t in n.targets
+                           if isinstance(t, _ast.Name)} - prot
+                    if new:
+                        prot |= new
+                        changed = True
+        if roots:
+            protected.append(f.name)
+        for n in _ast.walk(tree):
+            if not isinstance(n, _ast.Call):
+                continue
+            fn, why = n.func, None
+            if isinstance(fn, _ast.Attribute):
+                if fn.attr in DIRECT and names(fn.value) & prot:
+                    why = "writes"
+                elif fn.attr == "open" and names(fn.value) & prot:
+                    mode = "".join(_ast.unparse(a) for a in n.args)
+                    why = "opens for writing" if any(
+                        c in mode for c in "wax+") else None
+                elif (fn.attr in SHUTIL and isinstance(fn.value, _ast.Name)
+                      and fn.value.id == "shutil"
+                      and any(names(a) & prot for a in n.args)):
+                    why = "copies into"
+            elif (isinstance(fn, _ast.Name) and fn.id == "open"
+                  and n.args and names(n.args[0]) & prot):
+                mode = "".join(_ast.unparse(a) for a in n.args[1:])
+                why = "opens for writing" if any(
+                    c in mode for c in "wax+") else None
+            if why:
+                offences.append(
+                    f"{f.name}:{n.lineno} {why} — {_ast.unparse(n)[:60]}")
+
+    # POSITIVE CONTROL: the sweep found trees to police, so an empty
+    # offence list means CLEAN and not LOOKED AT NOTHING
+    check("scratch guard: pipelines declaring a protected cache root were "
+          "found", len(protected) >= 8, str(protected))
+    check("scratch guard: no pipeline mutates its protected cache outside "
+          "cache_guard", not offences, "; ".join(offences))
+
+    # the two historical scratch names are gone, so a revert is loud
+    ccc = (ROOT / "pipeline" / "fetch_ccc_data.py").read_text(encoding="utf-8")
+    for gone in ("_exc_tmp", "_dcc_tmp"):
+        check(f"scratch guard: {gone} is not recreated",
+              ccc.count(gone) <= 1, f"{ccc.count(gone)} mentions")
+
+    # THE INVARIANT ITSELF, measured rather than assumed — the assertion
+    # the self-clearing orphan intermittently broke
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import cache_guard
+    cache = ROOT / "pipeline" / "cache"
+    if cache.exists():
+        writable = [str(p.relative_to(cache)) for p in cache.rglob("*")
+                    if p.is_file() and not p.is_symlink()
+                    and not cache_guard.is_locked(p)]
+        check("scratch guard: every cached source is read-only right now",
+              not writable, str(writable))
+
+
 def test_status_exhaustiveness(page, base):
     """A three-valued field branched on in two places drops the third.
 
@@ -11718,6 +11839,7 @@ def main():
             test_tier_chip(page, base)
             test_basis_line(page, base)
             test_status_exhaustiveness(page, base)
+            test_no_scratch_in_protected_dirs()
             test_scroll_affordance(page, base)
             test_touch_targets(page, base)
             test_reading(page, base)

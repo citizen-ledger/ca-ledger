@@ -774,6 +774,68 @@ survived review because it passed.
 
 ---
 
+### 2t. A defect that heals itself between runs gets dismissed, not fixed
+
+The CCC pipeline wrote two scratch PDFs — `_dcc_tmp.pdf` and
+`_exc_tmp.pdf` — **into `pipeline/cache/`**, the tree `cache_guard` exists
+to keep read-only. They were byte-for-byte copies of files already sitting
+there, written only because pypdf and pdfplumber wanted a path to open.
+Five `SystemExit` paths sat between the write and the single unlink, with
+no `try/finally`.
+
+**It shipped with the CCC layer and survived every run since, because it
+repairs itself.** The sequence is exact:
+
+1. Something exits between the write and the unlink, orphaning the file.
+2. The next suite run's cache guard finds it. **One assertion fails.**
+3. Later in that same run, the suite executes the pipeline module again
+   (it does so four times, each wrapped in `except SystemExit: pass`).
+   One of those reaches the unlink and deletes the orphan.
+4. The next run is green.
+
+So the observed signal is: *fails once, passes on re-run, no code change
+in between.* That is the exact signature of flakiness, and flakiness gets
+re-run rather than investigated. The defect was **structurally guaranteed
+to be dismissed** — not because anyone was careless, but because it
+presented as the one thing a maintainer is trained to discount. It took a
+run that failed while someone happened to be reading the output closely
+for it to be looked at at all.
+
+**The rule: a failure that does not reproduce is not thereby absolved.**
+Before re-running, establish whether the run itself could have cleared the
+condition. A test suite that exercises the code it is testing can repair
+the state it is testing — and then reports success. "It passed the second
+time" is evidence about the second run, not about the defect.
+
+**Fixed by removing the write, not by guarding it.** A `try/finally` was
+the obvious repair and is the wrong one: it still creates a writable file
+inside a protected directory and merely shortens the window. The invariant
+would be *broken and restored* rather than never broken, and a guard whose
+assertion is false for part of every run is not an invariant. The cached
+source is already on disk and read-only means readable, so both call sites
+now read the original — one via `io.BytesIO`, one via the cached path.
+It also tightens the evidence chain: the extractor now parses the exact
+file the integrity digest covers rather than a copy of it.
+
+**The sweep found a second, quieter one.** `fetch_deflator.py` wrote its
+cached xlsx with a bare `dest.write_bytes(blob)`, bypassing
+`cache_guard.write_cached`. That leaves a **permanently** writable source
+in the protected tree after any `--refresh` — no orphan, no flake, no
+symptom at all until some later `cache_guard lock` sweep happened over it.
+The self-clearing defect at least announced itself intermittently; this
+one never did. **Silence is not evidence of correctness**, and the reason
+to sweep by structure rather than by memory is that the quiet defect and
+the noisy one look identical to a grep for the thing you already know.
+
+`test_no_scratch_in_protected_dirs` now walks every `pipeline/*.py` with
+`ast`, derives each file's protected roots **from its own assignments**
+(so a third spelling beside `CACHE` and `CACHE_DIR` is still covered),
+propagates through path joins to a fixpoint, and fails on any write,
+rename, unlink, chmod, write-mode `open` or `shutil` copy landing inside.
+Verified against the pre-fix tree: 4 of 4 sites detected.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt
