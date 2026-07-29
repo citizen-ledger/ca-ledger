@@ -800,6 +800,25 @@
      labels it 2023-24. Converted once, here. */
   const fyLabel = y => (Number(y)-1) + "-" + String(y).slice(2);
 
+  /* THE FILING STATES ARE ENUMERATED (OPEN.md 2s). `filingStatus` is
+     branched on in three places below, and a branch chain that tests only
+     for the one value it knows will silently ignore a fourth the payload
+     gains later — which is how the community-supported caveat vanished
+     from ccc.html. Absent means an ordinary filing; "held" means the
+     source published a schedule of zeros the Ledger will not read as a
+     measurement. Anything else says so, out loud, to the reader. */
+  const FILING_KNOWN = ["held"];
+  const filingUnknown = y =>
+    y && y.filingStatus && FILING_KNOWN.indexOf(y.filingStatus) === -1;
+  function filingUnknownNote(y){
+    return {key:"filingUnknown", pinned: true,
+      text: "FILING STATUS: UNRECOGNISED STATE. This record carries the "
+        + "status “" + String(y.filingStatus) + "”, which this page "
+        + "does not have a description for. The figures are shown as filed; "
+        + "the caveat is missing rather than absent. Please report this — "
+        + "it means the data gained a state the page was not taught."};
+  }
+
   function cityNotes(id){
     const c = ENTS[id], yr = cityYear(id,S.year), notes = [];
     /* ---- NEGATIVE FUND BALANCE (docs/V24A). Emitted before the
@@ -861,17 +880,34 @@
       // zero is kept instead of erased. The Controller's own control total
       // for these county-years is zero, which is what "nothing filed"
       // means here.
-      if (!yr.expenditures)
+      // FROM THE PAYLOAD, NOT INFERRED FROM AN EMPTY VALUE. This read
+      // `if (!yr.expenditures)`, which is the thing C3 forbids: a zero and
+      // an absence are different facts and cannot be told apart after the
+      // fact by testing for falsiness. The pipeline now decides, from
+      // whether ANY non-zero value appeared in the source rows, and says
+      // so in the record.
+      if (filingUnknown(yr)) notes.push(filingUnknownNote(yr));
+      else if (yr.filingStatus === "held")
         notes.push({key:"noFiling", pinned: true,
-          text: c.name + " County reported no governmental expenditure for FY "
-                + S.year + ". The State Controller publishes a total of zero "
-                + "for this county-year, so there is nothing to reconcile "
-                + "against and nothing to compare — this is an absent filing, "
-                + "not a county that spent nothing."});
+          text: c.name + " County — FY " + S.year + " IS HELD. "
+                + (yr.filingHeldReason || "")});
       if (yr.notes && yr.notes.includes("bigSwing"))
         notes.push({key:"swing", text:"Governmental expenditures changed by more than 40% from the prior fiscal year — single-year capital projects or debt events can do this; check adjacent years before comparing."});
       return notes;
     }
+    /* AN ALL-ZERO FILING IS HELD, ON THE CITY BRANCH TOO.
+       The county branch above has said "this is an absent filing, not a
+       county that spent nothing" since the county layer shipped. The city
+       branch said nothing at all — so Hollister, Novato and Woodland
+       showed $0 with no caveat, and the derived flags then stated that
+       they spend unusually little on police and fire. Pinned, because a
+       reader who does not open the notes is the reader most likely to
+       take the figure at face value. */
+    if (filingUnknown(yr)) notes.push(filingUnknownNote(yr));
+    else if (yr.filingStatus === "held")
+      notes.push({key:"noFiling", pinned: true,
+        text: c.name + " — FY " + S.year + " IS HELD. "
+              + (yr.filingHeldReason || "")});
     // the filed population contradicts the county's own — say so where the
     // per-resident figures derived from it are read
     if (yr.populationContradicted)
@@ -879,6 +915,14 @@
     if (c.flags && c.flags.consolidated)
       notes.push({key:"consolidated", text: c.name + " is a consolidated city and county — its report includes county functions (courts, jails, social services, elections) that no other California city provides, so its figures are not directly comparable to other cities."});
     const vin = D.meta.servicesChecklistVintage;
+    /* NOTHING PER-FUNCTION IS SAID ABOUT A HELD YEAR EITHER. On an
+       all-zero filing every function reads as zero, so this block would
+       add "Police expenditure is reported as zero — the city filed the
+       function and entered nothing against it" for a year where we do not
+       know that the city filed at all. The held note above is the whole
+       of what the Ledger knows; a per-function gloss on top of it would be
+       thirteen more claims derived from the same absent input. */
+    if (yr.filingStatus === "held") return notes;
     [["police","Police","lowPolice"],["fire","Fire","lowFire"]].forEach(([k,label,lowKey])=>{
       const svc = c.services && c.services[k];
       const low = yr.notes && yr.notes.includes(lowKey);

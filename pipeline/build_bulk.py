@@ -171,8 +171,13 @@ def _local_gov(payload, coll_key, fname, title, extra=()):
     m = d["meta"]
     funcs = [f["key"] for f in d["functions"]]
     fnames = {f["key"]: f["name"] for f in d["functions"]}
-    cols = (["slug", "name", "county", "fiscal_year", "population",
-             "revenues_musd", "expenditures_musd"]
+    # filing_status TRAVELS WITH THE ROW. A held entity-year exports as a
+    # row of zeros, and a CSV has no notes panel to qualify it — so without
+    # this column the export reproduces exactly the defect the pages were
+    # just fixed for, and does it in the artefact people load into a
+    # spreadsheet and never revisit.
+    cols = (["slug", "name", "county", "fiscal_year", "filing_status",
+             "population", "revenues_musd", "expenditures_musd"]
             + [f"exp_{k}_musd" for k in funcs])
     rows = []
     for slug, e in sorted(d[coll_key].items()):
@@ -182,6 +187,7 @@ def _local_gov(payload, coll_key, fname, title, extra=()):
                 continue
             bf = y.get("byFunction") or {}
             rows.append([slug, e["name"], e.get("county", ""), fy,
+                         y.get("filingStatus") or "as-filed",
                          num(y.get("population")), num(y.get("revenues")),
                          num(y.get("expenditures"))]
                         + [num(bf.get(k)) for k in funcs])
@@ -196,7 +202,14 @@ def _local_gov(payload, coll_key, fname, title, extra=()):
         "millions of dollars; population in persons",
         extra=tuple(extra) + (
             "Function columns: " + "; ".join(f"exp_{k}_musd = {v}" for k, v in fnames.items()),
-            "An entity-year absent from this file filed nothing for that year.",))
+            "An entity-year absent from this file filed nothing for that year.",
+            "filing_status = held means the Controller publishes a complete "
+            "schedule of zeros for that entity-year, between years in the "
+            "ordinary range, and publishes no filing-status that would say "
+            "whether a zero report was filed or none was. Every figure on a "
+            "held row is zero as filed; NOTHING is derived from it and it must "
+            "not be read as a measurement of zero spending. Filter these rows "
+            "out before any comparison.",))
     return write_csv(fname, head, cols, rows)
 
 
@@ -204,13 +217,17 @@ def export_city(_n):
     return _local_gov("city-data.js", "cities", "cities.csv", "cities",
                       extra=["A $0 in a function column can be a real filed zero — a city that "
                              "contracts the service to its county files $0. The site's services "
-                             "checklist distinguishes the two; see about.html."])
+                             "checklist distinguishes the two; see about.html.",
+                             "Three city-years are held: Hollister and Novato FY2021-22, "
+                             "Woodland FY2022-23. See filing_status."])
 
 
 def export_county(_n):
     return _local_gov("county-data.js", "counties", "counties.csv", "counties",
                       extra=["A county serves the whole county, including residents of every "
-                             "city inside it. County and city figures must not be added."])
+                             "city inside it. County and city figures must not be added.",
+                             "Three county-years are held: Humboldt FY2019-20 and FY2020-21, "
+                             "Mendocino FY2021-22. See filing_status."])
 
 
 def export_school(_n):

@@ -410,6 +410,13 @@ def fetch_year(source_year: str):
         "revByCategory": defaultdict(float),
         "revUnexplained": 0.0,        # dollars in "(Specify)" lines
         "revTopLine": ("", 0.0),      # largest single line: (label, dollars)
+        # AN ALL-ZERO FILING IS NOT A MEASUREMENT OF ZERO.
+        # Tracked while READING the source, not reconstructed afterwards
+        # from the built totals: a total of zero can also arise from real
+        # figures that offset, and those are different facts. This is true
+        # only when no non-zero value appeared in any expenditure or
+        # revenue row for the entity-year.
+        "anyNonZero": False,
     })
     for r in exp:
         name = norm(r["entity_name"])
@@ -417,6 +424,8 @@ def fetch_year(source_year: str):
         c["county"] = norm(r.optional("county")) or c["county"]
         c["pop"] = max(c["pop"], int(float(r.optional("pop") or 0)))
         v = float(r.optional("v") or 0)
+        if v != 0:
+            c["anyNonZero"] = True
         kind, key, line = classify_expenditure(
             r.optional("category"), r.optional("subcategory_1"),
             r.optional("subcategory_2"))
@@ -441,6 +450,8 @@ def fetch_year(source_year: str):
         cat = norm(r.optional("category"))
         line = norm(r.optional("line_description"))
         c = cities[name]
+        if v != 0:
+            c["anyNonZero"] = True
         # ALL-FUNDS, because that is what SCO's published total_revenues
         # is — the H2 test in docs/V21_REVENUE_FINDING.md measured a
         # governmental-only sum reconciling against it just 11.9% of the
@@ -746,10 +757,12 @@ def build_payload(years_data, services, gaz, county_pops):
         if name == "San Francisco":
             entry["flags"] = {"consolidated": True}
         prev_gov = None
+        prev_all_zero = False
         for sy in SOURCE_YEARS:
             c = years_data[sy].get(name)
             if not c:
                 prev_gov = None
+                prev_all_zero = False
                 continue
             entry["county"] = c["county"] or entry["county"]
             gov = sum(c["byFunction"].values())
@@ -843,17 +856,67 @@ def build_payload(years_data, services, gaz, county_pops):
                     f"figures are not derived for this year, because a "
                     f"denominator this source contradicts would not measure "
                     f"anything.")
-            if c["pop"] > 0 and "populationContradicted" not in notes:
+            # AN ALL-ZERO FILING IS HELD, AND NOTHING IS DERIVED FROM IT.
+            #
+            # SCO publishes a COMPLETE schedule for these entity-years —
+            # all 237 rows, none null, every value the string "0" — for
+            # both expenditures and revenues at once. A city of 42,554
+            # residents did not spend $0 while spending $70M the year
+            # before and $90M the year after, and SCO publishes no
+            # filing-status for cities or counties, so there is no source
+            # statement to tell a zero filing from a missing one.
+            #
+            # The Ledger therefore refuses to choose: the figures ship as
+            # filed, because that is what the source says, and the year is
+            # marked HELD so no reader mistakes it for a measurement.
+            #
+            # THIS IS THE MT. SHASTA SHAPE. A bad input produced confident
+            # derived flags: lowPolice and lowFire fired because $0 police
+            # spending divided by a real population is below any
+            # threshold, and bigSwing fired because the ratio to a real
+            # prior year is zero. The page then stated, of three real
+            # cities, that they spend unusually little on police and fire.
+            # Measured: 6 entity-years, 11 false derived claims.
+            #
+            # Note Humboldt FY2020-21 carried NO flag — not because the
+            # guard worked, but because the PRIOR year was also all-zero,
+            # so `prev_gov > 0` was false. Absence of a flag there was
+            # luck, not correctness, which is why suppression is explicit
+            # here rather than left to the arithmetic.
+            all_zero = not c.get("anyNonZero", True)
+            if all_zero:
+                notes.append("filingHeld")
+                yr["filingStatus"] = "held"
+                yr["filingHeldReason"] = (
+                    "The State Controller publishes a complete schedule for "
+                    "this year in which every expenditure and revenue line is "
+                    "zero. This city reports figures in the ordinary range in "
+                    "the years either side, and the Controller publishes no "
+                    "filing-status for cities, so the Ledger cannot tell a "
+                    "report of zero from a report that was never filed. The "
+                    "Controller’s own published control for this year is also "
+                    "zero, so there is nothing to reconcile against — "
+                    "reproducing a published zero would prove nothing. The "
+                    "figures are shown exactly as filed; nothing is derived "
+                    "from them, and no comparison to another year is drawn.")
+            if (c["pop"] > 0 and "populationContradicted" not in notes
+                    and not all_zero):
                 if c["byFunction"].get("police", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
                     notes.append("lowPolice")
                 if c["byFunction"].get("fire", 0) / c["pop"] < LOW_SERVICE_PER_CAPITA:
                     notes.append("lowFire")
-            if prev_gov and prev_gov > 0 and (gov / prev_gov > 1.4 or gov / prev_gov < 0.6):
+            # ...and a swing measured against, or into, a held year is not
+            # a swing in spending. Both directions are suppressed: the
+            # year after an all-zero year would otherwise read as a 100%
+            # increase off a floor that was never there.
+            if (prev_gov and prev_gov > 0 and not all_zero and not prev_all_zero
+                    and (gov / prev_gov > 1.4 or gov / prev_gov < 0.6)):
                 notes.append("bigSwing")
             if notes:
                 yr["notes"] = notes
             entry["years"][fy_label(sy)] = yr
             prev_gov = gov
+            prev_all_zero = all_zero
         if entry["years"]:
             cities_out[slug] = entry
 
