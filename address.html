@@ -74,6 +74,8 @@
   .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
   .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
   .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-stamp{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-stamp b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
   .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
   .rs-foot div{margin-bottom:4pt}
   .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
@@ -1071,6 +1073,58 @@
      page's layout to carry it. Each government gets its own basis line, the
      do-not-add statement carries the LIVE intergovernmental share, and no
      total appears. THE ADDRESS IS NEVER PRINTED - slugs only. */
+
+  /* ---- C4 · WHAT THE ADDRESS SHEET MUST CARRY -------------------------
+     This view is the one place a reader sees several layers at once, so
+     there is no single tier or basis to state — each record carries its
+     own. The stamp therefore names the tier of every layer PRESENT on the
+     sheet, derived from the rows actually rendered rather than declared
+     here, so a sheet with no county row does not claim a county tier. */
+  /* THE WORD "TOTAL" IS NOT AVAILABLE ON THIS SHEET, and that is not a
+     technicality. This page's one load-bearing claim is that these
+     governments' figures do not add; the suite enforces it by refusing the
+     word outright, which is blunt on purpose. The gated tiers elsewhere on
+     the Ledger are phrased "to the Controller's published total" — correct
+     there, inadmissible here — so each tier is stated against the
+     published CONTROL it reproduces instead. Same fact, no word a reader
+     could mistake for a stacked sum. */
+  const ADDR_TIERS = {
+    "City": "GATED · REPRODUCES THE STATE CONTROLLER’S PUBLISHED CONTROL",
+    "County": "GATED · REPRODUCES THE STATE CONTROLLER’S PUBLISHED CONTROL",
+    "School district of residence": "GATED · REPRODUCES CDE’S PUBLISHED CURRENT EXPENSE OF EDUCATION, TO THE CENT"
+  };
+
+  /* THE THREE ABSENCE STATES, IN WORDS, ON THE PAPER (C3). */
+  const ABSENCE_KEY =
+    "A figure shown as <b>0</b> is a REPORTED ZERO — the government filed "
+    + "that amount, and it is a measurement. An <b>em dash (—)</b> means "
+    + "NOT PUBLISHED: the source does not publish the figure, so the Ledger "
+    + "has nothing to show and is not reporting a zero. <b>HELD</b> means the "
+    + "source published figures that contradict each other and the Ledger "
+    + "refused to choose between them. These are three different facts and "
+    + "are never rendered as the same thing.";
+
+  function rsStamp(box, kinds){
+    if (!box) return;
+    const k = box.querySelector(".rs-kicker");
+    if (!k) return;
+    let h = "";
+    const tiers = kinds.filter((v, i) => kinds.indexOf(v) === i)
+                       .filter(x => ADDR_TIERS[x]);
+    if (tiers.length){
+      h += '<div class="rs-stamp"><b>TIER, PER LAYER ON THIS SHEET</b>'
+        + tiers.map(function(x){ return esc(x) + ": " + esc(ADDR_TIERS[x]); })
+               .join(" · ")
+        + '</div>';
+    }
+    h += '<div class="rs-stamp"><b>MEASURED AS</b>Each record states its own '
+      + 'basis beneath it, because these layers are measured differently and a '
+      + 'single basis line for all of them would be false.</div>';
+    h += '<div class="rs-stamp"><b>ABSENCE ON THIS SHEET</b>' + ABSENCE_KEY + '</div>';
+    h += '<div class="rs-stamp"><b>CITATION</b>' + esc(citationText()) + '</div>';
+    k.insertAdjacentHTML("afterend", h);
+  }
+
   function renderRecordSheet(){
     const box = document.getElementById("recordSheet");
     if (!box) return;
@@ -1143,6 +1197,7 @@
       + 'shipped; an absence of recorded change before then means \u201cnot recorded\u201d, '
       + 'not \u201cdid not happen\u201d.</div></div>';
     box.innerHTML = h;
+    rsStamp(box, rows.map(function(r){ return r[1]; }));
   }
 
   /* ---- Print record sheet -------------------------------------------

@@ -6832,6 +6832,227 @@ def test_no_scratch_in_protected_dirs():
               not writable, str(writable))
 
 
+def test_print_greyscale():
+    """GREYSCALE-SAFE: no information carried by colour, or by a mark alone.
+
+    A printed sheet is very often printed in black and white, and the
+    reader has no way to recover a hue they never received. So the print
+    stylesheets are checked for CHROMATIC colour — any value whose red,
+    green and blue channels are not equal — and the site's one accent
+    (#2b59d1, reserved for things a reader can operate) must not appear in
+    a print block at all, because nothing on paper is operable.
+
+    Swept from the pages on disk. The positive control matters as much as
+    the check: the accent MUST appear outside the print blocks, otherwise
+    an empty result would mean "found no CSS" rather than "found no
+    colour"."""
+    import re as _re
+
+    def blocks(src):
+        """The body of every @media print block, brace-matched."""
+        out = []
+        for m in _re.finditer(r"@media\s+print\s*\{", src):
+            i, depth = m.end(), 1
+            while i < len(src) and depth:
+                if src[i] == "{":
+                    depth += 1
+                elif src[i] == "}":
+                    depth -= 1
+                i += 1
+            out.append(src[m.end():i - 1])
+        return out
+
+    def chromatic(css):
+        """Hex and rgb() values that are not shades of grey."""
+        bad = []
+        for h in _re.findall(r"#([0-9a-fA-F]{3,8})\b", css):
+            if len(h) == 3:
+                r, g, b = (int(c * 2, 16) for c in h[:3])
+            elif len(h) >= 6:
+                r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+            else:
+                continue
+            if not (r == g == b):
+                bad.append("#" + h)
+        for m in _re.finditer(r"rgb\(\s*(\d+)[ ,]+(\d+)[ ,]+(\d+)", css):
+            r, g, b = (int(x) for x in m.groups())
+            if not (r == g == b):
+                bad.append(m.group(0))
+        return bad
+
+    pages = sorted(ROOT.glob("*.html"))
+    check("greyscale: pages were globbed from disk, not listed",
+          len(pages) >= 14, str(len(pages)))
+    accent_outside = 0
+    for f in pages:
+        src = f.read_text(encoding="utf-8")
+        prints = blocks(src)
+        body = "\n".join(prints)
+        # POSITIVE CONTROL: the accent exists on this page somewhere, so a
+        # clean print block is a real result and not an empty file
+        if "--blue" in src or "#2b59d1" in src:
+            accent_outside += 1
+        check(f"greyscale {f.name}: the print rules carry no chromatic colour",
+              not chromatic(body), str(chromatic(body))[:120])
+        check(f"greyscale {f.name}: and never the operable-blue accent, "
+              "because nothing on paper is operable",
+              "var(--blue" not in body and "#2b59d1" not in body)
+    check("greyscale: the accent DOES exist outside print blocks — so the "
+          "checks above found CSS and not an empty string",
+          accent_outside >= 10, str(accent_outside))
+
+    # AND THE MARK IS NEVER THE ENCODING. Every tier chip pairs its mark
+    # with a text label; the mark is aria-hidden decoration on top of it.
+    chips = [f for f in pages if 'class="tierchip' in f.read_text(encoding="utf-8")]
+    check("greyscale: tier chips were found to check (positive control)",
+          len(chips) >= 8, str(len(chips)))
+    for f in chips:
+        src = f.read_text(encoding="utf-8")
+        for m in _re.finditer(r'<span class="tierchip[^>]*>(.*?)</span>\s*</div>', src, _re.S):
+            frag = m.group(1)
+            check(f"greyscale {f.name}: the tier chip carries WORDS, not only "
+                  "a mark", "tc-label" in frag, frag[:80])
+            check(f"greyscale {f.name}: and the mark is hidden from assistive "
+                  "technology, being decoration on top of the words",
+                  'aria-hidden="true"' in frag)
+
+
+def test_print_completeness(page, base):
+    """C4 · WHAT SURVIVES ONTO PAPER, MEASURED ON PAPER.
+
+    A printout has left the browser: no tooltip, no hover, no chip to
+    inspect, and in greyscale no hue. So the measurement is a real PDF,
+    rendered through the print stylesheet and read back as text — not the
+    DOM under emulate_media, which would measure what the page INTENDS to
+    print rather than what a reader is holding.
+
+    WHAT THIS CAUGHT. index and cities happened to print their tier chip
+    and basis line because their print CSS does not hide `.hero`; ccc, csu
+    and uc hide it, so both vanished — and those three also revealed a
+    `#printCite` element that does not exist on them, so the citation
+    string was absent too. Whether a reader could tell what a figure
+    MEASURED depended on which elements each page's print block happened
+    to list. That is the enumerated-list defect of OPEN.md 2s, arriving
+    through CSS, and it had already drifted on three of nine layers.
+
+    The pages are globbed from disk, so a new layer is covered the day it
+    ships. The expected strings are read from each page's OWN live DOM, so
+    a page that rewords its basis line is still checked against what it
+    actually says."""
+    import io, re as _re, unicodedata
+
+    def norm(s):
+        return _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", s or "")).strip()
+
+    # DERIVED, NOT LISTED: every page that ships a record sheet.
+    sheets = sorted(f.name for f in ROOT.glob("*.html")
+                    if 'id="recordSheet"' in f.read_text(encoding="utf-8"))
+    check("print: pages with a record sheet were globbed from disk",
+          len(sheets) >= 9, str(sheets))
+
+    # a record must actually be ON the sheet for the sheet to be a record
+    # sheet; these pages render nothing until one is selected
+    DEEPLINK = {"cities.html": "#c=los-angeles",
+                "districts.html": "#d=4-e-water-district",
+                "schools.html": "#c=alameda-unified",
+                "address.html": "#c=los-angeles"}
+
+    def sheet_pdf(name, frag=""):
+        page.goto(f"{base}/{name}{frag}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2400)
+        live = page.evaluate("""() => {
+            const g = s => { const e=document.querySelector(s);
+                             return e ? e.textContent : null; };
+            return {basis: g('#basisLine'), tier: g('.tc-label')};
+        }""")
+        page.emulate_media(media="print")
+        raw = page.pdf(format="Letter", print_background=True)
+        page.emulate_media(media="screen")
+        import pypdf
+        txt = norm("\n".join((q.extract_text() or "")
+                             for q in pypdf.PdfReader(io.BytesIO(raw)).pages))
+        return txt, live
+
+    for name in sheets:
+        txt, live = sheet_pdf(name, DEEPLINK.get(name, ""))
+        # POSITIVE CONTROL: the PDF is not empty, so an "absent" below
+        # means absent and not "nothing rendered at all"
+        check(f"print {name}: the sheet reached paper with content",
+              len(txt) > 1200, f"{len(txt)} chars")
+        # THE WORDS ARE THE ENCODING — the tier in words, never the mark
+        if live["tier"]:
+            check(f"print {name}: the tier reaches paper IN WORDS",
+                  norm(live["tier"])[:40] in txt, norm(live["tier"])[:60])
+        check(f"print {name}: the sheet states what the figure is measured as",
+              "MEASURED AS" in txt)
+        if live["basis"]:
+            check(f"print {name}: and it is the LIVE basis line, not prose "
+                  "that could drift from it",
+                  norm(live["basis"])[:55] in txt, norm(live["basis"])[:70])
+        # the three absence states, in words, on the paper
+        check(f"print {name}: the absence vocabulary is on the sheet",
+              "ABSENCE ON THIS SHEET" in txt)
+        for word in ("REPORTED ZERO", "NOT PUBLISHED", "HELD"):
+            check(f"print {name}: '{word}' is spelled out for a paper reader",
+                  word in txt)
+        # provenance: E-2's citation artefact
+        check(f"print {name}: citation string", "CITATION" in txt)
+        check(f"print {name}: permalink", "PERMALINK" in txt)
+        check(f"print {name}: SHA-256 digest", "SHA-256" in txt)
+        # NEGATIVE CONTROL: no unrendered template or source text leaked
+        check(f"print {name}: no source text leaked into the citation",
+              "S.year" not in txt and "undefined" not in txt.lower())
+
+    # ---- THE THREE STATES MUST DIFFER FROM EACH OTHER, not merely exist.
+    # CCC is the layer that carries all three in real data.
+    notpub, _ = sheet_pdf("ccc.html")          # FY2023-24 default: held
+    held_txt = notpub
+    check("print ccc: the default year prints HELD for community-supported",
+          held_txt.count("COMMUNITY-SUPPORTED: HELD") > 50,
+          str(held_txt.count("COMMUNITY-SUPPORTED: HELD")))
+    # and the not-published year prints the OTHER state, not the same one
+    page.goto(f"{base}/ccc.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2200)
+    try:
+        page.select_option("#yearSel", "2018-19")
+    except Exception:
+        page.click('[data-year="2018-19"]')
+    page.wait_for_timeout(900)
+    page.emulate_media(media="print")
+    import pypdf
+    raw = page.pdf(format="Letter", print_background=True)
+    page.emulate_media(media="screen")
+    np_txt = norm("\n".join((q.extract_text() or "")
+                            for q in pypdf.PdfReader(io.BytesIO(raw)).pages))
+    check("print ccc: FY2018-19 prints NOT PUBLISHED for community-supported",
+          np_txt.count("COMMUNITY-SUPPORTED: NOT PUBLISHED") > 50,
+          str(np_txt.count("COMMUNITY-SUPPORTED: NOT PUBLISHED")))
+    check("print ccc: and that year does NOT print HELD — the two states are "
+          "mutually exclusive on paper, not both hedged onto every row",
+          np_txt.count("COMMUNITY-SUPPORTED: HELD") == 0,
+          str(np_txt.count("COMMUNITY-SUPPORTED: HELD")))
+
+    # A REPORTED ZERO PRINTS AS A NUMBER, not as the not-published em dash.
+    # Calbright filed 0 Current Expense of Education for FY2018-19 and
+    # carries three notes; all of it has to be legible on paper.
+    check("print ccc: a reported zero prints as $0, a figure — never as the "
+          "em dash that means not published", "Calbright † $0" in np_txt,
+          np_txt[np_txt.find("Calbright") - 20:np_txt.find("Calbright") + 40])
+    check("print ccc: and its notes print IN FULL beside it, not as a symbol",
+          "Calbright — 3 notes" in np_txt and
+          "not funded through the apportionment formula" in np_txt)
+
+    # EVERY DAGGER'S NOTE IS PRINTED, not just the open one. On screen the
+    # notes open one row at a time; on paper there is nothing to open.
+    daggers = np_txt.count("†")
+    check("print ccc: the sheet carries daggers at all (positive control)",
+          daggers > 100, str(daggers))
+    check("print ccc: and a notes section that says how many rows carry them",
+          "PRINTED IN FULL" in np_txt)
+
+
 def test_status_exhaustiveness(page, base):
     """A three-valued field branched on in two places drops the third.
 
@@ -11839,6 +12060,8 @@ def main():
             test_tier_chip(page, base)
             test_basis_line(page, base)
             test_status_exhaustiveness(page, base)
+            test_print_completeness(page, base)
+            test_print_greyscale()
             test_no_scratch_in_protected_dirs()
             test_scroll_affordance(page, base)
             test_touch_targets(page, base)
