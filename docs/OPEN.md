@@ -836,6 +836,67 @@ Verified against the pre-fix tree: 4 of 4 sites detected.
 
 ---
 
+### 2u. Reading the printed sheet back finds what the screen hides
+
+C4 required every print sheet to carry the basis line, the tier wording,
+every note in full, the three absence states and the record's provenance.
+The measurement was a real PDF, rendered through the print stylesheet and
+read back as text — not the DOM under `emulate_media("print")`, which
+measures what a page **intends** to print rather than what a reader holds.
+
+**The structural defect was the enumerated list again, arriving through
+CSS.** `index.html` and `cities.html` printed their tier chip and basis
+line for one reason only: their print blocks do not hide `.hero`, which is
+where both live. `ccc.html`, `csu.html` and `uc.html` **do** hide `.hero`,
+so both vanished — and those same three pages reveal a `#printCite`
+element that does not exist on them, so the citation string was absent
+too. Whether a reader could tell what a figure **measured** depended on
+which selectors each page's `@media print` block happened to list, and
+that list had already drifted on three of nine layers.
+
+The fix is the same shape as every other cure for an enumerated list:
+**the sheet composes its own identity** from the live `basisLine()` and
+`citationText()` and from the rendered chip's own label, so no page's
+print CSS can take it away and no sheet can state a basis the page is not
+showing.
+
+**Two bugs were invisible until the paper was read back:**
+
+- **`ccc.html` printed its own source code.** `citationText()` contained
+  `'FY \' + S.year + \' (CCFS-311…'` — inside a single-quoted string,
+  `\'` is a literal apostrophe, so `S.year` was never interpolated. Every
+  citation this layer produced read *"FY ' + S.year + ' (CCFS-311"*. It had
+  shipped, on the one string whose entire purpose is to be quoted
+  elsewhere.
+- **`ccc.html` printed `undefined`.** The record legend read
+  `sw().communitySupported + " COMMUNITY-SUPPORTED"`, and for a year whose
+  community-supported figure is HELD or NOT PUBLISHED there is no number —
+  so the legend said *"undefined COMMUNITY-SUPPORTED"*. A C3 state
+  reaching a place C3 had not been applied.
+
+Both were on screen too. Neither had been noticed, and the reason is
+worth naming: **on screen a defect is provisional** — a reader assumes
+they caught it mid-load, reloads, and moves on. On paper it is final. The
+sheet cannot be refreshed, so reading it back is a harsher test of the
+same markup, and it is worth doing precisely because nothing about it is
+new code.
+
+**Greyscale is checked by measurement, not by eye.** Every `@media print`
+body is parsed for chromatic colour — any value whose red, green and blue
+channels are not equal — and the site's one accent, `#2b59d1`, is refused
+in a print block outright, because it is reserved for things a reader can
+operate and nothing on paper is operable. The positive control carries the
+weight: the accent **must** appear outside the print blocks, or an empty
+result would mean "found no CSS" rather than "found no colour".
+
+**And the mark is never the encoding.** Every tier chip is checked to pair
+its glyph with a text label, with the glyph `aria-hidden`. A printout, a
+screen reader and a greyscale photocopy all receive the words; the mark is
+decoration on top of them. This is what B-1 promised and what a chip alone
+would have quietly broken.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

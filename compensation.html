@@ -82,6 +82,8 @@
   .rs-notes{margin-top:6pt;border-left:3px solid #000;padding-left:8pt;break-inside:auto}
   .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
   .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 4pt}
+  .rs-stamp{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-stamp b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
   .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
   .rs-foot div{margin-bottom:4pt}
   .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
@@ -400,6 +402,14 @@
     <p class="dek">What each California city, county, special district and school employer reported paying, position by position, for reporting year <span id="ryear"></span>. Reported to the State Controller by each employer; published here exactly as filed.</p>
   </header>
 
+  <div class="hd-actions" style="margin-bottom:14px">
+    <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
+  </div>
+
+  <!-- C4 · this layer shipped with the print CSS but no sheet to reveal,
+       so printing produced context and no citable record. -->
+  <div id="recordSheet" class="po" hidden></div>
+
   <section id="statements"></section>
 
   <div class="pickrow">
@@ -667,8 +677,210 @@
     S.sel = null; $("recordSec").hidden = true;
     renderPicker(); renderResults(); renderChip();
   }
+
+  /* ---- C4 · THE RECORD SHEET ------------------------------------------
+     This layer shipped with the print stylesheet already written — it
+     hides the chrome and reveals #recordSheet — but no #recordSheet was
+     ever built. Printing therefore produced the caveat band and the
+     statements and NO record: the one layer whose figures most need their
+     caveats attached had no citable artefact at all.
+
+     Built from the same live state the screen shows, so the sheet cannot
+     describe a record the reader is not looking at. */
+
+  /* THE THREE ABSENCE STATES, IN WORDS, ON THE PAPER (C3). On this layer
+     the trio carries an extra, honest qualification — see rsAbsenceNote. */
+  var ABSENCE_KEY =
+    "A figure shown as <b>0</b> is a REPORTED ZERO — the employer filed "
+    + "that amount. An <b>em dash (—)</b> means NOT PUBLISHED: the source "
+    + "does not carry the figure, so the Ledger has nothing to show and is "
+    + "not reporting a zero. <b>HELD</b> means the source published figures "
+    + "that contradict each other and the Ledger refused to choose between "
+    + "them. These are three different facts and are never rendered as the "
+    + "same thing.";
+
+  /* AND WHERE THIS LAYER CANNOT YET KEEP THAT PROMISE, IT SAYS SO.
+     The Controller's export distinguishes a filed 0 from an empty cell —
+     763,879 filed zeros against 71,360 empty cells in the overtime column
+     alone — but this pipeline's money() maps both to 0, so the payload
+     cannot tell them apart and neither can this sheet. Stating the limit
+     is the only honest option: the alternative is a sheet that asserts
+     "not published" over three-quarters of a million filed zeros. */
+  var COMP_ZERO_CAVEAT =
+    "ON THIS LAYER, A ZERO AND AN EMPTY CELL ARE NOT YET DISTINGUISHABLE. "
+    + "The State Controller's export distinguishes a filed 0 from a blank, "
+    + "but this record's build maps both to 0. A 0 in the overtime or "
+    + "lump-sum column therefore means “zero or not stated” and must "
+    + "not be read as a measurement of zero. The other columns are filed "
+    + "figures. This is a limit of the Ledger's build, not of the source.";
+
+  function basisLine(){
+    return ["STATE CONTROLLER GOVERNMENT COMPENSATION EXPORT",
+            "AS FILED BY EACH EMPLOYER",
+            "WHOLE DOLLARS, NOMINAL",
+            "REPORTING YEAR " + M.year,
+            "AS FILED — UNRECONCILED"].join(" · ");
+  }
+
+  function citationText(){
+    return 'Citizen Ledger, "California Public Employee Compensation — '
+      + 'as filed with the State Controller, reporting year ' + M.year + '." '
+      + 'Position-level figures exactly as each employer filed them; never '
+      + 'averaged, never ranked, and never summed to a statewide total — '
+      + 'this layer is AS FILED and UNRECONCILED, because the source is a live '
+      + 'database with no as-of-date total to align to. Source: '
+      + M.sourceLabel + '. Generated ' + M.generated + '. Vintage '
+      + M.vintage.latest + '. Permalink: ' + location.href + '. Accessed '
+      + new Date().toISOString().slice(0,10) + '.';
+  }
+
+  function rsStamp(box){
+    if (!box) return;
+    var k = box.querySelector(".rs-kicker");
+    if (!k) return;
+    var chip = document.querySelector(".tierchip");
+    var tier = chip && chip.querySelector(".tc-label")
+      ? chip.querySelector(".tc-label").textContent : "";
+    var why = chip ? (chip.getAttribute("title") || "") : "";
+    var h = "";
+    if (tier) {
+      h += '<div class="rs-stamp"><b>TIER</b>' + esc(tier)
+        + (why ? " — " + esc(why) : "") + '</div>';
+    }
+    h += '<div class="rs-stamp"><b>MEASURED AS</b>' + esc(basisLine()) + '</div>';
+    h += '<div class="rs-stamp"><b>ABSENCE ON THIS SHEET</b>' + ABSENCE_KEY + '</div>';
+    h += '<div class="rs-stamp"><b>AND ONE PLACE IT CANNOT BE KEPT</b>'
+      + esc(COMP_ZERO_CAVEAT) + '</div>';
+    h += '<div class="rs-stamp"><b>CITATION</b>' + esc(citationText()) + '</div>';
+    k.insertAdjacentHTML("afterend", h);
+  }
+
+  function renderRecordSheet(){
+    var box = $("recordSheet");
+    if (!box) return;
+    var e = S.sel ? D.entities[S.sel] : null;
+    var v = M.vintage;
+
+    var h = '<div class="rs-head"><div class="rs-kicker">'
+      + 'CITIZEN LEDGER · RECORD SHEET · PUBLIC EMPLOYEE COMPENSATION · '
+      + esc(M.year) + (e ? ' · ' + esc(e.name.toUpperCase()) : '') + '</div>'
+      + '<div class="rs-warn"><b>AS FILED — UNRECONCILED</b>'
+      + esc(M.tier || "The State Controller publishes an annual total in a press "
+            + "release, but this export is a live database with no as-of-date "
+            + "total, so the two cannot be aligned at any instant. This is not a "
+            + "gate that failed; there is no instant at which a gate could be "
+            + "applied.") + '</div>'
+      + '<div class="rs-basis"><b>WHAT THIS IS</b>' + esc(M.basis) + '</div>'
+      + '<div class="rs-basis"><b>THIS IS NOT A SHARE OF SPENDING</b>'
+      + esc(M.doesNotEqual) + '</div>'
+      + '<div class="rs-basis"><b>NO AVERAGES</b>' + esc(M.noAverages) + '</div>'
+      + '<div class="rs-basis"><b>VINTAGE</b>Newest figure last updated by its '
+      + 'filer ' + esc(v.latest) + '; earliest ' + esc(v.earliest)
+      + '. This layer is refreshed by hand, not automatically.</div>'
+      + '</div>';
+
+    if (e) {
+      h += '<div class="rs-ent"><div class="rs-name">' + esc(e.name) + '</div>'
+        + '<div class="rs-figs">' + esc(M.layers[e.layer].label)
+        + (e.county ? ' · ' + esc(e.county) + ' County' : '')
+        + ' · ' + fmt(e.positions) + ' positions reported · '
+        + money(e.wages) + ' wages · ' + money(e.retHealth)
+        + ' retirement and health'
+        + (e.elected ? ' · ' + fmt(e.elected) + ' elected' : '')
+        + '</div></div>';
+
+      /* EVERY NOTE THAT APPLIES TO THIS EMPLOYER, IN FULL. On screen these
+         are three separate banners a reader scrolls past; on paper they
+         are the difference between a comparable figure and a misleading
+         one, so none of them is a symbol and none is abbreviated. */
+      var notes = "";
+      if (e.unfundedInRetirement) {
+        notes += '<p><strong>† THIS EMPLOYER’S RETIREMENT FIGURE INCLUDES '
+          + 'UNFUNDED LIABILITY.</strong> ' + esc(M.pensionDagger || "Employers not "
+          + "marked exclude it. The Controller collects a single flag per employer "
+          + "and does not publish the unfunded component separately, so it cannot be "
+          + "removed here. A position at this employer is therefore not comparable, "
+          + "on total compensation, with an identically-paid position at an employer "
+          + "without the mark.") + '</p>';
+      }
+      if (e.layer === "k12") {
+        var pub = M.published.k12;
+        notes += '<p><strong>K-12 REPORTING IS VOLUNTARY AND MOST EMPLOYERS DO NOT '
+          + 'FILE.</strong> For reporting year ' + esc(M.year) + ' the Controller '
+          + 'states that ' + fmt(pub.compliantFilers) + ' of '
+          + fmt(pub.invitedFilers) + ' K-12 employers filed a fully compliant '
+          + 'report. This record is one of those that chose to file. The set of '
+          + 'filers is self-selected, so nothing aggregate over this layer means '
+          + 'anything.</p>';
+      }
+      var cs = M.contractedServices[S.sel];
+      if (cs) {
+        var names = Object.keys(cs);
+        notes += '<p><strong>SOME SERVICES ARE PROVIDED UNDER CONTRACT, SO THEIR '
+          + 'STAFF ARE NOT HERE.</strong> This employer reports '
+          + names.map(esc).join(", ") + ' as ' + esc(cs[names[0]])
+          + '. Those employees work for the contracting agency and appear in that '
+          + 'agency’s record, not this one. The absence of a department is not '
+          + 'a finding about this employer’s payroll.</p>';
+      }
+      h += '<div class="rs-notes"><b>NOTES ON THIS RECORD — PRINTED IN FULL</b>'
+        + (notes || '<p>This record carries no employer-level note.</p>') + '</div>';
+
+      /* The positions themselves, if they have loaded. This layer is the
+         site's one sanctioned runtime fetch, so a sheet printed before it
+         resolves says so rather than showing an empty table that would
+         read as "this employer reported nothing". */
+      var tbl = $("recTable");
+      var rows = tbl ? tbl.querySelectorAll(".posrow:not(.poshead)").length : 0;
+      if (rows) {
+        h += '<div class="rs-break"><b>POSITIONS AS FILED · ' + fmt(rows)
+          + ' ROWS · IN THE ORDER THE EMPLOYER FILED THEM, NEVER RANKED</b>'
+          + (tbl ? tbl.innerHTML : "") + '</div>';
+      } else {
+        h += '<div class="rs-break"><b>POSITIONS</b><p>The position rows had not '
+          + 'finished loading when this sheet was printed. They are not absent from '
+          + 'the record — they are absent from this printout. Reprint once the '
+          + 'table has loaded.</p></div>';
+      }
+    } else {
+      h += '<div class="rs-notes"><b>NO EMPLOYER SELECTED</b><p>This sheet states '
+        + 'the layer’s basis, tier and citation. Select an employer to print a '
+        + 'record with its positions and the notes that qualify them.</p></div>';
+    }
+
+    var integ = M.integrity || {};
+    h += '<div class="rs-foot">'
+      + '<div><b>SOURCE</b>' + esc(M.sourceLabel) + ' · generated '
+      + esc(M.generated) + '</div>'
+      + '<div><b>PERMALINK</b><span class="rs-url">' + esc(location.href) + '</span></div>'
+      + (integ.digest ? '<div><b>RECORD INTEGRITY</b>SHA-256 ' + esc(integ.digest)
+          + ' (compensation-data.js). Verify with <span class="rs-mono">python3 '
+          + 'pipeline/verify_digest.py</span> from the repository. The digest proves '
+          + 'the file is the one the pipeline wrote; it does not verify the filed '
+          + 'figures themselves.</div>' : '')
+      + '<div><b>REVISIONS</b>The Ledger’s record of changes begins on the day it '
+      + 'shipped. Figures published before then were replaced rather than compared, so '
+      + 'an absence of recorded change for an earlier period means “not '
+      + 'recorded”, not “did not happen”.</div></div>';
+
+    box.innerHTML = h;
+    box.hidden = false;
+    rsStamp(box);
+  }
+
+  /* Re-rendered on every state change, never only on print: a sheet built
+     at print time is a sheet nobody has ever seen fail. */
+  var _origRenderRecord = renderRecord;
+  renderRecord = function(sl){ _origRenderRecord(sl); renderRecordSheet(); };
+
+  (function(){
+    var b = $("printBtn");
+    if (b) b.addEventListener("click", function(){ window.print(); });
+  })();
+
   window.addEventListener("hashchange", applyHash);
   applyHash();
+  renderRecordSheet();
 })();
 </script>
 

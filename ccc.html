@@ -72,6 +72,10 @@
   .rs-notes b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block;margin-bottom:3pt}
   .rs-notes p{font-size:8.5pt;line-height:1.45;margin:0 0 3pt}
   .rs-notes p.rs-n{margin-left:9pt;margin-bottom:5pt}
+    /* C4 · the sheet's own tier/basis/citation stamp. Greyscale by
+     construction: black on white, no rule that carries meaning. */
+  .rs-stamp{font-size:8.5pt;line-height:1.45;margin-bottom:5pt}
+  .rs-stamp b{font-family:var(--mono);font-size:7.5pt;letter-spacing:0.08em;display:block}
   .rs-foot{border-top:1px solid #000;padding-top:7pt;font-size:7.5pt;line-height:1.4}
   .rs-foot div{margin-bottom:4pt}
   .rs-foot b{font-family:var(--mono);font-size:7pt;letter-spacing:0.08em;display:block}
@@ -574,6 +578,56 @@
      per-student figure that means nothing without all four. Rendered on
      every render(), independent of S.openNote, printing EVERY note for
      EVERY row in full - never a symbol. Never truncated. */
+
+  /* THE THREE ABSENCE STATES, IN WORDS, ON THE PAPER (C3).
+     A reported zero, a figure the source never published, and a figure the
+     Ledger HELD are three different facts about the world. On screen a
+     reader can hover a dagger; on a printed sheet there is nothing to
+     hover, so the vocabulary has to travel with the figure. Never colour,
+     never a mark alone. */
+  const ABSENCE_KEY =
+    "A figure shown as <b>0</b> is a REPORTED ZERO — the entity filed "
+    + "that amount, and it is a measurement. An <b>em dash (—)</b> means "
+    + "NOT PUBLISHED: the source does not publish the figure, so the Ledger "
+    + "has nothing to show and is not reporting a zero. <b>HELD</b> means the "
+    + "source published figures that contradict each other and the Ledger "
+    + "refused to choose between them; the reason is given with the row. "
+    + "These are three different facts and are never rendered as the same "
+    + "thing.";
+
+  /* ---- C4 · THE SHEET STATES ITS OWN TIER, BASIS AND CITATION ---------
+     A printout has left the browser: no tooltip, no hover, no chip to
+     inspect, and in greyscale no hue either. Everything a reader needs to
+     know what the figure MEANS has to be on the paper, in words.
+
+     Composed from the same live functions the screen uses — basisLine()
+     and citationText() — so the sheet cannot state a basis the page is
+     not showing. The tier is read off the rendered chip's own label, not
+     re-declared here, for the same reason.
+
+     This lives on the sheet rather than in the header because whether the
+     header printed at all depended on which elements each page's print
+     block happened to hide, and that list had already drifted on three of
+     the nine layers. */
+  function rsStamp(box){
+    if (!box) return;
+    const k = box.querySelector(".rs-kicker");
+    if (!k) return;
+    const chip = document.querySelector(".tierchip");
+    const tier = chip && chip.querySelector(".tc-label")
+      ? chip.querySelector(".tc-label").textContent : "";
+    const why = chip ? (chip.getAttribute("title") || "") : "";
+    let h = "";
+    if (tier) {
+      h += '<div class="rs-stamp"><b>TIER</b>' + esc(tier)
+        + (why ? " — " + esc(why) : "") + '</div>';
+    }
+    h += '<div class="rs-stamp"><b>MEASURED AS</b>' + esc(basisLine()) + '</div>';
+    h += '<div class="rs-stamp"><b>ABSENCE ON THIS SHEET</b>' + ABSENCE_KEY + '</div>';
+    h += '<div class="rs-stamp"><b>CITATION</b>' + esc(citationText()) + '</div>';
+    k.insertAdjacentHTML("afterend", h);
+  }
+
   function renderRecordSheet(){
     const box = document.getElementById("recordSheet");
     if (!box) return;
@@ -625,6 +679,7 @@
       + 'absence of recorded change for an earlier period means \u201cnot recorded\u201d, '
       + 'not \u201cdid not happen\u201d.</div></div>';
     box.innerHTML = h;
+    rsStamp(box);
   }
 
   /* ---- Print record sheet -------------------------------------------
@@ -793,8 +848,22 @@
       + '<span class="v">'+(S.unit==='perFtes' ? money0(Math.round(sw().ce/sw().fundedFtes)) : money0(sw().ce))+'</span></div>';
     $("tbl").innerHTML = html;
 
+    /* A COUNT THAT DOES NOT EXIST IS NOT A COUNT. For a year whose
+       community-supported figure is HELD or NOT PUBLISHED there is no
+       number to print, and this line printed the raw value — so the
+       legend read "undefined COMMUNITY-SUPPORTED". Found by reading the
+       printed sheet back as text (C4), which is where it was hardest to
+       explain away: a reader on paper cannot refresh and see it fixed.
+       Enumerated per OPEN.md 2s, so a fourth status says so out loud
+       rather than falling through to a blank. */
+    const csN = sw().communitySupported, csSt = sw().communitySupportedStatus;
+    let csWords;
+    if (typeof csN === "number") csWords = csN + " COMMUNITY-SUPPORTED";
+    else if (csSt === "held") csWords = "COMMUNITY-SUPPORTED: HELD (SOURCE CONTRADICTS ITSELF)";
+    else if (csSt === "not-published") csWords = "COMMUNITY-SUPPORTED: NOT PUBLISHED";
+    else csWords = "COMMUNITY-SUPPORTED: UNRECOGNISED STATE “" + String(csSt) + "”";
     $("recordCaps").innerHTML = "<span>DISTRICTS ARE NEVER RANKED — PER-FTES REFLECTS MISSION, STRUCTURE, AND LOCAL FUNDING, NOT PERFORMANCE</span>"
-      + "<span>"+sw().communitySupported+" COMMUNITY-SUPPORTED · "+D.districts.filter(r=>yr(r).flags && yr(r).flags.multiCollege).length+" MULTI-COLLEGE · † = COMPARABILITY NOTE</span>";
+      + "<span>"+csWords+" · "+D.districts.filter(r=>yr(r).flags && yr(r).flags.multiCollege).length+" MULTI-COLLEGE · † = COMPARABILITY NOTE</span>";
 
     $("auxBox").innerHTML = '<div class="microlbl">WHAT THE FIGURE ALREADY EXCLUDES</div>'
       + '<div style="font-size:var(--fs-note);line-height:1.6;color:var(--graphite)">' + esc(M.daggers.auxiliary) + '</div>';
@@ -827,7 +896,7 @@
 
   function citationText(){
     return 'Citizen Ledger, "California Community Colleges — Current Expense of Education by District, '
-      + 'FY \' + S.year + \' (CCFS-311, ECS 84362)." Statewide Current Expense of Education ' + money0(sw().ce)
+      + 'FY ' + S.year + ' (CCFS-311, ECS 84362)." Statewide Current Expense of Education ' + money0(sw().ce)
       + '; ' + sw().nDistricts + ' districts reconcile to that Chancellor’s Office statewide total exactly, '
       + 'to the dollar (independently validated by the districts’ mandatory CPA audits, Ed Code 84040). '
       + 'This is modified-accrual (BAM) spending, not the state budget’s enacted community-college '
