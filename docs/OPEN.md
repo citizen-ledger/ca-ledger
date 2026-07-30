@@ -1088,6 +1088,58 @@ an excuse.
 
 ---
 
+### 2y. The fifth enumerated list — and the tally is the point
+
+Five times now, one defect:
+
+| what was enumerated | how it went wrong |
+|---|---|
+| the page list in the 360px no-pan assertion | a new page was never checked |
+| the digest list | a new payload was never verified |
+| the GATED list | a new gated layer never claimed its tier |
+| the conditional branch on an N-valued field (2s) | `held` fell through and the caveat vanished |
+| **the document list in `findings.html`** | **documents published and invisible** |
+
+The fifth was found while writing the A-2 finding: the index reported 34
+documents on disk against 33 linked, so the finding that had just been
+written was absent from the page whose purpose is to index findings. Then
+the derivation was built and the real number came out — **24 of 33 written
+up. Nine documents missing, not one.** The count-based estimate understated
+the drift by a factor of nine, because counting `docs/` links caught the
+header and the standing records too. An enumerated list does not just drift;
+**it also defeats the cheap check you would use to see whether it had.**
+
+**What was derived, and what deliberately was not.** The written entries
+stay hand-authored: each carries figures verified against its document, and
+that verification is not reproducible by parsing prose — the index was built
+by checking 34 documents' numbers by hand. What is generated is
+**completeness**. `pipeline/build_findings_manifest.py` globs `docs/*.md`
+into `findings-manifest.js`; the page reads which documents it has already
+linked **off its own DOM** and lists the rest. So adding a written entry
+needs no second edit, and a document with no entry appears anyway, with its
+title and its own first sentence.
+
+That last detail is the one worth copying. The obvious design keeps a second
+list of "which documents are written up" — and **two lists that must agree
+are one list too many**, which is the same defect wearing a different hat.
+Reading it from the rendered page means there is exactly one list, and it is
+the page itself.
+
+**The refusal that goes with it.** `build_findings_manifest.py` refuses to
+write an empty manifest, because the failure mode of a glob is silence: a
+mistyped directory yields zero documents, the page renders no gap, and the
+index looks finished. A derived list needs a floor as much as an enumerated
+one needs a sweep.
+
+**And the standing records are still enumerated, on purpose.** `OPEN.md`,
+`SCOPE.md`, `SECURITY.md` and `GUARDRAILS.md` are named in `NOT_FINDINGS`,
+so a new standing record must be added deliberately while a new *finding*
+needs no edit at all. Enumeration is not always wrong; it is wrong when the
+set grows in the ordinary course of work, which is exactly what
+distinguishes these four from the thirty-three.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

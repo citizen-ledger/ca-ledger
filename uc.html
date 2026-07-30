@@ -335,6 +335,11 @@
     letter-spacing:0;line-height:1.5;color:var(--graphite)}
   @media print{ .reconfoot{border-color:#000;color:#000}
     .reconfoot b,.reconfoot .rf-res{color:#000} }
+
+  /* the row a permalink landed on — a mark, not a colour, so it survives
+     greyscale and print exactly as the tier chip does */
+  .r.islanded{box-shadow:inset 3px 0 0 var(--ink);background:var(--wash-in)}
+  @media print{ .r.islanded{box-shadow:inset 3px 0 0 #000;background:transparent} }
 </style>
 </head>
 <body>
@@ -528,8 +533,42 @@
   const DEFAULTS = {year: YEARS[YEARS.length-1], unit: "core", sort: "name", basis: "nominal"};
   const S = {...DEFAULTS};
 
+  /* THE SAME SLUG THE SEARCH INDEX ALREADY ASSUMES. build_search_index.py
+     stores an empty id when it equals slugify(name), and search.html
+     recomputes it the same way — this is that function, not a third one. */
+  const slugify = s => String(s).toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+  /* ---- PER-ENTITY PERMALINK (A-2 narrow fix) ---------------------------
+     These three layers were the only ones an indexed entity could not be
+     linked to: search-index.js carried `param: null` for ccc, csu and uc,
+     so 106 of 8,257 entities were searchable but a result could only land
+     the reader on the whole table. That was the one real gap the A-2
+     measurement found, and it is three parameters rather than 8,257 files.
+
+     The parameter carries the entity's slug. Landing on it opens that
+     entity's note if it has one — the page's own existing selection — and
+     marks the row so a reader arriving from a search result can see which
+     row they were sent to. Never a filter: the other rows stay, because a
+     figure on this layer is only readable beside the rest of its table. */
+  function focusRow(){
+    if (!S.focus) return;
+    const row = document.querySelector('[data-slug="' + S.focus + '"]');
+    if (!row) return;
+    row.classList.add("islanded");
+    if (row.scrollIntoView) row.scrollIntoView({block: "center"});
+  }
+
   function applyHash(){
     const p = new URLSearchParams(location.hash.replace(/^#/,""));
+    /* A permalink lands with that entity's note OPEN — the page's own
+       selection mechanism, so the reader sees the caveats attached to the
+       figure they were sent to rather than an unexplained highlighted row. */
+    S.focus = (p.get("c") || "").trim().toLowerCase() || null;
+    if (S.focus){
+      const hit = (D.campuses || []).find(x => slugify(x.name) === S.focus);
+      if (hit) S.openNote = hit.name; else S.focus = null;
+    }
     S.year = YEARS.includes(p.get("y")) ? p.get("y") : DEFAULTS.year;
     S.unit = ["total","perFte"].includes(p.get("u")) ? p.get("u") : "core";
     S.sort = p.get("s") === "value" ? "value" : "name";
@@ -988,7 +1027,7 @@
     rows.forEach(c => {
       const y = cy(c,fy), notes = campusNotes(c,fy);
       const dag = notes.length ? ' <button class="dag" data-note="'+esc(c.name)+'" aria-label="Comparability notes">†'+(notes.length>1?notes.length:'')+'</button>' : '';
-      html += '<div class="r"><span class="nm">'+esc(c.name)+dag+'</span>'
+      html += '<div class="r" data-slug="'+slugify(c.name)+'"><span class="nm">'+esc(c.name)+dag+'</span>'
         + '<span class="bar"><i style="width:'+(max?(unitVal(c,fy)/max*100).toFixed(1):0)+'%"></i></span>'
         + '<span class="v dim">'+y.fteStudents.toLocaleString()+'</span>'
         + '<span class="v">'+fmtUnit(c,fy)+'</span></div>';
@@ -1005,6 +1044,7 @@
       + '<span class="v dim">'+sw.fteStudents.toLocaleString()+'</span>'
       + '<span class="v">'+footVal+'</span></div>';
     $("tbl").innerHTML = html;
+    focusRow();
 
     $("recordCaps").innerHTML = "<span>CAMPUSES ARE NEVER RANKED — DIFFERENCES REFLECT MISSION AND STRUCTURE, NOT PERFORMANCE</span>"
       + "<span>THE STRIP REMOVES HOSPITALS, NOT MEDICAL SCHOOLS · PER-STUDENT USES STUDENT FTE, RESIDENTS EXCLUDED</span>";

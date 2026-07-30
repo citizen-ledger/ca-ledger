@@ -7170,6 +7170,114 @@ def test_reconciliation_footer_layers(page, base):
               line and "RECONCILIATION" in line[0], (line or [""])[0][:90])
 
 
+def test_entity_permalinks_and_derived_findings(page, base):
+    """A-2 NARROW FIX, and the fifth enumerated list.
+
+    1. EVERY INDEXED ENTITY IS ADDRESSABLE. search-index.js carried
+       `param: null` for ccc, csu and uc, so 106 of its 8,257 entities were
+       searchable but a result could only land the reader on the whole-layer
+       table. Three parameters, not 8,257 static pages — see
+       docs/A2_ENTITY_PAGE_FINDING.md for why the pages were refused.
+
+    2. THE FINDINGS INDEX DERIVES ITS LIST FROM DISK. It enumerated, and it
+       had drifted: 24 of 33 documents written up, with nothing saying so.
+       The written entries stay hand-authored — each carries verified
+       figures — but COMPLETENESS is generated, so a document cannot be
+       published in the repository and invisible on the page that indexes
+       findings."""
+    import json as _json
+
+    # ---- 1. permalinks
+    ix = load_data_js(ROOT / "search-index.js")
+    nullp = [L["key"] for L in ix["layers"] if not L.get("param")]
+    check("permalink: every layer in the search index declares a per-entity "
+          "parameter", nullp == [], str(nullp))
+
+    def slugify(s):
+        import re as _re
+        return _re.sub(r"-+", "-", _re.sub(r"[^a-z0-9]+", "-", s.lower())).strip("-")
+
+    LAYERS = {L["key"]: L for L in ix["layers"]}
+    # POSITIVE CONTROL: the three layers really do carry entities to link
+    for key in ("ccc", "csu", "uc"):
+        n = sum(1 for e in ix["e"] if ix["layers"][e[1]]["key"] == key)
+        check(f"permalink {key}: the index carries entities for it", n > 0, str(n))
+
+    # a real entity from each of the three, driven by its own index entry
+    for key in ("ccc", "csu", "uc"):
+        L = LAYERS[key]
+        ent = next(e for e in ix["e"] if ix["layers"][e[1]]["key"] == key)
+        slug = ent[2] or slugify(ent[0])
+        page.goto(f"{base}/{L['page']}#{L['param']}={slug}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2400)
+        got = page.evaluate("""(s) => {
+            const row = document.querySelector('[data-slug="' + s + '"]');
+            return {exists: !!row,
+                    landed: document.querySelectorAll('.r.islanded').length,
+                    name: row ? row.querySelector('.nm').textContent.trim() : null};
+        }""", slug)
+        check(f"permalink {key}: '{slug}' resolves to a row",
+              got["exists"], str(got))
+        check(f"permalink {key}: and the row is marked so a reader can see "
+              "which one they were sent to", got["landed"] == 1, str(got))
+        check(f"permalink {key}: the row is the entity the index named",
+              got["name"] and ent[0].lower()[:10] in got["name"].lower(),
+              f"{ent[0]!r} vs {got['name']!r}")
+        # NEVER A FILTER: the rest of the table must still be there, because a
+        # figure on these layers is only readable beside the others
+        rows = page.eval_on_selector_all(".r[data-slug]", "e => e.length")
+        check(f"permalink {key}: the other rows stay — a permalink focuses, "
+              "it does not filter", rows > 5, str(rows))
+
+    # NEGATIVE CONTROL: a slug that matches nothing marks nothing, silently
+    page.goto(f"{base}/ccc.html#d=not-a-real-district")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2200)
+    check("permalink: an unknown slug lands nothing and breaks nothing",
+          page.eval_on_selector_all(".r.islanded", "e => e.length") == 0)
+
+    # ---- 2. the findings index is complete, by construction
+    man = load_data_js(ROOT / "findings-manifest.js")
+    docs = {p.name for p in (ROOT / "docs").glob("*.md")} - {
+        "OPEN.md", "SCOPE.md", "SECURITY.md", "GUARDRAILS.md"}
+    listed = {f["doc"].split("/")[-1] for f in man["findings"]}
+    check("findings: the manifest was globbed from docs/ on disk, not written",
+          listed == docs, str(sorted(docs ^ listed)))
+    check("findings: every manifest entry carries a title and a document path",
+          all(f["title"] and f["doc"].startswith("docs/") for f in man["findings"]))
+
+    page.goto(f"{base}/findings.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1800)
+    got = page.evaluate("""() => {
+        const linked = new Set([...document.querySelectorAll('.fnd a[href^="docs/"]')]
+                                .map(a => a.getAttribute('href')));
+        const un = [...document.querySelectorAll('#unwrittenList li .u-d a')]
+                     .map(a => a.getAttribute('href'));
+        return {linked: [...linked], unwritten: un,
+                hidden: document.getElementById('unwritten').hidden,
+                count: document.getElementById('fndCount').textContent};
+    }""")
+    reachable = set(got["linked"]) | set(got["unwritten"])
+    # THE ASSERTION THAT MAKES THE DEFECT IMPOSSIBLE: every document on disk
+    # is reachable from the page, whether or not anyone wrote it up.
+    check("findings: EVERY document on disk is reachable from findings.html",
+          {f["doc"] for f in man["findings"]} <= reachable,
+          str(sorted({f["doc"] for f in man["findings"]} - reachable)))
+    check("findings: the page states how many are on file and how many are "
+          "written up", "ON FILE" in got["count"] and "WRITTEN UP" in got["count"],
+          got["count"][:90])
+    # POSITIVE CONTROL both ways: the drift is real, so the section is doing
+    # work rather than sitting hidden and untested
+    check("findings: the unwritten section is showing, because documents "
+          "genuinely lack an entry — this is the drift the enumeration hid",
+          not got["hidden"] and len(got["unwritten"]) > 0,
+          f"hidden={got['hidden']} n={len(got['unwritten'])}")
+    check("findings: and the written entries are still hand-authored prose, "
+          "not generated", len(got["linked"]) > 15, str(len(got["linked"])))
+
+
 def test_uc_reconciliation(page, base):
     """D · UC — a failed reconciliation and a negative printed column.
 
@@ -12690,6 +12798,7 @@ def main():
             test_reconciliation_footer(page, base)
             test_reconciliation_footer_layers(page, base)
             test_uc_reconciliation(page, base)
+            test_entity_permalinks_and_derived_findings(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
