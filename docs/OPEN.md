@@ -1140,6 +1140,64 @@ distinguishes these four from the thirty-three.
 
 ---
 
+### 2z. A change is a claim about two figures, so it inherits both their caveats
+
+The what-changed view answers one question — for the governments that serve
+this address, what moved since last year — and every hazard in it comes from
+the same place: **a delta is a new figure the source never published.** It
+inherits every caveat on both operands and adds one of its own, the implied
+claim that the two are comparable.
+
+Four inherited, one new:
+
+| | |
+|---|---|
+| the two years | the layers do not share a latest year: state FY2025-26, city and county FY2023-24, K-12 FY2024-25 |
+| the two bases | enacted appropriations, reported actuals, unaudited actuals — three measures |
+| the two figures | either may be not-published or held |
+| the two rosters | a year-over-year pair can straddle a documented break |
+| **the arithmetic** | **the delta itself, which no source published and which invites a total** |
+
+So the view states each row's own year pair and its own basis line, and has
+no shared period heading — one would be false for three of four rows
+whatever year it named. **The absence of a heading is the design**, and it is
+asserted negatively, because the natural thing to write is a single "FY
+2023-24" title that reads as true and is not.
+
+**A CHANGE FROM A HELD FIGURE IS NOT A CHANGE OF ZERO.** Woodland's
+FY2022-23 filing is held, and FY2022-23 is the prior year for cities — so
+this is live, not hypothetical. Removing the guard was mutation-tested and
+the output is instructive: **`$0 → $153,245,000 ▲ $153,245,000`**. The held
+year's stored figure is zero, so the arithmetic runs, produces a confident
+number, and attributes a $153M increase to a city on the strength of a
+filing the Ledger refused. That is the Mt. Shasta shape (2v) once more, now
+in a derived comparison rather than a derived flag, and it is why the row
+must be suppressed on the STATUS rather than on the value.
+
+**THE BREAK TABLE IS CONSULTED EVEN WHERE IT IS EMPTY.** Measured before
+building: none of these four layers documents a year-over-year structural
+break inside its own latest-vs-prior window. The declared table is therefore
+nearly empty — one entry, the state's — and it is still keyed per row and
+read on every row, because the alternative is a view that says nothing about
+a break on the day one is documented. **An empty guard that is wired is
+worth more than a full one that is not**, and the difference only shows up
+later.
+
+The one entry is worth recording as an example of the class: FY2025-26 is the
+budget year, so DOF publishes **no Schedule 9 actuals for it at all**, while
+FY2024-25 has them. Both figures in the row are enacted, so the comparison is
+sound — but the newer year cannot yet be checked against what was spent and
+the older one can, and that asymmetry is a fact about the pair rather than
+about either figure.
+
+**And nothing is summed.** The same dollar appears in more than one of these
+governments, so a combined change would be arithmetic with nothing to
+measure. The site's does-not-add statement is restated on this section
+specifically, because a column of deltas is the most inviting thing on the
+site to total.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

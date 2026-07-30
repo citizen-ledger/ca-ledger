@@ -259,6 +259,40 @@
      a 44px box would open the note belonging to the row above. */
   .pillgroup>button,.pillgroup>select{min-height:44px}
   .btn{min-height:44px}
+
+  /* ---- WHAT CHANGED ----------------------------------------------------
+     One row per government. Every row states its OWN fiscal-year pair and
+     its OWN basis, because these layers do not share either — a shared
+     heading would imply one period and one measure across four governments
+     that have neither. Direction is a glyph in ONE ink; nothing here is
+     coloured by sign, ranked, or described as large or small. */
+  .chg-sec{margin-top:30px;border-top:2px solid var(--ink);padding-top:16px}
+  .chg-sec h2{font-family:var(--serif);font-size:23px;font-weight:400;letter-spacing:-.3px}
+  .chg-lede{font-size:var(--fs-note);color:var(--graphite);max-width:66ch;
+    line-height:1.55;margin-top:6px}
+  .chg-row{border-bottom:1px solid var(--hairline);padding:14px 0}
+  .chg-top{display:flex;justify-content:space-between;gap:18px;align-items:baseline;flex-wrap:wrap}
+  .chg-nm{font-size:var(--fs-body)}
+  .chg-lay{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.08em;
+    color:var(--smoke);display:block;margin-top:2px}
+  .chg-fig{font-family:var(--mono);font-size:var(--fs-data);white-space:nowrap;
+    font-variant-numeric:tabular-nums;text-align:right}
+  .chg-d{font-family:var(--mono);font-size:var(--fs-data);font-weight:600;white-space:nowrap}
+  .chg-yrs{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
+    color:var(--ink);margin-top:6px}
+  .chg-basis{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);margin-top:3px;line-height:1.5}
+  .chg-note{font-size:var(--fs-note);color:var(--graphite);margin-top:7px;
+    line-height:1.5;border-left:3px solid var(--ink);padding-left:9px}
+  .chg-absent{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:.06em;
+    color:var(--ink)}
+  .chg-nosum{margin-top:16px;border:1px dashed var(--graphite);padding:11px 13px;
+    font-size:var(--fs-note);line-height:1.55;color:var(--graphite)}
+  @media print{
+    .chg-sec{border-color:#000} .chg-note{border-color:#000}
+    .chg-nosum{border-color:#000;color:#000}
+  }
+  @media(max-width:600px){ .chg-top{flex-direction:column;gap:4px} .chg-fig{text-align:left} }
 </style>
 </head>
 <body>
@@ -355,6 +389,15 @@
     <div id="unincNote"></div>
     <div id="records"></div>
     <div class="nosum" id="noSum"></div>
+
+    <!-- WHAT CHANGED · one row per government, each on ITS OWN year pair
+         and ITS OWN basis. Never summed, never ranked, never characterised. -->
+    <section class="chg-sec" id="whatChanged" hidden aria-labelledby="chgHd">
+      <h2 id="chgHd">What changed for these governments</h2>
+      <p class="chg-lede" id="chgLede"></p>
+      <div id="chgRows"></div>
+      <div class="chg-nosum" id="chgNoSum"></div>
+    </section>
     <div class="record" id="distPanel"></div>
     <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap" class="np">
       <button class="btn ink" id="citeBtn">Cite</button>
@@ -1229,6 +1272,202 @@
     });
   })();
 
+  /* ==== WHAT CHANGED ====================================================
+     For the governments that serve this address, what moved since last year.
+     Runs off the addresses already resolved above, so it is this reader's
+     city, county, school district and the state — never a statewide list.
+
+     FOUR THINGS WOULD MAKE THIS MISLEADING, each handled explicitly:
+
+     1. THE LAYERS DO NOT SHARE A LATEST YEAR. State is FY2025-26, city and
+        county FY2023-24, K-12 FY2024-25. Every row prints its OWN year pair,
+        read from that layer's own payload. There is deliberately NO shared
+        period heading: one would be false for three of four rows whatever
+        year it named.
+     2. THE LAYERS DO NOT SHARE A BASIS. Enacted appropriations, reported
+        actuals and unaudited actuals are three different measures, so a
+        change in one is not comparable with a change in another. Each row
+        carries its own basis line (C2).
+     3. NOTHING IS SUMMED. The same dollar appears in more than one of these
+        governments, so a combined change would be arithmetic with nothing to
+        measure. No total is shown and none is computable from what is here.
+     4. A CHANGE FROM AN ABSENT FIGURE IS NOT A CHANGE. If either year is
+        not-published or held, no delta is computed: the row says which state
+        applies, in C3's vocabulary, and stops. `held` is a real case here —
+        Woodland's FY2022-23 filing is held, and it is the prior year.
+
+     Direction is a glyph in ONE ink. No hue, no ranking, no adjective. */
+
+  /* STRUCTURAL BREAKS, DECLARED AND KEYED TO A YEAR PAIR. Measured before
+     building: none of these four layers documents a year-over-year break
+     inside its own latest-vs-prior window, so this table is nearly empty
+     today. It is consulted on every row anyway, because the day a break IS
+     documented the alternative is a view that stays silent about it. The one
+     in-window fact the payloads do declare is the state's. */
+  var CHANGE_BREAKS = {
+    "state|2024-25|2025-26": "The Department of Finance publishes no actual "
+      + "expenditures for FY2025-26 — it is the budget year, and Schedule 9 "
+      + "does not exist for it yet. Both figures here are ENACTED "
+      + "appropriations, so the comparison is like-for-like; but the newer "
+      + "year cannot yet be checked against what was actually spent, and the "
+      + "older one can."
+  };
+
+  /* The absence states this view can meet, enumerated (OPEN.md 2s). A fourth
+     would otherwise fall through every branch and print as a change of
+     nothing, which is the one outcome worse than saying nothing. */
+  var CHANGE_KNOWN = ["held", "not-published"];
+
+  var RECON_CHANGE = "";
+
+  /* The section delivers itself to the printed sheet. Twice a correct screen
+     has shipped with a silent sheet — #115 (a variable read before it was
+     set) and #116 (a block inside a print-hidden region) — by two different
+     mechanisms. This reads no variable and does not depend on where the
+     section sits in the document. */
+  function deliverChangeToSheet(text){
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-changed");
+    if (old) old.parentNode.removeChild(old);
+    if (!text) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-changed";
+    d.innerHTML = "<b>WHAT CHANGED</b>";
+    d.appendChild(document.createTextNode(text));
+    head.appendChild(d);
+  }
+
+  function changeRows(){
+    var rows = [];
+    var CY = CITY.years, TY = CTY.years, SY = SCH ? SCH.years : null;
+
+    var sy = ST.years, scur = sy[sy.length-1], sprev = sy[sy.length-2];
+    var stot = function(fy){
+      return (ST.budgets[fy].agencies || []).reduce(function(s,a){
+        return s + (a.gf||0) + (a.sp||0) + (a.bd||0); }, 0); };
+    rows.push({name:"State of California", layer:"STATE BUDGET",
+      prev:sprev, cur:scur, a:stot(sprev)*1e9, b:stot(scur)*1e9,
+      basis:"ENACTED APPROPRIATIONS · BUDGETARY-LEGAL BASIS · GENERAL + "
+           +"SPECIAL + BOND · NOT ACTUAL EXPENDITURES",
+      breakKey:"state|"+sprev+"|"+scur});
+
+    if (S.city && CITY.cities[S.city]){
+      var c=CITY.cities[S.city], cc=CY[CY.length-1], cp=CY[CY.length-2];
+      var yc=c.years[cc]||{}, yp=c.years[cp]||{};
+      rows.push({name:c.name, layer:"CITY", prev:cp, cur:cc,
+        a: yp.expenditures==null?null:yp.expenditures*1e6,
+        b: yc.expenditures==null?null:yc.expenditures*1e6,
+        aStatus:yp.filingStatus, bStatus:yc.filingStatus,
+        aReason:yp.filingHeldReason, bReason:yc.filingHeldReason,
+        basis:"REPORTED ACTUALS AS FILED WITH THE STATE CONTROLLER · "
+             +"GOVERNMENTAL ACTIVITIES ONLY · ENTERPRISE FUNDS EXCLUDED",
+        breakKey:"city|"+cp+"|"+cc});
+    }
+
+    if (S.county && CTY.counties[S.county]){
+      var k=CTY.counties[S.county], tc=TY[TY.length-1], tp=TY[TY.length-2];
+      var kc=k.years[tc]||{}, kp=k.years[tp]||{};
+      rows.push({name:k.name+" County", layer:"COUNTY", prev:tp, cur:tc,
+        a: kp.expenditures==null?null:kp.expenditures*1e6,
+        b: kc.expenditures==null?null:kc.expenditures*1e6,
+        aStatus:kp.filingStatus, bStatus:kc.filingStatus,
+        aReason:kp.filingHeldReason, bReason:kc.filingHeldReason,
+        basis:"REPORTED ACTUALS AS FILED WITH THE STATE CONTROLLER · "
+             +"GOVERNMENTAL ACTIVITIES ONLY · SERVES THE WHOLE COUNTY",
+        breakKey:"county|"+tp+"|"+tc});
+    }
+
+    (S.schools||[]).forEach(function(id){
+      var d = SCH && SCH.districts[id];
+      if (!d || !SY) return;
+      var sc=SY[SY.length-1], sp=SY[SY.length-2];
+      var dc=d.years[sc]||{}, dp=d.years[sp]||{};
+      rows.push({name:d.name, layer:"SCHOOL DISTRICT OF RESIDENCE",
+        prev:sp, cur:sc,
+        a: dp.currentExpense==null?null:dp.currentExpense,
+        b: dc.currentExpense==null?null:dc.currentExpense,
+        basis:"UNAUDITED ACTUALS UNDER SACS · CURRENT EXPENSE OF EDUCATION · "
+             +"REPRODUCES CDE’S PUBLISHED FIGURE TO THE CENT",
+        breakKey:"school|"+sp+"|"+sc});
+    });
+    return rows;
+  }
+
+  function renderWhatChanged(){
+    var box = document.getElementById("whatChanged");
+    if (!box) return;
+    var rows = changeRows();
+    if (!rows.length){ box.hidden = true; RECON_CHANGE=""; deliverChangeToSheet(""); return; }
+    var money = function(v){ return "$" + Math.round(Math.abs(v)).toLocaleString("en-US"); };
+    var anyGlyph = false;
+
+    var html = rows.map(function(r){
+      var mid="", note="";
+      var bad = [r.aStatus, r.bStatus].filter(function(s){
+        return s && CHANGE_KNOWN.indexOf(s) === -1; });
+      if (bad.length){
+        mid = '<span class="chg-absent">STATUS NOT RECOGNISED</span>';
+        note = "This record carries the status “" + esc(String(bad[0]))
+          + "”, which this view does not have a description for. No change is "
+          + "stated, because stating one would mean guessing what the status "
+          + "means. Please report this.";
+      } else if (r.aStatus === "held" || r.bStatus === "held"){
+        var wh = r.bStatus === "held" ? r.cur : r.prev;
+        mid = '<span class="chg-absent">NO CHANGE TO STATE — FY ' + esc(wh)
+            + ' IS HELD</span>';
+        note = "One of the two years is HELD, so there is no change to report "
+          + "— not a change of zero. " + esc(r.bReason || r.aReason || "");
+      } else if (r.a == null || r.b == null){
+        var wn = r.b == null ? r.cur : r.prev;
+        mid = '<span class="chg-absent">NO CHANGE TO STATE — FY ' + esc(wn)
+            + ' IS NOT PUBLISHED</span>';
+        note = "The source does not publish a figure for FY " + esc(wn)
+          + ", so there is nothing to compare against. This is not a change of "
+          + "zero: the Ledger has no figure for one of the two years.";
+      } else {
+        var dd = r.b - r.a;
+        var g = dd > 0 ? "▲" : (dd < 0 ? "▼" : "");
+        if (g) anyGlyph = true;
+        var pct = r.a ? (Math.abs(dd)/Math.abs(r.a)*100) : null;
+        mid = '<span class="chg-fig">' + money(r.a) + " → " + money(r.b)
+            + '</span> <span class="chg-d">' + (g ? g + " " : "") + money(dd)
+            + (pct == null ? "" : " · " + pct.toFixed(1) + "%") + '</span>';
+      }
+      var brk = CHANGE_BREAKS[r.breakKey];
+      return '<div class="chg-row">'
+        + '<div class="chg-top"><span class="chg-nm">' + esc(r.name)
+        + '<span class="chg-lay">' + esc(r.layer) + '</span></span>'
+        + '<span>' + mid + '</span></div>'
+        + '<div class="chg-yrs">FY ' + esc(r.prev) + ' → FY ' + esc(r.cur)
+        + ' · THIS GOVERNMENT’S OWN YEARS</div>'
+        + '<div class="chg-basis">MEASURED AS · ' + esc(r.basis) + '</div>'
+        + (note ? '<div class="chg-note">' + note + '</div>' : "")
+        + (brk ? '<div class="chg-note"><b>A BREAK CROSSES THIS COMPARISON.</b> '
+                 + esc(brk) + '</div>' : "")
+        + '</div>';
+    }).join("");
+
+    document.getElementById("chgRows").innerHTML = html;
+    document.getElementById("chgLede").textContent =
+      "One row per government that serves this address. Each states its own "
+      + "fiscal years and its own accounting basis, because these governments "
+      + "share neither — there is no single period or measure that would be "
+      + "true of all of them."
+      + (anyGlyph ? " The ▲ and ▼ marks show direction and nothing more: "
+        + "they are not a judgement, and nothing here is ranked." : "");
+    document.getElementById("chgNoSum").innerHTML =
+      "<b>These changes do not add, and this view never adds them.</b> The same "
+      + "dollar appears in more than one of these governments — the state sends "
+      + "money to school districts, counties and cities — so a combined change "
+      + "figure would be arithmetic with nothing to measure. No total is shown "
+      + "and none can be computed from what is here.";
+    box.hidden = false;
+    RECON_CHANGE = box.textContent.replace(/\s+/g," ").trim();
+    deliverChangeToSheet(RECON_CHANGE);
+  }
+
   function render(){
     try { syncPrintBtn(); } catch (e) { console.error('print btn:', e); }
     try { renderRecordSheet(); } catch (e) { console.error('record sheet:', e); }
@@ -1241,6 +1480,7 @@
       + (S.city ? (cityName + (S.city === "san-francisco" ? " (CONSOLIDATED CITY AND COUNTY)" : " · " + countyName + " COUNTY"))
                 : ("UNINCORPORATED " + countyName.toUpperCase() + " COUNTY"))
       + (S.via === "device" ? " · RESOLVED ON THIS DEVICE AGAINST SIMPLIFIED BOUNDARIES — NEAR A CITY LIMIT THIS CAN BE WRONG" : "")).toUpperCase();
+    try { renderWhatChanged(); } catch (e) { console.error("what changed:", e); }
     $("unincNote").innerHTML = "";
     if (!S.city && S.county){
       $("unincNote").innerHTML = '<div class="uninc-note"><strong>This address is in '
@@ -1335,8 +1575,29 @@
         + IG.year + ") — a total would count the same dollars more than once.",
       "# Figures are spending in residents' name on each government's own basis — not a tax bill.",
       "# Permalink: " + location.href,
+      /* WHAT CHANGED travels into the CSV as C2's basis line does. One line
+         per government, each carrying ITS OWN year pair and basis, because a
+         spreadsheet has no notes panel and a reader who sorts these columns
+         will otherwise compare an enacted change with an actuals change. */
+      "# What changed — per government, on its own years and its own basis. "
+        + "These changes DO NOT ADD and no total is given:",
+    ].concat(changeRows().map(function(r){
+      var st = (r.aStatus === "held" || r.bStatus === "held") ? "HELD"
+             : ((r.a == null || r.b == null) ? "NOT PUBLISHED" : null);
+      return "#   " + r.name + " (" + r.layer + ") · FY " + r.prev + " -> FY "
+        + r.cur + " · " + (st
+            ? "NO CHANGE TO STATE: FY "
+              + ((r.bStatus === "held" || r.b == null) ? r.cur : r.prev)
+              + " is " + st
+            : "$" + Math.round(r.a).toLocaleString("en-US") + " -> $"
+              + Math.round(r.b).toLocaleString("en-US") + " ("
+              + (r.b - r.a >= 0 ? "+" : "-") + "$"
+              + Math.round(Math.abs(r.b - r.a)).toLocaleString("en-US") + ")")
+        + " · basis: " + r.basis
+        + (CHANGE_BREAKS[r.breakKey] ? " · BREAK: " + CHANGE_BREAKS[r.breakKey] : "");
+    })).concat([
       "layer,government,fiscal_year,basis,population,governmental_expenditures_millions,per_resident_dollars"
-    ];
+    ]);
     layersForExport().forEach(r => lines.push(r.map(x =>
       /[",]/.test(String(x)) ? '"' + String(x).replace(/"/g,'""') + '"' : x).join(",")));
     if (S.schools.length){
