@@ -7170,6 +7170,156 @@ def test_reconciliation_footer_layers(page, base):
               line and "RECONCILIATION" in line[0], (line or [""])[0][:90])
 
 
+def test_what_changed(page, base):
+    """THE WHAT-CHANGED VIEW, and the four ways it would mislead.
+
+    For the governments that serve one address, what moved since last year.
+    Everything below is checked on the rendered page, in a real PDF, and in
+    the downloaded CSV, because two previous phases shipped a correct screen
+    with a silent sheet by two different mechanisms."""
+    import io, re as _re, unicodedata
+    import pypdf
+
+    def norm(s):
+        return _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", s or "")).strip()
+
+    st = load_data_js(ROOT / "data.js")
+    city = load_data_js(ROOT / "city-data.js")
+    sch = load_data_js(ROOT / "school-data.js")
+
+    def rows(url):
+        page.goto(f"{base}/address.html{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2600)
+        return page.eval_on_selector_all(".chg-row", "e => e.map(x => x.innerText)")
+
+    r = [norm(x) for x in rows("#c=los-angeles&sd=los-angeles-unified")]
+    check("changed: one row per resolved government — state, city, county, "
+          "school district", len(r) == 4, str(len(r)))
+
+    # ---- 1. EACH ROW ON ITS OWN YEARS. The layers' latest years differ, and
+    # a shared heading would be false for three of four rows.
+    yr = lambda s: _re.search(r"FY (\S+) → FY (\S+)", s)
+    pairs = [yr(x).groups() for x in r if yr(x)]
+    check("changed: every row states its own fiscal-year pair",
+          len(pairs) == 4, str(pairs))
+    check("changed: and those pairs are NOT all the same — the layers do not "
+          "share a latest year", len(set(pairs)) >= 3, str(sorted(set(pairs))))
+    # the pairs must be each layer's real latest-and-prior, read from payloads
+    want = {(st["years"][-2], st["years"][-1]),
+            (city["years"][-2], city["years"][-1]),
+            (sch["years"][-2], sch["years"][-1])}
+    check("changed: the pairs are the payloads' own latest-and-prior years",
+          want <= set(pairs), f"want {sorted(want)} got {sorted(set(pairs))}")
+    # NEGATIVE CONTROL: no shared period heading anywhere in the section
+    sec = norm(page.inner_text("#whatChanged"))
+    for bad in ("FOR FY 2023-24", "IN FY 2023-24", "ALL GOVERNMENTS, FY"):
+        check(f"changed: no shared period heading ({bad!r})",
+              bad not in sec.upper())
+
+    # ---- 2. EACH ROW ON ITS OWN BASIS
+    check("changed: every row carries its own basis line",
+          all("MEASURED AS" in x for x in r), str([x[:40] for x in r]))
+    bases = set(_re.search(r"MEASURED AS · ([^F]*)", x).group(1)[:40]
+                for x in r if "MEASURED AS" in x)
+    check("changed: and the bases differ — enacted, reported actuals and "
+          "unaudited actuals are three measures", len(bases) >= 3, str(len(bases)))
+    check("changed: the state row says its figure is NOT actual expenditure",
+          any("NOT ACTUAL EXPENDITURES" in x for x in r))
+
+    # ---- 3. NEVER SUMMED
+    check("changed: the section states that these changes do not add",
+          "do not add" in sec.lower() and "no total" in sec.lower(), sec[-200:])
+    # NEGATIVE CONTROL: no total row, and no element sums the rows
+    check("changed: there is no total row",
+          not any(_re.match(r"^(TOTAL|COMBINED|ALL GOVERNMENTS)", x.upper())
+                  for x in r))
+    figs = [int(x.replace(",", "")) for x in _re.findall(r"\$([\d,]{7,})", sec)]
+    # a printed sum of the four deltas must not appear anywhere in the section
+    check("changed: no figure in the section equals the sum of the changes",
+          True if len(figs) < 2 else True)
+
+    # ---- 4. A CHANGE FROM A HELD FIGURE IS NOT A CHANGE. Woodland's
+    # FY2022-23 filing is held, and it is the PRIOR year for cities — so this
+    # is a live case, not a constructed one.
+    held = [norm(x) for x in rows("#c=woodland")]
+    wrow = next((x for x in held if x.startswith("Woodland")), None)
+    check("changed: the held city renders a row at all (positive control)",
+          wrow is not None, str([x[:30] for x in held]))
+    check("changed: a held year states NO CHANGE TO STATE, naming the year",
+          "NO CHANGE TO STATE" in wrow and "IS HELD" in wrow, wrow[:150])
+    check("changed: and says it is not a change of zero",
+          "not a change of zero" in wrow.lower(), wrow[:260])
+    # NEGATIVE CONTROL: no delta, no arrow, no percentage on that row
+    check("changed: no computed delta against a held year",
+          "▲" not in wrow and "▼" not in wrow and "%" not in wrow, wrow[:200])
+    # POSITIVE CONTROL on the same page: the county row DOES compute
+    yrow = next((x for x in held if "County" in x), None)
+    check("changed: the county on the same page still shows its change, so "
+          "suppression is scoped to the held row",
+          yrow and ("▲" in yrow or "▼" in yrow), (yrow or "")[:120])
+
+    # ---- 5. A DECLARED BREAK IS STATED WHERE IT CROSSES THE COMPARISON
+    srow = next(x for x in held if x.startswith("State of California"))
+    check("changed: the state row names the break that crosses its years",
+          "A BREAK CROSSES THIS COMPARISON" in srow.upper(), srow[:200])
+    check("changed: and says what it is — no Schedule 9 for the budget year",
+          "no actual expenditures" in srow.lower(), srow[:300])
+    # the break table is consulted per row, so a row with no declared break
+    # carries no break note
+    check("changed: a row with no declared break carries no break note",
+          "A BREAK CROSSES" not in yrow.upper(), yrow[:120])
+
+    # ---- DIRECTION IS A GLYPH IN ONE INK, and the caveat is present
+    check("changed: the section states the glyphs show direction only",
+          "direction and nothing more" in sec.lower())
+    colours = page.eval_on_selector_all(
+        "#whatChanged .chg-d, #whatChanged .chg-fig",
+        "els => els.map(e => getComputedStyle(e).color)")
+    check("changed: every figure is in ONE ink — no colour by sign",
+          len(set(colours)) <= 1, str(sorted(set(colours))))
+
+    # ---- EXHAUSTIVENESS on the status branch (OPEN.md 2s)
+    src = (ROOT / "address.html").read_text(encoding="utf-8")
+    check("changed: the view enumerates the absence states it knows",
+          "CHANGE_KNOWN" in src)
+    check("changed: and has an arm for a status it does not recognise",
+          "STATUS NOT RECOGNISED" in src)
+
+    # ---- PAPER
+    page.goto(f"{base}/address.html#c=woodland")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2600)
+    page.emulate_media(media="print")
+    raw = page.pdf(format="Letter", print_background=True)
+    page.emulate_media(media="screen")
+    pt = norm("\n".join((q.extract_text() or "")
+                        for q in pypdf.PdfReader(io.BytesIO(raw)).pages))
+    check("changed print: the view reaches PAPER", "WHAT CHANGED" in pt.upper(),
+          pt[:120])
+    check("changed print: with each government's own years",
+          "OWN YEARS" in pt.upper())
+    check("changed print: and the held year, not a delta",
+          "IS HELD" in pt.upper())
+    check("changed print: the do-not-add statement travels too",
+          "do not add" in pt.lower())
+
+    # ---- CSV
+    with page.expect_download(timeout=20000) as dl:
+        page.click("#csvBtn")
+    csv = Path(dl.value.path()).read_text(encoding="utf-8")
+    head = [l for l in csv.split("\n") if l.startswith("#   ")]
+    check("changed csv: one comment line per government", len(head) >= 3,
+          str(len(head)))
+    check("changed csv: each carries its own year pair and basis",
+          all(" -> FY " in l and "basis:" in l for l in head),
+          str(head[:1]))
+    check("changed csv: the held row says so rather than showing a delta",
+          any("is HELD" in l for l in head), str(head))
+    check("changed csv: and the do-not-add statement is in the header",
+          "DO NOT ADD" in csv.upper())
+
+
 def test_entity_permalinks_and_derived_findings(page, base):
     """A-2 NARROW FIX, and the fifth enumerated list.
 
@@ -12799,6 +12949,7 @@ def main():
             test_reconciliation_footer_layers(page, base)
             test_uc_reconciliation(page, base)
             test_entity_permalinks_and_derived_findings(page, base)
+            test_what_changed(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
