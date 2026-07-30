@@ -976,6 +976,68 @@ into a spreadsheet and never revisit.
 
 ---
 
+### 2w. Two ways to state a reconciliation wrongly, and both look like findings
+
+Phase D states, at the figure, whether the children on screen sum to the
+parent above them. The identities were already gated and already measured.
+Stating them turned out to be where the errors were, and both errors
+manufacture a number that reads as a discovery about California.
+
+**SCOPE.** The state page's fund list carries federal rows whether or not
+the page is showing federal funds, while the department figure follows the
+toggle. Summing all funds against a state-only figure reported a **$99.5
+billion residual** on a department that reconciles exactly. The two sides of
+an identity must have the same scope, and a residual is meaningless until
+they do.
+
+The same shape appears wherever several parents share a view: the cities
+compare view shows two or three entities at once, so there is no single
+parent and no identity to state. Summing its children would produce a
+residual against whichever parent happened to be first.
+
+**PRECISION.** Cities store `byFunction` to three decimal places of $1
+million — $1,000 granularity — while the state form's line items are exact
+dollars. So fifteen rounded function rows differ from the governmental total
+by up to a few thousand dollars, always, for reasons that have nothing to do
+with any city. Departments-to-funds on the state page has the same shape at
+$1M granularity.
+
+**A residual that comes from our own storage is not a residual.** Publishing
+it would be the mirror of distributing a real one: distributing makes every
+child slightly wrong to make the total right; publishing an artefact makes
+the source look inconsistent to make our arithmetic look complete. Both are
+labelled, and the label says whose the difference is.
+
+The measurements that make the distinction sayable, taken before any footer
+was written:
+
+| identity | result |
+|---|---|
+| cities function → form lines | within $500 of a $1,000 grain, 37,581/37,581 |
+| cities Σfunctions → governmental total | within $3,000, 15 rounded rows |
+| schools Σfunctions → Current Expense | **$0.0000**, 8,427/8,427 |
+| schools function → objects | **$0.0000**, 50,902/50,902 |
+| schools Σfunding-source groups → CE | **$0.0000**, 8,427/8,427 |
+| CCC Σdistricts → printed statewide | **$0**, all 15 published years |
+| state Σagency rows → DOF control | exact 7/9; residual $2.353M, $1.638M |
+| state departments → agency | never reconciles; $4.8B–$13.2B |
+| state funds → department | exact within $1M storage, 6,916/6,916 |
+
+Schools is the one layer that can make an unqualified claim, and it can
+make it three times — so the footer says which route it is describing
+rather than implying all of them.
+
+**AND A THIRD ERROR, ONLY VISIBLE ON PAPER.** The printed sheet reads its
+reconciliation from a variable the footer sets. Both run inside the same
+`render()`, and the sheet won the race: it read the variable while it was
+still empty, so RECONCILES reached **no sheet on any layer** while every
+on-screen footer was correct. Inverted — the footer now delivers itself into
+the sheet, replacing rather than appending, so whichever paints last the
+block is right. Found by rendering a PDF and reading the text back; nothing
+on screen showed it, and no amount of reading the code suggested it.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

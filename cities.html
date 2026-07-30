@@ -411,6 +411,27 @@
   .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
     color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
     padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
+
+  /* ---- D · RECONCILIATION FOOTER (see index.html) ----------------------
+     States, at the figure, whether the children on screen sum to the
+     parent above them. Where they do not, the residual is its own line —
+     never distributed into a child, never left implied. And where the
+     difference comes from THIS RECORD'S precision or from summing across a
+     scope the parent does not cover, it is labelled as our artefact rather
+     than reported as a finding about California. */
+  .reconfoot{margin-top:12px;border-top:1px solid var(--ink);padding-top:9px;
+    font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);line-height:1.6}
+  .reconfoot b{display:block;color:var(--ink);letter-spacing:.09em;margin-bottom:4px}
+  .reconfoot .rf-row{display:flex;justify-content:space-between;gap:16px;
+    padding:2px 0;border-bottom:1px dotted var(--hairline)}
+  .reconfoot .rf-row:last-child{border-bottom:0}
+  .reconfoot .rf-res{border-top:1px solid var(--ink);margin-top:3px;padding-top:4px;
+    color:var(--ink);font-weight:600}
+  .reconfoot .rf-say{margin-top:6px;font-family:var(--sans);font-size:var(--fs-note);
+    letter-spacing:0;line-height:1.5;color:var(--graphite)}
+  @media print{ .reconfoot{border-color:#000;color:#000}
+    .reconfoot b,.reconfoot .rf-res{color:#000} }
 </style>
 </head>
 <body>
@@ -567,6 +588,8 @@
       <span class="schedlbl ghosty" id="scheduleNote"></span>
     </div>
     <div id="recordBody"></div>
+    <!-- D · the reconciliation, stated at the figure -->
+    <div class="reconfoot" id="reconFootRec" hidden></div>
   </div>
 
   <div class="record" id="entPanel" hidden>
@@ -817,6 +840,92 @@
         + "does not have a description for. The figures are shown as filed; "
         + "the caveat is missing rather than absent. Please report this — "
         + "it means the data gained a state the page was not taught."};
+  }
+
+
+  /* ---- D · THE RECONCILIATION FOOTER, AT THE FIGURE --------------------
+     Σ function rows against the governmental total on the record above.
+     The identity holds; the small difference between the two is OURS.
+     byFunction is stored to three decimals of $1 million — $1,000
+     granularity — so accumulating fifteen rounded rows can move the sum by
+     a few thousand dollars. Measured across the whole payload: the
+     function-to-lines difference never exceeds $500 in 37,581 of 37,581
+     function-years, and functions-to-total never exceeds $3,000.
+
+     Calling that a residual would repeat the phantom-residual error from
+     the state page — a number about our storage presented as a number
+     about a city. It is labelled as our rounding instead.
+
+     Shown only on the single-record view. The comparison view has several
+     parents and no single one, so there is no identity to state. */
+  /* D · THE RECONCILIATION IN ONE LINE, for the printed sheet and the CSV.
+     C2 carries the basis line into both; a reader holding a printout or a
+     spreadsheet has even less context than one on the page, so the identity
+     travels with them. Set by the footer that computes it, so the sheet and
+     the CSV cannot state a reconciliation the page is not showing. */
+  var RECON_TEXT = "";
+
+
+  /* THE FOOTER DELIVERS ITSELF TO THE SHEET, rather than the sheet reading a
+     variable the footer may not have set yet. rsStamp() runs during the same
+     render() and won the race — it read RECON_TEXT while it was still empty,
+     so RECONCILES never reached paper. Order-independent now: whoever paints
+     last, the block is correct, and re-painting replaces rather than
+     duplicates it. */
+  function deliverReconToSheet(text){
+    RECON_TEXT = text || "";
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-recon");
+    if (old) old.parentNode.removeChild(old);
+    if (!RECON_TEXT) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-recon";
+    d.innerHTML = "<b>RECONCILES</b>";
+    d.appendChild(document.createTextNode(RECON_TEXT));
+    head.appendChild(d);
+  }
+
+  function paintReconFoot(yr){
+    const box = document.getElementById("reconFootRec");
+    if (!box) return;
+    /* FUNCS, not FN — the layer's function list is rebound per layer
+       (city vs county) by bindLayer(), so it must be read at call time
+       rather than captured. */
+    const frows = (FUNCS || []).map(f => [f, (yr && yr.byFunction || {})[f.key]])
+                    .filter(x => x[1] != null);
+    const parent = yr && yr.expenditures;
+    if (parent == null || !frows.length){ box.innerHTML = ""; box.hidden = true; return; }
+    const fnSum = frows.reduce((s, x) => s + x[1], 0);
+    const gap = fnSum - parent;
+    const OURS = Math.abs(gap) < 0.0075;          // 15 rows x $1,000 / 2
+    /* whole dollars: byFunction is in millions, so x 1e6 first */
+    const d0 = x => (x < 0 ? MINUS : "") + "$"
+      + Math.round(Math.abs(x)).toLocaleString("en-US");
+    const rr = (l, v) => '<div class="rf-row"><span>' + esc(l)
+      + '</span><span class="num">' + v + '</span></div>';
+    box.innerHTML = '<b>RECONCILIATION \u00b7 FUNCTIONS TO THE GOVERNMENTAL TOTAL \u00b7 FY '
+      + esc(S.year) + '</b>'
+      + rr(frows.length + " function rows, summed", d0(fnSum * 1e6))
+      + rr("Governmental expenditures above", d0(parent * 1e6))
+      + '<div class="rf-row rf-res"><span>'
+      + (OURS ? "Residual \u2014 within this record\u2019s own rounding" : "RESIDUAL")
+      + '</span><span class="num">'
+      + (OURS ? "under $7,500" : d0(gap * 1e6)) + '</span></div>'
+      + '<div class="rf-say">'
+      + (OURS
+        ? 'The functions sum to the total. Each function is stored here to the '
+          + 'nearest $1,000, so fifteen of them can differ from the total by a few '
+          + 'thousand dollars for that reason alone \u2014 that is this '
+          + 'record\u2019s rounding, not the Controller\u2019s filing. Expand any '
+          + 'function to see the state-form lines beneath it: those sum to their '
+          + 'function in 37,581 of 37,581 function-years measured.'
+        : 'These do not agree beyond this record\u2019s rounding, and they should. '
+          + 'Please report this.')
+      + '</div>';
+    box.hidden = false;
+    deliverReconToSheet(box.textContent.replace(/\s+/g, " ").trim());
   }
 
   function cityNotes(id){
@@ -1787,6 +1896,7 @@
     html += '<div class="caps"><span>' + (hasDagger ? '† SERVICE-STRUCTURE NOTE — CLICK TO EXPAND · SEE METHOD NOTE M-5' : '') + '</span><span>GOVERNMENTAL ACTIVITIES ONLY — ENTERPRISE FUNDS SHOWN BELOW</span></div>';
     html += "</div></div>";
     $("recordBody").innerHTML = html;
+    paintReconFoot(yr);
     wireDaggers($("recordBody"));
     document.querySelectorAll('#recordBody .det-row[data-fn]').forEach(row => {
       const toggle = e => {
@@ -1851,6 +1961,7 @@
     html += '<div class="caps"><span>' + (cmpHasDagger ? '† SERVICE-STRUCTURE NOTE — SEE METHOD NOTE M-5' : '') + '</span><span>GOVERNMENTAL ACTIVITIES ONLY · BARS SHARE ONE SCALE ACROSS ALL CITIES AND FUNCTIONS</span></div>';
     html += "</div></div>";
     $("recordBody").innerHTML = html;
+    { const b=document.getElementById("reconFootRec"); if(b){ b.innerHTML=""; b.hidden=true; } }
     wireDaggers($("recordBody"));
   }
 
@@ -2075,6 +2186,7 @@
     const lines = [
       "# Citizen Ledger — cities",
       "# Source dataset: " + D.meta.sourceLabel,
+      "# Reconciles: " + (RECON_TEXT || "(open a record to state the reconciliation)"),
       "# Accounting basis: reported actual revenues and expenditures from standardized " + (S.layer === "county" ? "county" : "city") + " annual financial reports",
       "# Scope: governmental activities by function; ratepayer-funded enterprise funds, internal service funds, and conduit financing are excluded from function figures",
       "# Data generated: " + D.meta.generated + " · exported: " + new Date().toISOString().slice(0,10),

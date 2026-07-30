@@ -302,6 +302,27 @@
   .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
     color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
     padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
+
+  /* ---- D · RECONCILIATION FOOTER (see index.html) ----------------------
+     States, at the figure, whether the children on screen sum to the
+     parent above them. Where they do not, the residual is its own line —
+     never distributed into a child, never left implied. And where the
+     difference comes from THIS RECORD'S precision or from summing across a
+     scope the parent does not cover, it is labelled as our artefact rather
+     than reported as a finding about California. */
+  .reconfoot{margin-top:12px;border-top:1px solid var(--ink);padding-top:9px;
+    font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);line-height:1.6}
+  .reconfoot b{display:block;color:var(--ink);letter-spacing:.09em;margin-bottom:4px}
+  .reconfoot .rf-row{display:flex;justify-content:space-between;gap:16px;
+    padding:2px 0;border-bottom:1px dotted var(--hairline)}
+  .reconfoot .rf-row:last-child{border-bottom:0}
+  .reconfoot .rf-res{border-top:1px solid var(--ink);margin-top:3px;padding-top:4px;
+    color:var(--ink);font-weight:600}
+  .reconfoot .rf-say{margin-top:6px;font-family:var(--sans);font-size:var(--fs-note);
+    letter-spacing:0;line-height:1.5;color:var(--graphite)}
+  @media print{ .reconfoot{border-color:#000;color:#000}
+    .reconfoot b,.reconfoot .rf-res{color:#000} }
 </style>
 </head>
 <body>
@@ -408,7 +429,9 @@
     <div class="basis-strip" id="basisStrip"></div>
     <div class="cmpbox" id="comparabilityStrip" hidden></div>
     <div class="cmpbox" id="revenueStrip" hidden></div>
-    <div class="tblwrap"><div class="tbl" id="tbl"></div></div>
+    <div class="tblwrap"><div class="tbl" id="tbl"></div>
+        <!-- D · the reconciliation, stated at the figure -->
+        <div class="reconfoot" id="reconFootTbl" hidden></div></div>
     <div class="caps" id="recordCaps"></div>
 
     <div class="aux" id="auxBox"></div>
@@ -609,6 +632,35 @@
      header printed at all depended on which elements each page's print
      block happened to hide, and that list had already drifted on three of
      the nine layers. */
+  /* D · THE RECONCILIATION IN ONE LINE, for the printed sheet and the CSV.
+     C2 carries the basis line into both; a reader holding a printout or a
+     spreadsheet has even less context than one on the page, so the identity
+     travels with them. Set by the footer that computes it, so the sheet and
+     the CSV cannot state a reconciliation the page is not showing. */
+  var RECON_TEXT = "";
+
+
+  /* THE FOOTER DELIVERS ITSELF TO THE SHEET, rather than the sheet reading a
+     variable the footer may not have set yet. rsStamp() runs during the same
+     render() and won the race — it read RECON_TEXT while it was still empty,
+     so RECONCILES never reached paper. Order-independent now: whoever paints
+     last, the block is correct, and re-painting replaces rather than
+     duplicates it. */
+  function deliverReconToSheet(text){
+    RECON_TEXT = text || "";
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-recon");
+    if (old) old.parentNode.removeChild(old);
+    if (!RECON_TEXT) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-recon";
+    d.innerHTML = "<b>RECONCILES</b>";
+    d.appendChild(document.createTextNode(RECON_TEXT));
+    head.appendChild(d);
+  }
+
   function rsStamp(box){
     if (!box) return;
     const k = box.querySelector(".rs-kicker");
@@ -846,6 +898,53 @@
     html += '<div class="r foot"><span class="nm">Statewide total (Table VI)</span><span></span>'
       + '<span class="v dim">'+Math.round(sw().fundedFtes).toLocaleString()+'</span>'
       + '<span class="v">'+(S.unit==='perFtes' ? money0(Math.round(sw().ce/sw().fundedFtes)) : money0(sw().ce))+'</span></div>';
+    /* D · THE RECONCILIATION, AT THE FIGURE.
+       This is the layer's gate, and until now it lived in a method note and
+       in the payload's meta.gate prose. The reader looking at 73 district
+       rows and a statewide row beneath them had to trust that they add up.
+
+       EXACT TO THE DOLLAR, every one of the fifteen published years — no
+       rounding artefact, because CCFS-311 figures are whole dollars and are
+       stored here as whole dollars, and no scope gap, because the same
+       districts make up both sides. Measured: residual 0 in all 15 years.
+
+       THE DISTRICT COUNT CHANGES INSIDE THE WINDOW (72 before FY2018-19, 73
+       from it) — so the count is read from the year on screen rather than
+       stated once, and the roster break is named where a reader would
+       otherwise read the change as an error. */
+    (function(){
+      const box = document.getElementById("reconFootTbl");
+      if (!box) return;
+      const w = sw();
+      if (!w || w.ce == null){ box.innerHTML=""; box.hidden=true; return; }
+      const rowsShown = D.districts.filter(function(r){
+        const y = r.years && r.years[S.year];
+        return y && y.ce != null;
+      });
+      const dsum = rowsShown.reduce(function(s,r){ return s + r.years[S.year].ce; }, 0);
+      const gap = dsum - w.ce;
+      const rr = function(l,v){ return '<div class="rf-row"><span>' + esc(l)
+        + '</span><span class="num">' + v + '</span></div>'; };
+      box.innerHTML = '<b>RECONCILIATION \u00b7 DISTRICTS TO THE PRINTED STATEWIDE TOTAL \u00b7 FY '
+        + esc(S.year) + '</b>'
+        + rr(rowsShown.length + " district rows, summed", money0(dsum))
+        + rr("The Chancellor\u2019s Office printed Table VI statewide total", money0(w.ce))
+        + '<div class="rf-row rf-res"><span>Residual</span><span class="num">'
+        + (gap === 0 ? "$0 \u2014 exact, to the dollar" : money0(gap)) + '</span></div>'
+        + '<div class="rf-say">'
+        + (gap === 0
+          ? 'The district rows sum to the Chancellor\u2019s Office\u2019s own printed '
+            + 'statewide figure exactly, to the dollar \u2014 not to a tolerance and not '
+            + 'after rounding. CCFS-311 reports whole dollars and this record stores '
+            + 'whole dollars, so there is no rounding to absorb a difference. All '
+            + 'fifteen published years close this way, and nothing is written for a '
+            + 'year that does not.'
+          : 'These do not agree, and the build gates on their agreeing exactly. '
+            + 'Please report this.')
+        + '</div>';
+      box.hidden = false;
+      deliverReconToSheet(box.textContent.replace(/\s+/g, " ").trim());
+    })();
     $("tbl").innerHTML = html;
 
     /* A COUNT THAT DOES NOT EXIST IS NOT A COUNT. For a year whose
@@ -910,6 +1009,7 @@
       "# Citizen Ledger — California Community Colleges, FY 2022-23 (CCFS-311, Current Expense of Education ECS 84362, whole dollars)",
       "# WHOLE-DOLLAR, EXACT: the "+sw().nDistricts+" districts' Current Expense of Education sum to "+money0(sw().ce)+", the Chancellor's Office printed statewide Table VI total, to the dollar.",
       "# Basis is modified-accrual (CCC Budget and Accounting Manual), NOT the state budget's enacted budgetary-legal figure; never add the two.",
+      "# Reconciles: " + (RECON_TEXT || "(open a record to state the reconciliation)"),
       "# Per-FTES uses apportionment funded FTES (SCFF Exhibit C), NOT the CCCCO Data Mart derived count. Calbright is not apportionment-funded (no per-FTES).",
       "# Flags: multi_college (runs >1 college), community_supported (basic-aid, property-tax funded), noncredit_heavy (>= 2x statewide noncredit share). Districts are never ranked.",
       "# An EMPTY flag cell means the fact is not known for that district — it is derived from the apportionment schedule, which is absent for some records. It does NOT mean no.",

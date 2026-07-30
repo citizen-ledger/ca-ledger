@@ -331,6 +331,27 @@
   .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
     color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
     padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
+
+  /* ---- D · RECONCILIATION FOOTER (see index.html) ----------------------
+     States, at the figure, whether the children on screen sum to the
+     parent above them. Where they do not, the residual is its own line —
+     never distributed into a child, never left implied. And where the
+     difference comes from THIS RECORD'S precision or from summing across a
+     scope the parent does not cover, it is labelled as our artefact rather
+     than reported as a finding about California. */
+  .reconfoot{margin-top:12px;border-top:1px solid var(--ink);padding-top:9px;
+    font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);line-height:1.6}
+  .reconfoot b{display:block;color:var(--ink);letter-spacing:.09em;margin-bottom:4px}
+  .reconfoot .rf-row{display:flex;justify-content:space-between;gap:16px;
+    padding:2px 0;border-bottom:1px dotted var(--hairline)}
+  .reconfoot .rf-row:last-child{border-bottom:0}
+  .reconfoot .rf-res{border-top:1px solid var(--ink);margin-top:3px;padding-top:4px;
+    color:var(--ink);font-weight:600}
+  .reconfoot .rf-say{margin-top:6px;font-family:var(--sans);font-size:var(--fs-note);
+    letter-spacing:0;line-height:1.5;color:var(--graphite)}
+  @media print{ .reconfoot{border-color:#000;color:#000}
+    .reconfoot b,.reconfoot .rf-res{color:#000} }
 </style>
 </head>
 <body>
@@ -463,6 +484,8 @@
       <div class="gate-line" id="gateLine"></div>
       <div class="tierbox" id="revenueTier" hidden></div>
       <div id="recordBody"></div>
+    <!-- D · the reconciliation, stated at the figure -->
+    <div class="reconfoot" id="reconFootRec" hidden></div>
       <div class="caps" id="recordCaps"></div>
     </div>
   </section>
@@ -630,6 +653,87 @@
   /* ---------- helpers ---------- */
   const ent = id => TYPES[S.type].store[id];
   const yr = (id, y) => (ent(id).years[y||S.year]);
+
+  /* ---- D · THE RECONCILIATION FOOTER -----------------------------------
+     THREE identities on this layer, and all three are EXACT TO THE CENT —
+     no rounding artefact and no scope gap, because SACS figures are stored
+     here at the precision the source publishes them:
+
+       Σ 6 functions          = Current Expense of Education   8,427/8,427
+       Σ objects per function = that function                 50,902/50,902
+       Σ 4 funding-source grp = Current Expense of Education   8,427/8,427
+
+     Measured max |difference| across every one: $0.0000. So this footer
+     makes an unusually strong claim, and states which of the three it is
+     describing rather than implying all of them at once. */
+  /* D · THE RECONCILIATION IN ONE LINE, for the printed sheet and the CSV.
+     C2 carries the basis line into both; a reader holding a printout or a
+     spreadsheet has even less context than one on the page, so the identity
+     travels with them. Set by the footer that computes it, so the sheet and
+     the CSV cannot state a reconciliation the page is not showing. */
+  var RECON_TEXT = "";
+
+
+  /* THE FOOTER DELIVERS ITSELF TO THE SHEET, rather than the sheet reading a
+     variable the footer may not have set yet. rsStamp() runs during the same
+     render() and won the race — it read RECON_TEXT while it was still empty,
+     so RECONCILES never reached paper. Order-independent now: whoever paints
+     last, the block is correct, and re-painting replaces rather than
+     duplicates it. */
+  function deliverReconToSheet(text){
+    RECON_TEXT = text || "";
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-recon");
+    if (old) old.parentNode.removeChild(old);
+    if (!RECON_TEXT) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-recon";
+    d.innerHTML = "<b>RECONCILES</b>";
+    d.appendChild(document.createTextNode(RECON_TEXT));
+    head.appendChild(d);
+  }
+
+  function paintReconFoot(v){
+    const box = document.getElementById("reconFootRec");
+    if (!box) return;
+    const bf = (v && v.byFunction) || {};
+    const ce = v && v.currentExpense;
+    const keys = Object.keys(bf);
+    if (ce == null || !keys.length){ box.innerHTML = ""; box.hidden = true; return; }
+    const fnSum = keys.reduce((s,k) => s + bf[k], 0);
+    const gap = fnSum - ce;
+    const br = (v && v.byResource) || {};
+    const rKeys = Object.keys(br).filter(k => br[k] && typeof br[k].v === "number");
+    const rSum = rKeys.reduce((s,k) => s + br[k].v, 0);
+    const rGap = rSum - ce;
+    const rr = (l,x) => '<div class="rf-row"><span>' + esc(l)
+      + '</span><span class="num">' + x + '</span></div>';
+    const cents = n => "$" + n.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+    box.innerHTML = '<b>RECONCILIATION \u00b7 TWO WAYS INTO THE SAME FIGURE \u00b7 FY '
+      + esc(S.year) + '</b>'
+      + rr(keys.length + " function rows, summed", cents(fnSum))
+      + (rKeys.length ? rr(rKeys.length + " funding-source groups, summed", cents(rSum)) : "")
+      + rr("Current Expense of Education", cents(ce))
+      + '<div class="rf-row rf-res"><span>Residual</span><span class="num">'
+      + (Math.abs(gap) < 0.005 && Math.abs(rGap) < 0.005 ? "$0.00 \u2014 exact, to the cent"
+         : cents(Math.abs(gap) >= 0.005 ? gap : rGap)) + '</span></div>'
+      + '<div class="rf-say">'
+      + (Math.abs(gap) < 0.005 && Math.abs(rGap) < 0.005
+        ? 'Both routes into this figure close exactly, to the cent \u2014 the six '
+          + 'functions and, separately, the four funding-source groups. Nothing is '
+          + 'rounded away here: SACS figures are stored at the precision CDE '
+          + 'publishes them. Measured across the payload: 8,427 of 8,427 '
+          + 'district-years each way, and 50,902 of 50,902 function-to-object '
+          + 'checks. Expand a function to see its objects.'
+        : 'One of these routes does not close, and both should. Please report '
+          + 'this \u2014 the build gates on these identities.')
+      + '</div>';
+    box.hidden = false;
+    deliverReconToSheet(box.textContent.replace(/\s+/g, " ").trim());
+  }
+
   function districtNotes(id, y){
     const d = D.districts[id], v = d.years[y];
     if (!v) return [];
@@ -1041,6 +1145,7 @@
       + '<span class="v">'+fmtVal(v.currentExpense, v.ada)+'</span></div></div>'
       + srcSection(v)
       + notes.map(n => '<div class="note-row">† '+esc(n.text)+'</div>').join("");
+    paintReconFoot(v);
     document.querySelectorAll('#recordBody .det-row[data-fn]').forEach(row => {
       const open = () => { S.openFn = S.openFn === row.dataset.fn ? null : row.dataset.fn; render(); };
       row.addEventListener("click", open);
@@ -1476,6 +1581,7 @@
     const lines = [
       "# Citizen Ledger — K-12 schools (" + (S.type === "districts" ? "school districts, gated" : S.type) + ")",
       "# District figures reproduce CDE's published Current Expense of Education to the cent; unaudited actuals.",
+      "# Reconciles: " + (RECON_TEXT || "(open a record to state the reconciliation)"),
       "# About " + (OL.stateShare*100).toFixed(1) + "% of school revenues are state money shown on the state budget page — the layers are never added.",
       "# Source: CDE SACS unaudited actuals · Generated: " + D.meta.generated,
       "# Dollar basis: " + csvBasisLine(),

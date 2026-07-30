@@ -7038,6 +7038,138 @@ def test_comp_zero_vs_blank(page, base):
           "REPORTED ZERO" in sheet and "EMPTY" in sheet.upper())
 
 
+def test_reconciliation_footer_layers(page, base):
+    """D · THE REMAINING LAYERS, AND BOTH ARTEFACT CLASSES.
+
+    The identities were already measured and hold. What was missing was the
+    statement. But the state page taught two ways to state one wrongly, and
+    both are checked here on every layer:
+
+      SCOPE     summing children across a scope the parent does not cover.
+                On the state page this produced a $99.5 BILLION phantom
+                residual on a department that reconciles exactly.
+      PRECISION a difference that comes from THIS RECORD'S storage. Cities
+                store byFunction to three decimals of $1M — $1,000
+                granularity — so fifteen rounded rows can differ from the
+                total by a few thousand dollars. Reporting that as a
+                residual would be a number about our storage presented as a
+                number about a city.
+
+    Measured before any of this was written: cities function-to-lines never
+    differs by more than $500 in 37,581 of 37,581 function-years; schools
+    close to $0.0000 on all three of their identities; CCC closes to the
+    dollar in all fifteen published years.
+
+    VERIFIED BY RENDERING. The footer is read off the page, and the printed
+    sheet off a real PDF, because the ordering bug that kept RECONCILES out
+    of the sheet entirely was invisible any other way."""
+    import io, re as _re, unicodedata
+    import pypdf
+
+    def norm(s):
+        return _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", s or "")).strip()
+
+    def foot(url, sel):
+        page.goto(f"{base}/{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2600)
+        hidden = page.eval_on_selector(sel, "e => e.hidden")
+        return ("" if hidden else norm(page.inner_text(sel)))
+
+    # ---- CITIES: the identity holds; the difference is OURS
+    f = foot("cities.html#c=los-angeles", "#reconFootRec")
+    check("recon cities: the footer states the identity at the figure",
+          "FUNCTIONS TO THE GOVERNMENTAL TOTAL" in f, f[:110])
+    check("recon cities: the sub-threshold difference is named as this "
+          "record's own rounding, not a source residual",
+          "own rounding" in f and "not the Controller" in f, f[:260])
+    # NEGATIVE CONTROL for the PRECISION class
+    check("recon cities: and it is NOT presented as a finding about the city",
+          "RESIDUAL" not in f.replace("Residual", ""), f[:200])
+    check("recon cities: it names the storage granularity that causes it",
+          "$1,000" in f, f[:260])
+
+    # counties share the renderer but have their own function list — a
+    # hardcoded count would pass on cities and be wrong here
+    fc = foot("cities.html#l=county&c=alameda", "#reconFootRec")
+    check("recon counties: the footer renders for the county layer too",
+          "FUNCTIONS TO THE GOVERNMENTAL TOTAL" in fc, fc[:110])
+    n_city = _re.search(r"(\d+) function rows", f)
+    n_cty = _re.search(r"(\d+) function rows", fc)
+    check("recon counties: the row count is read from the layer's own "
+          "function list, not written once",
+          n_city and n_cty and n_city.group(1) != n_cty.group(1),
+          f"{n_city and n_city.group(1)} vs {n_cty and n_cty.group(1)}")
+
+    # NEGATIVE CONTROL for SCOPE: the compare view has several parents and
+    # no single one, so there is no identity to state and the footer must be
+    # empty rather than summing across entities
+    fcmp = foot("cities.html#c=los-angeles,oakland", "#reconFootRec")
+    check("recon cities: the multi-entity compare view states NO "
+          "reconciliation — there is no single parent to reconcile to",
+          fcmp == "", fcmp[:120])
+
+    # ---- SCHOOLS: exact to the cent, both routes, no artefact at all
+    f = foot("schools.html#c=alameda-unified", "#reconFootRec")
+    check("recon schools: the footer states both routes into the figure",
+          "TWO WAYS INTO THE SAME FIGURE" in f, f[:110])
+    check("recon schools: exact to the cent, and it says so",
+          "exact, to the cent" in f, f[:220])
+    check("recon schools: and claims no rounding, because there is none",
+          "own rounding" not in f)
+    check("recon schools: it states the measured coverage",
+          "8,427 of 8,427" in f and "50,902 of 50,902" in f, f[:400])
+
+    # ---- CCC: exact to the dollar, and the roster count comes from the year
+    f = foot("ccc.html", "#reconFootTbl")
+    check("recon ccc: the footer states the gate at the figure",
+          "DISTRICTS TO THE PRINTED STATEWIDE TOTAL" in f, f[:110])
+    check("recon ccc: exact to the dollar", "exact, to the dollar" in f)
+    ccc = load_data_js(ROOT / "ccc-data.js")
+    latest = ccc["years"][-1]
+    want = ccc["statewide"][latest]["nDistricts"]
+    check("recon ccc: the district count is the year's own roster",
+          f"{want} district rows" in f, f[:140])
+
+    # ---- PRINT: a real PDF, because the ordering bug was invisible
+    # otherwise — rsStamp ran before the footer had computed anything, so
+    # RECONCILES reached no sheet on any layer.
+    for name, url in (("state", "index.html#y=2025-26"),
+                      ("cities", "cities.html#c=los-angeles"),
+                      ("schools", "schools.html#c=alameda-unified"),
+                      ("ccc", "ccc.html")):
+        page.goto(f"{base}/{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2700)
+        page.emulate_media(media="print")
+        raw = page.pdf(format="Letter", print_background=True)
+        page.emulate_media(media="screen")
+        txt = norm("\n".join((q.extract_text() or "")
+                             for q in pypdf.PdfReader(io.BytesIO(raw)).pages))
+        check(f"recon print {name}: the reconciliation reaches PAPER",
+              "RECONCILES" in txt, txt[:120])
+        check(f"recon print {name}: with the identity, not just a heading",
+              "RECONCILIATION" in txt)
+
+    # ---- CSV: carried as C2's basis line is
+    for name, url in (("cities", "cities.html#c=los-angeles"),
+                      ("schools", "schools.html#c=alameda-unified"),
+                      ("ccc", "ccc.html"),
+                      ("state", "index.html#y=2025-26")):
+        page.goto(f"{base}/{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2700)
+        with page.expect_download(timeout=20000) as dl:
+            page.click("#csvBtn")
+        head = "\n".join(
+            Path(dl.value.path()).read_text(encoding="utf-8").split("\n")[:18])
+        line = [l for l in head.split("\n") if l.startswith("# Reconciles:")]
+        check(f"recon csv {name}: the CSV header carries the reconciliation",
+              len(line) == 1, str(len(line)))
+        check(f"recon csv {name}: and it is not an empty placeholder",
+              line and "RECONCILIATION" in line[0], (line or [""])[0][:90])
+
+
 def test_reconciliation_footer(page, base):
     """D · THE RECONCILIATION IS STATED AT THE FIGURE, NOT IN A METHOD NOTE.
 
@@ -12417,6 +12549,7 @@ def main():
             test_status_exhaustiveness(page, base)
             test_comp_zero_vs_blank(page, base)
             test_reconciliation_footer(page, base)
+            test_reconciliation_footer_layers(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
