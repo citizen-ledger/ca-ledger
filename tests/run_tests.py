@@ -6930,6 +6930,114 @@ def test_print_greyscale():
                   'aria-hidden="true"' in frag)
 
 
+def test_comp_zero_vs_blank(page, base):
+    """A FILED ZERO AND AN EMPTY CELL ARE DIFFERENT FACTS, ON THIS LAYER TOO.
+
+    money() maps a blank and a filed "0" to the same 0 — right for
+    arithmetic, wrong for display. The collapse ran BOTH ways at once:
+
+        overtime filed 0 ........ 763,879  printed as an em dash
+        lump+other filed 0 ...... 344,972  printed as an em dash
+        regular pay BLANK ........ 17,359  printed as $0
+
+    Over a million measurements read as NOT PUBLISHED, and seventeen
+    thousand silences read as a measurement. Every component column carries
+    blanks — regular pay included, which had no em-dash branch at all — so
+    the fix is per displayed column, not per column that was reported.
+
+    VERIFIED BY RENDERING. The counts below are read off the rendered table
+    and compared to the payload, because a page can carry the right data
+    and print it wrong; that is the entire defect being fixed here."""
+    import json as _json
+
+    d = load_data_js(ROOT / "compensation-data.js")
+    m = d["meta"]
+    # the third state is DECLARED, so a consumer need not infer it
+    check("comp: the payload declares which row fields can be null",
+          m.get("nullableRowFields") ==
+          ["regularPay", "overtimePay", "lumpSumAndOther"],
+          str(m.get("nullableRowFields")))
+    check("comp: and declares what null MEANS, in words",
+          "NOT PUBLISHED" in (m.get("nullMeans") or "")
+          and "REPORTED ZERO" in (m.get("nullMeans") or ""))
+
+    # ---- THE DATA: all three states present, swept over every detail file
+    files = sorted((ROOT / "comp").glob("*.json"))
+    check("comp: detail files were globbed from disk", len(files) > 4000,
+          str(len(files)))
+    kinds = {i: {"null": 0, "zero": 0, "figure": 0} for i in (2, 3, 4)}
+    for f in files:
+        for r in _json.loads(f.read_text()):
+            for i in (2, 3, 4):
+                v = r[i]
+                kinds[i]["null" if v is None else
+                         ("zero" if v == 0 else "figure")] += 1
+    for i, name in ((2, "regularPay"), (3, "overtimePay"),
+                    (4, "lumpSumAndOther")):
+        k = kinds[i]
+        # POSITIVE CONTROLS ON ALL THREE STATES: if any were missing the
+        # assertions below would be vacuous
+        check(f"comp {name}: carries real nulls", k["null"] > 0, str(k))
+        check(f"comp {name}: carries real filed zeros", k["zero"] > 0, str(k))
+        check(f"comp {name}: carries real figures", k["figure"] > 0, str(k))
+    # the exact source counts — extraction drift shows up here
+    check("comp: null counts match the Controller's own empty cells",
+          kinds[2]["null"] == 17359 and kinds[3]["null"] == 71360
+          and kinds[4]["null"] == 39517,
+          f"{kinds[2]['null']}/{kinds[3]['null']}/{kinds[4]['null']}")
+    check("comp: and the filed zeros are kept as zeros, not folded into null",
+          kinds[3]["zero"] == 763879, str(kinds[3]["zero"]))
+
+    # ---- RENDERED: read the table back off the page
+    def render(slug):
+        page.goto(f"{base}/compensation.html#e={slug}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_selector(".posrow:not(.poshead)", timeout=25000)
+        page.wait_for_timeout(500)
+        return page.eval_on_selector_all(
+            ".posrow:not(.poshead)",
+            "els => els.map(e => [...e.querySelectorAll('.num')]"
+            ".map(x => x.textContent.trim()))")
+
+    # Adelanto: 17 filed zeros and 4 empty cells in the SAME column
+    rows = _json.loads((ROOT / "comp" / "city-adelanto.json").read_text())
+    cells = render("city-adelanto")
+    check("comp render: the table rendered at all (positive control)",
+          len(cells) == len(rows), f"{len(cells)} vs {len(rows)}")
+    ot = [c[1] for c in cells]
+    want_zero = sum(1 for r in rows if r[3] == 0)
+    want_null = sum(1 for r in rows if r[3] is None)
+    check("comp render: every filed zero prints as $0, a figure",
+          ot.count("$0") == want_zero, f"{ot.count('$0')} vs {want_zero}")
+    check("comp render: every empty cell prints as an em dash",
+          sum(1 for x in ot if x == "—") == want_null,
+          f"{sum(1 for x in ot if x == chr(0x2014))} vs {want_null}")
+    # NEGATIVE CONTROL: the two must not be the same mark
+    check("comp render: and the two are NOT the same mark — the whole defect",
+          want_zero > 0 and want_null > 0 and "$0" != "—")
+
+    # the other direction: a blank REGULAR pay must not read as $0
+    rows2 = _json.loads((ROOT / "comp" / "city-bradbury.json").read_text())
+    cells2 = render("city-bradbury")
+    reg = [c[0] for c in cells2]
+    wn = sum(1 for r in rows2 if r[2] is None)
+    check("comp render: a blank regular-pay cell prints as an em dash, not $0",
+          sum(1 for x in reg if x == "—") == wn and wn > 0,
+          f"{[x for x in reg]} want {wn} dashes")
+
+    # ---- C4's LIMIT STATEMENT COMES DOWN. A caveat that has stopped being
+    # true is worse than none: a reader who trusts it discounts a sound
+    # figure. The sheet must no longer claim the states are inseparable.
+    page.goto(f"{base}/compensation.html#e=city-adelanto")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2600)
+    sheet = page.inner_text("#recordSheet")
+    check("comp sheet: the retired limit statement is gone",
+          "not yet distinguishable" not in sheet.lower(), sheet[:140])
+    check("comp sheet: and it now states the distinction it keeps",
+          "REPORTED ZERO" in sheet and "EMPTY" in sheet.upper())
+
+
 def test_reconciliation_footer(page, base):
     """D · THE RECONCILIATION IS STATED AT THE FIGURE, NOT IN A METHOD NOTE.
 
@@ -12307,6 +12415,7 @@ def main():
             test_tier_chip(page, base)
             test_basis_line(page, base)
             test_status_exhaustiveness(page, base)
+            test_comp_zero_vs_blank(page, base)
             test_reconciliation_footer(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
