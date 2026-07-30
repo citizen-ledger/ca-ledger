@@ -154,6 +154,37 @@ def money(v):
         return 0
 
 
+def money_cell(v):
+    """A DISPLAYED cell: None when the source cell is EMPTY, else dollars.
+
+    money() above maps a blank and a filed "0" to the same 0, which is
+    correct for ARITHMETIC — a blank contributes nothing to a sum — and
+    wrong for DISPLAY, because the page then cannot tell a measurement from
+    a silence. Measured in the Controller's own export:
+
+        overtime filed 0 ............ 763,879   shown as an em dash
+        lump+other filed 0 .......... 340,143   shown as an em dash
+        regular pay BLANK ............ 17,359   shown as $0
+
+    So the collapse ran in BOTH directions at once: over a million filed
+    zeros were rendered as the em dash this site reserves for NOT
+    PUBLISHED, and seventeen thousand genuinely absent cells were rendered
+    as a filed zero. Every component column carries blanks — regular pay
+    included, which had no em-dash branch on the page at all — so this is
+    applied per displayed column rather than to the two that were reported.
+
+    TotalWages and TotalRetirementAndHealthContribution have ZERO blanks
+    across all 1,407,216 rows, so the totals are always figures and need
+    no third state."""
+    s = str(v or "").replace(",", "").replace("$", "").strip()
+    if not s:
+        return None
+    try:
+        return int(round(float(s)))
+    except ValueError:
+        return None
+
+
 def truthy(v):
     return str(v or "").strip().lower() in ("true", "yes", "1", "y")
 
@@ -295,11 +326,17 @@ def build(argv=None):
 
             # ROWS SHIP AS FILED, IN FILE ORDER. Never sorted by pay — a
             # sorted payload is a ranking whatever the page does with it.
+            # LUMP SUM AND OTHER are two source cells shown as one column.
+            # It is NOT PUBLISHED only when BOTH are empty; if either
+            # carries a figure — including a filed 0 — the column is a
+            # figure, and the empty one contributes nothing to it.
+            ls_c, op_c = money_cell(r["LumpSumPay"]), money_cell(r["OtherPay"])
+            lump = None if (ls_c is None and op_c is None) else (ls_c or 0) + (op_c or 0)
             detail[sl].append([
                 vp(r["Position"].strip()),
                 vd(r["DepartmentOrSubdivision"].strip()),
-                money(r["RegularPay"]), money(r["OvertimePay"]),
-                money(r["LumpSumPay"]) + money(r["OtherPay"]),
+                money_cell(r["RegularPay"]), money_cell(r["OvertimePay"]),
+                lump,
                 rh,
                 1 if truthy(r["ElectedOfficial"]) else 0,
             ])
@@ -476,6 +513,17 @@ def build(argv=None):
             "detailPath": "comp/{slug}.json",
             "rowFields": ["position", "department", "regularPay", "overtimePay",
                           "lumpSumAndOther", "retirementAndHealth", "elected"],
+            # THE THIRD STATE IS DECLARED, so a consumer of these files does
+            # not have to infer it. null is NOT PUBLISHED — the Controller's
+            # cell is empty. 0 is a REPORTED ZERO — the employer filed that
+            # amount. They are different facts and this record keeps them
+            # apart. Only these three columns can be null; the two totals
+            # have no empty cells in the source.
+            "nullableRowFields": ["regularPay", "overtimePay", "lumpSumAndOther"],
+            "nullMeans": "NOT PUBLISHED — the State Controller's cell is "
+                         "empty for this position. A 0 is a REPORTED ZERO: "
+                         "the employer filed that amount. Never read one as "
+                         "the other.",
         },
         "entities": entities,
     }

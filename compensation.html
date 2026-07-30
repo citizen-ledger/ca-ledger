@@ -595,12 +595,21 @@
         + '<span class="num">LUMP SUM &amp; OTHER</span><span class="num">RETIREMENT &amp; HEALTH</span></div>';
       /* Rows render in the order the employer filed them. Not sorted. */
       $("recTable").innerHTML = head + rows.map(function(r){
+        /* NULL IS NOT PUBLISHED. ZERO IS A REPORTED ZERO.
+           These were the same pixel until the payload learned to tell them
+           apart, and the collapse ran BOTH ways at once: `r[3] ? money(r[3])
+           : "—"` printed the em dash — this site's reserved mark for NOT
+           PUBLISHED — over 763,879 filed zeros in overtime and 344,972 in
+           lump sum, while regular pay had no em-dash branch at all and so
+           printed $0 over 17,359 cells the Controller left empty.
+           cell() tests for null explicitly; a filed 0 now reads $0. */
+        const cell = v => (v === null || v === undefined) ? "\u2014" : money(v);
         return '<div class="posrow"><span>' + esc(M.positionsVocab[r[0]])
           + (r[6] ? ' <span style="color:var(--graphite)">(elected)</span>' : '')
           + '</span><span>' + esc(M.departmentsVocab[r[1]]) + '</span>'
-          + '<span class="num">' + money(r[2]) + '</span>'
-          + '<span class="num">' + (r[3] ? money(r[3]) : "—") + '</span>'
-          + '<span class="num">' + (r[4] ? money(r[4]) : "—") + '</span>'
+          + '<span class="num">' + cell(r[2]) + '</span>'
+          + '<span class="num">' + cell(r[3]) + '</span>'
+          + '<span class="num">' + cell(r[4]) + '</span>'
           + '<span class="num">' + money(r[5])
           + (e.unfundedInRetirement ? ' <span class="dag">&dagger;</span>' : '')
           + '</span></div>';
@@ -706,13 +715,18 @@
      cannot tell them apart and neither can this sheet. Stating the limit
      is the only honest option: the alternative is a sheet that asserts
      "not published" over three-quarters of a million filed zeros. */
-  var COMP_ZERO_CAVEAT =
-    "ON THIS LAYER, A ZERO AND AN EMPTY CELL ARE NOT YET DISTINGUISHABLE. "
-    + "The State Controller's export distinguishes a filed 0 from a blank, "
-    + "but this record's build maps both to 0. A 0 in the overtime or "
-    + "lump-sum column therefore means “zero or not stated” and must "
-    + "not be read as a measurement of zero. The other columns are filed "
-    + "figures. This is a limit of the Ledger's build, not of the source.";
+  /* C4 STATED A LIMIT HERE; THE LIMIT IS GONE, SO THE STATEMENT IS TOO.
+     It read "a zero and an empty cell are not yet distinguishable on this
+     layer". They are now: the pipeline keeps the Controller's own
+     distinction (null vs 0) and this page renders them differently. A
+     caveat that has stopped being true is worse than none, because a
+     reader who trusts it discounts a figure that is now sound. */
+  var COMP_ZERO_RESOLVED =
+    "A ZERO IN A PAY COLUMN IS A REPORTED ZERO \u2014 the employer filed that "
+    + "amount. An em dash means the State Controller's cell is EMPTY for that "
+    + "position: nothing was stated, and the Ledger does not read it as a "
+    + "zero. Across this layer 1,108,851 filed zeros and 128,236 empty cells "
+    + "sit in the same three columns, and they are not shown alike.";
 
   function basisLine(){
     return ["STATE CONTROLLER GOVERNMENT COMPENSATION EXPORT",
@@ -749,8 +763,8 @@
     }
     h += '<div class="rs-stamp"><b>MEASURED AS</b>' + esc(basisLine()) + '</div>';
     h += '<div class="rs-stamp"><b>ABSENCE ON THIS SHEET</b>' + ABSENCE_KEY + '</div>';
-    h += '<div class="rs-stamp"><b>AND ONE PLACE IT CANNOT BE KEPT</b>'
-      + esc(COMP_ZERO_CAVEAT) + '</div>';
+    h += '<div class="rs-stamp"><b>ZERO AND EMPTY, ON THIS LAYER</b>'
+      + esc(COMP_ZERO_RESOLVED) + '</div>';
     h += '<div class="rs-stamp"><b>CITATION</b>' + esc(citationText()) + '</div>';
     k.insertAdjacentHTML("afterend", h);
   }
