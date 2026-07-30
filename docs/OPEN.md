@@ -1038,6 +1038,56 @@ on screen showed it, and no amount of reading the code suggested it.
 
 ---
 
+### 2x. A failed reconciliation is not a residual, and a minus sign is not an error
+
+UC finished Phase D with the two cases the footer vocabulary had not yet
+had to express.
+
+**A HELD YEAR HAS NO RESIDUAL, BECAUSE IT HAS NO FIGURE.** FY2019-20's
+campus table does not reconcile: campuses + Systemwide + the added-back DOE
+line come to 43,405,055K against an audited 43,405,406K, and the 351K that
+would close it appears nowhere in UC's document. Every later year ties
+exactly, so this is not a tolerance anyone could widen.
+
+The tempting rendering is a residual line beside the campus figures, the
+same shape the state page uses for DOF's $1.638M. That would be wrong, and
+the reason is worth stating: **a residual sits beside a figure the Ledger
+publishes and qualifies. This year has no such figure.** Showing one would
+let a reader take the campus numbers as shipped-with-a-caveat when in fact
+nothing is shipped. So the page states the arithmetic and labels the gap
+*DOES NOT CLOSE — short by 351K*, and says the year is withheld **for that
+reason** rather than published at a lower tier.
+
+**A NEGATIVE PRINTED COLUMN IS A FACT ABOUT THE SOURCE'S TABLE.**
+FY2024-25's Systemwide column is −306,871K. It is one printed cell in UC's
+own campus table — UC's label: *"Systemwide (UCOP, DOE laboratory &
+eliminations)"* — and it nets four things: systemwide operations
+(−840,427K), the DOE laboratory (+1,194,419K), and the eliminations that
+remove medical-centre (−591,981K) and auxiliary (−68,882K) activity already
+counted inside the campus columns. The eliminations are subtractions; in
+this year they exceed what the column adds, so the printed cell is
+negative. It sums to the audited total exactly.
+
+The rule this settles: **state what the line contains and let the sign
+follow.** The page does not call it an anomaly, does not apologise for it,
+and does not redistribute it across the ten campuses to remove the minus —
+which would move money into ten records where UC put it in none. Every
+characterising word is refused by assertion: *error*, *anomalous*,
+*incorrect*, *mistake*, *should be*.
+
+**AND THE SCOPE ARTEFACT HERE IS WORTH A BILLION DOLLARS.** UC's campus
+table EXCLUDES the DOE laboratory in the earlier vintages and INCLUDES it
+from FY2021-22. The identity therefore has two forms, and the form is read
+from each year's own `doeForm` declaration. Applying one year's form to
+another double-counts or drops the DOE line — mutation-tested, and it
+produces a phantom residual of exactly **$1,194,419K** on a year that
+closes at zero. Precision is not a risk on this layer at all: UC publishes
+thousands and the record stores thousands, so the identity closes at zero
+or it does not close, and the footer says so rather than reserving itself
+an excuse.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

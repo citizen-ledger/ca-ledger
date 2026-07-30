@@ -320,6 +320,21 @@
   .basisline{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.06em;
     color:var(--graphite);background:var(--wash-in);border-left:2px solid var(--ink);
     padding:7px 11px;margin-bottom:10px;line-height:1.5;overflow-wrap:anywhere}
+
+  /* ---- D · RECONCILIATION FOOTER (see index.html) ---------------------- */
+  .reconfoot{margin-top:12px;border-top:1px solid var(--ink);padding-top:9px;
+    font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em;
+    color:var(--graphite);line-height:1.6}
+  .reconfoot b{display:block;color:var(--ink);letter-spacing:.09em;margin-bottom:4px}
+  .reconfoot .rf-row{display:flex;justify-content:space-between;gap:16px;
+    padding:2px 0;border-bottom:1px dotted var(--hairline)}
+  .reconfoot .rf-row:last-child{border-bottom:0}
+  .reconfoot .rf-res{border-top:1px solid var(--ink);margin-top:3px;padding-top:4px;
+    color:var(--ink);font-weight:600}
+  .reconfoot .rf-say{margin-top:6px;font-family:var(--sans);font-size:var(--fs-note);
+    letter-spacing:0;line-height:1.5;color:var(--graphite)}
+  @media print{ .reconfoot{border-color:#000;color:#000}
+    .reconfoot b,.reconfoot .rf-res{color:#000} }
 </style>
 </head>
 <body>
@@ -443,6 +458,8 @@
     <div class="status-strip" id="statusStrip"></div>
     <div class="basis-strip" id="basisStrip"></div>
     <div class="tblwrap"><div class="tbl" id="tbl"></div></div>
+    <!-- D · the reconciliation, stated at the figure -->
+    <div class="reconfoot" id="reconFootUC" hidden></div>
     <div class="caps" id="recordCaps"></div>
 
     <div class="stripbox" id="stripBox"></div>
@@ -673,6 +690,112 @@
      header printed at all depended on which elements each page's print
      block happened to hide, and that list had already drifted on three of
      the nine layers. */
+
+  var RECON_TEXT = "";
+  /* The footer delivers itself to the printed sheet rather than the sheet
+     reading a variable the footer may not have set yet. On the other four
+     layers rsStamp() won that race and RECONCILES reached no sheet at all
+     while every screen footer was correct. */
+  /* THE HELD YEAR MUST REACH PAPER TOO. #heldNote sits inside a region the
+     print stylesheet hides, so on a printed sheet the reader learned that
+     five years are gated and nothing about the sixth. A withheld year is
+     part of what this record is; it travels on the sheet as its own block. */
+  function deliverHeldToSheet(text){
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-held");
+    if (old) old.parentNode.removeChild(old);
+    if (!text) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-held";
+    d.innerHTML = "<b>A YEAR THIS RECORD WITHHOLDS</b>";
+    d.appendChild(document.createTextNode(text));
+    head.appendChild(d);
+  }
+
+  function deliverReconToSheet(text){
+    RECON_TEXT = text || "";
+    var sheet = document.getElementById("recordSheet");
+    if (!sheet) return;
+    var old = sheet.querySelector(".rs-recon");
+    if (old) old.parentNode.removeChild(old);
+    if (!RECON_TEXT) return;
+    var head = sheet.querySelector(".rs-head") || sheet;
+    var d = document.createElement("div");
+    d.className = "rs-stamp rs-recon";
+    d.innerHTML = "<b>RECONCILES</b>";
+    d.appendChild(document.createTextNode(RECON_TEXT));
+    head.appendChild(d);
+  }
+
+  /* ---- D · THE RECONCILIATION, AT THE FIGURE ---------------------------
+     UC publishes in THOUSANDS and this record stores thousands, so there is
+     no rounding artefact to disclose: the identity closes at zero or it does
+     not close.
+
+     THE SCOPE IS THE WHOLE DIFFICULTY, and getting it wrong here would
+     manufacture a residual of over a BILLION dollars. UC changed how its
+     campus table treats the Department of Energy laboratory: in the earlier
+     vintages the campus table EXCLUDES it (UC's own printed footnote) and
+     the audited statement's DOE line must be added back; from FY2021-22 the
+     printed Systemwide column already carries it. Using one form on the
+     other year would leave the DOE line double-counted or missing —
+     $1.19 billion in FY2024-25. The form is read from the year's own
+     doeForm declaration, never assumed.
+
+     THE SYSTEMWIDE COLUMN CAN BE NEGATIVE, and in FY2024-25 it is. That is
+     UC's own printed cell, not a computation of ours, and the footer says
+     what the column contains rather than characterising the sign. */
+  function paintReconFootUC(fy){
+    var box = document.getElementById("reconFootUC");
+    if (!box) return;
+    var g = M.gateHistory[fy], sw = SWY(fy);
+    if (!g || !sw){ box.innerHTML = ""; box.hidden = true; deliverReconToSheet(""); return; }
+    var excl = g.doeForm === "excluded";
+    var parts = g.campusSumK + g.systemwideColK + (excl ? g.doeK : 0);
+    var resid = parts - g.auditedTotalK;
+    var rr = function(l, v){ return '<div class="rf-row"><span>' + esc(l)
+      + '</span><span class="num">' + v + '</span></div>'; };
+    var kv = function(k){ return (k < 0 ? "\u2212" : "") + "$"
+      + Math.abs(k).toLocaleString("en-US") + "K"; };
+    var h = '<b>RECONCILIATION \u00b7 CAMPUSES AND THE SYSTEMWIDE COLUMN TO THE AUDITED TOTAL \u00b7 FY '
+      + esc(fy) + '</b>'
+      + rr("Ten campus columns, summed", kv(g.campusSumK))
+      + rr(sw.systemwideColLabel + " \u2014 UC\u2019s own printed cell", kv(g.systemwideColK))
+      + (excl ? rr("DOE laboratory, added back from the audited statement", kv(g.doeK)) : "")
+      + rr("UC\u2019s audited total operating expenses", kv(g.auditedTotalK))
+      + '<div class="rf-row rf-res"><span>Residual</span><span class="num">'
+      + (resid === 0 ? "$0 \u2014 exact, to the thousand" : kv(resid)) + '</span></div>';
+    h += '<div class="rf-say">'
+      + (resid === 0
+        ? 'The ten campuses and UC\u2019s own printed Systemwide column'
+          + (excl ? ', with the audited statement\u2019s DOE laboratory line added back, ' : ' ')
+          + 'equal the audited total exactly, to the thousand. UC publishes in '
+          + 'thousands and this record stores thousands, so there is no rounding '
+          + 'here for a difference to hide in.'
+        : 'These do not close, and every shipped year does. Please report this.')
+      + '</div>';
+    /* THE NEGATIVE COLUMN, STATED AS A FACT ABOUT UC'S TABLE. */
+    if (g.systemwideColK < 0){
+      h += '<div class="rf-say"><b style="display:inline">WHY THAT COLUMN IS NEGATIVE '
+        + 'THIS YEAR</b> It is one printed cell in UC\u2019s campus table, labelled '
+        + '\u201c' + esc(sw.systemwideColLabel) + '\u201d, and it nets four things '
+        + 'together: UC\u2019s systemwide operations (' + kv(sw.systemwideCoreK)
+        + '), the DOE laboratory (' + kv(sw.doeK) + '), and the eliminations that '
+        + 'remove medical-centre (' + kv(sw.medSystemwideElimK) + ') and auxiliary ('
+        + kv(sw.auxSystemwideElimK) + ') activity already counted inside the campus '
+        + 'columns. Those eliminations are subtractions. In FY ' + esc(fy)
+        + ' they are larger than what the column adds, so UC\u2019s printed cell is '
+        + 'negative. The column is shown as UC prints it; the Ledger does not '
+        + 'redistribute it across the campuses to remove the minus sign, because '
+        + 'that would move money into ten records where UC put it in none.</div>';
+    }
+    box.innerHTML = h;
+    box.hidden = false;
+    deliverReconToSheet(box.textContent.replace(/\s+/g, " ").trim());
+  }
+
   function rsStamp(box){
     if (!box) return;
     const k = box.querySelector(".rs-kicker");
@@ -796,6 +919,7 @@
       + " equal UC's audited total operating expenses, " + moneyK(g.auditedTotalK) + " — " + resid(g)
       + ". Every campus column's function lines sum exactly to its printed total (the column-sum check), the assignment proven unique by exhaustion and still unique at ten times the rounding tolerance; the printed campus-column header lists the campuses in the order they are assigned." + addback;
 
+    paintReconFootUC(fy);
     $("statusStrip").textContent = sw.auditFullOtherInfo ? M.unauditedStatus : (M.unauditedStatusReduced || M.unauditedStatus);
     $("basisStrip").textContent = "BASIS: audited GAAP / GASB accrual — NOT the state budget page's enacted, budgetary-legal figure. The two are measured differently and are never added."
       + (realOn() ? " Real figures are the Ledger's own inflation adjustment (base "+DEFM.baseYear+"); UC publishes nominal dollars only." : "");
@@ -808,7 +932,49 @@
 
     // the held-year note
     const hfy = Object.keys(HELD)[0], hobj = HELD[hfy] || {};
-    $("heldNote").innerHTML = '<b>' + esc(hfy) + ' — HELD, NOT PUBLISHED.</b> ' + esc(hobj.reason || "");
+    /* D · THE HELD YEAR STATES A FAILED RECONCILIATION, NOT A RESIDUAL.
+       FY2019-20 is not a shipped year with a small difference beside it —
+       the reconciliation does not close, and that is the reason the year is
+       not published. Presenting 351K as a "residual" would imply a figure
+       the Ledger stands behind and then qualifies; there is no such figure.
+       The arithmetic is shown so a reader can see what fails, with the
+       missing amount named as missing rather than as an adjustment. */
+    const hg = (M.gateHistory || {})[hfy];
+    let heldHtml = '<b>' + esc(hfy) + ' — HELD, NOT PUBLISHED.</b> '
+      + esc(hobj.reason || "");
+    if (hg){
+      const hexcl = hg.doeForm === "excluded";
+      const hparts = hg.campusSumK + hg.systemwideColK + (hexcl ? hg.doeK : 0);
+      const hkv = k => (k < 0 ? "\u2212" : "") + "$"
+        + Math.abs(k).toLocaleString("en-US") + "K";
+      heldHtml += '<div class="reconfoot" style="margin-top:10px">'
+        + '<b>THE RECONCILIATION THAT FAILS \u00b7 FY ' + esc(hfy) + '</b>'
+        + '<div class="rf-row"><span>Ten campus columns, summed</span>'
+        + '<span class="num">' + hkv(hg.campusSumK) + '</span></div>'
+        + '<div class="rf-row"><span>UC\u2019s printed Systemwide column</span>'
+        + '<span class="num">' + hkv(hg.systemwideColK) + '</span></div>'
+        + (hexcl ? '<div class="rf-row"><span>DOE laboratory, added back from the '
+            + 'audited statement</span><span class="num">' + hkv(hg.doeK)
+            + '</span></div>' : "")
+        + '<div class="rf-row"><span>\u2026 which comes to</span>'
+        + '<span class="num">' + hkv(hparts) + '</span></div>'
+        + '<div class="rf-row"><span>UC\u2019s audited total operating expenses</span>'
+        + '<span class="num">' + hkv(hg.auditedTotalK) + '</span></div>'
+        + '<div class="rf-row rf-res"><span>DOES NOT CLOSE \u2014 short by</span>'
+        + '<span class="num">' + hkv(Math.abs(hparts - hg.auditedTotalK))
+        + '</span></div>'
+        + '<div class="rf-say">The figure that would close this gap appears '
+        + 'nowhere in UC\u2019s document for this year. Every later year ties '
+        + 'exactly, to the thousand, so this is not a rounding tolerance the '
+        + 'Ledger could widen \u2014 it is a year whose own published parts do '
+        + 'not add up to its own published total. The Ledger does not ship the '
+        + 'campus figures at a lower tier with the difference noted beside them, '
+        + 'because a reader would reasonably read that as a figure it stands '
+        + 'behind. The year is withheld and re-measured on every build.</div>'
+        + '</div>';
+    }
+    $("heldNote").innerHTML = heldHtml;
+    deliverHeldToSheet($("heldNote").textContent.replace(/\s+/g, " ").trim());
 
     // ---- campus table for the selected year
     const rows = D.campuses.slice().sort((a,b) =>
@@ -917,6 +1083,7 @@
       "# Citizen Ledger — University of California (audited GAAP, in thousands of dollars, NOMINAL)",
       "# Five fiscal years FY " + YEARS[0] + " through FY " + YEARS[YEARS.length-1] + ", each gated EXACT TO THE THOUSAND: ten campuses + UC's own printed Systemwide column (+ the audited statement's DOE line where the campus table excludes it) = the audited total, residual 0; every campus column proven by the column-sum check.",
       "# FY " + Object.keys(HELD)[0] + " is HELD, not shipped: " + (HELD[Object.keys(HELD)[0]].reason||"").replace(/\n/g," "),
+      "# Reconciles: " + (RECON_TEXT || "(no year selected)"),
       "# UC publishes the DOE laboratory two ways: 'excluded' years add it back from the audited statement; 'systemwide' years carry it in the printed Systemwide column. The core strip removes the same quantity either way; the doe_form column records which.",
       "# THE STRIP uses UC's own lines only: Medical centers, Auxiliary enterprises, Department of Energy laboratories (LBNL). Its limit: hospitals are stripped, medical schools are NOT. Campuses are never ranked.",
       "# Per-student uses student FTE (UCOP actual-FTE series); medical residents are on UC's own line and EXCLUDED. Figures are NOMINAL as published; use the deflator for real dollars.",

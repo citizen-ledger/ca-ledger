@@ -7170,6 +7170,145 @@ def test_reconciliation_footer_layers(page, base):
               line and "RECONCILIATION" in line[0], (line or [""])[0][:90])
 
 
+def test_uc_reconciliation(page, base):
+    """D · UC — a failed reconciliation and a negative printed column.
+
+    Two figures that must read as facts about UC's own published table
+    rather than as errors:
+
+    FY2019-20 is HELD. Its campus table does not reconcile to the audited
+    total: campuses + Systemwide + the added-back DOE line come to
+    43,405,055K against an audited 43,405,406K, short by 351K, and the
+    figure that would close the gap appears nowhere in UC's document. The
+    year is not published FOR that reason, so the page must state a FAILED
+    RECONCILIATION — not a residual beside a shipped figure, which would
+    imply a number the Ledger stands behind and then qualifies.
+
+    FY2024-25's Systemwide column is NEGATIVE at −306,871K. It is one
+    printed cell in UC's table, and it nets systemwide operations and the
+    DOE laboratory against the eliminations that remove medical-centre and
+    auxiliary activity already inside the campus columns. When the
+    subtractions exceed the additions the printed cell is negative. That is
+    legitimate and looks wrong to anyone not told why.
+
+    SCOPE IS THE ARTEFACT RISK HERE, and it is worth over a BILLION
+    dollars: UC's campus table EXCLUDES the DOE laboratory in the earlier
+    vintages and INCLUDES it from FY2021-22. Applying one year's form to
+    another double-counts or drops $1.19B. PRECISION is not a risk: UC
+    publishes thousands and this record stores thousands, so the identity
+    closes at zero or not at all."""
+    import io, re as _re, unicodedata
+    import pypdf
+
+    def norm(s):
+        return _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", s or "")).strip()
+
+    uc = load_data_js(ROOT / "uc-data.js")
+    gh = uc["meta"]["gateHistory"]
+    shipped = uc["years"]
+    held = [fy for fy in gh if fy not in shipped]
+
+    # POSITIVE CONTROLS on the data this test depends on
+    check("uc recon: exactly one year is held", held == ["2019-20"], str(held))
+    check("uc recon: the held year's identity really does fail",
+          gh["2019-20"]["residualK"] == -351, str(gh["2019-20"]["residualK"]))
+    check("uc recon: every shipped year's identity really does close",
+          all(gh[fy]["residualK"] == 0 for fy in shipped),
+          str({fy: gh[fy]["residualK"] for fy in shipped}))
+    neg = [fy for fy in shipped if gh[fy]["systemwideColK"] < 0]
+    check("uc recon: and one shipped year has a NEGATIVE Systemwide column",
+          neg == ["2024-25"], str(neg))
+    # the vintage split is real, so the scope guard below is not vacuous
+    forms = {gh[fy]["doeForm"] for fy in shipped}
+    check("uc recon: the DOE vintage split is present in the shipped years",
+          forms == {"excluded", "systemwide"}, str(forms))
+
+    page.goto(f"{base}/uc.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2800)
+    f = norm(page.inner_text("#reconFootUC"))
+
+    # ---- the identity, at the figure
+    check("uc recon: the footer states the identity at the figure",
+          "CAMPUSES AND THE SYSTEMWIDE COLUMN TO THE AUDITED TOTAL" in f, f[:110])
+    check("uc recon: it closes exactly, to the thousand",
+          "exact, to the thousand" in f, f[:240])
+    check("uc recon: and says there is no rounding for a difference to hide "
+          "in — UC publishes thousands",
+          "no rounding" in f, f[:400])
+    # NEGATIVE CONTROL for the PRECISION class: nothing is excused as ours
+    check("uc recon: no difference is attributed to this record's rounding, "
+          "because there is none to attribute",
+          "own rounding" not in f)
+
+    # ---- the negative column, stated not characterised
+    g = gh["2024-25"]
+    sw = uc["systemwide"]["2024-25"]
+    check("uc recon: the negative column is named as UC's OWN printed cell",
+          "own printed cell" in f, f[:300])
+    check("uc recon: with UC's own label for it",
+          sw["systemwideColLabel"] in f, sw["systemwideColLabel"])
+    check("uc recon: and the page explains WHY it is negative",
+          "WHY THAT COLUMN IS NEGATIVE" in f.upper())
+    for part in ("systemwideCoreK", "doeK", "medSystemwideElimK",
+                 "auxSystemwideElimK"):
+        want = f"{abs(sw[part]):,}"
+        check(f"uc recon: it shows the {part} component ({want}K)",
+              want in f, f[-700:])
+    check("uc recon: it says the eliminations are subtractions that exceed "
+          "what the column adds", "subtractions" in f and "larger than" in f)
+    check("uc recon: and refuses to redistribute the column to hide the sign",
+          "does not redistribute" in f and "ten records where UC put it in none" in f)
+    # NEGATIVE CONTROL: the sign is not characterised as wrong or anomalous
+    for banned in ("error", "anomal", "incorrect", "mistake", "should be"):
+        check(f"uc recon: the negative column is not characterised as {banned!r}",
+              banned not in f.lower(), f.lower()[:200])
+
+    # ---- the HELD year states a FAILURE, not a residual
+    hn = norm(page.inner_text("#heldNote"))
+    check("uc held: the note states the arithmetic that fails",
+          "THE RECONCILIATION THAT FAILS" in hn.upper(), hn[:120])
+    check("uc held: it shows the sum and the audited total side by side",
+          f'{gh["2019-20"]["campusSumK"]:,}' in hn
+          and f'{gh["2019-20"]["auditedTotalK"]:,}' in hn, hn[:300])
+    check("uc held: it names the gap as a failure to close, not a residual",
+          "DOES NOT CLOSE" in hn.upper() and "351" in hn, hn[:400])
+    check("uc held: and says the closing figure is absent from UC's document",
+          "appears nowhere" in hn)
+    check("uc held: it says why the year is withheld rather than shipped at a "
+          "lower tier", "would reasonably read that as a figure it stands "
+          "behind" in hn)
+    # NEGATIVE CONTROL: the held year must NOT be framed as a residual
+    check("uc held: the word residual is not used for the held year",
+          "residual" not in hn.lower(), hn.lower()[:300])
+
+    # ---- PAPER. The print race meant this reached no sheet on any layer.
+    page.emulate_media(media="print")
+    raw = page.pdf(format="Letter", print_background=True)
+    page.emulate_media(media="screen")
+    txt = norm("\n".join((q.extract_text() or "")
+                         for q in pypdf.PdfReader(io.BytesIO(raw)).pages))
+    check("uc print: the reconciliation reaches PAPER", "RECONCILES" in txt)
+    check("uc print: the negative column's explanation reaches paper",
+          "WHY THAT COLUMN IS NEGATIVE" in txt.upper())
+    check("uc print: the withheld year reaches paper — #heldNote sits inside "
+          "a print-hidden region, so it travels as its own sheet block",
+          "WITHHOLDS" in txt.upper())
+    check("uc print: with the failing arithmetic, not just the fact",
+          "DOES NOT CLOSE" in txt.upper() and "43,405,406" in txt)
+
+    # ---- CSV
+    with page.expect_download(timeout=20000) as dl:
+        page.click("#csvBtn")
+    head = "\n".join(
+        Path(dl.value.path()).read_text(encoding="utf-8").split("\n")[:14])
+    line = [l for l in head.split("\n") if l.startswith("# Reconciles:")]
+    check("uc csv: the CSV header carries the reconciliation", len(line) == 1,
+          str(len(line)))
+    check("uc csv: and it is the real identity, not a placeholder",
+          line and "AUDITED TOTAL" in line[0].upper(), (line or [""])[0][:100])
+
+
 def test_reconciliation_footer(page, base):
     """D · THE RECONCILIATION IS STATED AT THE FIGURE, NOT IN A METHOD NOTE.
 
@@ -12550,6 +12689,7 @@ def main():
             test_comp_zero_vs_blank(page, base)
             test_reconciliation_footer(page, base)
             test_reconciliation_footer_layers(page, base)
+            test_uc_reconciliation(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
