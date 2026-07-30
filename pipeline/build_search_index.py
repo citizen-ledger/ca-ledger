@@ -58,6 +58,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from integrity import stamp  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# WHAT THIS WRITES, DECLARED — see build_findings_manifest.py for why.
+OUTPUTS = ["search-index.js"]
+
 OUT_PATH = ROOT / "search-index.js"
 
 

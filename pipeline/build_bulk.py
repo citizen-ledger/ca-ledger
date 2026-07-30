@@ -34,6 +34,13 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# WHAT THIS WRITES, DECLARED — see build_findings_manifest.py for why.
+# The per-layer CSVs are derived from the payloads on disk, so they are
+# covered as a set rather than named one by one; the suite asserts that
+# every shipped layer has an export, which is the check that matters.
+OUTPUTS = ["bulk-manifest.js", "bulk/SCHEMA.md", "bulk/*.csv"]
+
 OUT = ROOT / "bulk"
 
 # The site's own licence and stability position, repeated in every file
