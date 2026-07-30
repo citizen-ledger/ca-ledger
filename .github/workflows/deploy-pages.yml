@@ -15,7 +15,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # THE SUITE GATES THE DEPLOY. A red main that deploys anyway is barely
+  # better than no CI: the site would publish figures the suite has just
+  # said are wrong, with the same authority as figures it has verified.
+  #
+  # WHAT FAILING MEANS FOR A STATIC SITE, and why gating is safe here: this
+  # deploys a whole directory, so there is no partial or half-applied state.
+  # If the suite fails, upload-pages-artifact never runs, no new deployment
+  # is created, and THE PREVIOUS DEPLOY STAYS LIVE — a reader sees the last
+  # version that passed, not an error page and not a broken one. The cost of
+  # a failure is that a fix waits; the cost of not gating is publishing a
+  # figure the project knows to be wrong.
+  #
+  # Called rather than copied, so the deploy gate cannot drift from the PR
+  # check into a weaker second definition of "the tests pass".
+  test:
+    uses: ./.github/workflows/tests.yml
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages

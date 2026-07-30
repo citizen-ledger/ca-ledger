@@ -1253,6 +1253,64 @@ reads**, which is the same failure in a different coat.
 
 ---
 
+### 3b. Nothing was watching, and an exclusion must be visible to be honest
+
+The suite is 4,487 assertions and every green run this project relied on was
+local. `deploy-pages.yml` uploaded the repository root with no build step and
+no test step, so `main` could go red and the site would deploy anyway. It did
+go red (3a) and the ordering was **invisible rather than merely
+unprevented**.
+
+**The measurement decided the shape.** 500 s for the full suite, 104 test
+functions, 72 of them driving real pages. That is inside what a pull request
+can carry, so the full suite runs on every PR with **no split into fast and
+slow tiers** — splitting by guess is how a gap gets introduced, and the
+number says no split is needed. Recorded here because the temptation to
+split arrives before anyone measures.
+
+**SIX TESTS CANNOT RUN IN CI**, and the honest handling is the point of this
+entry. `pipeline/cache/` is 190 files and 7.3 GB, gitignored and never in a
+clone; two of its sources cannot be fetched unattended at all (CSU is
+bot-gated, compensation's robots.txt excludes automated retrieval). Two of
+the six *crash* without it and four *fail loudly* — none of them fails
+quietly, which is the existing design working.
+
+They are declared in `REQUIRES_SOURCE_CACHE` **with a reason each**, printed
+and counted in the run's own output, and the summary line says so:
+*"4,345 assertions passed; 6 excluded for want of the source cache."*
+
+Not one assertion was weakened to make CI green. **A test that is skipped
+silently is a test that has stopped existing without anyone deciding it
+should** — the exclusion has to appear in the output every time, or it
+becomes invisible in exactly the way the untested deploy was.
+
+And the boundary it creates is stated rather than assumed: **CI verifies the
+shipped payloads, pages, print sheets, CSVs and derived artefacts —
+everything a reader touches. It does not verify extraction FROM the source
+documents, because those documents are not in the repository.**
+
+**GATING THE DEPLOY IS SAFE HERE FOR A REASON WORTH NAMING.** The deploy
+publishes a whole directory, so there is no partial state: if the suite
+fails, no new deployment is created and **the previous deploy stays live**. A
+reader sees the last version that passed — not an error page, not a
+half-updated one. The cost of failing is that a fix waits; the cost of not
+gating is publishing a figure the project has just proved wrong, with the
+same authority as one it has verified.
+
+The gate *calls* the test workflow rather than copying it, so it cannot drift
+into a weaker second definition of "the tests pass".
+
+**A note on the measurement itself.** Simulating CI meant moving the 7.3 GB
+cache aside, and the first attempt nested it: the pipelines recreated
+`pipeline/cache/` while it was hidden, so `mv` put the real cache *inside*
+the stub rather than replacing it — twice, across three runs. Recovered
+intact (190 files before and after, verified by count), and the method that
+works is to park it outside the repository and delete whatever was recreated
+before moving it back. **A directory move is not atomic against a process
+that recreates the directory.**
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

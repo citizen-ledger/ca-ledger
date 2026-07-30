@@ -13004,6 +13004,66 @@ def test_v25_column_guard():
 
 
 # ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# TESTS THAT CANNOT RUN WITHOUT THE SOURCE CACHE
+#
+# pipeline/cache/ holds the fetched source documents — 190 files, 7.3 GB.
+# It is gitignored and is NOT in a clone, so CI never has it. Two of the
+# site's sources cannot be fetched unattended at all (CSU is bot-gated,
+# compensation's robots.txt excludes automated retrieval), so "just fetch
+# it in CI" is not available even in principle for those.
+#
+# These six tests are therefore EXCLUDED IN CI — named, reasoned and
+# counted in the run's output, never quietly skipped. NOT ONE ASSERTION IS
+# WEAKENED to make CI pass: the tests are unchanged and still run in full
+# whenever the cache is present, which is every local run and every
+# maintainer rebuild.
+#
+# WHAT CI THEREFORE DOES NOT VERIFY, stated plainly: the extraction of
+# figures FROM the source documents. CI verifies the shipped payloads, the
+# pages, the print sheets, the CSVs and the derived artefacts — everything
+# a reader touches. It cannot verify that a cached PDF still parses the way
+# the pipeline believes, because the PDF is not in the repository.
+REQUIRES_SOURCE_CACHE = {
+    "test_empty_gate_guard":
+        "drives fetch_ccc_data to the point of reading a verified Exhibit C "
+        "PDF; raises SystemExit without one",
+    "test_csu_reconciling_not_tautological":
+        "parses pipeline/cache/csu/csu-fy2324.tsv directly — CSU is a "
+        "manual-cache source and the TSV is not in the repository",
+    "test_source_cache_unwritable":
+        "asserts every cached file is mode 0o444; with no cache there is "
+        "nothing to protect and the assertion is meaningless",
+    "test_ccc_source_identity":
+        "opens each cached Exhibit C to check the document declares itself "
+        "as the year it is read as",
+    "test_ccc_2018_19_extractor":
+        "runs the FY2018-19 extractor over its cached PDF",
+    "test_ccc_exhibitc_vintages":
+        "checks every declared vintage against the cached file it names",
+}
+
+SOURCE_CACHE = ROOT / "pipeline" / "cache"
+HAVE_SOURCE_CACHE = SOURCE_CACHE.exists() and any(SOURCE_CACHE.rglob("*"))
+
+
+def run_or_exclude(fn, *args):
+    """Run a test, or record it as an EXCLUSION with its stated reason.
+
+    A test that is skipped silently is a test that has stopped existing
+    without anyone deciding it should. Every exclusion is printed, counted
+    and attributed, and the run says so in its summary line."""
+    name = fn.__name__
+    if name in REQUIRES_SOURCE_CACHE and not HAVE_SOURCE_CACHE:
+        EXCLUDED.append((name, REQUIRES_SOURCE_CACHE[name]))
+        return
+    fn(*args)
+
+
+EXCLUDED = []
+
+
 def main():
     from playwright.sync_api import sync_playwright
 
@@ -13039,19 +13099,19 @@ def main():
             test_ccc_write_path()
             test_historical_state(page, base)
             test_absent_not_zero(page, base)
-            test_csu_reconciling_not_tautological(page, base)
+            run_or_exclude(test_csu_reconciling_not_tautological, page, base)
             test_unknown_facts_render(page, base)
             test_ccc_apportionment_availability(page, base)
-            test_source_cache_unwritable()
+            run_or_exclude(test_source_cache_unwritable)
             test_ccc_fourteen_year_gates()
-            test_ccc_source_identity()
-            test_ccc_exhibitc_vintages()
-            test_ccc_2018_19_extractor()
+            run_or_exclude(test_ccc_source_identity)
+            run_or_exclude(test_ccc_exhibitc_vintages)
+            run_or_exclude(test_ccc_2018_19_extractor)
             test_ccc_multi_year_payload()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)
             test_uc_audit_quotation()
-            test_empty_gate_guard()
+            run_or_exclude(test_empty_gate_guard)
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
@@ -13132,7 +13192,21 @@ def main():
     if FAIL:
         print(f"\n{len(FAIL)} of {total} assertions FAILED", file=sys.stderr)
         sys.exit(1)
-    print(f"All {total} assertions passed (V1 + V2, real data).")
+    if EXCLUDED:
+        # NAMED, REASONED, COUNTED. An exclusion a reader cannot see is a
+        # test that has stopped existing without anyone deciding it should.
+        print(f"\n{len(EXCLUDED)} test(s) EXCLUDED — no pipeline/cache "
+              "(7.3 GB of fetched sources, gitignored, never in a clone):",
+              file=sys.stderr)
+        for n, why in EXCLUDED:
+            print(f"    {n}\n        {why}", file=sys.stderr)
+        print("    Not weakened and not skipped: each runs in full whenever "
+              "the cache is present. CI therefore does not verify EXTRACTION "
+              "from the source documents — only the shipped payloads, pages, "
+              "sheets, CSVs and derived artefacts.", file=sys.stderr)
+    print(f"All {total} assertions passed (V1 + V2, real data)"
+          + (f"; {len(EXCLUDED)} excluded for want of the source cache."
+             if EXCLUDED else "."))
 
 if __name__ == "__main__":
     main()
