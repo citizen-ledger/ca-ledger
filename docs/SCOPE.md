@@ -156,6 +156,59 @@ things have moved since:
   a stale figure in a cost table is exactly the kind of claim this
   project refuses to leave standing elsewhere.
 
+### Re-measured 2026-07-29, and the table above is superseded
+
+Two of the four figures in that table were wrong, in opposite directions,
+and `.git` was wrong by more than five-fold. **These are the current
+numbers; the table above is kept only as the record of what was believed:**
+
+| | recorded above | measured 2026-07-29 |
+|---|---|---|
+| working tree (tracked) | 117 MB | **94.6 MB** |
+| `.git` | 25 MB | **133 MB** |
+| tracked files | 4,264 | **4,285** |
+| local clone | 0.66 s | **1.12 s** |
+
+`comp/` itself is **4,132 files, 46.5 MB**, median 0.4 KB.
+
+**A number that will mislead someone, recorded so it does not.** `du -sh`
+on a working checkout reports **7.9 GB**. That is `pipeline/cache` — 7.3 GB
+of fetched source documents, gitignored, never in a clone. What a cloner
+gets is 94.6 MB of files and a 126 MB `.git`.
+
+**Why `.git` grew fivefold, which matters for anything shaped like
+`comp/`.** Git stores a new blob per changed file per commit, permanently.
+`comp/` has been written twice, and the second write — a change to how two
+columns are *encoded*, with no figure altered — rewrote **2,183 of its
+4,132 files**. Per-entity files are cheap to adopt and expensive to keep:
+the cost arrives on every later rebuild, not on the commit that introduces
+them, and cannot be reclaimed without rewriting history.
+
+### Per-entity PAGES were measured and refused (A-2, 2026-07-29)
+
+The design bundle's A-2 proposed a static page per entity. Measured before
+building, and **not built** — see `docs/A2_ENTITY_PAGE_FINDING.md`:
+
+| | |
+|---|---|
+| pages | **8,257** (excludes 4,132 compensation employers) |
+| record markup alone | 53.6 MB |
+| with shared external CSS/JS | **+77.8 MB**, tracked files 4,285 → **12,542** |
+| with CSS inlined per page (today's pattern) | **+239.0 MB** |
+| `.git`, per version | +21.8 MB / +66.9 MB respectively, **again on every rebuild** |
+
+Refused on four measured grounds: the recurring `.git` cost above; the only
+`file://`-compatible design duplicates every figure, which is the
+two-sources-of-truth ground C-4 was rejected on; the site already indexes
+**exactly those 8,257 entities** in one 0.49 MB `search-index.js`, with
+8,151 of them already deep-linkable; and the residual benefit is therefore
+SEO rather than the citation and search the proposal claimed.
+
+**The one gap the measurement did find** is that CCC (73), CSU (23) and UC
+(10) carry `param: null` in the search index — 106 entities indexed but not
+individually addressable. That is a deep-link parameter on three pages, not
+8,257 files.
+
 The rebuild claim is unaffected either way: `bulk/` is *derived*, and
 `pipeline/build_bulk.py` regenerates every file in it from the payloads
 already in the tree, with no network access.
