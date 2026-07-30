@@ -1198,6 +1198,61 @@ site to total.
 
 ---
 
+### 3a. A failure that needs no mistake
+
+`main` went red between two merges. #117 landed the 34th finding document.
+#118 landed the assertion that every document on disk appears in
+`findings-manifest.js`, plus a manifest built from the 33 documents that
+branch could see. Each branch was green. Their merge was not.
+
+**Nothing was forgotten.** No reviewer missed a step and no builder was
+skipped — the failure needed only two correct changes landing in an order
+nobody chose. That distinction decides the fix: any rule of the form
+*remember to re-run the builder* would have been followed, on both branches,
+and main would still have gone red.
+
+**And there was no standard rebuild to wire anything into.** No Makefile, no
+rebuild script, and `deploy-pages.yml` uploads the repository root with **no
+build step and no test step**. That is the deeper reason it went unnoticed
+rather than merely unprevented: nothing was watching. The suite is thorough
+and runs only when a person runs it.
+
+So the fix is two things that do not depend on memory:
+
+- **`pipeline/rebuild_derived.py`** — one command, discovering `build_*.py`
+  by glob because that set grows in the ordinary course of work (the fifth
+  enumerated-list instance is three days old, 2y). It refuses to report
+  success on an empty glob.
+- **`test_derived_artefacts_are_watched`** — asserts each artefact against
+  its **own source**, so staleness fails whether or not anyone ran anything.
+
+**THE META-GUARD IS THE PART WORTH COPYING.** Every `build_*.py` must declare
+`OUTPUTS`, and every name it declares must be checked by an assertion. A new
+derived artefact therefore cannot ship with nothing watching it — which is
+this defect one level up, and the level at which it actually recurs. It
+caught its own gap on the first run: `bulk/*.csv` was declared and unwatched.
+
+**A SET IS NOT A FILE, AND THE GUARD SAYS SO.** For a glob output the check
+does not look for the literal string — that would pass on a mention in a
+comment. It requires the test to **enumerate the set from disk**, the same
+derive-don't-list rule the artefacts themselves follow.
+
+**FRESHNESS IS SUBSTANCE, NEVER BYTES.** All three artefacts embed a build
+date, so a byte comparison against a committed snapshot is red on any later
+day while every figure is identical. Measured: `bulk/compensation.csv`
+differed in exactly three lines — `# Data generated`, `# Exported`, and a
+vintage `ageDaysAtBuild` of 3 against 7 — and matched on the other 4,144.
+
+The first draft of the rebuild report then made the mirror-image error: it
+called `bulk-manifest.js` and `bulk/SCHEMA.md` substantive changes, because
+both record a **sha256 of a file whose date had changed**. A digest carries no
+information the compared content does not already carry, so digests are
+excluded from the classification — not a weakening, since the covered file is
+compared directly. **A report that is red every morning is a report nobody
+reads**, which is the same failure in a different coat.
+
+---
+
 ---
 
 ## Part 3 — Test-quality debt

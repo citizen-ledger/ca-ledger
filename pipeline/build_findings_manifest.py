@@ -33,6 +33,12 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# WHAT THIS WRITES, DECLARED. rebuild_derived.py runs every build_*.py, and
+# the suite asserts that each artefact named here has a freshness check
+# against its own source. Without the declaration a new builder could ship an
+# artefact nothing watches — which is exactly how main went red.
+OUTPUTS = ["findings-manifest.js"]
+
 DOCS = ROOT / "docs"
 
 # These are the project's standing records, not investigations. findings.html
