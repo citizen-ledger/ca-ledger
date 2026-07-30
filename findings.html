@@ -160,6 +160,18 @@
     nav.pn{display:none!important}
   }
   @media(min-width:721px){ .navsheet{display:none!important} }
+
+  /* D · the derived completeness section */
+  .fnd-unwritten{margin-top:34px;border-top:2px solid var(--ink);padding-top:16px}
+  .fnd-unwritten h2{font-family:var(--serif);font-size:22px;font-weight:400;margin-bottom:6px}
+  .fnd-unwritten-lede{font-size:var(--fs-note);color:var(--graphite);max-width:64ch;line-height:1.55}
+  .fnd-unwritten ul{list-style:none;margin-top:14px}
+  .fnd-unwritten li{border-bottom:1px solid var(--hairline);padding:11px 0}
+  .fnd-unwritten .u-t{font-size:var(--fs-body);display:block}
+  .fnd-unwritten .u-l{font-size:var(--fs-note);color:var(--graphite);display:block;margin-top:3px;line-height:1.5}
+  .fnd-unwritten .u-d{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:.05em}
+  .fnd-count{margin-top:22px;font-family:var(--mono);font-size:var(--fs-micro);
+    letter-spacing:.06em;color:var(--smoke)}
 </style>
 </head>
 <body>
@@ -594,6 +606,24 @@
   <h2 id="disagree">Reading these against the record</h2>
   <p>Each entry above states a measurement and a decision. The two are separable on purpose: a reader can accept every figure and still think a decision went the wrong way, and the documents are written so that argument can be had on the evidence rather than on trust. Where a decision was the Ledger's own judgement rather than a limit of the data — the Los Angeles checkbook, the ratio refusals, the compensation reversal — the entry says so, because that is the kind of decision most worth disputing.</p>
   <p>The findings are also a record of the project's own errors. Investigations have been reopened, measurements retracted after a defect was found in the measuring code, and a published claim corrected in seventy-four places when a gate proved it wrong. Those reversals are recorded in the documents rather than edited away. For the method underneath all of it — every source, every gate, and what the site refuses to do — see <a href="about.html">about &amp; method</a>; for a plain-language guide to the record itself, see <a href="reading.html">reading the Ledger</a>. Every layer described here is downloadable in full as <a href="bulk.html">bulk data</a>, one CSV per layer with the tier and basis in the file's own header.</p>
+  <!-- D · COMPLETENESS, DERIVED FROM DISK.
+       The entries above are written by hand because each carries verified
+       figures and a stated decision. Their COMPLETENESS is not: this
+       section is generated from findings-manifest.js, which is globbed
+       from docs/*.md, and lists any document the page has not written up.
+       On 2026-07-29 there were 34 documents on disk and 33 written up, and
+       nothing said so. -->
+  <section class="fnd-unwritten" id="unwritten" hidden>
+    <h2>On file, not yet written up here</h2>
+    <p class="fnd-unwritten-lede">These investigation documents are in the
+      repository. They have no written entry above yet, so they are listed
+      from the document index rather than left off the page. Each links to
+      the document itself.</p>
+    <ul id="unwrittenList"></ul>
+  </section>
+
+  <!-- the count is derived too, so it cannot disagree with the list -->
+  <p class="fnd-count" id="fndCount"></p>
 </main>
 
 <footer class="ft">
@@ -603,6 +633,40 @@
 </footer>
 
 
+<script src="findings-manifest.js"></script>
+<script>
+(function(){
+  "use strict";
+  /* THE LIST IS DERIVED; ONLY THE PROSE IS WRITTEN.
+     Which documents already have an entry is read off the DOM — every
+     docs/*.md this page already links — so adding an entry above needs no
+     corresponding edit here, and a document with no entry appears below
+     automatically. Two lists that must agree are one list too many. */
+  var M = window.CA_FINDINGS_MANIFEST;
+  if (!M || !M.findings) return;
+  var esc = function(s){ return String(s == null ? "" : s)
+    .replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+  var linked = {};
+  Array.prototype.forEach.call(
+    document.querySelectorAll('.fnd a[href^="docs/"]'),
+    function(a){ linked[a.getAttribute("href")] = true; });
+  var missing = M.findings.filter(function(f){ return !linked[f.doc]; });
+  var box = document.getElementById("unwritten");
+  var list = document.getElementById("unwrittenList");
+  if (missing.length && box && list){
+    list.innerHTML = missing.map(function(f){
+      return '<li><span class="u-t">' + esc(f.title) + '</span>'
+        + (f.lede ? '<span class="u-l">' + esc(f.lede) + '</span>' : "")
+        + '<span class="u-d"><a href="' + esc(f.doc) + '">' + esc(f.doc) + '</a></span></li>';
+    }).join("");
+    box.hidden = false;
+  }
+  var c = document.getElementById("fndCount");
+  if (c) c.textContent = M.findings.length + " INVESTIGATION DOCUMENTS ON FILE · "
+    + (M.findings.length - missing.length) + " WRITTEN UP ON THIS PAGE · "
+    + "DOCUMENT INDEX GENERATED " + M.meta.generated;
+})();
+</script>
 <script>
 /* Phone navigation sheet. Vanilla, no framework, no build step — the same
    idiom as every other control here. Focus is trapped while open and

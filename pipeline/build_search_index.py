@@ -122,22 +122,29 @@ LAYERS = [
      "full": "Three of the four fund-class columns have no published total to check against, so no "
              "figure in this layer can be verified against an independently "
              "published total. It is published at a visibly different tier."},
+# A-2 NARROW FIX (2026-07-29): these three carried "param": None, which
+# meant 106 of the 8,257 indexed entities were searchable but not
+# addressable — a result could only land the reader on the whole-layer
+# table. That was the one real gap the A-2 entity-page measurement found,
+# and it is three parameters rather than 8,257 static pages. The pages
+# resolve the value with the same slugify() used above, and an empty id in
+# the entity list still means slugify(name).
     {"key": "ccc", "name": "Community college districts", "page": "ccc.html",
-     "param": None, "unit": "$ per FTES",
+     "param": "d", "unit": "$ per FTES",
      "terms": ["California Community Colleges", "community college"],
      "basis": "Modified accrual · CCFS-311 · Current Expense of Education",
      "full": "Modified-accrual spending on the community-college Budget and "
              "Accounting Manual chart, reconciled exactly to the Chancellor's "
              "Office printed statewide total."},
     {"key": "csu", "name": "CSU campuses", "page": "csu.html",
-     "param": None, "unit": "$ per student",
+     "param": "c", "unit": "$ per student",
      "terms": ["California State University", "Cal State"],
      "basis": "Audited GAAP / GASB full accrual",
      "full": "Audited GAAP accrual from CSU's systemwide financial "
              "statements. This is not the state budget's enacted basis and "
              "the two are never added."},
     {"key": "uc", "name": "UC campuses", "page": "uc.html",
-     "param": None, "unit": "$ per student FTE",
+     "param": "c", "unit": "$ per student FTE",
      "terms": ["University of California"],
      "basis": "Audited GAAP / GASB · hospitals stripped on UC's own lines",
      "full": "Audited GAAP accrual, with medical centres, auxiliaries and the "
