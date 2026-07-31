@@ -1360,6 +1360,58 @@ passed over.
 
 ---
 
+### 3d. A truncation that yields a valid-looking value cannot fail loudly
+
+`fetch_city_data.py` read the State Controller's service-provision codes as
+
+```python
+"police": norm(r.optional("police_service")).upper()[:1],
+```
+
+The field is **multi-select**. A city that files `AB` — its own paid officers
+**and** its volunteers — was stored, rendered, printed and exported as `A`,
+under a tier chip, beside a label quoted verbatim from SCO's codebook. 147 of
+482 cities file more than one police code; the longest real value is four
+letters. **2,063 of 7,706 city-year-function values were carrying less than
+the Controller published.**
+
+**Nothing could have caught it from the outside.** `A` is a valid code with a
+real label, so every assertion about "the code is one of the eleven the
+codebook defines" passed, and every rendering looked right. The defect is
+invisible precisely because the truncation lands inside the value's own
+domain — unlike a dropped field, which reads as absent, or a bad parse, which
+reads as garbage. **A lossy read whose output is indistinguishable from a
+lawful input is the hardest kind to find, and the only defence is to compare
+against the source rather than to inspect the result.**
+
+Three consequences worth separating, because they are different failures:
+
+**The Ledger was answering a question the source declines to answer.** SCO
+records several arrangements and names no primary; `[:1]` picked one. That is
+the compensation-senior-role shape — our list standing in for the source's —
+except silent, and inside a field the page attributes to the Controller.
+
+**A second question was being answered wrongly too.** The page attached "that
+spending appears in the provider's record" to codes C–F, which all mean the
+city *buys* the service. A contract with the sheriff is the city's own
+expenditure; Lakewood's $8.3M police line **is** that contract. 113
+city-year-function records made that claim and no longer do.
+
+**And a frozen vintage was stated of eight years.** The pipeline read
+`tsz3-29gc`, which the Controller stopped at FY2015-16, then applied it to
+FY2016-17…FY2023-24. `8nra-c2cw` publishes the checklist per year, and 130 of
+482 cities change their police code inside that window. *A source that has
+stopped being updated does not announce it; it just keeps serving.*
+
+**The change record could not see any of this.** `revisions.flatten()`
+extracts numeric leaves, so a service code is invisible to it by
+construction — a published fact changed for 215 city-years with zero events
+in the feed. Declared through the `CORRECTIONS` registry instead, which is
+what that mechanism is for. **A change record scoped to figures will be
+silent about every fact that is not a number, and should say so.**
+
+---
+
 ---
 
 ---

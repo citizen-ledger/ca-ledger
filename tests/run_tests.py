@@ -479,10 +479,24 @@ def test_v1(page, base):
 
     # methodology statements (checklist vintage caveat is on both pages)
     body = page.inner_text("body")
-    check("V1 methodology: checklist vintage", "FY 2015-16" in body)
-    check("V1 methodology: arrangements may have changed", "may have changed" in body)
-    check("V1 methodology: heuristic backstop wording",
-          "heuristic backstop" in body and "not a current-year survey" in body)
+    # THE CHECKLIST IS PER YEAR NOW, so the method note states that rather
+    # than a frozen vintage and an apology for its age. What must still be
+    # on the page is the multi-select fact and the A-F / G-K distinction,
+    # because those are what stop a reader taking one letter for the whole
+    # arrangement.
+    check("V1 methodology: the checklist is stated as per-fiscal-year",
+          "for the fiscal year shown" in body)
+    check("V1 methodology: the field is declared MULTI-SELECT",
+          "multi-select" in body)
+    check("V1 methodology: it says the Ledger names no primary arrangement",
+          "names no primary" in body)
+    check("V1 methodology: it separates who PAYS from who PROVIDES",
+          "A\u2013F" in body and "G\u2013K" in body, body[:0])
+    check("V1 methodology: the $5 flag is declared as spending-only",
+          "spending alone" in body)
+    check("V1 methodology: heuristic backstop wording (retired)".replace(
+              " (retired)", ""),
+          "never reads the checklist" in body)
     check("V1 methodology: neutrality caption",
           "THE LEDGER DOES NOT CHARACTERIZE CHANGES" in body)
     banned_scan(page, "V1")
@@ -570,7 +584,9 @@ def test_v2(page, base):
     page.click('.dagger[data-note="lakewood:police"]')
     note = page.inner_text("#recordBody .note-row")
     check("V2 dagger note: police contract", "contract with the county" in note, note[:80])
-    check("V2 dagger note: vintage stated", "FY 2015-16" in note)
+    check("V2 dagger note: the checklist YEAR is stated, and it is the "
+          "year of the record rather than one frozen vintage",
+          "services checklist for FY 2023-24" in note, note[:90])
     page.click('.dagger[data-note="lakewood:fire"]')
     note = page.inner_text("#recordBody .note-row")
     check("V2 dagger note: fire via district", "special district" in note, note[:80])
@@ -662,10 +678,24 @@ def test_v2(page, base):
     # methodology statements
     page.goto(f"{base}/cities.html")
     body = page.inner_text("body")
-    check("V2 methodology: checklist vintage", "FY 2015-16" in body)
-    check("V2 methodology: arrangements may have changed", "may have changed" in body)
-    check("V2 methodology: heuristic backstop wording",
-          "heuristic backstop" in body and "not a current-year survey" in body)
+    # THE CHECKLIST IS PER YEAR NOW, so the method note states that rather
+    # than a frozen vintage and an apology for its age. What must still be
+    # on the page is the multi-select fact and the A-F / G-K distinction,
+    # because those are what stop a reader taking one letter for the whole
+    # arrangement.
+    check("V2 methodology: the checklist is stated as per-fiscal-year",
+          "for the fiscal year shown" in body)
+    check("V2 methodology: the field is declared MULTI-SELECT",
+          "multi-select" in body)
+    check("V2 methodology: it says the Ledger names no primary arrangement",
+          "names no primary" in body)
+    check("V2 methodology: it separates who PAYS from who PROVIDES",
+          "A\u2013F" in body and "G\u2013K" in body, body[:0])
+    check("V2 methodology: the $5 flag is declared as spending-only",
+          "spending alone" in body)
+    check("V2 methodology: heuristic backstop wording (retired)".replace(
+              " (retired)", ""),
+          "never reads the checklist" in body)
     check("V2 methodology: reconciliation stated", "reconciled against" in body)
     banned_scan(page, "V2")
 
@@ -5574,8 +5604,8 @@ def test_zero_service(page, base):
     # data-level audit: no zero police/fire cell without an explanation path
     unexplained = []
     for slug, c in CITY["cities"].items():
-        svc = c.get("services") or {}
         for y, yr in c["years"].items():
+            svc = yr.get("services") or {}          # per year, not per entity
             if sum(yr.get("byFunction", {}).values()) == 0:
                 continue
             for fn in ("police", "fire"):
@@ -5607,9 +5637,18 @@ def test_zero_service(page, base):
     # every function, so a zero here is REPORTED, not missing. The note
     # says which of the two it is rather than implying no spending.
     kb = page.inner_text("#recordBody")
-    check("zero-service: an unconfirmed zero names it as REPORTED at zero, "
-          "which is what the filing actually says",
-          "reported as zero in this city's filing" in kb, kb[:0])
+    # THE DISTINCTION SURVIVES A CODE BEING PRESENT. Kingsburg's FY2016-17
+    # fire code was truncated to "A" and so fell into the no-code branch,
+    # which was the only place that said whether the $0 was reported or
+    # absent. Carrying the real "AB" moved it to the checklist branch and
+    # the statement vanished — so it is now made wherever the figure is
+    # zero, because it is a fact about the FILING, not about the checklist.
+    check("zero-service: a zero is named as REPORTED at zero even when the "
+          "record also carries a checklist code",
+          "entered zero against it" in kb, kb[:160])
+    check("zero-service: and the checklist code is stated alongside it, "
+          "not instead of it (positive control)",
+          "provided by city volunteers" in kb, kb[:160])
     check("zero-service: and never claims the service was not provided",
           "no spending" not in kb.lower()
           or "cannot confirm" in kb.lower(), kb[:0])
@@ -10282,8 +10321,9 @@ def test_print_sheet(page, base):
           "contract with the county" in sheet)
     check("print: the fire provider note prints in full",
           "special district" in sheet)
-    check("print: the checklist vintage rides with the note",
-          "2015-16" in sheet)
+    check("print: the checklist's YEAR rides with the note — per year now, "
+          "so the year on the sheet is the year of the record",
+          "services checklist for FY 2023-24" in sheet, sheet[:0])
 
     # everything paper needs, because paper has no tooltips
     for phrase, why in (
@@ -13584,6 +13624,186 @@ def test_citation_embed(page, base):
     page.set_viewport_size({"width": 1280, "height": 900})
 
 
+def test_services_checklist_whole(page, base):
+    """THE CONTROLLER'S CHECKLIST, CARRIED WHOLE AND PER YEAR.
+
+    `fetch_city_data.py` applied `.upper()[:1]` to a MULTI-SELECT field, so
+    a city filing "AB" — its own paid officers AND its volunteers — was
+    stored, rendered, printed and exported as "A", under a tier chip and
+    beside a label quoted verbatim from SCO's codebook. It also read
+    tsz3-29gc, frozen at FY2015-16, and stated it of all eight years.
+
+    A truncation that yields a valid-looking code cannot fail loudly, so
+    everything below is a positive assertion that the WHOLE value is
+    present — and each is paired with a control that would fail if the
+    page had simply started printing more words."""
+    SVC_BORNE, SVC_EXTERNAL = "ABCDEF", "GHIJK"
+    KNOWN = SVC_BORNE + SVC_EXTERNAL
+
+    # ---- 1. THE PAYLOAD ------------------------------------------------
+    per_year = 0
+    multi = {"police": 0, "fire": 0}
+    total = {"police": 0, "fire": 0}
+    bad_letters, entity_level = [], []
+    for slug, c in CITY["cities"].items():
+        if "services" in c:
+            entity_level.append(slug)
+        for fy, yr in c["years"].items():
+            svc = yr.get("services") or {}
+            if svc:
+                per_year += 1
+            for fn, rec in svc.items():
+                total[fn] = total.get(fn, 0) + 1
+                code = rec.get("code") or ""
+                if len(code) > 1:
+                    multi[fn] = multi.get(fn, 0) + 1
+                for ch in code:
+                    if ch not in KNOWN:
+                        bad_letters.append(f"{slug} {fy} {fn}={code}")
+                # every letter is described, not just the first
+                check_labels = rec.get("labels") or []
+                if len(check_labels) != len(code):
+                    bad_letters.append(f"{slug} {fy} {fn} labels={len(check_labels)}"
+                                       f" for code={code}")
+    check("services: the checklist lives on the YEAR, not frozen on the entity",
+          per_year > 3000 and not entity_level,
+          f"{per_year} city-years; entity-level leftovers {entity_level[:3]}")
+    check("services: every letter of every code is a code the codebook "
+          "defines, and carries its own label",
+          not bad_letters, str(bad_letters[:3]))
+
+    # THE TRUNCATION, ASSERTED AGAINST. If `[:1]` came back, every one of
+    # these counts would be zero — which is exactly what the old payload
+    # looked like, so this is the assertion that bites.
+    check("services: MULTI-CODE police values survive into the payload",
+          multi["police"] > 1000, f"{multi['police']} of {total['police']}")
+    check("services: multi-code FIRE values survive too",
+          multi["fire"] > 500, f"{multi['fire']} of {total['fire']}")
+    # ...paired with the control that they are not ALL multi-code, which
+    # would mean the reader had started concatenating something else
+    check("services: positive control — single-code values still exist and "
+          "are the majority",
+          multi["police"] < total["police"] / 2,
+          f"{multi['police']} of {total['police']}")
+    longest = max((r.get("code") or ""
+                   for c in CITY["cities"].values()
+                   for yr in c["years"].values()
+                   for r in (yr.get("services") or {}).values()), key=len)
+    check("services: the longest real value is longer than one letter",
+          len(longest) >= 3, longest)
+
+    # PER YEAR IS NOT DECORATION: codes actually move inside the window.
+    movers = 0
+    for slug, c in CITY["cities"].items():
+        seen = {(yr.get("services") or {}).get("police", {}).get("code")
+                for yr in c["years"].values()}
+        seen.discard(None)
+        if len(seen) > 1:
+            movers += 1
+    check("services: cities whose police code CHANGES across the eight "
+          "years — the reason one snapshot was the wrong shape",
+          movers > 100, str(movers))
+
+    # ---- 2. THE FACE OF THE RECORD -------------------------------------
+    def notes_for(frag):
+        page.goto(f"{base}/cities.html{frag}")
+        page.wait_for_selector("#recordBody .det-row, .note-row")
+        page.wait_for_timeout(400)
+        return page.eval_on_selector_all(".note-row", "e => e.map(x => x.innerText)")
+
+    # a multi-code city states EVERY arrangement, in the source's words
+    rows = " ".join(notes_for("#c=alameda,lakewood&y=2023-24"))
+    check("services: a multi-code city names how many arrangements the "
+          "Controller recorded", "recorded under 2 arrangements" in rows, rows[:0])
+    check("services: and prints the code itself, so a reader can check it",
+          "“AB”" in rows, rows[:0])
+    check("services: and gives BOTH labels, not the first one",
+          "provided by paid city employees" in rows
+          and "provided by city volunteers" in rows, rows[:0])
+    # positive control on the same render: a single-code city is NOT
+    # described as having several
+    check("services: positive control — a single-code city is stated as one "
+          "arrangement, with no count and no code string",
+          "Lakewood: Police service is provided wholly or in part through "
+          "contract with the county" in rows, rows[:0])
+
+    # ---- 3. WHO PAYS IS NOT WHO PROVIDES -------------------------------
+    # A-F mean the city provides or BUYS it, so the cost is in its own
+    # filing. This block used to attach "that spending appears in the
+    # provider's record" to C, D, E and F as well — reading a contract the
+    # city pays for as spending it does not do.
+    lw = " ".join(notes_for("#c=lakewood&y=2023-24"))
+    check("services: a contract the city PAYS FOR makes no claim that the "
+          "spending sits elsewhere (Lakewood, police code D, $103/resident)",
+          "provider's record" not in lw.split("Fire service")[0], lw[:0])
+    # ...paired with the control that the claim IS made where it is true
+    ah = " ".join(notes_for("#c=agoura-hills&y=2023-24"))
+    check("services: positive control — a code the city does NOT pay for, "
+          "with a $0 line, does say where the spending sits",
+          "County's record, not the city's" in ah, ah[:0])
+    # ...and a city-borne code with a zero line is a contradiction, not an
+    # explanation
+    cu = " ".join(notes_for("#c=cudahy&y=2023-24"))
+    check("services: a city-borne code against a $0 line is reported as a "
+          "disagreement, not explained away",
+          "do not agree" in cu, cu[:0])
+    # ...and a MIXED code refuses to apportion
+    fo = " ".join(notes_for("#c=fortuna&y=2023-24"))
+    check("services: a mixed borne/external code says the Ledger cannot "
+          "say how much the city's own figure covers",
+          "cannot say how much" in fo, fo[:0])
+
+    # ---- 4. AN UNRECOGNISED LETTER FAILS LOUDLY (mutation) -------------
+    # The URL space cannot express a bad code, so the shipped payload is
+    # doctored in the live page and re-rendered. If the page ever silently
+    # ignored a letter it does not know, this would go quiet.
+    page.goto(f"{base}/cities.html#c=alameda&y=2023-24")
+    page.wait_for_selector("#recordBody .det-row")
+    page.evaluate("""() => {
+        const y = window.CA_CITY_DATA.cities['alameda'].years['2023-24'];
+        y.services.police = {code: 'AZ', labels: ['provided by paid city employees']};
+        location.hash = '#c=albany&y=2023-24';
+    }""")
+    page.wait_for_timeout(500)
+    page.evaluate("() => { location.hash = '#c=alameda&y=2023-24'; }")
+    page.wait_for_timeout(700)
+    mutated = " ".join(page.eval_on_selector_all(
+        ".note-row", "e => e.map(x => x.innerText)"))
+    check("services: MUTATION — an unrecognised letter is reported loudly "
+          "and nothing is inferred from it",
+          "UNRECOGNISED" in mutated and "“AZ”" in mutated,
+          mutated[:120])
+    check("services: MUTATION — and the page does not describe the letters "
+          "it DOES recognise as though the code were complete",
+          "recorded under" not in mutated, mutated[:120])
+
+    # ---- 5. THE SOURCE IS THE CURRENT ONE ------------------------------
+    ds = (CITY["meta"].get("datasets") or {}).get("services")
+    check("services: the payload names the CURRENT checklist dataset",
+          ds == "8nra-c2cw", str(ds))
+    check("services: and the retired one appears nowhere in the payload",
+          "tsz3-29gc" not in (ROOT / "city-data.js").read_text(
+              encoding="utf-8")[:4000])
+    yrs = CITY["meta"].get("servicesChecklistYears") or []
+    check("services: the checklist's coverage is declared as the years it "
+          "actually covers", yrs == CITY["years"], str(yrs[:2]))
+    check("services: the frozen-vintage key is gone, so nothing can state "
+          "one year of the checklist as though it were all of them",
+          "servicesChecklistVintage" not in CITY["meta"])
+
+    # ---- 6. NO DERIVED FLAG WAS EVER COMPUTED FROM THE CODE ------------
+    # The brief asked whether lowPolice/lowFire were built on the truncated
+    # value. They were not — they read spending — and this pins that so a
+    # future edit cannot quietly start reading the checklist.
+    src = (ROOT / "pipeline" / "fetch_city_data.py").read_text(encoding="utf-8")
+    blk = src[src.index("LOW_SERVICE_PER_CAPITA = "):]
+    blk = blk[blk.index('notes.append("lowPolice")') - 900:
+              blk.index('notes.append("lowFire")')]
+    check("services: the low-service flags are computed from SPENDING "
+          "alone and never read the checklist",
+          "services" not in blk and "svc" not in blk, blk[-200:])
+
+
 def main():
     from playwright.sync_api import sync_playwright
 
@@ -13650,6 +13870,7 @@ def main():
             test_year_coverage(page, base)
             test_legibility(page, base)
             test_zero_service(page, base)
+            test_services_checklist_whole(page, base)
             test_frontdoor_about(page, base)
             test_design_hygiene(page, base)
             test_nav_sheet(page, base)

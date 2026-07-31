@@ -924,21 +924,58 @@
   const perRes = (millions, pop) => millions * 1e6 / pop;
   const money0 = v => "$" + fmt(Math.round(v));
 
+  /* THE CHECKLIST IS MULTI-SELECT AND PER-YEAR. Kept in step with
+     cities.html deliberately: two pages describing the same Controller
+     field in two different vocabularies is how one of them comes to say
+     something the other has stopped saying. A-F mean the city provides or
+     BUYS the service, so the cost is in its own filing; G-K mean it
+     arrives without a city contract, so the cost is elsewhere. Only the
+     second set explains a figure of zero. */
+  const SVC_BORNE = "ABCDEF";
+  const SVC_EXTERNAL = "GHIJK";
+
   function cityServiceNotes(c, yr){
     const notes = [];
-    const vin = CITY.meta.servicesChecklistVintage;
     [["police","Police"],["fire","Fire"]].forEach(([k,label])=>{
-      const svc = c.services && c.services[k];
+      const svc = yr.services && yr.services[k];
       // absent and reported-as-zero are different facts about the filing
       const bf = yr.byFunction || {};
       const reported = Object.prototype.hasOwnProperty.call(bf, k);
       const zero = reported ? bf[k] === 0 : true;
-      if (svc && svc.code && svc.code !== "A" && svc.code !== "B" && svc.label)
-        notes.push(label + " service is " + svc.label
-          + (zero ? (svc.code === "D"
-              ? " — that spending appears in " + c.county + " County's record below, not the city's"
-              : " — that spending appears in the provider's record, not the city's") : "")
-          + " (FY " + vin + " services checklist, the most recent published — arrangements may have changed).");
+      if (svc && svc.code){
+        const letters = String(svc.code).split("");
+        const bad = letters.filter(ch =>
+          SVC_BORNE.indexOf(ch) < 0 && SVC_EXTERNAL.indexOf(ch) < 0);
+        if (bad.length){
+          notes.push(label + " service code “" + svc.code + "” contains a "
+            + "letter this page has no description for; nothing is inferred "
+            + "from it. Please report this.");
+          return;
+        }
+        const borne = letters.filter(ch => SVC_BORNE.indexOf(ch) >= 0);
+        const ext   = letters.filter(ch => SVC_EXTERNAL.indexOf(ch) >= 0);
+        const words = (svc.labels && svc.labels.length) ? svc.labels : [];
+        let tail = "";
+        if (zero){
+          if (borne.length && ext.length)
+            tail = " — the Controller records both an arrangement the city "
+              + "pays for and one it does not, so the Ledger cannot say how "
+              + "much of this service the city's own figure covers";
+          else if (ext.length)
+            tail = ext.indexOf("I") >= 0
+              ? " — that spending appears in " + c.county
+                + " County's record below, not the city's"
+              : " — that spending appears in the provider's record, not the city's";
+          else
+            tail = " — an arrangement the city pays for, so this figure and "
+              + "the checklist do not agree";
+        }
+        notes.push((letters.length === 1
+            ? label + " service is " + words[0]
+            : label + " service is recorded under " + letters.length
+              + " arrangements (code “" + svc.code + "”): " + words.join("; "))
+          + tail + " (State Controller's services checklist for this year).");
+      }
       else if (zero)
         notes.push(label + " expenditure is not reported in this city's filing — the Ledger "
           + "cannot confirm from the services checklist how the service is provided.");
