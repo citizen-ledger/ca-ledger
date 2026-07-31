@@ -135,7 +135,7 @@
   .pillgroup>button{border:none;background:transparent;padding:9px 16px;cursor:pointer;font-size:var(--fs-data);color:var(--ink);border-left:1px solid var(--ash)}
   .pillgroup>button:first-child{border-left:none}
   .pillgroup>button.on{background:var(--ink);color:var(--parchment)}
-  .actions{display:flex;gap:8px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
 
   .record{background:var(--surface);border:1px solid var(--ash);border-radius:2px;box-shadow:0 1px 0 rgba(36,36,36,.04),0 10px 30px rgba(43,89,209,.05);margin-top:26px;padding:26px 32px 32px}
   .gate-strip{background:var(--wash);border:1px solid var(--ink);border-left:4px solid var(--ink);padding:10px 16px;margin-top:16px;font-family:var(--mono);font-size:var(--fs-label);line-height:1.6;color:var(--ink)}
@@ -424,6 +424,7 @@
     <div class="actions">
       <button class="btn ink" id="citeToggle">Cite</button>
       <button class="btn ink" id="csvBtn">Download CSV</button>
+      <button class="btn ink" id="seriesBtn" aria-describedby="seriesHint">Full history (CSV)</button><span id="seriesHint" class="visually-hidden">Every fiscal year for the selected record, one row per year, with each year’s own basis and gate tier.</span>
       <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
     </div>
   </div>
@@ -565,6 +566,185 @@
   }
 
   // structural-comparability daggers, data-derived from the flags in ccc-data.js
+  /* ==== TIME-SERIES EXPORT ==============================================
+     One entity's full history in one file. The site could already export one
+     year for every entity (the layer CSV) or every year for one figure (the
+     bulk file); this is the third cut, and it is the one a reader charting a
+     single city actually wants.
+
+     THE COMPARABILITY WORK IS THE SUBSTANCE, NOT THE EXPORT. Five rules, and
+     each exists because a spreadsheet strips away the thing the page uses to
+     carry the caveat:
+
+     1. EVERY YEAR CARRIES ITS OWN BASIS. The C2 basis line is per-view; a
+        series spans years that can differ in basis, vintage and gate tier. So
+        basis, tier and source-vintage are COLUMNS, repeated on every row —
+        never stated once in the header where sorting separates them from the
+        figures they qualify.
+
+     2. THE THREE ABSENCE STATES TRAVEL. A page has daggers and a tier band; a
+        CSV has neither, so the encoding is all a reader gets. A reported zero
+        is the digit 0. A not-published figure is an EMPTY cell with
+        status=not-published. A held figure is an EMPTY cell with status=held
+        and a reason. Never the same mark for two of them, and the convention
+        is stated in the header as well as encoded per row.
+
+     3. BREAKS ARE CARRIED ON THE ROW WHERE THEY TAKE EFFECT. The brief asked
+        for rows rather than footnotes, and the reasoning generalises further
+        than the form: a separate marker row is destroyed by the first sort
+        and dropped by most parsers, which is the same failure as a header
+        note. A `break_here` COLUMN on the year the break takes effect
+        survives sorting, filtering and charting — the operations that lose a
+        footnote. Stated here because it is a deliberate departure from the
+        literal instruction and not an oversight.
+
+     4. HELD YEARS APPEAR AS ROWS. UC FY2019-20 is held, not missing. A series
+        that omits it implies continuity across a year the Ledger refused, so
+        the row exists, carries no figure, and says why.
+
+     5. NO DERIVED CHANGE COLUMN. #119 measured what a delta against a held
+        year produces: $0 -> $153,245,000, a confident increase attributed to
+        a city on the strength of a filing that was refused. A file has no
+        place to explain that, and a reader who sorts by it will never see the
+        explanation. The header says the column is absent and why. */
+
+  function seriesCsv(){
+    const rows = seriesRows();               // per-layer, defined on the page
+    if (!rows || !rows.length) return null;
+    const meta = seriesMeta();               // per-layer
+
+    const q = v => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const head = [
+      "# Citizen Ledger — " + meta.layer + " — ONE ENTITY, EVERY YEAR",
+      "# Entity: " + meta.entity,
+      "# Source: " + meta.source,
+      "# Generated: " + meta.generated + " · exported: "
+        + new Date().toISOString().slice(0, 10),
+      "# Permalink: " + location.href,
+      meta.digest ? "# Record integrity: SHA-256 " + meta.digest + " ("
+        + meta.payload + "). Verify with python3 pipeline/verify_digest.py "
+        + "from the repository." : "# Record integrity: not carried by this layer",
+      "#",
+      "# EVERY ROW CARRIES ITS OWN BASIS, TIER AND VINTAGE. These can differ "
+        + "between years in one series, so they are columns and not a header "
+        + "note — sorting this file must not separate a figure from what it "
+        + "measures.",
+      "#",
+      "# ABSENT VALUES — three different facts, never the same mark:",
+      "#   0            a REPORTED ZERO. The entity filed that amount.",
+      "#   empty + status=not-published   the source publishes no figure. "
+        + "This is NOT a zero.",
+      "#   empty + status=held            the source published something the "
+        + "Ledger refused (it did not reconcile). The reason is in "
+        + "status_reason. NOT a zero and NOT missing.",
+      "#",
+      "# break_here names a documented change in what the series measures, on "
+        + "the row where it takes effect. A break is not a change in spending.",
+      "#",
+      "# THERE IS DELIBERATELY NO YEAR-OVER-YEAR CHANGE COLUMN. A delta "
+        + "against a held or not-published year produces a confident wrong "
+        + "number, and a spreadsheet has nowhere to explain it. Compute "
+        + "changes yourself, after deciding what to do with the held rows.",
+      "# Licence: CC0 1.0 Universal (public domain). Cite freely.",
+    ];
+    const cols = meta.columns.concat(
+      ["status", "status_reason", "basis", "gate_tier", "source_vintage",
+       "break_here"]);
+    const body = rows.map(r => cols.map(c => q(r[c])).join(","));
+    return head.join("\n") + "\n" + cols.join(",") + "\n" + body.join("\n") + "\n";
+  }
+
+  function downloadSeries(){
+    const csv = seriesCsv();
+    if (!csv) return;
+    const m = seriesMeta();
+    const name = "citizen-ledger-" + m.slug + "-series.csv";
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  (function(){
+    const b = document.getElementById("seriesBtn");
+    if (b) b.addEventListener("click", downloadSeries);
+  })();
+  /* CCC — 15 years, the site's longest series, and it crosses a ROSTER break:
+     the Chancellor's Office reported 72 districts through FY2017-18 and 73
+     from FY2018-19, when Calbright was created. A reader charting the
+     statewide line across that year is charting a different set of colleges,
+     which is not a change in spending.
+
+     CCC FY2019-20 is NOT a held YEAR — every district publishes a Current
+     Expense figure for it. What is held that year is two specific FACTS
+     (statewide revenue, community-supported count), so the row ships with its
+     figure and the held facts are named per column. That distinction is the
+     reason status is per-fact here rather than per-row. */
+  function seriesMeta(){
+    /* the entity a permalink or click focused, else the whole layer */
+    const r = S.focus ? (D.districts||[]).find(function(x){
+      return slugify(x.name)===S.focus; }) : null;
+    return {layer:"California Community Colleges",
+      entity: r ? titlecase(r.name) : "Statewide",
+      slug: r ? slugify(r.name) : "statewide",
+      source: M.sourceLabel, generated: M.generated,
+      digest: (M.integrity||{}).digest, payload:"ccc-data.js",
+      columns:["fiscal_year","entity","current_expense_of_education_usd",
+               "instructional_salaries_usd","funded_ftes","districts_in_roster"]};
+  }
+  function seriesRows(){
+    /* the entity a permalink or click focused, else the whole layer */
+    const r = S.focus ? (D.districts||[]).find(function(x){
+      return slugify(x.name)===S.focus; }) : null;
+    const TIER="GATED · districts sum to the Chancellor's Office printed statewide total, to the dollar";
+    const BASIS="Modified accrual on the CCC Budget and Accounting Manual chart · Current Expense of Education (ECS 84362) · whole dollars";
+    return D.years.map(function(fy){
+      const sw = D.statewide[fy] || {};
+      const y  = r ? (r.years||{})[fy] : null;
+      const row={fiscal_year:fy, entity: r?titlecase(r.name):"Statewide",
+        basis:BASIS, gate_tier:TIER,
+        source_vintage: sw.apportionmentRound ? fy+" ("+sw.apportionmentRound+")" : fy,
+        break_here:"", status:"as-filed", status_reason:"",
+        current_expense_of_education_usd:"", instructional_salaries_usd:"",
+        funded_ftes:"", districts_in_roster: sw.nDistricts==null?"":sw.nDistricts};
+      /* THE BREAK, ON THE YEAR IT TAKES EFFECT. Derived by comparing this
+         year's roster to the previous year's, never a hardcoded year. */
+      const i=D.years.indexOf(fy);
+      if (i>0){
+        const prev=D.statewide[D.years[i-1]]||{};
+        if (prev.nDistricts!=null && sw.nDistricts!=null && prev.nDistricts!==sw.nDistricts)
+          row.break_here="ROSTER CHANGE — the Chancellor's Office reported "
+            +prev.nDistricts+" districts through FY"+D.years[i-1]+" and "
+            +sw.nDistricts+" from this year. "+(M.districtCountBreak||"")
+            +" A change across this year is partly a change in WHO is counted.";
+      }
+      const v = r ? y : sw;
+      if (!v){ row.status="not-published";
+               row.status_reason="No figure is published for this entity-year.";
+               return row; }
+      row.current_expense_of_education_usd = v.ce==null?"":v.ce;
+      row.instructional_salaries_usd = v.instrSal==null?"":v.instrSal;
+      row.funded_ftes = v.fundedFtes==null?"":v.fundedFtes;
+      if (v.ce==null){ row.status="not-published";
+        row.status_reason="The Chancellor's Office publishes no Current Expense figure for this entity-year."; }
+      /* held FACTS on a shipped year, named rather than silently dropped */
+      const held=[];
+      if (sw.revenueStatus==="held") held.push("statewide revenue ("+(sw.revenueReason||"")+")");
+      if (sw.communitySupportedStatus==="held") held.push("community-supported count ("+(sw.communitySupportedReason||"")+")");
+      if (held.length){
+        row.status = row.status==="as-filed" ? "as-filed; facts held" : row.status;
+        row.status_reason = (row.status_reason?row.status_reason+" ":"")
+          + "HELD THIS YEAR, and not included in any column above: "+held.join("; ");
+      }
+      return row;
+    });
+  }
+
   function districtNotes(r){
     const v = yr(r), f = v.flags || {}, notes = [];
     if (r.multiCollege) notes.push(["MULTI-COLLEGE",
