@@ -3,6 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* THE EMBED REFUSAL, BEFORE ANYTHING BOOTS. This layer publishes no single
+   figure (see embed-refused.html for which fact that is), and the refusal
+   needs nothing from this page — so it is served by a page that loads no
+   payload and runs no render, and the redirect happens while <head> is still
+   parsing.
+
+   The first version replaced this page's own body once it had already
+   booted. That left address.html's address resolution rendering into a DOM
+   that was no longer there, throwing "Cannot set properties of null" into
+   the console of whatever article had embedded it. A page that has started
+   cannot be un-started; the fix is not to start it. */
+(function(){
+  var p = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (p.get("e") === "1") location.replace("embed-refused.html#l=compensation");
+})();
+</script>
+
 <title>Citizen Ledger — Public employee compensation</title>
 <meta name="description" content="A nonpartisan record of California government spending. Public employee compensation as filed with the State Controller, position by position, labeled — never averaged, never ranked.">
 <link rel="canonical" href="https://citizen-ledger.github.io/ca-ledger/compensation.html">

@@ -1309,6 +1309,57 @@ works is to park it outside the repository and delete whatever was recreated
 before moving it back. **A directory move is not atomic against a process
 that recreates the directory.**
 
+### 3c. A view that can be QUOTED is a different artefact from one that can be BROWSED
+
+The citation embed renders one figure, alone, on a page with no controls and
+no table — and two defects that had been harmless for the life of the site
+became false statements the moment a figure was shown that way. Neither was
+introduced by the embed. Both were found by it.
+
+**The silent fallback.** Every layer parses its year the same way:
+
+```js
+S.year = YEARS.includes(p.get("y")) ? p.get("y") : DEFAULTS.year;
+```
+
+On the page this is correct and almost invisible — ask for a year the layer
+does not publish and you get the latest one, with the year control right
+there showing you which year you are looking at. In an embed there is no
+control. `uc.html#c=berkeley&y=2019-20` asks for a year that is **held**, so
+it is absent from `YEARS`, so the page served FY2024-25 — and the card
+captioned another year's number with the year that had been asked for
+nowhere in sight. The defence is not to remove the fallback, which is right
+for browsing; it is that **a quotable view must refuse to answer a different
+question than it was asked**, and the check belongs where the quoting
+happens.
+
+**The fallback that renders.** `uc.html` composed its basis line with
+
+```js
+UNIT_WORDS[S.unit] || String(S.unit).toUpperCase()
+```
+
+and `UNIT_WORDS` was keyed `perStudent` while `S.unit` is `perFte`. The
+lookup never matched, on any render, since the layer shipped. It was never
+noticed because the `||` branch **produced something that looked like a
+label**: the C2 basis line read `PERFTE`, on the unit carrying UC's heaviest
+comparability caveats. This is the enumerated-conditional family (2s) with a
+different mechanism — not a branch silently dropped, a branch silently
+*disguised*. A fallback that throws is found in a minute; a fallback that
+renders is found when someone finally reads the output closely, which for a
+basis line is approximately never.
+
+**The general shape.** Both defects are the same one: a page shows a figure
+*surrounded by* the things that qualify it — the year control, the unit
+toggle, the table, the tier band — and any of those can carry meaning the
+figure's own rendering has quietly lost. Strip the surroundings and the loss
+becomes visible. So: **build the stripped view early, not as a
+feature, but as a test of every view that already exists.** It found two
+defects here on its first render, in code that nine layers of assertions had
+passed over.
+
+---
+
 ---
 
 ---

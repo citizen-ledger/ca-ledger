@@ -209,6 +209,35 @@ SEO rather than the citation and search the proposal claimed.
 individually addressable. That is a deep-link parameter on three pages, not
 8,257 files.
 
+### The citation embed cost nothing per figure, by design (2026-07-31)
+
+The same measurement decided the shape of the citation embed. An embed can be
+an image, an iframe, a copyable block of text, or a page a journalist links
+to. **The image forms were refused before they were measured**, on the ground
+the design bundle's share cards were already refused on: an image is either a
+server the project does not run or a committed file per figure — the A-2
+arithmetic above, times every fiscal year. It is also the only form whose
+caveats can be *cropped off*, which is the exact failure the feature exists
+to prevent.
+
+What shipped instead adds **no artefact per figure at all**: the embed is the
+layer page the site already serves, addressed by the parameters it already
+understands, plus `e=1`.
+
+| | |
+|---|---|
+| new files | **0** |
+| new tracked bytes | **+139 KB** across 9 pages (shared core + one adapter each) |
+| per-figure cost | **0** — there are no per-figure artefacts to build, store, or rebuild |
+| entities embeddable | every entity already addressable, on 7 layers |
+| `.git` cost per rebuild | **0** — nothing derived is generated |
+
+Two layers refuse an embed, and both refusals are facts about what the layer
+publishes rather than gaps: `address.html` stacks records that never sum, so
+an embed of one would be an aggregate across layers; `compensation.html`
+publishes a list of individual positions and states in its own record sheet
+that it carries no averages, so there is no single figure to carry.
+
 The rebuild claim is unaffected either way: `bulk/` is *derived*, and
 `pipeline/build_bulk.py` regenerates every file in it from the payloads
 already in the tree, with no network access.

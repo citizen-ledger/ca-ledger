@@ -6372,11 +6372,31 @@ def test_nav_sheet(page, base):
     pages = sorted(f.name for f in ROOT.glob("*.html"))
     check("nav sheet: pages discovered from disk", len(pages) >= 14)
 
-    # the sheet must offer every destination the SITE has, derived from the
+    # The sheet must offer every destination the SITE has, derived from the
     # page census rather than a list — a new page without a sheet entry is
-    # the drift this is built to catch. 404 is a fallback, not a destination.
-    expected = {p for p in pages if p != "404.html"}
+    # the drift this is built to catch.
+    #
+    # WHICH PAGES ARE DESTINATIONS IS ALSO DERIVED. This read `p !=
+    # "404.html"` with the note "404 is a fallback, not a destination",
+    # which is a hardcoded name doing the job of a rule — the shape OPEN.md
+    # has now recorded five times. A page the site tells search engines not
+    # to index is a page no reader navigates to, and both non-destinations
+    # already declare it: 404.html is a fallback and embed-refused.html is
+    # reached only from an embed address. The marker is read off the page.
+    NOINDEX = re.compile(
+        r'<meta\s+name=["\']robots["\']\s+content=["\'][^"\']*noindex',
+        re.I)
+    fallback = {p for p in pages
+                if NOINDEX.search((ROOT / p).read_text(encoding="utf-8"))}
+    check("nav sheet: non-destinations are derived from the page's own "
+          "robots marker, not from a list of names",
+          {"404.html", "embed-refused.html"} <= fallback, str(sorted(fallback)))
+    expected = {p for p in pages if p not in fallback}
+    check("nav sheet: positive control — excluding them leaves a real site "
+          "to navigate", len(expected) >= 14, str(len(expected)))
     for name in pages:
+        if name in fallback:
+            continue                      # no nav sheet, by the same rule
         page.set_viewport_size({"width": 390, "height": 844})
         page.goto(f"{base}/{name}")
         page.wait_for_load_state("networkidle")
@@ -10948,7 +10968,8 @@ def test_runtime_origins():
                        "cities.html", "compensation.html", "csu.html",
                        "districts.html", "findings.html", "index.html",
                        "reading.html", "revisions.html", "schools.html",
-                       "search.html", "uc.html", "bulk.html"])
+                       "search.html", "uc.html", "bulk.html",
+                       "embed-refused.html"])
     # named rather than counted: adding a page should be a deliberate act
     # that updates this list, because each new page is a new surface that
     # could reintroduce a third-party subresource
@@ -13197,6 +13218,372 @@ def run_or_exclude(fn, *args):
 EXCLUDED = []
 
 
+def test_citation_embed(page, base):
+    """THE CITATION EMBED — one figure travels, and cannot travel alone.
+
+    The site could already produce a citation, and a citation copies as
+    text. Text is separable: paste the number, drop the basis, and every
+    caveat the Ledger spent nine layers building is gone at the first edit.
+    The embed exists so the figure and what it means arrive together.
+
+    WHAT IS ASSERTED HERE IS THE REFUSAL, not the rendering. "An embed that
+    can render a bare number is the failure this feature would introduce",
+    so the assertions below are mostly about numbers that must NOT appear,
+    and every one of them is paired with a positive control on the same
+    layer — an absence assertion that passes because nothing rendered at
+    all is the oldest way to be wrong in this repository.
+    """
+    import re as _re
+
+    EMBEDDABLE = [
+        # page,            addressing one record,                     layer
+        ("cities.html",    "#c=fresno&y=2021-22",                     "city"),
+        ("cities.html",    "#l=county&c=alameda",                     "county"),
+        ("schools.html",   "#c=alameda-unified",                      "K-12"),
+        ("ccc.html",       "#d=chabot-las-positas",                   "CCC"),
+        ("csu.html",       "#c=csu-chico",                            "CSU"),
+        ("uc.html",        "#c=berkeley&y=2022-23",                   "UC"),
+        ("districts.html", "#d=4-e-water-district&y=2018-19",         "district"),
+        ("index.html",     "#a=higher-education",                     "state"),
+    ]
+
+    # A HASH-ONLY NAVIGATION IS NOT A LOAD. Every address here differs from
+    # the last only after the "#", so page.goto() performs a same-document
+    # navigation: the script never re-runs, EMBED_ON has already been
+    # consumed, and the assertions read the PREVIOUS card. It was the
+    # positive controls that caught this — four of them, reporting a figure
+    # missing that the negative case had legitimately suppressed a moment
+    # earlier. about:blank forces the real load.
+    def fresh(url):
+        page.goto("about:blank")
+        page.goto(f"{base}/{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1500)
+
+    def parts(url):
+        """The card's structure, not merely its text."""
+        fresh(url)
+        return page.evaluate("""() => {
+            const r = document.getElementById("embedRoot");
+            if (!r) return null;
+            const stamp = w => {
+                const s = [...r.querySelectorAll(".eb-stamp")]
+                    .find(x => x.querySelector("b")
+                            && x.querySelector("b").textContent.trim() === w);
+                return s ? s.textContent.replace(w, "").trim() : null;
+            };
+            const fig = r.querySelector(".eb-fig");
+            return {
+                chrome:  !!document.querySelector("header, .masthead, nav"),
+                figure:  fig ? fig.textContent.trim() : null,
+                absent:  r.querySelector(".eb-absent")
+                            ? r.querySelector(".eb-absent b").textContent.trim() : null,
+                entity:  r.querySelector(".eb-ent") && r.querySelector(".eb-ent").textContent.trim(),
+                fy:      r.querySelector(".eb-fy") && r.querySelector(".eb-fy").textContent.trim(),
+                tier:    stamp("TIER"),
+                basis:   stamp("MEASURED AS"),
+                source:  stamp("SOURCE"),
+                notes:   [...r.querySelectorAll(".eb-notes p")].map(p => p.textContent.trim()),
+                back:    r.querySelector(".eb-back") && r.querySelector(".eb-back").getAttribute("href"),
+                refused: !!r.querySelector(".eb-refused"),
+                text:    r.innerText
+            };
+        }""")
+
+    MONEY = _re.compile(r"[$][\d,]*\d")
+
+    # ── 1. EVERY EMBEDDABLE LAYER RENDERS A COMPLETE RECORD ─────────────
+    # The non-negotiable list, checked per layer rather than once: the
+    # figure, the entity, the fiscal year, the C2 basis line, the tier
+    # chip's WORDING, the source, and the link back.
+    for pg, frag, layer in EMBEDDABLE:
+        p = parts(f"{pg}{frag}&e=1" if "#" in frag else f"{pg}#e=1")
+        check(f"embed: {layer} enters embed mode at all", p is not None)
+        if not p:
+            continue
+        check(f"embed: {layer} names its entity", bool(p["entity"]), str(p["entity"]))
+        check(f"embed: {layer} names its fiscal year",
+              bool(p["fy"]) and p["fy"].startswith("FY "), str(p["fy"]))
+        check(f"embed: {layer} carries the C2 basis line",
+              bool(p["basis"]) and len(p["basis"]) > 30, str(p["basis"])[:70])
+        # THE WORDING, NOT THE GLYPH. A mark is decoration; the words are
+        # the encoding, and a chip reduced to its square carries nothing
+        # into a page that has never seen the Ledger's colour vocabulary.
+        check(f"embed: {layer} carries the tier's WORDING",
+              bool(p["tier"]) and _re.search(r"[A-Z]{3,}", p["tier"] or ""),
+              str(p["tier"])[:70])
+        check(f"embed: {layer} names its source", bool(p["source"]),
+              str(p["source"])[:60])
+        check(f"embed: {layer} links back to the full record",
+              bool(p["back"]) and "e=1" not in (p["back"] or ""), str(p["back"]))
+        # REPLACED, NOT HIDDEN. Twice this project shipped a correct screen
+        # with a silent printed sheet because a block sat inside a
+        # print-hidden region. An embed that merely hid its host page would
+        # leak the whole site into someone's article the first time a
+        # stylesheet failed to load.
+        check(f"embed: {layer} REPLACES the page rather than hiding it",
+              p["chrome"] is False)
+        check(f"embed: {layer} shows one record, not a table",
+              p["text"].count("MEASURED AS") == 1, p["text"][:60])
+
+    # ── 2. NO FIGURE WITHOUT ITS BASIS — the structural claim ───────────
+    # Asserted over every card rendered above: wherever a number appears,
+    # the basis and the tier appear with it.
+    for pg, frag, layer in EMBEDDABLE:
+        p = parts(f"{pg}{frag}&e=1")
+        if not p or not p["figure"]:
+            continue
+        check(f"embed: {layer} — a figure never appears without its basis",
+              bool(p["basis"]) and bool(p["tier"]) and bool(p["source"]),
+              f"figure={p['figure']}")
+
+    # ── 3. THE THREE ABSENCE STATES, each with a positive control ───────
+    # A reported zero, a not-published figure and a held figure are three
+    # different facts. Checking only that "no number appears" would pass on
+    # a page that rendered nothing, so each is paired with the same layer
+    # rendering a number when it should.
+
+    #   HELD — the source published something the Ledger refused.
+    held = parts("cities.html#c=hollister&y=2021-22&e=1")
+    check("embed: a HELD city says HELD in words", held["absent"] == "HELD",
+          str(held["absent"]))
+    check("embed: a HELD city shows NO number anywhere on the card",
+          not MONEY.search(held["text"]), str(MONEY.findall(held["text"])[:3]))
+    check("embed: a HELD city still carries its basis and tier",
+          bool(held["basis"]) and bool(held["tier"]))
+    check("embed: a HELD city gives the reason it was refused",
+          "refused" in held["text"].lower() and len(held["notes"]) >= 1)
+    #   positive control on the SAME layer
+    filed = parts("cities.html#c=fresno&y=2021-22&e=1")
+    check("embed: positive control — a filed city DOES show a number",
+          bool(MONEY.search(filed["text"])), str(filed["figure"]))
+
+    #   HELD, on a layer where the held thing is a whole YEAR. FY2019-20 is
+    #   held systemwide, so it is absent from uc.html's YEARS, so applyHash
+    #   falls back to the latest year — and the first draft of this embed
+    #   captioned FY2024-25's figure "FY2019-20".
+    ucheld = parts("uc.html#c=berkeley&y=2019-20&e=1")
+    check("embed: UC's held YEAR renders as held, not as another year",
+          ucheld["absent"] == "HELD" and ucheld["fy"] == "FY 2019-20",
+          f"{ucheld['absent']} / {ucheld['fy']}")
+    check("embed: UC's held year shows no number",
+          not MONEY.search(ucheld["text"]))
+    check("embed: UC's held year states the basis FOR THAT YEAR",
+          "FY 2019-20" in (ucheld["basis"] or ""), str(ucheld["basis"])[:80])
+    ucfiled = parts("uc.html#c=berkeley&y=2022-23&e=1")
+    check("embed: positive control — a published UC year DOES show a number",
+          bool(MONEY.search(ucfiled["text"])), str(ucfiled["figure"]))
+
+    #   NOT PUBLISHED — the source publishes no figure. Calbright is not
+    #   funded through the apportionment formula, so it has no per-FTES
+    #   denominator; its current expense of education IS published.
+    npub = parts("ccc.html#d=calbright&u=perFtes&e=1")
+    check("embed: a NOT-PUBLISHED figure says so in words",
+          npub["absent"] == "NOT PUBLISHED", str(npub["absent"]))
+    check("embed: a NOT-PUBLISHED figure shows no number",
+          not MONEY.search(npub["text"]), str(MONEY.findall(npub["text"])[:3]))
+    check("embed: NOT-PUBLISHED is distinguished from held IN WORDS",
+          "HELD" not in npub["text"])
+    pub = parts("ccc.html#d=calbright&e=1")
+    check("embed: positive control — the same district's published figure "
+          "DOES show a number", bool(MONEY.search(pub["text"])), str(pub["figure"]))
+
+    #   A REPORTED ZERO is the digit, not an absence. 4-E Water District
+    #   filed FY2018-19 with nothing in the governmental class.
+    zero = parts("districts.html#d=4-e-water-district&y=2018-19&e=1")
+    check("embed: a REPORTED ZERO renders as $0, not as an absence",
+          zero["figure"] == "$0" and zero["absent"] is None,
+          f"{zero['figure']} / {zero['absent']}")
+    check("embed: a reported zero says the filing status in words",
+          "FILED" in zero["text"])
+    nofiling = parts("districts.html#d=4-e-water-district&y=2021-22&e=1")
+    check("embed: positive control — a year with no filing is NOT-PUBLISHED "
+          "rather than zero",
+          nofiling["absent"] == "NOT PUBLISHED" and nofiling["figure"] is None,
+          f"{nofiling['absent']} / {nofiling['figure']}")
+
+    # ── 4. EVERY DAGGER AND NOTE, IN FULL ───────────────────────────────
+    # Not as symbols and not truncated. Cross-checked against the page's own
+    # note function rather than against a list typed here, so a note the
+    # page gains later must appear in the embed or this fails.
+    for pg, frag, layer in [("uc.html", "#c=san-francisco&y=2022-23&u=perFte", "UC"),
+                            ("ccc.html", "#d=chabot-las-positas", "CCC")]:
+        fresh(f"{pg}{frag}&e=1")
+        shown = page.evaluate(
+            """() => [...document.querySelectorAll("#embedRoot .eb-notes p")]
+                       .map(p => p.textContent.trim())""")
+        check(f"embed: {layer} carries more than one comparability note",
+              len(shown) >= 2, str(len(shown)))
+        check(f"embed: {layer} carries every note IN FULL, not as a symbol",
+              all(len(s) > 60 for s in shown) and not any(
+                  s.strip() in {"†", "*", "††"} for s in shown),
+              str([s[:30] for s in shown]))
+
+    # ── 5. REFUSE BY CONSTRUCTION — the gate, driven directly ───────────
+    # The URL space cannot express "a held record that arrived carrying a
+    # number", and that is precisely the defect the gate exists to stop. So
+    # the SHIPPED gate is lifted out of cities.html and fed records the site
+    # must never produce. This is the shipped source, not a copy typed here:
+    # an edit that weakens the gate fails these.
+    src = (ROOT / "cities.html").read_text(encoding="utf-8")
+    a = src.index("var EMBED_ASKED")
+    b = src.index("function embedRender(){")
+    gate_src = src[a:b]
+    check("embed: the gate was located in the shipped page", len(gate_src) > 500,
+          str(len(gate_src)))
+
+    def gate(rec):
+        return page.evaluate(
+            "rec => { " + gate_src + " ; return embedGate(rec); }", rec)
+
+    GOOD = {"entity": "Hollister", "fy": "2021-22", "figureLabel": "Spending",
+            "status": "as-filed", "basis": "CITY REPORTED ACTUALS · FY 2021-22",
+            "tier": "GATED", "source": "SCO", "link": "x", "notes": [],
+            "figure": "$41.2M"}
+    check("embed gate: a complete record passes", gate(dict(GOOD)) is None,
+          str(gate(dict(GOOD))))
+
+    #   each required field, removed one at a time — a positive control that
+    #   cannot be satisfied by one surviving member
+    for k in ["entity", "fy", "figureLabel", "basis", "tier", "source", "link"]:
+        m = dict(GOOD); m.pop(k)
+        r = gate(m)
+        check(f"embed gate: a record with no {k} is REFUSED", r is not None
+              and k in r, str(r)[:70])
+
+    #   the two directions of the figure/status contradiction
+    r = gate(dict(GOOD, status="held", statusReason="x"))
+    check("embed gate: a HELD record carrying a figure is REFUSED",
+          r is not None and "HELD" in r, str(r)[:80])
+    r = gate(dict(GOOD, status="not-published", statusReason="x"))
+    check("embed gate: a NOT-PUBLISHED record carrying a figure is REFUSED",
+          r is not None, str(r)[:80])
+    m = dict(GOOD); m["figure"] = None
+    check("embed gate: an as-filed record with no figure is REFUSED",
+          gate(m) is not None, str(gate(m))[:80])
+
+    #   exhaustiveness (OPEN.md 2s): the Nth value of an N-valued field
+    r = gate(dict(GOOD, status="provisional"))
+    check("embed gate: an UNRECOGNISED status is refused loudly, not ignored",
+          r is not None and "provisional" in r, str(r)[:90])
+
+    #   notes must be assembled, not merely absent
+    m = dict(GOOD); m["notes"] = None
+    check("embed gate: a record whose notes failed to assemble is REFUSED",
+          gate(m) is not None, str(gate(m))[:80])
+
+    #   the card and its basis must be about the same year
+    r = gate(dict(GOOD, basis="CITY REPORTED ACTUALS · FY 2024-25"))
+    check("embed gate: a card whose basis names a different year is REFUSED",
+          r is not None and "2024-25" in r, str(r)[:90])
+    #   positive control: a basis stating a RANGE is a different claim and
+    #   must still pass — districts.html publishes a history, not a year
+    r = gate(dict(GOOD, basis="AS FILED · FY 2016-17 TO FY 2023-24"))
+    check("embed gate: positive control — a basis naming a RANGE still passes",
+          r is None, str(r)[:90])
+
+    # ── 6. NO RANKING, NO COMPARISON, NO AGGREGATE ACROSS LAYERS ────────
+    multi = parts("cities.html#c=fresno,novato&y=2021-22&e=1")
+    check("embed: two selected records are REFUSED rather than compared",
+          multi["refused"] and not MONEY.search(multi["text"]),
+          multi["text"][:80])
+    check("embed: the refusal says why a comparison cannot be embedded",
+          "rank" in multi["text"].lower(), multi["text"][:100])
+
+    pct = parts("cities.html#c=fresno&y=2021-22&u=percent&e=1")
+    check("embed: a percent-of-displayed-total is REFUSED — the share is "
+          "meaningless away from its table",
+          pct["refused"] and "%" not in pct["text"], pct["text"][:80])
+
+    #   TWO LAYERS REFUSE, and both refusals are facts about what the layer
+    #   publishes rather than gaps. They are served by a page that loads no
+    #   payload and runs no render: a page that has already booted cannot be
+    #   un-booted, and replacing the body of one that had left address.html
+    #   rendering into a DOM that was no longer there.
+    def refusal(url):
+        page.goto("about:blank")
+        page.goto(f"{base}/{url}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1200)
+        return page.evaluate("""() => ({
+            url:  location.pathname + location.hash,
+            text: (document.querySelector(".eb-card") || {}).innerText || "",
+            back: (document.querySelector(".eb-back") || {}).getAttribute
+                   ? document.querySelector(".eb-back").getAttribute("href") : null,
+            payloads: [...document.scripts].filter(s => s.src).map(s => s.src)
+        })""")
+
+    addr = refusal("address.html#c=los-angeles&e=1")
+    check("embed: address.html REFUSES rather than embedding a stack",
+          "embed-refused.html" in addr["url"], addr["url"])
+    check("embed: the address refusal shows no number",
+          not MONEY.search(addr["text"]), addr["text"][:80])
+    check("embed: the address refusal says the records never sum",
+          "never sum" in addr["text"].lower(), addr["text"][:110])
+    check("embed: the address refusal links back to the address page",
+          addr["back"] == "address.html", str(addr["back"]))
+    #   the reason the refusal is its own page: it must not boot a layer
+    check("embed: the refusal page loads NO data payload at all",
+          not addr["payloads"], str(addr["payloads"][:2]))
+
+    comp = refusal("compensation.html#e=1")
+    check("embed: compensation.html REFUSES — the layer publishes no single "
+          "figure", "embed-refused.html" in comp["url"], comp["url"])
+    check("embed: the compensation refusal cites its own no-averages rule",
+          "average" in comp["text"].lower(), comp["text"][:110])
+    check("embed: the compensation refusal shows no number",
+          not MONEY.search(comp["text"]), comp["text"][:80])
+    check("embed: the two refusals give DIFFERENT reasons, not one generic "
+          "apology", addr["text"] != comp["text"])
+    #   positive control: the refusal page says something specific at all
+    check("embed: positive control — each refusal names its own layer's fact",
+          len(addr["text"]) > 200 and len(comp["text"]) > 200,
+          f"{len(addr['text'])}/{len(comp['text'])}")
+
+    # ── 7. A YEAR THE LAYER DOES NOT PUBLISH ────────────────────────────
+    wrong = parts("cities.html#c=hollister&y=2033-34&e=1")
+    check("embed: a year the layer does not publish is REFUSED rather than "
+          "silently replaced", wrong["refused"] and "2033-34" in wrong["text"],
+          wrong["text"][:90])
+    check("embed: that refusal shows no number",
+          not MONEY.search(wrong["text"]), wrong["text"][:80])
+
+    # ── 8. THE OFFER appears only when there is a figure to offer ───────
+    def offer(url):
+        fresh(url)
+        page.click("#citeToggle")
+        page.wait_for_timeout(300)
+        return page.evaluate("""() => {
+            const o = document.getElementById("embedOffer");
+            if (!o) return null;
+            return {hidden: o.hidden,
+                    code: (document.getElementById("embedCode") || {}).textContent || ""};
+        }""")
+
+    o = offer("cities.html#c=fresno&y=2021-22")
+    check("embed offer: a view with one figure offers an embed",
+          o and not o["hidden"] and "<iframe" in o["code"], str(o)[:80])
+    check("embed offer: the snippet addresses THIS record",
+          "c=fresno" in o["code"] and "e=1" in o["code"], o["code"][:110])
+    check("embed offer: the snippet needs no server and no image — it is the "
+          "site's own page", ".png" not in o["code"] and ".svg" not in o["code"]
+          and "api" not in o["code"].lower(), o["code"][:110])
+    o = offer("cities.html#y=2021-22")
+    check("embed offer: positive control — a view with NO figure offers "
+          "nothing rather than an address that refuses",
+          o and o["hidden"], str(o)[:80])
+
+    # ── 9. NARROW SCREENS. An embed is pasted into columns far narrower
+    #      than the site's own, so the 360 no-pan rule applies to it too.
+    page.set_viewport_size({"width": 360, "height": 720})
+    for pg, frag, layer in EMBEDDABLE[:4] + [("uc.html", "#c=san-francisco&y=2022-23&u=perFte", "UC notes")]:
+        fresh(f"{pg}{frag}&e=1")
+        over = page.evaluate(
+            "() => document.documentElement.scrollWidth - window.innerWidth")
+        check(f"embed: {layer} does not pan sideways at 360px", over <= 1, str(over))
+    page.set_viewport_size({"width": 1280, "height": 900})
+
+
 def main():
     from playwright.sync_api import sync_playwright
 
@@ -13276,6 +13663,7 @@ def main():
             test_entity_permalinks_and_derived_findings(page, base)
             test_derived_artefacts_are_watched()
             test_what_changed(page, base)
+            test_citation_embed(page, base)
             test_all_zero_filings_held(page, base)
             test_print_completeness(page, base)
             test_print_greyscale()
