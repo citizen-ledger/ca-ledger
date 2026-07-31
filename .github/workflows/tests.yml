@@ -1,0 +1,95 @@
+# The test suite, in CI — on every pull request and every push to main.
+#
+# WHY THIS EXISTS. Nothing in CI ran the suite. deploy-pages.yml uploaded the
+# repository root with no build step and no test step, so every green run this
+# project relied on was local, and main could go red without anything
+# noticing. It did: #117 landed a 34th finding document, #118 landed the
+# assertion that every document is in the manifest, each branch was green, and
+# their merge was not. The ordering was invisible rather than merely
+# unprevented, because nothing was watching.
+#
+# WHAT IT COSTS, MEASURED (2026-07-29, Apple Silicon, cache present):
+#   full suite            500 s   4,487 assertions   104 test functions
+#   without source cache  ~500 s  4,345 assertions   6 tests excluded
+# 72 of the 104 drive real pages through Playwright. A GitHub-hosted runner is
+# slower than this machine — budget 12-20 minutes. That is inside what a pull
+# request can carry, so THE FULL SUITE RUNS ON EVERY PR: there is no split
+# into fast and slow tiers, because splitting by guess is how a gap gets
+# introduced, and the measurement says no split is needed.
+#
+# THE BROWSER. tests/run_tests.py asks for channel="chrome" and falls back to
+# bundled Chromium if Chrome is absent — so CI installs Chromium only, and
+# takes the fallback path. That path is exercised here on every run, which is
+# more than it gets locally: this machine has Chrome, so the fallback is the
+# less-travelled branch and CI is where it is proven.
+#
+# WHAT CI CANNOT RUN, AND WHY IT IS NOT HIDDEN. pipeline/cache/ is 190 files
+# and 7.3 GB of fetched source documents; it is gitignored and never in a
+# clone, and two of its sources cannot be fetched unattended at all — CSU is
+# bot-gated and compensation's robots.txt excludes automated retrieval, which
+# is a stated exception in docs/SCOPE.md rather than an obstacle to route
+# around. Six tests need it. They are declared in REQUIRES_SOURCE_CACHE with
+# a reason each, printed and counted in the run's output, and NOT ONE
+# ASSERTION IS WEAKENED: all six run in full on every local run.
+#
+# So CI verifies the shipped payloads, pages, print sheets, CSVs and derived
+# artefacts — everything a reader touches. It does not verify extraction FROM
+# the source documents, because those documents are not in the repository.
+# That remains a maintainer's local responsibility and is stated here so it
+# is a known boundary rather than an assumed one.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # Callable, so deploy-pages.yml gates on exactly this job rather than on a
+  # second copy of it that could drift.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded push does not need its suite finished; the newest commit is
+  # the one that will be merged or deployed.
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # Pinned to a full commit SHA, as deploy-pages.yml already is. This is
+      # the same SHA that workflow uses, so it is a pin this repository has
+      # already been running rather than a new one taken on trust.
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # No setup-python action: ubuntu-latest ships a current Python 3, and
+      # not adding an action is one less third-party SHA to verify. The suite
+      # needs nothing newer than what the runner provides.
+      - name: Python version
+        run: python3 --version
+
+      - name: Install test dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install playwright pypdf openpyxl pdfplumber
+
+      # Chromium only. The suite falls back to it automatically; Chrome is not
+      # installed and is not needed.
+      - name: Install Chromium for Playwright
+        run: python3 -m playwright install --with-deps chromium
+
+      # Derived artefacts are regenerated and compared BEFORE the suite, so a
+      # stale manifest is reported as what it is rather than surfacing as an
+      # unrelated assertion failure later. --check writes nothing; the suite's
+      # own freshness assertions do the failing.
+      - name: Derived artefacts — report staleness
+        run: python3 pipeline/rebuild_derived.py --check
+
+      - name: Run the suite
+        run: python3 tests/run_tests.py

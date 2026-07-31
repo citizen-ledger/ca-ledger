@@ -3253,6 +3253,77 @@ def test_ccc_apportionment_availability(page, base):
           "not published" in body, body[:0])
 
 
+def test_cache_guard_round_trip():
+    """cache_guard's MECHANISM, provable without the fetched sources.
+
+    Split out of test_source_cache_unwritable, which is excluded in CI. That
+    test's behavioural half was guarded by `if probe.exists()` on a CCC file
+    that a clone does not have — so in CI it did not fail, it SILENTLY DID
+    NOT RUN, which is worse. What it was really testing is a property of
+    cache_guard the code, not of the fetched documents, so it can be proved
+    on a file this test creates and locks itself.
+
+    That distinction is the whole point of the split: a limit about the
+    SOURCES (the PDFs are not in the repository) is different from a limit
+    about VERSION CONTROL (git stores only the executable bit, so 0444
+    cannot survive a checkout). Neither of them is a limit on whether
+    cache_guard works, and this proves that it does — in CI, on every run."""
+    import hashlib
+    import tempfile as _tf
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import cache_guard
+
+    with _tf.TemporaryDirectory() as td:
+        probe = Path(td) / "probe.txt"
+        payload = b"cached-source-bytes\n"
+        probe.write_bytes(payload)
+        before = hashlib.sha256(payload).hexdigest()
+
+        # POSITIVE CONTROL FIRST: unlocked, the write SUCCEEDS. Without this
+        # the refusal below could be a file that was never writable, and the
+        # assertion would prove nothing.
+        probe.write_bytes(b"scratch")
+        check("cache round trip: before locking, a direct write succeeds — "
+              "so the refusal below is the guard and not the filesystem",
+              probe.read_bytes() == b"scratch")
+        probe.write_bytes(payload)
+
+        n = cache_guard.lock(Path(td))
+        check("cache round trip: lock() reports the file it locked", n == 1, str(n))
+        check("cache round trip: and the file is read-only afterwards",
+              cache_guard.is_locked(probe))
+
+        refused = False
+        try:
+            probe.write_bytes(b"MUTATION-TEST-PROBE")
+        except (PermissionError, OSError):
+            refused = True
+        finally:
+            if probe.read_bytes() != payload:      # safe even if it wrote
+                os.chmod(probe, 0o644)
+                probe.write_bytes(payload)
+                os.chmod(probe, 0o444)
+        check("cache round trip: a direct write to a locked source is REFUSED",
+              refused)
+        check("cache round trip: and the bytes are unchanged",
+              hashlib.sha256(probe.read_bytes()).hexdigest() == before)
+
+        # THE SANCTIONED EXCEPTION still works, and re-locks on the way out.
+        wrote = False
+        with cache_guard.unlocked(probe):
+            try:
+                probe.write_bytes(b"deliberate refresh\n")
+                wrote = True
+            except OSError:
+                pass
+        check("cache round trip: a deliberate refresh CAN write through "
+              "cache_guard.unlocked()", wrote)
+        check("cache round trip: and the file is re-locked on the way out, so "
+              "a refresh cannot leave the cache open behind it",
+              cache_guard.is_locked(probe))
+        os.chmod(probe, 0o644)                     # let TemporaryDirectory clean up
+
+
 def test_source_cache_unwritable():
     """THE SOURCE CACHE CANNOT BE REACHED BY A TEST.
 
@@ -6837,7 +6908,22 @@ def test_no_scratch_in_protected_dirs():
     sys.path.insert(0, str(ROOT / "pipeline"))
     import cache_guard
     cache = ROOT / "pipeline" / "cache"
-    if cache.exists():
+    # THE SAME VERSION-CONTROL LIMIT, one level down. This asserts the state
+    # of a working machine's cache, and a checkout has no such state: git
+    # stores only the executable bit, so the one tracked cache file arrives
+    # 0644 and this reads as a live orphan when it is a fresh clone. Recorded
+    # as a NAMED exclusion rather than made conditional in silence — a
+    # conditional assertion nobody can see is the thing this project refuses.
+    # The static sweep above, which is the substance of this test, runs
+    # everywhere including CI.
+    if not HAVE_SOURCE_CACHE:
+        EXCLUDED.append((
+            "test_no_scratch_in_protected_dirs — one assertion only",
+            "VERSION CONTROL — 'every cached source is read-only right now' "
+            "asserts a mode git cannot carry (100644 is all it records), so "
+            "it cannot hold in a fresh checkout. The AST sweep that is the "
+            "substance of this test runs here in full."))
+    elif cache.exists():
         writable = [str(p.relative_to(cache)) for p in cache.rglob("*")
                     if p.is_file() and not p.is_symlink()
                     and not cache_guard.is_locked(p)]
@@ -13004,6 +13090,113 @@ def test_v25_column_guard():
 
 
 # ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# WHAT CI CANNOT RUN, AND WHY — two different kinds of limit
+#
+# The first CI run failed on all six of these, because the trigger below was
+# wrong: it asked whether pipeline/cache/ was non-empty. It is not empty in a
+# clone. EXACTLY ONE file under it is tracked —
+# pipeline/cache/csu/csu-fy2324.tsv — committed deliberately despite
+# .gitignore because CSU is bot-gated and cannot be fetched unattended
+# (docs/SCOPE.md names that path). One committed file made the whole cache
+# look present, so nothing was excluded and everything ran.
+#
+# TWO KINDS OF LIMIT, and they are not the same thing:
+#
+#   ABOUT THE SOURCES — the fetched documents are not in the repository.
+#       190 files, 7.3 GB, gitignored. A test that opens a cached Exhibit C
+#       PDF cannot run where the PDF does not exist. This is a property of
+#       what the project chooses to publish, and it would be fixed by
+#       committing 7.3 GB, which the project declines to do.
+#
+#   ABOUT VERSION CONTROL — git records only the executable bit.
+#       `git ls-files -s` shows mode 100644 for the one tracked cache file.
+#       The 0444 that cache_guard sets is a property of a working machine and
+#       CANNOT SURVIVE A CLONE, whatever the cache contains. This is not
+#       about sources at all; it is about what git can represent.
+#
+# Distinguishing them matters because the first could in principle change and
+# the second cannot.
+#
+# NOT ONE ASSERTION IS WEAKENED. Every test below runs in full whenever its
+# preconditions hold, which is every local run.
+
+REQUIRES_SOURCE_CACHE = {
+    # --- about the sources: the fetched documents are not in the repository
+    "test_empty_gate_guard":
+        "SOURCES — drives fetch_ccc_data to the point of reading a verified "
+        "Exhibit C PDF, and raises SystemExit without one. The PDFs are not "
+        "in the repository.",
+    "test_ccc_source_identity":
+        "SOURCES — opens each cached Exhibit C to check the document declares "
+        "itself as the year it is read as.",
+    "test_ccc_2018_19_extractor":
+        "SOURCES — runs the FY2018-19 extractor over its cached PDF.",
+    "test_ccc_exhibitc_vintages":
+        "SOURCES — checks every declared vintage against the cached file it "
+        "names.",
+    # --- about version control: git cannot carry the mode
+    "test_source_cache_unwritable":
+        "SOURCES + VERSION CONTROL — it asserts both that there are cached "
+        "sources to protect (there are 190 locally, 1 in a clone) and that "
+        "every one is mode 0444. The second can never hold in a fresh "
+        "checkout: git stores only the executable bit, so the one tracked "
+        "cache file arrives 0644 however complete the cache is. The "
+        "round-trip half of this guard was split out into "
+        "test_cache_guard_round_trip, which DOES run in CI.",
+}
+
+# test_csu_reconciling_not_tautological is deliberately NOT here. Its input,
+# pipeline/cache/csu/csu-fy2324.tsv, is the one committed cache file, so it
+# runs in CI and passed there on the first run. Excluding it would have given
+# up coverage the project actually has.
+
+SOURCE_CACHE = ROOT / "pipeline" / "cache"
+
+
+def _have_source_cache():
+    """True only when the FETCHED sources are present — not merely when the
+    directory exists.
+
+    Derived, never a file count: the sources genuinely absent from a clone
+    are exactly the cache files git does not track. One deliberately
+    committed file must not read as a full cache, which is the mistake that
+    made the first CI run red."""
+    if not SOURCE_CACHE.exists():
+        return False
+    try:
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z", "pipeline/cache"], cwd=str(ROOT),
+            capture_output=True, text=True, timeout=60).stdout.split("\0")
+    except Exception:
+        tracked = []
+    tracked = {ROOT / f for f in tracked if f}
+    for p in SOURCE_CACHE.rglob("*"):
+        if p.is_file() and not p.is_symlink() and p not in tracked:
+            return True          # at least one fetched source is present
+    return False
+
+
+HAVE_SOURCE_CACHE = _have_source_cache()
+
+
+def run_or_exclude(fn, *args):
+    """Run a test, or record it as an EXCLUSION with its stated reason.
+
+    A test skipped silently is a test that has stopped existing without
+    anyone deciding it should. Every exclusion is printed, counted and
+    attributed, and the summary line says so."""
+    name = fn.__name__
+    if name in REQUIRES_SOURCE_CACHE and not HAVE_SOURCE_CACHE:
+        EXCLUDED.append((name, REQUIRES_SOURCE_CACHE[name]))
+        return
+    fn(*args)
+
+
+EXCLUDED = []
+
+
 def main():
     from playwright.sync_api import sync_playwright
 
@@ -13042,16 +13235,17 @@ def main():
             test_csu_reconciling_not_tautological(page, base)
             test_unknown_facts_render(page, base)
             test_ccc_apportionment_availability(page, base)
-            test_source_cache_unwritable()
+            test_cache_guard_round_trip()
+            run_or_exclude(test_source_cache_unwritable)
             test_ccc_fourteen_year_gates()
-            test_ccc_source_identity()
-            test_ccc_exhibitc_vintages()
-            test_ccc_2018_19_extractor()
+            run_or_exclude(test_ccc_source_identity)
+            run_or_exclude(test_ccc_exhibitc_vintages)
+            run_or_exclude(test_ccc_2018_19_extractor)
             test_ccc_multi_year_payload()
             test_strict_source_columns()
             test_unpublished_reason_live(page, base)
             test_uc_audit_quotation()
-            test_empty_gate_guard()
+            run_or_exclude(test_empty_gate_guard)
             test_no_vacuous_assertions()
             test_identity_leaks(page, base)
             test_state_fund_identity(page, base)
@@ -13132,7 +13326,30 @@ def main():
     if FAIL:
         print(f"\n{len(FAIL)} of {total} assertions FAILED", file=sys.stderr)
         sys.exit(1)
-    print(f"All {total} assertions passed (V1 + V2, real data).")
+    if EXCLUDED:
+        # NAMED, REASONED, COUNTED. An exclusion a reader cannot see is a
+        # test that has stopped existing without anyone deciding it should.
+        print(f"\n{len(EXCLUDED)} EXCLUSION(S) — this checkout has the "
+              "committed CSU cache file and none of the fetched sources:",
+              file=sys.stderr)
+        for n, why in EXCLUDED:
+            print(f"    {n}\n        {why}", file=sys.stderr)
+        print("\n    Two kinds of limit, and they are not the same:\n"
+              "      SOURCES — the fetched documents (190 files, 7.3 GB) are "
+              "gitignored, so a test that opens one cannot run here. That is "
+              "what the project publishes, not a defect.\n"
+              "      VERSION CONTROL — git stores only the executable bit, so "
+              "the 0444 cache_guard sets cannot survive a checkout however "
+              "complete the cache is. cache_guard's MECHANISM is still proved "
+              "on every run by test_cache_guard_round_trip.\n"
+              "    Not weakened and not skipped: each runs in full whenever "
+              "its preconditions hold. CI verifies the shipped payloads, "
+              "pages, print sheets, CSVs and derived artefacts — everything a "
+              "reader touches — but not EXTRACTION from the source "
+              "documents.", file=sys.stderr)
+    print(f"All {total} assertions passed (V1 + V2, real data)"
+          + (f"; {len(EXCLUDED)} excluded for want of the source cache."
+             if EXCLUDED else "."))
 
 if __name__ == "__main__":
     main()
