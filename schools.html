@@ -470,6 +470,7 @@
     <div class="hd-actions np">
       <button class="btn ink" id="citeToggle">Cite</button>
       <button class="btn ink" id="csvBtn">Download CSV</button>
+      <button class="btn ink" id="seriesBtn" aria-describedby="seriesHint">Full history (CSV)</button><span id="seriesHint" class="visually-hidden">Every fiscal year for the selected record, one row per year, with each year’s own basis and gate tier.</span>
       <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
     </div>
   </div>
@@ -693,6 +694,169 @@
     d.innerHTML = "<b>RECONCILES</b>";
     d.appendChild(document.createTextNode(RECON_TEXT));
     head.appendChild(d);
+  }
+
+  /* ==== TIME-SERIES EXPORT ==============================================
+     One entity's full history in one file. The site could already export one
+     year for every entity (the layer CSV) or every year for one figure (the
+     bulk file); this is the third cut, and it is the one a reader charting a
+     single city actually wants.
+
+     THE COMPARABILITY WORK IS THE SUBSTANCE, NOT THE EXPORT. Five rules, and
+     each exists because a spreadsheet strips away the thing the page uses to
+     carry the caveat:
+
+     1. EVERY YEAR CARRIES ITS OWN BASIS. The C2 basis line is per-view; a
+        series spans years that can differ in basis, vintage and gate tier. So
+        basis, tier and source-vintage are COLUMNS, repeated on every row —
+        never stated once in the header where sorting separates them from the
+        figures they qualify.
+
+     2. THE THREE ABSENCE STATES TRAVEL. A page has daggers and a tier band; a
+        CSV has neither, so the encoding is all a reader gets. A reported zero
+        is the digit 0. A not-published figure is an EMPTY cell with
+        status=not-published. A held figure is an EMPTY cell with status=held
+        and a reason. Never the same mark for two of them, and the convention
+        is stated in the header as well as encoded per row.
+
+     3. BREAKS ARE CARRIED ON THE ROW WHERE THEY TAKE EFFECT. The brief asked
+        for rows rather than footnotes, and the reasoning generalises further
+        than the form: a separate marker row is destroyed by the first sort
+        and dropped by most parsers, which is the same failure as a header
+        note. A `break_here` COLUMN on the year the break takes effect
+        survives sorting, filtering and charting — the operations that lose a
+        footnote. Stated here because it is a deliberate departure from the
+        literal instruction and not an oversight.
+
+     4. HELD YEARS APPEAR AS ROWS. UC FY2019-20 is held, not missing. A series
+        that omits it implies continuity across a year the Ledger refused, so
+        the row exists, carries no figure, and says why.
+
+     5. NO DERIVED CHANGE COLUMN. #119 measured what a delta against a held
+        year produces: $0 -> $153,245,000, a confident increase attributed to
+        a city on the strength of a filing that was refused. A file has no
+        place to explain that, and a reader who sorts by it will never see the
+        explanation. The header says the column is absent and why. */
+
+  function seriesCsv(){
+    const rows = seriesRows();               // per-layer, defined on the page
+    if (!rows || !rows.length) return null;
+    const meta = seriesMeta();               // per-layer
+
+    const q = v => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const head = [
+      "# Citizen Ledger — " + meta.layer + " — ONE ENTITY, EVERY YEAR",
+      "# Entity: " + meta.entity,
+      "# Source: " + meta.source,
+      "# Generated: " + meta.generated + " · exported: "
+        + new Date().toISOString().slice(0, 10),
+      "# Permalink: " + location.href,
+      meta.digest ? "# Record integrity: SHA-256 " + meta.digest + " ("
+        + meta.payload + "). Verify with python3 pipeline/verify_digest.py "
+        + "from the repository." : "# Record integrity: not carried by this layer",
+      "#",
+      "# EVERY ROW CARRIES ITS OWN BASIS, TIER AND VINTAGE. These can differ "
+        + "between years in one series, so they are columns and not a header "
+        + "note — sorting this file must not separate a figure from what it "
+        + "measures.",
+      "#",
+      "# ABSENT VALUES — three different facts, never the same mark:",
+      "#   0            a REPORTED ZERO. The entity filed that amount.",
+      "#   empty + status=not-published   the source publishes no figure. "
+        + "This is NOT a zero.",
+      "#   empty + status=held            the source published something the "
+        + "Ledger refused (it did not reconcile). The reason is in "
+        + "status_reason. NOT a zero and NOT missing.",
+      "#",
+      "# break_here names a documented change in what the series measures, on "
+        + "the row where it takes effect. A break is not a change in spending.",
+      "#",
+      "# THERE IS DELIBERATELY NO YEAR-OVER-YEAR CHANGE COLUMN. A delta "
+        + "against a held or not-published year produces a confident wrong "
+        + "number, and a spreadsheet has nowhere to explain it. Compute "
+        + "changes yourself, after deciding what to do with the held rows.",
+      "# Licence: CC0 1.0 Universal (public domain). Cite freely.",
+    ];
+    const cols = meta.columns.concat(
+      ["status", "status_reason", "basis", "gate_tier", "source_vintage",
+       "break_here"]);
+    const body = rows.map(r => cols.map(c => q(r[c])).join(","));
+    return head.join("\n") + "\n" + cols.join(",") + "\n" + body.join("\n") + "\n";
+  }
+
+  function downloadSeries(){
+    const csv = seriesCsv();
+    if (!csv) return;
+    const m = seriesMeta();
+    const name = "citizen-ledger-" + m.slug + "-series.csv";
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  (function(){
+    const b = document.getElementById("seriesBtn");
+    if (b) b.addEventListener("click", downloadSeries);
+  })();
+  /* K-12 — nine years. NO HELD YEARS on this layer: every year that ships,
+     ships. What it has instead is held/not-published FACTS INSIDE years —
+     basicAidStatus is four-valued, and meta.unpublished records that CDE
+     published no LCFF funding summary at all for FY2016-17..FY2019-20, so
+     basic-aid and funded ADA are absent for those years while Current
+     Expense is present. Checked for both shapes rather than assumed. */
+  function seriesMeta(){
+    const d = D.districts[S.sel[0]];
+    return {layer:"K-12 school districts", entity:d.name, slug:S.sel[0],
+      source:D.meta.sourceLabel, generated:D.meta.generated,
+      digest:(D.meta.integrity||{}).digest, payload:"school-data.js",
+      columns:["fiscal_year","entity","current_expense_of_education_usd","ada",
+               "basic_aid_status","basic_aid_status_reason"]};
+  }
+  function seriesRows(){
+    if (!S.sel.length) return null;
+    const d = D.districts[S.sel[0]];
+    const UNPUB = (D.meta && D.meta.unpublished) || {};
+    const TIER="GATED · reproduces CDE's published Current Expense of Education, to the cent";
+    const BASIS="Unaudited actuals under SACS · Current Expense of Education (EDP 365) · dollars and cents";
+    const KNOWN=["basic-aid","state-funded","not-published","held"];
+    return D.years.map(function(fy){
+      const y=(d.years||{})[fy];
+      const row={fiscal_year:fy, entity:d.name, basis:BASIS, gate_tier:TIER,
+        source_vintage:fy, break_here:"", status:"as-filed", status_reason:"",
+        current_expense_of_education_usd:"", ada:"",
+        basic_aid_status:"", basic_aid_status_reason:""};
+      if (!y){
+        row.status="not-published";
+        row.status_reason="This district has no record in the source for this fiscal year.";
+        return row;
+      }
+      row.current_expense_of_education_usd = y.currentExpense==null?"":y.currentExpense;
+      row.ada = y.ada==null?"":y.ada;
+      if (y.currentExpense==null){
+        row.status="not-published";
+        row.status_reason="CDE publishes no Current Expense figure for this district-year.";
+      }
+      /* THE HELD/ABSENT FACT INSIDE A SHIPPED YEAR, with its own column and
+         its own reason — enumerated, with a loud arm for a fifth value. */
+      const bs=y.basicAidStatus;
+      if (bs && KNOWN.indexOf(bs)===-1){
+        row.basic_aid_status="unrecognised:"+bs;
+        row.basic_aid_status_reason="This export has no description for that status. Reported rather than guessed.";
+      } else if (bs==="not-published"){
+        row.basic_aid_status="not-published";
+        row.basic_aid_status_reason=((UNPUB[fy]||{}).basicAid)
+          || "CDE publishes no LCFF funding summary for this fiscal year, so basic-aid status is not determined either way. This is not a finding that the district is state-funded.";
+      } else if (bs){
+        row.basic_aid_status=bs;
+      }
+      return row;
+    });
   }
 
   function paintReconFoot(v){
