@@ -618,6 +618,7 @@
       <button class="btn" id="savedToggle">Saved views</button>
       <button class="btn ink" id="citeToggle">Cite</button>
       <button class="btn ink" id="csvBtn">Download CSV</button>
+      <button class="btn ink" id="seriesBtn" aria-describedby="seriesHint">Full history (CSV)</button><span id="seriesHint" class="visually-hidden">Every fiscal year for the selected record, one row per year, with each year’s own basis and gate tier.</span>
       <button class="btn ink" id="printBtn" aria-describedby="printBtnHint">Print record sheet</button><span id="printBtnHint" class="visually-hidden">Opens your browser&rsquo;s print dialogue for a one-page record sheet.</span>
     </div>
   </div>
@@ -1317,6 +1318,174 @@
     d.innerHTML = "<b>RECONCILES</b>";
     d.appendChild(document.createTextNode(RECON_TEXT));
     head.appendChild(d);
+  }
+
+  /* ==== TIME-SERIES EXPORT ==============================================
+     One entity's full history in one file. The site could already export one
+     year for every entity (the layer CSV) or every year for one figure (the
+     bulk file); this is the third cut, and it is the one a reader charting a
+     single city actually wants.
+
+     THE COMPARABILITY WORK IS THE SUBSTANCE, NOT THE EXPORT. Five rules, and
+     each exists because a spreadsheet strips away the thing the page uses to
+     carry the caveat:
+
+     1. EVERY YEAR CARRIES ITS OWN BASIS. The C2 basis line is per-view; a
+        series spans years that can differ in basis, vintage and gate tier. So
+        basis, tier and source-vintage are COLUMNS, repeated on every row —
+        never stated once in the header where sorting separates them from the
+        figures they qualify.
+
+     2. THE THREE ABSENCE STATES TRAVEL. A page has daggers and a tier band; a
+        CSV has neither, so the encoding is all a reader gets. A reported zero
+        is the digit 0. A not-published figure is an EMPTY cell with
+        status=not-published. A held figure is an EMPTY cell with status=held
+        and a reason. Never the same mark for two of them, and the convention
+        is stated in the header as well as encoded per row.
+
+     3. BREAKS ARE CARRIED ON THE ROW WHERE THEY TAKE EFFECT. The brief asked
+        for rows rather than footnotes, and the reasoning generalises further
+        than the form: a separate marker row is destroyed by the first sort
+        and dropped by most parsers, which is the same failure as a header
+        note. A `break_here` COLUMN on the year the break takes effect
+        survives sorting, filtering and charting — the operations that lose a
+        footnote. Stated here because it is a deliberate departure from the
+        literal instruction and not an oversight.
+
+     4. HELD YEARS APPEAR AS ROWS. UC FY2019-20 is held, not missing. A series
+        that omits it implies continuity across a year the Ledger refused, so
+        the row exists, carries no figure, and says why.
+
+     5. NO DERIVED CHANGE COLUMN. #119 measured what a delta against a held
+        year produces: $0 -> $153,245,000, a confident increase attributed to
+        a city on the strength of a filing that was refused. A file has no
+        place to explain that, and a reader who sorts by it will never see the
+        explanation. The header says the column is absent and why. */
+
+  function seriesCsv(){
+    const rows = seriesRows();               // per-layer, defined on the page
+    if (!rows || !rows.length) return null;
+    const meta = seriesMeta();               // per-layer
+
+    const q = v => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const head = [
+      "# Citizen Ledger — " + meta.layer + " — ONE ENTITY, EVERY YEAR",
+      "# Entity: " + meta.entity,
+      "# Source: " + meta.source,
+      "# Generated: " + meta.generated + " · exported: "
+        + new Date().toISOString().slice(0, 10),
+      "# Permalink: " + location.href,
+      meta.digest ? "# Record integrity: SHA-256 " + meta.digest + " ("
+        + meta.payload + "). Verify with python3 pipeline/verify_digest.py "
+        + "from the repository." : "# Record integrity: not carried by this layer",
+      "#",
+      "# EVERY ROW CARRIES ITS OWN BASIS, TIER AND VINTAGE. These can differ "
+        + "between years in one series, so they are columns and not a header "
+        + "note — sorting this file must not separate a figure from what it "
+        + "measures.",
+      "#",
+      "# ABSENT VALUES — three different facts, never the same mark:",
+      "#   0            a REPORTED ZERO. The entity filed that amount.",
+      "#   empty + status=not-published   the source publishes no figure. "
+        + "This is NOT a zero.",
+      "#   empty + status=held            the source published something the "
+        + "Ledger refused (it did not reconcile). The reason is in "
+        + "status_reason. NOT a zero and NOT missing.",
+      "#",
+      "# break_here names a documented change in what the series measures, on "
+        + "the row where it takes effect. A break is not a change in spending.",
+      "#",
+      "# THERE IS DELIBERATELY NO YEAR-OVER-YEAR CHANGE COLUMN. A delta "
+        + "against a held or not-published year produces a confident wrong "
+        + "number, and a spreadsheet has nowhere to explain it. Compute "
+        + "changes yourself, after deciding what to do with the held rows.",
+      "# Licence: CC0 1.0 Universal (public domain). Cite freely.",
+    ];
+    const cols = meta.columns.concat(
+      ["status", "status_reason", "basis", "gate_tier", "source_vintage",
+       "break_here"]);
+    const body = rows.map(r => cols.map(c => q(r[c])).join(","));
+    return head.join("\n") + "\n" + cols.join(",") + "\n" + body.join("\n") + "\n";
+  }
+
+  function downloadSeries(){
+    const csv = seriesCsv();
+    if (!csv) return;
+    const m = seriesMeta();
+    const name = "citizen-ledger-" + m.slug + "-series.csv";
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  (function(){
+    const b = document.getElementById("seriesBtn");
+    if (b) b.addEventListener("click", downloadSeries);
+  })();
+  /* THE STATE BUDGET — nine years, and the break here is DIFFERENT IN KIND
+     from CCC's roster or UC's DOE treatment. Those change what is reported.
+     This changes a DENOMINATOR INSIDE ONE COLUMN: DOF's population estimates
+     for FY2017-18..FY2019-20 rest on the 2010 census benchmark and the ones
+     from FY2020-21 on the 2020 benchmark, and the two series are not
+     continuous. So the Ledger publishes no per-resident figure before
+     FY2020-21 at all.
+     It therefore needs BOTH treatments, not one:
+       · a COLUMN-SCOPED absence — per_resident_usd is empty for the earlier
+         years with its own status column saying not-published and why,
+         because the row's spending figure IS published and a row-level
+         status would wrongly disown it;
+       · and the BREAK on FY2020-21, derived by asking which year first
+         carries a population, never hardcoded.
+     A row-level status alone would have said the whole year was absent. */
+  function seriesMeta(){
+    const a = S.drill ? (agencies(S.year)||[]).find(function(x){return x.id===S.drill;}) : null;
+    return {layer:"State budget", entity: a ? a.name : "All agencies",
+      slug: a ? a.id : "all-agencies",
+      source:D.meta.sourceLabel, generated:D.meta.generated,
+      digest:(D.meta.integrity||{}).digest, payload:"data.js",
+      columns:["fiscal_year","entity","enacted_state_funds_usd",
+               "general_fund_usd","special_funds_usd","bond_funds_usd",
+               "per_resident_usd","per_resident_status"]};
+  }
+  function seriesRows(){
+    const POP=(D.meta.population)||{}, NOTE=D.meta.populationNote||"";
+    const TIER="GATED · agency rows reproduce DOF's published statewide total, in thousands";
+    const BASIS="Enacted appropriations on California's Budgetary-Legal basis · General + Special + Bond · NOT actual expenditures";
+    const yrs=D.years;
+    return yrs.map(function(fy,i){
+      const ags=agencies(fy)||[];
+      const a = S.drill ? ags.find(function(x){return x.id===S.drill;}) : null;
+      const src = a ? [a] : ags;
+      const gf=src.reduce(function(s,x){return s+(x.gf||0);},0);
+      const sp=src.reduce(function(s,x){return s+(x.sp||0);},0);
+      const bd=src.reduce(function(s,x){return s+(x.bd||0);},0);
+      const row={fiscal_year:fy, entity:a?a.name:"All agencies", basis:BASIS,
+        gate_tier:TIER, source_vintage:fy, break_here:"",
+        status:"as-filed", status_reason:"",
+        enacted_state_funds_usd:Math.round((gf+sp+bd)*1e9),
+        general_fund_usd:Math.round(gf*1e9),
+        special_funds_usd:Math.round(sp*1e9),
+        bond_funds_usd:Math.round(bd*1e9),
+        per_resident_usd:"", per_resident_status:""};
+      /* the column-scoped absence, and the break on the first year that has one */
+      if (POP[fy]==null){
+        row.per_resident_status="not-published";
+        row.status_reason="Per-resident is not published for this year — see per_resident_status. The spending figures on this row ARE published.";
+      } else {
+        row.per_resident_usd=Math.round((gf+sp+bd)*1e9/(POP[fy]*1e6));
+        row.per_resident_status="as-filed";
+        if (i>0 && POP[yrs[i-1]]==null)
+          row.break_here="DENOMINATOR CHANGE — per-resident figures begin this year. "+NOTE
+            +" Earlier years carry no per-resident figure rather than one on a different benchmark.";
+      }
+      return row;
+    });
   }
 
   function renderReconFoot(C){
