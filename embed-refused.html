@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Ledger — this layer publishes no single figure</title>
+<meta name="description" content="Why two of Citizen Ledger's layers cannot be embedded as a single figure.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<style>
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/plex-mono-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+  /* THIS PAGE LOADS NO PAYLOAD AND RUNS NO RENDER. That is the point of it.
+     address.html and compensation.html refuse an embed, and the first way
+     they did so was to replace their own body once they had booted — which
+     left their async work rendering into a DOM that was no longer there and
+     threw into the console of whatever article had embedded them. A refusal
+     that needs nothing from the page should not be served by the page: the
+     redirect happens while <head> is still parsing, so nothing boots at all. */
+  :root{
+    --paper:#faf8f4; --ink:#1a1a18; --graphite:#55524c; --rule:#d8d4cc;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:14px;background:var(--paper);color:var(--ink);
+    font-family:var(--serif);font-size:13px;line-height:1.5}
+  .eb-card{border:1px solid var(--rule);background:var(--paper);
+    padding:16px 18px;max-width:640px}
+  .eb-kick{font-family:var(--mono);font-size:9px;letter-spacing:.13em;
+    color:var(--graphite);border-bottom:1px solid var(--rule);
+    padding-bottom:7px;margin-bottom:11px}
+  .eb-why{font-size:11.5px;line-height:1.55;margin:0 0 9px}
+  .eb-foot{margin-top:13px;border-top:1px solid var(--rule);padding-top:9px}
+  .eb-back{font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+    color:var(--ink)}
+  @media (max-width:400px){ body{padding:9px} }
+</style>
+</head>
+<body>
+<div class="eb-card">
+  <div class="eb-kick">CITIZEN LEDGER · NO FIGURE SHOWN</div>
+  <div id="why"><p class="eb-why">This part of the Ledger does not publish a
+    single figure that can travel on its own.</p></div>
+  <div class="eb-foot"><a class="eb-back" id="back" href="index.html"
+    target="_blank" rel="noopener">Open the full record at Citizen Ledger →</a></div>
+</div>
+<script>
+(function(){
+  /* Keyed by layer, because the two refusals are different facts about what
+     each layer publishes — not one generic apology for a missing feature. */
+  var WHY = {
+    address: {
+      page: "address.html",
+      text: ["This is an address, not a figure. It stacks a city, a county, a "
+        + "school district and every special district that serves one address, "
+        + "and those records never sum — each is filed against a different "
+        + "scope, on a different basis, for a different fiscal year.",
+        "An embed carries one figure, so an aggregate across layers is exactly "
+        + "what it must not carry. Embed a figure from one of the layer pages "
+        + "instead: each of them publishes a single record you can cite."]
+    },
+    compensation: {
+      page: "compensation.html",
+      text: ["This layer publishes no single figure to embed. It is a list of "
+        + "individual reported positions, and it states in its own record "
+        + "sheet that it carries no averages and is not a share of spending — "
+        + "so any one number drawn from it (a total, a mean, a count read as a "
+        + "headcount) would be a figure the source does not publish.",
+        "It is also as-filed and unreconciled. The State Controller publishes "
+        + "an annual total in a press release, but this export is a live "
+        + "database with no as-of-date total, so there is no instant at which "
+        + "a gate could be applied. Link to the record instead of embedding a "
+        + "number from it."]
+    }
+  };
+  var p = new URLSearchParams(location.hash.replace(/^#/, ""));
+  var w = WHY[p.get("l")];
+  if (!w) return;                              // the generic line already shown
+  document.getElementById("why").innerHTML = w.text.map(function(t){
+    return '<p class="eb-why">' + t.replace(/[&<>]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }) + '</p>'; }).join("");
+  document.getElementById("back").setAttribute("href", w.page);
+})();
+</script>
+</body>
+</html>

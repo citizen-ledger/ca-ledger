@@ -32,6 +32,42 @@
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/plex-mono-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/plex-mono-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+  /* ---- citation embed ---- */
+  html[data-embed] , html[data-embed] body{background:var(--paper);margin:0;padding:0}
+  #embedRoot{padding:14px}
+  .eb-card{border:1px solid var(--rule);background:var(--paper);padding:16px 18px;
+    max-width:640px;font-size:13px;line-height:1.5}
+  .eb-kick{font-family:var(--mono);font-size:9px;letter-spacing:.13em;
+    color:var(--dim);border-bottom:1px solid var(--rule);padding-bottom:7px;
+    margin-bottom:11px}
+  .eb-ent{font-weight:700;font-size:17px;line-height:1.2}
+  .eb-fy{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:2px}
+  .eb-fig{font-family:var(--mono);font-size:30px;font-weight:700;
+    margin:12px 0 1px;line-height:1.05;word-break:break-word}
+  .eb-figlbl{font-size:12px;color:var(--dim);margin-bottom:12px}
+  .eb-absent{margin:12px 0 4px;display:flex;flex-wrap:wrap;gap:8px;
+    align-items:baseline}
+  .eb-absent b{font-family:var(--mono);font-size:15px;letter-spacing:.06em;
+    border:1px solid currentColor;padding:2px 7px}
+  .eb-absent span{font-size:12px;color:var(--dim)}
+  .eb-stamp{font-size:11px;line-height:1.45;margin-top:9px}
+  .eb-stamp b{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;
+    display:block;color:var(--dim)}
+  .eb-notes{margin-top:12px;border-top:1px solid var(--rule);padding-top:9px}
+  .eb-nh{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;
+    color:var(--dim);margin-bottom:5px}
+  .eb-notes p{font-size:11.5px;line-height:1.5;margin:0 0 6px}
+  .eb-why{font-size:11.5px;line-height:1.5;margin-top:6px}
+  .eb-foot{margin-top:13px;border-top:1px solid var(--rule);padding-top:9px}
+  .eb-back{font-family:var(--mono);font-size:10px;letter-spacing:.05em}
+  .eb-refused .eb-kick{color:var(--ink)}
+  .cite-card{max-height:82vh;overflow-y:auto}
+  #embedOffer{margin-top:14px;border-top:1px solid var(--rule);padding-top:11px}
+  #embedOffer .cite-text{word-break:break-all}
+  .eb-offer-note{font-size:11px;line-height:1.5;color:var(--dim);margin:7px 0 9px}
+  @media (max-width:400px){ .eb-fig{font-size:24px} #embedRoot{padding:9px} }
+
 </style>
 <style>
   /* Ledger design system — see index.html. K-12 layer: districts are
@@ -531,6 +567,7 @@
     </div>
     <div class="cite-text" id="citeText"></div>
     <button class="btn ink" id="citeCopy" autofocus>Copy</button>
+    <div id="embedOffer" hidden></div>
   </div>
 </dialog>
 
@@ -1521,6 +1558,368 @@
     k.insertAdjacentHTML("afterend", h);
   }
 
+
+  /* ==== CITATION EMBED ==================================================
+     A journalist who wants one verified figure in a story has no way for
+     the figure itself to travel. The citation copies as text and the text
+     is separable: paste the number, drop the basis, and the Ledger's whole
+     discipline is gone at the first edit.
+
+     THE EMBED REFUSES BY CONSTRUCTION. Not by convention, not by a rule in
+     a document — by there being no expressible program state in which a
+     number reaches the screen without what it means. embedGate() runs
+     BEFORE any DOM write and the figure and its basis are concatenated in
+     one expression, so there is no code path that emits one without the
+     other. Everything below is that gate and its rendering. */
+
+  /* Read once, at load, then REMOVE from the URL. Two reasons, both real:
+     citationText() and the series export both read location.href for the
+     permalink, and an embed whose citation points back at the embed is a
+     citation that cannot be followed to the record. Stripping it here fixes
+     every downstream consumer at once instead of teaching each one about a
+     parameter it should not have to know. */
+  var EMBED_ASKED = null, EMBED_HREF = null;
+  var EMBED_ON = (function(){
+    var p = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if (p.get("e") !== "1") return false;
+    p.delete("e");
+    EMBED_ASKED = p;                           // what the URL asked for
+    var rest = p.toString();
+    /* The address of the RECORD, computed here rather than read back from
+       location.href after the fact. replaceState is in a try/catch because
+       some contexts refuse it, and in exactly that case location.href would
+       still carry e=1 — so "Open the full record" would open another embed.
+       A link that loops is worse than one that fails. */
+    EMBED_HREF = location.href.split("#")[0] + (rest ? "#" + rest : "");
+    try { history.replaceState(null, "", location.pathname + (rest ? "#" + rest : "")); }
+    catch (err) { /* file:// can refuse replaceState; the embed still renders */ }
+    return true;
+  })();
+
+  function embedAsked(k){ return EMBED_ASKED ? EMBED_ASKED.get(k) : null; }
+
+  /* THE EMBED MUST NOT ANSWER A DIFFERENT QUESTION THAN IT WAS ASKED.
+     Every layer parses its year as `YEARS.includes(p.get("y")) ? … :
+     DEFAULTS.year` — a silent fallback, which on the page is a harmless
+     reset to the latest year and in an embed is a citation for a year the
+     URL never named. uc.html#y=2019-20 is the case that found this: the
+     year is HELD, so it is not in YEARS, so the page served FY2024-25 and
+     the embed captioned another year's number with the asked-for year
+     nowhere in sight. Checked centrally, against rec.fy, so it holds for
+     every layer including the ones that gain a year parameter later. */
+  function embedYearGuard(fy){
+    var want = embedAsked("y");
+    if (!want || !fy || want === fy) return null;
+    return "This embed was asked for FY " + want + " and this layer served "
+         + "FY " + fy + " instead — the year requested is not one this layer "
+         + "publishes. A figure captioned with a year the URL did not ask for "
+         + "is worse than no figure, so none is shown.";
+  }
+
+  /* The four states a figure can be in. Enumerated ONCE and tested for
+     membership rather than by a chain of comparisons — OPEN.md 2s is the
+     defect where a chain of N-1 tests on an N-valued field silently drops
+     the Nth, and it has now been recorded five times. */
+  var EMBED_STATES = {
+    "as-filed":      {word: "AS FILED",      figure: true},
+    "reported-zero": {word: "REPORTED ZERO", figure: true},
+    "held":          {word: "HELD",          figure: false},
+    "not-published": {word: "NOT PUBLISHED", figure: false}
+  };
+
+  /* Everything that must travel with a figure. A missing entry is a
+     REFUSAL, not a blank line — an embed that renders around a gap is an
+     embed that renders a bare number the day a page stops supplying one. */
+  var EMBED_REQUIRED = ["entity", "fy", "figureLabel", "status", "basis",
+                        "tier", "source", "link"];
+
+  function embedGate(rec){
+    if (!rec) return "This view does not identify a single figure.";
+    if (rec.refuse) return rec.refuse;
+
+    var i, k;
+    for (i = 0; i < EMBED_REQUIRED.length; i++){
+      k = EMBED_REQUIRED[i];
+      if (rec[k] == null || String(rec[k]).trim() === "")
+        return "The record is incomplete: it carries no " + k
+             + ". A figure is not shown without it.";
+    }
+    var yg = embedYearGuard(rec.fy);
+    if (yg) return yg;
+
+    /* AND THE BASIS MUST BE THE BASIS FOR THIS CARD'S YEAR. Found by
+       rendering: the UC held card was captioned FY2019-20 with a basis line
+       reading FY2024-25, because basisLine() composes from S.year and the
+       page had fallen back. A card that states two different years is a
+       card whose figure has no basis, whatever the basis line says. */
+    var yrs = String(rec.basis).match(/FY \d{4}-\d{2}/g) || [];
+    if (yrs.length === 1 && yrs[0] !== "FY " + rec.fy)
+      return "This card is about FY " + rec.fy + " and its basis line "
+           + "describes " + yrs[0] + ". The two cannot both be right, so no "
+           + "figure is shown.";
+
+    var st = EMBED_STATES[rec.status];
+    if (!st)                                   // exhaustiveness, loudly
+      return "The record carries status “" + rec.status + "”, which "
+           + "this embed does not recognise. A figure is not shown against an "
+           + "unrecognised status.";
+
+    /* THE TWO DIRECTIONS, BOTH REFUSED. A held or not-published record that
+       arrives carrying a number is the bug this feature exists to prevent,
+       so it refuses rather than quietly dropping the number — a silent drop
+       would hide a page defect instead of surfacing it. And a published
+       record with no number is equally wrong: it would read as an absence
+       the source never declared. */
+    if (!st.figure && rec.figure != null)
+      return "The record is " + st.word + " but arrived carrying a figure. "
+           + "That is a defect in this page, not a fact about California, and "
+           + "no number is shown.";
+    if (st.figure && (rec.figure == null || String(rec.figure).trim() === ""))
+      return "The record is " + st.word + " but carries no figure.";
+
+    if (!Array.isArray(rec.notes))
+      return "The record's notes could not be assembled. A figure is not "
+           + "shown without them.";
+    return null;                               // complete
+  }
+
+  function embedRender(){
+    var rec = null, why = null;
+    try { rec = embedRecord(); }               // per-page adapter
+    catch (err) { why = "The record could not be assembled: " + err.message; }
+    if (!why) why = embedGate(rec);
+
+    var esc2 = (typeof esc === "function") ? esc
+      : function(s){ return String(s).replace(/[&<>"]/g, function(c){
+          return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); };
+    var link = (rec && rec.link) || location.href;
+    var back = '<a class="eb-back" href="' + esc2(link) + '" target="_blank" '
+             + 'rel="noopener">Open the full record at Citizen Ledger →</a>';
+
+    if (why){
+      return '<div class="eb-card eb-refused">'
+        + '<div class="eb-kick">CITIZEN LEDGER · NO FIGURE SHOWN</div>'
+        + '<div class="eb-why">' + esc2(why) + '</div>'
+        + '<div class="eb-foot">' + back + '</div></div>';
+    }
+
+    var st = EMBED_STATES[rec.status];
+    /* The figure and its basis are built in ONE expression. This is the
+       construction the whole feature rests on: they cannot be separated by
+       an edit that touches only one of them, because there is only one. */
+    var value = st.figure
+      ? '<div class="eb-fig">' + esc2(rec.figure) + '</div>'
+        + '<div class="eb-figlbl">' + esc2(rec.figureLabel) + '</div>'
+      : '<div class="eb-absent"><b>' + esc2(st.word) + '</b>'
+        + '<span>' + esc2(rec.figureLabel) + '</span></div>'
+        + '<div class="eb-why">' + esc2(rec.statusReason
+            || "The source publishes no figure for this record.") + '</div>';
+
+    var notes = rec.notes.length
+      ? '<div class="eb-notes"><div class="eb-nh">NOTES CARRIED WITH THIS '
+        + 'FIGURE</div>' + rec.notes.map(function(n){
+            return '<p>' + esc2(n) + '</p>'; }).join("") + '</div>'
+      : '';
+
+    return '<div class="eb-card">'
+      + '<div class="eb-kick">CITIZEN LEDGER · PUBLIC RECORD</div>'
+      + '<div class="eb-ent">' + esc2(rec.entity) + '</div>'
+      + '<div class="eb-fy">FY ' + esc2(rec.fy) + '</div>'
+      + value
+      + '<div class="eb-stamp"><b>TIER</b>' + esc2(rec.tier) + '</div>'
+      + '<div class="eb-stamp"><b>MEASURED AS</b>' + esc2(rec.basis) + '</div>'
+      + notes
+      + '<div class="eb-stamp"><b>SOURCE</b>' + esc2(rec.source) + '</div>'
+      + '<div class="eb-foot">' + back + '</div>'
+      + '</div>';
+  }
+
+  /* Enter the embed only once the page has rendered — the tier chip's
+     LABEL is read off the DOM (a mark is decoration, the words are the
+     encoding), and compensation.html assembles its record after a fetch.
+     A deadline rather than a fixed delay, and the deadline expiring is a
+     refusal and not a blank frame. */
+  function embedEnter(){
+    if (!EMBED_ON) return;
+    document.documentElement.setAttribute("data-embed", "1");
+    /* READY MEANS A REAL RECORD, NOT MERELY A RETURN VALUE. embedRecord()
+       answers a refusal before the page has parsed its hash — "no record is
+       selected" is true of every page for the first few frames — so waiting
+       on truthiness would render a refusal for a record that was about to
+       arrive. Wait for a record carrying a status; let the deadline expire
+       into the refusal only when one never comes. */
+    var deadline = 90, tries = 0;
+    (function attempt(){
+      var r = null;
+      try { r = embedRecord(); } catch (e) { r = null; }
+      if (!(r && r.status) && ++tries < deadline){
+        requestAnimationFrame(attempt); return; }
+      var html = embedRender();
+      var host = document.createElement("div");
+      host.id = "embedRoot";
+      host.innerHTML = html;
+      /* REPLACE the page, do not hide it. This project has twice shipped a
+         correct screen with a silent printed sheet because a block sat
+         inside a print-hidden region; hidden is not absent. An embed that
+         hid its host page would leak the whole site into the iframe the
+         first time a stylesheet failed to load. */
+      document.body.textContent = "";
+      document.body.appendChild(host);
+      document.title = "Citizen Ledger — record";
+    })();
+  }
+
+  /* The core is inserted mid-script, so DOMContentLoaded is the earliest
+     point at which the page has booted. embedEnter() waits from there. */
+  if (EMBED_ON){
+    if (document.readyState === "loading")
+      document.addEventListener("DOMContentLoaded", embedEnter);
+    else embedEnter();
+  }
+
+
+  /* ---- THE OFFER. A feature nobody can find does not exist -------------
+     The determination was that the embed is a page the site already serves,
+     so the offer is just its address — no builder, no per-figure artefact,
+     nothing to generate. It lives beside the citation because a reader who
+     wants one is looking for the other, and it appears ONLY when the
+     current view actually yields a figure: handing someone an address that
+     renders "no figure shown" is worse than not offering. */
+  var EMBED_SITE = "https://citizen-ledger.github.io/ca-ledger/";
+  function embedUrl(){
+    var here = location.href;
+    var base = /^https?:/.test(here) ? here
+      : EMBED_SITE + location.pathname.split("/").pop() + location.hash;
+    var hash = base.indexOf("#");
+    if (hash === -1) return base + "#e=1";
+    return base + (base.length - 1 === hash ? "" : "&") + "e=1";
+  }
+  function embedSnippet(){
+    var rec = null;
+    try { rec = embedRecord(); } catch (e) { return null; }
+    if (!rec || !rec.status || embedGate(rec)) return null;
+    var u = embedUrl();
+    var title = "Citizen Ledger — " + rec.entity + ", FY " + rec.fy;
+    return '<iframe src="' + u + '" width="100%" height="560" '
+      + 'title="' + title.replace(/"/g, "&quot;") + '" loading="lazy" '
+      + 'style="border:1px solid #d8d4cc"></iframe>';
+  }
+  function paintEmbedOffer(){
+    var box = document.getElementById("embedOffer");
+    if (!box) return;
+    var snip = embedSnippet();
+    if (!snip){
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    box.hidden = false;
+    box.innerHTML = '<div class="microlbl">EMBED THIS FIGURE — ITS BASIS, '
+      + 'TIER AND EVERY NOTE TRAVEL WITH IT</div>'
+      + '<div class="cite-text" id="embedCode"></div>'
+      + '<div class="eb-offer-note">The embed is this page, addressed by the '
+      + 'parameters it already understands — there is no image to go stale '
+      + 'and no service to call. If your system does not allow iframes, link '
+      + 'to the address instead: the same page stands on its own.</div>'
+      + '<button class="btn ink" id="embedCopy">Copy embed code</button>';
+    document.getElementById("embedCode").textContent = snip;
+    document.getElementById("embedCopy").addEventListener("click", function(){
+      var s = snip;
+      var ok = false;
+      try { ok = document.execCommand && (function(){
+        var ta = document.createElement("textarea");
+        ta.value = s; document.body.appendChild(ta); ta.select();
+        var r = document.execCommand("copy"); ta.remove(); return r; })(); }
+      catch (e) { ok = false; }
+      if (navigator.clipboard && !ok) navigator.clipboard.writeText(s);
+      var b = document.getElementById("embedCopy");
+      b.textContent = "Copied"; setTimeout(function(){
+        b.textContent = "Copy embed code"; }, 1400);
+    });
+  }
+
+
+  /* Common to every adapter: the tier chip's WORDING, read off the rendered
+     chip rather than re-declared here. A mark is decoration; the words are
+     the encoding, and re-stating them in this function is how an embed
+     comes to claim a tier the page has stopped showing. */
+  function embedTier(){
+    var chip = document.querySelector(".tierchip");
+    if (!chip) return null;
+    var lbl = chip.querySelector(".tc-label");
+    if (!lbl || !lbl.textContent.trim()) return null;
+    var why = (chip.getAttribute("title") || "").trim();
+    return lbl.textContent.trim() + (why ? " — " + why : "");
+  }
+  function embedSource(){
+    var m = (typeof D !== "undefined" && D && D.meta) ? D.meta : null;
+    if (!m) return null;
+    return (m.sourceLabel || m.source || "") +
+      (m.generated ? ", data generated " + m.generated : "");
+  }
+  function embedCommon(){
+    return {basis: (typeof basisLine === "function") ? basisLine() : null,
+            tier: embedTier(), source: embedSource(),
+            link: EMBED_HREF || location.href};
+  }
+  function embedNoPercent(){
+    return (typeof S !== "undefined" && S.unit === "percent")
+      ? {refuse: "This view is measured as a percent of the displayed total. "
+        + "That share is meaningless away from the table it was displayed in, "
+        + "so it does not travel as an embed. Switch to a dollar unit."}
+      : null;
+  }
+
+  function embedRecord(){
+    if (typeof D === "undefined" || !D.meta) return null;
+    var pc = embedNoPercent(); if (pc) return pc;
+    if (S.sel.length !== 1)
+      return {refuse: S.sel.length
+        ? "This view has " + S.sel.length + " records selected. An embed "
+          + "carries one figure — a comparison inside an embed is a ranking, "
+          + "and the Ledger does not rank school districts."
+        : "No record is selected in this view."};
+    var id = S.sel[0], e = ent(id);
+    if (!e) return {refuse: "That record is not in this layer."};
+    var v = e.years[S.year];
+    if (!v) return {refuse: e.name + " has no filing on record for FY "
+                    + S.year + "."};
+
+    var rec = embedCommon();
+    rec.entity = e.name;
+    rec.fy = S.year;
+    rec.notes = districtNotes(id, S.year).map(function(n){ return n.text; });
+    var tot = v.currentExpense;
+    if (S.unit === "perAda"){
+      rec.figureLabel = "Current expense of education per unit of average "
+        + "daily attendance (ADA "
+        + (v.ada == null ? "not published" : fmt(v.ada)) + ")";
+      if (tot == null || v.ada == null){
+        rec.status = "not-published";
+        rec.statusReason = v.ada == null
+          ? "Average daily attendance is not published for this record, so a "
+            + "per-ADA figure cannot be formed. The expenditure figure IS "
+            + "published — open the full record for it."
+          : "The source publishes no current expense of education for this "
+            + "record, so there is nothing to divide by attendance.";
+        return rec;
+      }
+      var r = perAda(adjV(tot, S.year), v.ada);
+      rec.status = "as-filed"; rec.figure = money0(r); return rec;
+    }
+    rec.figureLabel = "Current expense of education, as filed on SACS";
+    if (tot == null){
+      rec.status = "not-published";
+      rec.statusReason = "The source publishes no current expense of "
+        + "education for this record.";
+      return rec;
+    }
+    rec.status = (tot === 0) ? "reported-zero" : "as-filed";
+    rec.figure = "$" + fmt(Math.round(adjV(tot, S.year)));
+    return rec;
+  }
+
+
   function renderRecordSheet(){
     const box = document.getElementById("recordSheet");
     if (!box) return;
@@ -1864,6 +2263,7 @@
     const p = $("citePanel");
     if (p.open){ p.close(); return; }
     $("citeText").textContent = citationText();
+    paintEmbedOffer();
     // a citation is copy-and-leave: the dialog appears at the reader's
     // current position — never scroll them elsewhere
     document.documentElement.style.overflow = "hidden";
