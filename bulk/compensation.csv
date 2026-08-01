@@ -4,8 +4,8 @@
 # Gate tier: AS FILED — AS FILED — UNRECONCILED. A published control exists and can never be reconciled to: the source is a live database with no as-of-date total, so there is no instant at which the two can be aligned
 # Units: dollars; positions are positions, NOT persons
 # Measured as: POSITIONS AS REPORTED BY EACH EMPLOYER TO THE STATE CONTROLLER FOR THE CALENDAR YEAR, INCLUDING PART-YEAR AND PART-TIME POSITIONS · DOLLARS · NOMINAL AS PUBLISHED · ALL SHIPPED YEARS · AS FILED
-# Data generated: 2026-07-25
-# Exported: 2026-07-29
+# Data generated: 2026-07-31
+# Exported: 2026-07-31
 # Absent values: Empty cell = not published by the source. It is NOT zero. A real reported zero is written as 0.
 # Licence: CC0 1.0 Universal (public domain). Cite freely; no permission needed.
 # Stability: This file's SHAPE is not stable. The Ledger is actively developed: columns may be added, renamed or split as layers change. Pin a copy if you need reproducibility. The DATA is CC0 and that does not change.
@@ -13,7 +13,7 @@
 # A person holding two positions appears in two rows. This is a count of positions reported, never a headcount of people.
 # retirement_includes_unfunded_liability is an employer-level reporting flag. Two identically-paid positions at two employers show different totals for a pure reporting reason, and the unfunded component is not separately reported, so it cannot be netted out.
 # Do NOT compute an average or median over these rows. There is no hours or FTE field, and a quarter of city rows show pay below half the position's own stated minimum. See docs/V23A_COMPENSATION_BUILD_FINDING.md.
-# Vintage: {'earliest': '2025-06-24', 'latest': '2026-07-22', 'staleMonths': 14, 'ageDaysAtBuild': 3}
+# Vintage: {'earliest': '2025-06-24', 'latest': '2026-07-22', 'staleMonths': 14, 'ageDaysAtBuild': 9}
 slug,name,layer,county,positions_reported,total_wages_usd,retirement_and_health_usd,population,elected_positions,retirement_includes_unfunded_liability
 city-adelanto,Adelanto,city,San Bernardino,37,2466479,520378,37150,6,false
 city-agoura-hills,Agoura Hills,city,Los Angeles,92,5089973,1537212,19904,5,false

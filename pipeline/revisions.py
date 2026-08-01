@@ -1091,6 +1091,36 @@ def _fy_of(key):
 # step is introduced.
 CORRECTIONS = [
     {
+        # NOT shapeOnly: the values themselves changed, gaining letters the
+        # old reader had cut off. And NOT visible as events either — this
+        # record flattens NUMERIC leaves, so a service code is invisible to
+        # it by construction. Without this declaration a published fact
+        # would have changed for 215 city-years with nothing in the feed.
+        "id": "city-services-checklist-whole-and-per-year",
+        "layer": "city",
+        "built": "2026-07-31",
+        "note": "Our own correction, not a change at the source. The State "
+                "Controller's police and fire provision codes are now "
+                "carried WHOLE and PER YEAR. Two defects are fixed at once. "
+                "The checklist field is multi-select — a city can file "
+                "\u201cAB\u201d for both its own paid officers and its "
+                "volunteers, and up to four letters occur — and this "
+                "pipeline kept only the first letter, so part of what the "
+                "Controller published was dropped inside a field the page "
+                "presents, under a tier chip, as the source's own "
+                "statement; 215 of 964 city-function values for FY2023-24 "
+                "were truncated that way. And the codes were read from "
+                "tsz3-29gc, which the Controller froze at FY2015-16, then "
+                "stated of all eight published years; 8nra-c2cw publishes "
+                "them per year for FY2016-17 to FY2023-24, and 130 of 482 "
+                "cities change their police code at least once inside that "
+                "window. NO FIGURE MOVED: every dollar, population and "
+                "reconciliation is identical, and no derived flag changed "
+                "\u2014 lowPolice and lowFire are computed from spending "
+                "alone and never read the checklist. What changed is what "
+                "the record SAYS about how a service is provided.",
+    },
+    {
         # NOT shapeOnly and NOT a coverage change: FY2018-19 was already in
         # the record, and these figures genuinely ENTER it. They are listed
         # one by one — 72 districts and the statewide total — because that

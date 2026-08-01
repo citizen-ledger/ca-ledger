@@ -15,9 +15,14 @@ Datasets (Socrata ids), all on bythenumbers.sco.ca.gov:
     rrtv-rsj9   City - Revenues           (line items)
     ykhf-vfsr   City Expenditures Per Capita   (official per-city totals —
                 used as the reconciliation target, see SANITY CHECKS)
-    tsz3-29gc   Check List of Services Provided (FY 2002-03 to 2015-16 —
-                the maintained service-provision list; codes verified from
-                the dataset's "City Service Codes.docx" attachment)
+    8nra-c2cw   Check List of Services Provided, FY 2016-17 to 2023-24 —
+                the CURRENT service-provision list, one row per city-year,
+                eleven services (this pipeline reads police and fire, the
+                two the site renders). Codes verified from the dataset's
+                "City Service Codes.docx" attachment. The field is
+                MULTI-SELECT: "AB" means both A and B, and up to four
+                letters occur. Supersedes tsz3-29gc, which is frozen at
+                FY 2015-16 and is no longer updated.
 
 Row shape (expenditures): entity_name, fiscal_year (ending year: "2024"
 = FY 2023-24), county, category, subcategory_1, subcategory_2,
@@ -48,10 +53,14 @@ category layout and are not loaded.
 
 COMPARABILITY (see docstring history in git and STATUS.md)
 ----------------------------------------------------------
-1. CONTRACT CITIES — per-city service-provision codes for police and
-   fire come from the SCO services checklist (most recent vintage:
-   FY 2015-16), plus a data-derived flag when a city's police or fire
-   line is under $5/resident in the displayed year. cities.html
+1. CONTRACT CITIES — per-city-YEAR service-provision codes for police
+   and fire come from the SCO services checklist, carried whole: where a
+   city files more than one code the record shows every one, because the
+   Controller records several arrangements and names no primary. Plus a
+   data-derived flag when a city's police or fire line is under
+   $5/resident in the displayed year — that flag is computed from
+   SPENDING ALONE and has never read the checklist, so it was not
+   affected by the truncation this pipeline used to apply. cities.html
    footnotes both, neutrally.
 2. ENTERPRISE FUNDS — the schema keeps governmental and enterprise
    blocks separate; `expenditures`/`byFunction` are GOVERNMENTAL
@@ -98,7 +107,7 @@ DS_PERCAP = "ykhf-vfsr"
 DS_REV_PERCAP = "ky7j-fsk5"      # SCO's published per-city TOTAL REVENUES —
                                  # the revenue reconciliation target, exactly
                                  # parallel to ykhf-vfsr on the spending side
-DS_SERVICES = "tsz3-29gc"
+DS_SERVICES = "8nra-c2cw"    # current; tsz3-29gc is retired at FY2015-16
 
 # THE PUBLISHER DISAGREES WITH ITSELF. SCO's city revenue dataset names
 # its amount column `value`; the COUNTY revenue dataset (emxv-k8xv, used
@@ -122,7 +131,6 @@ DS_COUNTY_PERCAP = "miui-wb29"   # SCO's COUNTY per-capita totals — used only
                                  # than the county containing it
 
 SOURCE_YEARS = [str(y) for y in range(2017, 2025)]   # "2017".."2024"
-SERVICES_VINTAGE_SOURCE_YEAR = "2016"                 # FY 2015-16
 LOW_SERVICE_PER_CAPITA = 5.0                          # dollars/resident
 
 FUNCTIONS = [
@@ -487,18 +495,75 @@ def fetch_year(source_year: str):
 
 
 def fetch_services():
-    """Police/fire provision codes from the FY 2015-16 checklist."""
-    rows = soda(DS_SERVICES,
-                **{"$where": f"fiscal_year='{SERVICES_VINTAGE_SOURCE_YEAR}'"})
-    out = {}
+    """Police/fire provision codes, PER YEAR, from the current checklist.
+
+    TWO DEFECTS FIXED HERE, both found by V26 and both of the same kind —
+    the Ledger quietly answering a question the source declines to answer,
+    inside a field the page presents as the Controller's own statement.
+
+    1. THE FIELD IS MULTI-SELECT AND THIS TOOK THE FIRST LETTER.  The old
+       body read `.upper()[:1]`.  A city that files "AB" — its own paid
+       officers AND city volunteers — was stored, rendered and exported as
+       "A", under a tier chip, beside a label quoted verbatim from SCO's
+       codebook.  147 of 482 cities (30.5%) file more than one police code
+       and 83 (17.2%) more than one fire code; the longest real value is
+       four letters (Amador, fire, "CDFH").  Nothing warned, because a
+       truncation that yields a valid-looking code cannot fail loudly.
+
+    2. IT READ A RETIRED DATASET.  tsz3-29gc stops at FY2015-16.  SCO
+       publishes 8nra-c2cw for FY2016-17 to FY2023-24 — exactly the eight
+       years this site publishes, per year rather than frozen, and with
+       eleven services rather than two.
+
+    PER YEAR IS NOT A REFINEMENT, IT IS THE POINT.  130 of 482 cities
+    change their police code at least once across the eight years and 128
+    change fire.  Pinning one snapshot to every year is the same defect in
+    a different costume: it states, of seven fiscal years, an arrangement
+    the source records only for the eighth.
+
+    The nine other services in 8nra-c2cw (emergency medical, street
+    lighting, transit, community development, solid waste, sewers, parks,
+    libraries, water) are NOT carried.  Nothing on the site reads them, and
+    a payload field no view renders is a claim nobody checks.
+    """
+    rows = soda(DS_SERVICES)
+    out, unknown = {}, {}
     for r in rows:
+        sy = norm(r["fiscal_year"])
+        if sy not in SOURCE_YEARS:
+            continue
         name = norm(r["entity_name"])
-        out[name] = {
-            "police": norm(r.optional("police_service")).upper()[:1],
-            "fire": norm(r.optional("fire_service")).upper()[:1],
-        }
-    print(f"  services checklist: {len(out)} cities (FY 2015-16 vintage)",
-          file=sys.stderr)
+        rec = {}
+        for key, col in (("police", "police_service"), ("fire", "fire_service")):
+            # THE WHOLE VALUE, as filed. Whitespace and case are normalised
+            # because those are transport, not content; letters are not.
+            code = re.sub(r"[^A-Z]", "", norm(r.optional(col)).upper())
+            if not code:
+                continue
+            bad = [ch for ch in code if ch not in SERVICE_CODES]
+            if bad:
+                unknown.setdefault("".join(sorted(set(bad))), []).append(
+                    f"{name} {sy} {key}={code}")
+            rec[key] = code
+        if rec:
+            out.setdefault(name, {})[sy] = rec
+
+    # AN UNRECOGNISED LETTER FAILS THE BUILD (OPEN.md 2s). A code the
+    # codebook does not define cannot be given a label, and a code rendered
+    # without its label is a mark asserting something nobody can read.
+    if unknown:
+        for letters, where in sorted(unknown.items()):
+            print(f"  SERVICE CODE UNKNOWN: {letters!r} — {len(where)} rows, "
+                  f"e.g. {where[0]}", file=sys.stderr)
+        raise SystemExit(
+            "services checklist carries codes absent from SERVICE_CODES; "
+            "the codebook must be updated before these can be published")
+
+    multi = sum(1 for y in out.values() for r in y.values()
+                for c in r.values() if len(c) > 1)
+    print(f"  services checklist: {len(out)} cities x {len(SOURCE_YEARS)} years "
+          f"({DS_SERVICES}); {multi} city-year-function values carry more than "
+          f"one code", file=sys.stderr)
     return out
 
 
@@ -748,12 +813,7 @@ def build_payload(years_data, services, gaz, county_pops):
         coord = coord_for(name, gaz)
         if coord:
             entry["lat"], entry["lng"] = coord
-        svc = services.get(name)
-        if svc and (svc["police"] or svc["fire"]):
-            entry["services"] = {
-                k: {"code": v, "label": SERVICE_CODES.get(v, "")}
-                for k, v in svc.items() if v
-            }
+        svc_years = services.get(name, {})
         if name == "San Francisco":
             entry["flags"] = {"consolidated": True}
         prev_gov = None
@@ -914,6 +974,17 @@ def build_payload(years_data, services, gaz, county_pops):
                 notes.append("bigSwing")
             if notes:
                 yr["notes"] = notes
+            # THE CHECKLIST IS A FACT ABOUT A YEAR, so it lives on the year.
+            # `labels` carries one entry per letter, in the order the city
+            # filed them, so a record can render everything the Controller
+            # recorded rather than one arrangement chosen by this pipeline.
+            svc = svc_years.get(sy)
+            if svc:
+                yr["services"] = {
+                    k: {"code": code,
+                        "labels": [SERVICE_CODES[ch] for ch in code]}
+                    for k, code in svc.items()
+                }
             entry["years"][fy_label(sy)] = yr
             prev_gov = gov
             prev_all_zero = all_zero
@@ -980,7 +1051,19 @@ def build_payload(years_data, services, gaz, county_pops):
                      "airports, harbors…) are shown separately. Internal "
                      "service funds and conduit financing are excluded from "
                      "both blocks.",
-            "servicesChecklistVintage": "2015-16",
+            # PER YEAR, not a vintage. The old key named one frozen
+            # snapshot (FY2015-16) that the page then stated of all eight
+            # years; 130 of 482 cities change their police code inside this
+            # window, so there was no year for which the claim was reliably
+            # true except the one it came from.
+            "servicesChecklistYears": year_labels,
+            "servicesChecklistNote":
+                "Police and fire provision codes are the State Controller's "
+                "own checklist for that fiscal year. The field is "
+                "MULTI-SELECT: where a city filed more than one code, every "
+                "one is carried and every one is described. The Ledger does "
+                "not choose a primary arrangement, because the Controller "
+                "does not publish one.",
             "revCategoryLabels": rev_cat_labels,
             "revLineLabels": rev_line_labels,
             "revenueNote":
@@ -1029,7 +1112,7 @@ def write_city_js(payload):
 
     revisions.record_revision('city', prev, payload,
                               source_signal=revisions.socrata_updated(
-                                  ["ju3w-4gxp","rrtv-rsj9","ykhf-vfsr","tsz3-29gc"]))
+                                  ["ju3w-4gxp","rrtv-rsj9","ykhf-vfsr","8nra-c2cw"]))
     print(f"Wrote {OUT_PATH} ({OUT_PATH.stat().st_size / 1024:.0f} KB, "
           f"{len(payload['cities'])} cities, {len(payload['years'])} years)")
 
