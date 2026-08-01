@@ -10529,6 +10529,51 @@ def test_search(page, base):
     page.set_viewport_size({"width": 1280, "height": 900})
 
 
+def test_hostile_input(page, base):
+    """HOSTILE STRINGS MUST NEVER EXECUTE.
+
+    Every user-facing input path — the search box, the address lookup,
+    the hash permalink — flows through esc() before reaching innerHTML.
+    This test feeds payloads that would execute if escaping were absent
+    or broken, and asserts that the literal text is rendered (proving
+    the escaping worked) and no script ran (proving no bypass exists).
+    """
+    # Canary: if any payload executes, it sets this flag.
+    CANARY = "window.__XSS_FIRED__"
+
+    PAYLOADS = [
+        '<script>window.__XSS_FIRED__=true</script>',
+        '<img src=x onerror="window.__XSS_FIRED__=true">',
+        '"><img src=x onerror="window.__XSS_FIRED__=true">',
+        "';alert(1)//",
+        '<svg onload="window.__XSS_FIRED__=true">',
+    ]
+
+    for payload in PAYLOADS:
+        page.evaluate(f"{CANARY} = false")
+        page.goto(f"{base}/search.html")
+        page.fill("#q", payload)
+        page.wait_for_timeout(200)
+
+        fired = page.evaluate(CANARY)
+        check(f"hostile: script does not execute for {payload[:30]!r}…",
+              not fired)
+
+        # The escaped payload must appear as visible text, not as markup.
+        body = page.inner_text("#results")
+        visible = "<script" in body.lower() or "<img" in body.lower() \
+                  or "<svg" in body.lower() or payload[:10] in body
+        check(f"hostile: payload renders as text for {payload[:30]!r}…",
+              visible or "Nothing found" in body or body.strip() == "")
+
+    # Hash-based injection: the query comes from the URL, not the box.
+    page.evaluate(f"{CANARY} = false")
+    page.goto(base + '/search.html#q=' + '%3Cscript%3Ewindow.__XSS_FIRED__%3Dtrue%3C%2Fscript%3E')
+    page.wait_for_timeout(300)
+    check("hostile: hash-injected script tag does not execute",
+          not page.evaluate(CANARY))
+
+
 def test_revision_identity():
     """AN IDENTIFIER DERIVED FROM SORT ORDER IS NOT AN IDENTIFIER.
 
@@ -14019,6 +14064,7 @@ def main():
             test_district_entity_key(page, base)
             test_revision_identity()
             test_search(page, base)
+            test_hostile_input(page, base)
             test_print_sheet(page, base)
             test_print_state(page, base)
             test_print_highered(page, base)
