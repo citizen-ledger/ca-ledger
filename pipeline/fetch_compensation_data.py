@@ -407,11 +407,30 @@ def build(argv=None):
     # police positions, exactly as it has no police spending. The site
     # already records which services are contracted out; that field is
     # reused so the absence is marked rather than read as a zero.
+    # THE CHECKLIST MOVED TO THE YEAR RECORD AND IS MULTI-SELECT. It used
+    # to sit on the entity as a single frozen letter, and this read
+    # `code not in ("A", "B", None)` — an enumerated conditional over a
+    # field that can hold four letters at once (OPEN.md 2s). Two failures
+    # in one line: after the payload moved, `v["services"]` is absent and
+    # every mark silently disappears; and before it moved, a city filing
+    # "AB" was tested as "A" and treated as running its own department.
+    #
+    # THE QUESTION HERE IS NARROWER THAN "CONTRACTED". What this record
+    # needs to know is whether the CITY'S OWN PAYROLL should be expected to
+    # carry the service, so that an absent police department is not read as
+    # a reported zero. That is answered by one letter: A, paid city
+    # employees. If A is among the codes the city filed, its payroll should
+    # show them; if it is not, no city payroll for that service is expected.
     contracted = {}
     for v in city["cities"].values():
-        sv = v.get("services") or {}
-        marks = {k: d.get("label") for k, d in sv.items()
-                 if isinstance(d, dict) and d.get("code") not in ("A", "B", None)}
+        years = v.get("years") or {}
+        latest = max((y for y in years if years[y].get("services")), default=None)
+        if not latest:
+            continue
+        sv = years[latest]["services"]
+        marks = {k: "; ".join(d.get("labels") or [])
+                 for k, d in sv.items()
+                 if isinstance(d, dict) and "A" not in (d.get("code") or "A")}
         if marks:
             contracted[slug("city", v["name"])] = marks
 
