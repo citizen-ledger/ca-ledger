@@ -79,7 +79,12 @@
   .src-row{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr;gap:0 18px;padding:12px 0;border-bottom:1px solid var(--hairline);font-size:var(--fs-note);line-height:1.5}
   .src-row.hd{font-family:var(--mono);font-size:var(--fs-micro);letter-spacing:0.08em;color:var(--smoke);padding:8px 0}
   .src-row .layer{font-weight:600}
-  .src-row .mono-sm{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite)}
+  /* The rule was scoped to .src-row, so the two uses in the prose above —
+     the citation's "data generated" example and the OUR CORRECTION tag —
+     rendered in the body serif and read as ordinary words rather than as
+     things quoted off the page. Scoped to nothing now, which is what both
+     uses assumed. */
+  .mono-sm{font-family:var(--mono);font-size:var(--fs-label);color:var(--graphite)}
   .gatebox{margin-top:18px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:16px 20px;font-size:var(--fs-note);line-height:1.65}
   .gatebox b{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;display:block;margin-bottom:6px}
   ul.plain{margin:14px 0 0 0;padding-left:0;list-style:none;max-width:70ch}
@@ -116,6 +121,11 @@
   .statement li:last-child{margin-bottom:0}
   .statement p{margin:0 0 10px}
   .statement p:last-child{margin-bottom:0}
+  /* A paragraph INSIDE a list item takes the item's measure, not the
+     global 70ch prose cap — otherwise the continuation paragraphs of a
+     multi-paragraph item wrap 170px short of the sentence above them and
+     read as a different column. */
+  .statement li p{max-width:none}
   .checker{margin-top:30px;border:1px solid var(--ink);border-left:4px solid var(--ink);background:var(--wash);padding:18px 22px}
   .checker h2{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;font-weight:600}
   .cite-lead{font-size:var(--fs-note);line-height:1.65;margin:0 0 12px}
@@ -289,7 +299,7 @@
   </div>
 
   <section class="statement" id="whatThisIs">
-    <h2>Three things to know before you read it</h2>
+    <h2>Four things to know before you read it</h2>
     <ol>
       <li><strong>The record begins the day it shipped — 2026-07-19.</strong> It cannot
       describe changes made before it existed, because the old figures were overwritten
@@ -307,6 +317,28 @@
       portal to aggregate the rows and return the totals, so the underlying rows never
       reach this machine. Once the portal revises, the prior figure exists only in this
       record and in the file it replaced.</li>
+      <li><strong>It compares figures. It does not compare words.</strong> The comparison
+      walks the <em>numbers</em> in each payload — a dollar amount, a population, a count.
+      A published fact that is not a number is invisible to it by construction: a label, a
+      filing status, a classification, a service code, a comparability note. Change one of
+      those and this record shows <strong>no event</strong>, however many entities it
+      touches.
+      <p>Those changes are recorded, by a different route. When we make one we
+      <strong>declare</strong> it, and the declaration appears below as a dated batch
+      marked <span class="mono-sm">OUR CORRECTION</span>, carrying a note that says what
+      changed and, where it is true, that no figure moved. The community-college entry
+      dated <strong>2026-07-21</strong> is one: a district whose apportionment record is
+      absent had been published as <em>not</em> community-supported, which is a different
+      claim from <em>not known</em>. Correcting it changed a published status for every
+      such district and moved no money at all — so it stands in this record as a note
+      against <strong>zero events</strong>. Read that way, an entry with no events is not
+      an empty one.</p>
+      <p><strong>The two halves are not equally reliable, and the difference is worth
+      stating.</strong> The figures half is <em>derived</em>: the comparison runs on every
+      rebuild whether or not anyone remembers it, so it cannot be forgotten. The
+      declaration half is <em>written</em>: if we changed a label and did not say so,
+      nothing here would catch it. This half is only as good as our own discipline, and it
+      is recorded that way rather than presented as a second mechanism.</p></li>
     </ol>
   </section>
 
@@ -339,6 +371,11 @@
     FY&nbsp;2016-17 city classifier was fixed, money moved between category keys that did
     not previously exist; counting only changed values would have reported 31 events out of
     a 482-city correction and missed most of its size.</p>
+    <p>What counts as a figure is decided mechanically: the comparison descends each
+    record and takes every <strong>numeric</strong> value it finds, keyed by the entity's
+    own identifier and the path to that value. Anything that is not a number is not
+    compared — see the fourth point above for what that leaves out and how those changes
+    are recorded instead.</p>
     <p>Comparison is on <strong>figures, not file digests</strong>. A file's SHA-256 changes
     when its build date changes, so two builds on the same day can have different digests
     and identical figures. The record carries a second, figures-only digest — the same hash

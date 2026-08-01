@@ -10814,6 +10814,111 @@ def test_district_entity_key(page, base):
           "Rural North Vacaville" in body)
 
 
+def test_revisions_scope_stated(page, base):
+    """THE RECORD SAYS WHAT IT COVERS — and what it does not.
+
+    `revisions.flatten()` extracts NUMERIC leaves, so the feed is silent
+    about every published fact that is not a number: a label, a filing
+    status, a classification, a service code, a note. That is correct by
+    construction, and a reader had no way to know it. The #126
+    services-checklist correction changed a published fact for 215
+    city-years and produced zero events; it had to be declared instead.
+
+    The page must state the boundary AND must not overclaim the declaration
+    mechanism, which is written by hand and can therefore be forgotten in a
+    way the derived half cannot."""
+    page.goto(f"{base}/revisions.html")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(600)
+    body = page.inner_text("body")
+    scope = page.inner_text("#whatThisIs")
+
+    # ---- 1. THE MECHANISM IS ACTUALLY THIS, verified against the code
+    # rather than trusted from the copy. If flatten() ever started keeping
+    # non-numeric leaves, the page's claim would become false and this is
+    # what would catch it.
+    sys.path.insert(0, str(ROOT / "pipeline"))
+    import revisions as REV
+    flat = REV.flatten("city", CITY)
+    nonnum = [k for k, v in flat.items() if not isinstance(v, (int, float))]
+    check("revisions scope: the comparison really does keep only numbers, "
+          "which is what the page claims", not nonnum, str(nonnum[:3]))
+    # ...and the positive control: it keeps a great many of them, so the
+    # assertion above is not passing on an empty set
+    check("revisions scope: positive control — the flattened set is large",
+          len(flat) > 100000, str(len(flat)))
+    # the service codes are the live case: present in the payload, absent
+    # from the comparison
+    coded = sum(1 for c in CITY["cities"].values()
+                for yr in c["years"].values() if yr.get("services"))
+    if coded:
+        check("revisions scope: service codes are published but not compared "
+              "— the exact fact the page warns about",
+              coded > 100 and not [k for k in flat if "services" in k],
+              f"{coded} city-years carry a code")
+
+    # ---- 2. THE PAGE STATES THE BOUNDARY
+    check("revisions scope: the list announces four items, not three",
+          "FOUR THINGS TO KNOW" in scope.upper(), scope[:60])
+    check("revisions scope: it says the comparison is over figures, not words",
+          "does not compare words" in scope.lower(), scope[:0])
+    for kind in ("label", "filing status", "classification", "note"):
+        check(f"revisions scope: it names {kind!r} as a fact the record does "
+              f"not track", kind in scope.lower(), scope[:0])
+    check("revisions scope: it says such a change produces NO event, however "
+          "many entities it touches",
+          "no event" in scope.lower(), scope[:0])
+
+    # ---- 3. AND NAMES WHERE THOSE CHANGES DO GET RECORDED
+    check("revisions scope: it names the mechanism, so a reader knows the "
+          "change is recorded somewhere rather than nowhere",
+          "declare" in scope.lower() and "OUR CORRECTION" in scope, scope[:0])
+    # the worked example must be a declaration that is ACTUALLY in the
+    # shipped record — a page pointing at a batch that is not there is worse
+    # than a page that gives no example
+    ccc = load_data_js(ROOT / "ccc-revisions.js")
+    hit = [b for b in ccc["batches"]
+           if b.get("correctionId") == "ccc-absence-not-negative"]
+    check("revisions scope: the worked example is a real batch in the "
+          "shipped record", len(hit) == 1, str(len(hit)))
+    if hit:
+        check("revisions scope: and it is what the page says it is — a "
+              "declaration carrying zero events",
+              hit[0].get("ours") and not hit[0]["events"]
+              and hit[0]["built"] == "2026-07-21",
+              f"{hit[0]['built']} events={len(hit[0]['events'])}")
+        check("revisions scope: the page cites its date, so a reader can "
+              "find it below", "2026-07-21" in scope, scope[:0])
+
+    # ---- 4. THE DECLARATION HALF IS NOT OVERCLAIMED
+    # It is written, not derived, and the page has to say so — otherwise it
+    # reads as a second guarantee of the same strength as the first.
+    low = scope.lower()
+    check("revisions scope: the derived half is named as derived",
+          "derived" in low, scope[:0])
+    check("revisions scope: the declared half is named as written",
+          "written" in low, scope[:0])
+    check("revisions scope: and the page admits the failure mode — an "
+          "undeclared change would not be caught",
+          "did not say so" in low and "nothing here would catch it" in low,
+          scope[:0])
+    # NEGATIVE CONTROL: it must not promise that non-figure changes are
+    # tracked, which is the overclaim this whole item exists to avoid.
+    for overclaim in ("every change is recorded",
+                      "all changes are recorded",
+                      "nothing can change without"):
+        check(f"revisions scope: negative control — the page does not claim "
+              f"{overclaim!r}", overclaim not in low)
+
+    # ---- 5. THE METHOD SECTION AGREES WITH THE SCOPE STATEMENT
+    method = page.inner_text("#method")
+    check("revisions scope: the method section states the same rule, in "
+          "mechanism terms", "numeric" in method.lower(), method[:0])
+    check("revisions scope: and points back rather than restating it, so the "
+          "two cannot drift apart",
+          "fourth point" in method.lower(), method[:0])
+
+
 def test_revisions(page, base):
     """THE CHANGE RECORD (V13, option (b): mechanical only).
 
@@ -13901,6 +14006,7 @@ def main():
             test_mobile(browser, base)
             test_precision(page, base)
             test_runtime_origins()
+            test_revisions_scope_stated(page, base)
             test_revisions(page, base)
             test_v21_revenue(page, base)
             test_v21_state_revenue(page, base)
