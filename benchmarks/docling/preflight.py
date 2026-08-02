@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 from harness import (StopGate, assert_offline_environment, canonical_json,
-                     hash_tree, installed_packages, package_version,
+                     hash_code_tree, hash_tree, installed_packages, package_version,
                      protected_status_lines, sha256_file, truth_rows,
                      verify_manifest)
 
@@ -38,6 +38,8 @@ def main() -> None:
     protected = protected_status_lines(status)
     if protected:
         raise StopGate("protected repository changes present: " + " | ".join(protected))
+    git_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                              text=True, capture_output=True, check=True).stdout.strip()
 
     config_path = Path(__file__).with_name("config.json")
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -57,8 +59,8 @@ def main() -> None:
         "model_manifest_sha256": sha256_file(args.artifacts / "MODEL_MANIFEST.json"),
         "installed_packages": packages,
         "environment_names": sorted(os.environ),
-        "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,
-                                   text=True, capture_output=True, check=True).stdout.strip(),
+        "git_head": git_head,
+        "code_tree_manifest": hash_code_tree(Path(__file__).parent),
         "git_status": status.splitlines(),
     }
     args.evidence.mkdir(parents=True, exist_ok=True)

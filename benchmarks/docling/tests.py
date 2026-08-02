@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from harness import (StopGate, artifact_identity, assert_offline_environment,
-                     canonical_json, hash_tree, installed_packages,
+                     canonical_json, hash_code_tree, hash_tree, installed_packages,
                      protected_status_lines, resolve_beneath, sha256_file,
                      truth_rows, verify_manifest, verify_reviewed_evidence,
                      verify_reviewed_inputs)
@@ -106,6 +106,11 @@ class HarnessTests(unittest.TestCase):
         artifacts.mkdir(parents=True)
         config = root / "config.json"
         model = artifacts / "MODEL_MANIFEST.json"
+        code_root = root / "code"
+        code_root.mkdir()
+        (code_root / "run.py").write_text("# reviewed harness\n", encoding="utf-8")
+        git_head = "a" * 40
+        environment_names = ["DOCLING_BENCHMARK_OFFLINE", "PATH"]
         config.write_text(canonical_json({
             "benchmark_id": "citizen-ledger-docling-five-document-v1",
             "docling_version": "2.117.0",
@@ -123,6 +128,9 @@ class HarnessTests(unittest.TestCase):
             "config_sha256": sha256_file(config),
             "model_manifest_sha256": sha256_file(model),
             "installed_packages": packages,
+            "git_head": git_head,
+            "code_tree_manifest": hash_code_tree(code_root),
+            "environment_names": environment_names,
         }), encoding="utf-8")
         approval = root / "SECURITY_APPROVAL.json"
         approval.write_text(canonical_json({
@@ -131,42 +139,68 @@ class HarnessTests(unittest.TestCase):
             "approved_at": "2026-08-02T00:00:00-07:00",
             "canonical_evidence_sha256": sha256_file(manifest),
         }), encoding="utf-8")
-        return artifacts, config, model, manifest, approval, packages
+        return (artifacts, config, model, manifest, approval, packages, git_head,
+                code_root, environment_names)
 
     def test_reviewed_evidence_accepts_exact_approved_packet(self):
         with tempfile.TemporaryDirectory() as tmp:
             parts = self.evidence_fixture(Path(tmp))
             with patch("harness.installed_packages", return_value=parts[5]):
                 self.assertEqual(verify_reviewed_evidence(parts[3], parts[4], parts[0],
-                                                          parts[1], parts[2])["schema"], 1)
+                                                          parts[1], parts[2], parts[6],
+                                                          parts[7], parts[8])["schema"], 1)
 
     def test_reviewed_evidence_rejects_missing_unapproved_and_changed_packets(self):
         with tempfile.TemporaryDirectory() as tmp:
-            artifacts, config, model, manifest, approval, packages = self.evidence_fixture(Path(tmp))
+            (artifacts, config, model, manifest, approval, packages,
+             git_head, code_root, environment_names) = self.evidence_fixture(Path(tmp))
             with patch("harness.installed_packages", return_value=packages):
                 with self.assertRaisesRegex(StopGate, "required"):
                     verify_reviewed_evidence(Path(tmp) / "missing.json", approval,
-                                             artifacts, config, model)
+                                             artifacts, config, model, git_head,
+                                             code_root, environment_names)
             approval.write_text(canonical_json({"schema": 1, "status": "withheld"}),
                                 encoding="utf-8")
             with patch("harness.installed_packages", return_value=packages):
                 with self.assertRaisesRegex(StopGate, "unapproved"):
-                    verify_reviewed_evidence(manifest, approval, artifacts, config, model)
-            _, _, _, manifest, approval, packages = self.evidence_fixture(Path(tmp) / "second")
+                    verify_reviewed_evidence(manifest, approval, artifacts, config, model,
+                                             git_head, code_root, environment_names)
+            (_, _, _, manifest, approval, packages, second_git_head,
+             second_code_root, second_environment_names) = self.evidence_fixture(Path(tmp) / "second")
             second_artifacts = manifest.parent / "artifacts"
             (second_artifacts / "SBOM.json").write_text("{}\n", encoding="utf-8")
             with patch("harness.installed_packages", return_value=packages):
                 with self.assertRaisesRegex(StopGate, "artifact drift"):
                     verify_reviewed_evidence(manifest, approval, second_artifacts,
                                              manifest.parent / "config.json",
-                                             second_artifacts / "MODEL_MANIFEST.json")
+                                             second_artifacts / "MODEL_MANIFEST.json",
+                                             second_git_head, second_code_root,
+                                             second_environment_names)
             third = self.evidence_fixture(Path(tmp) / "third")
             changed_packages = [dict(item) for item in third[5]]
             next(item for item in changed_packages if item["name"] == "docling")["version"] = "9.9.9"
             with patch("harness.installed_packages", return_value=changed_packages):
                 with self.assertRaisesRegex(StopGate, "package/version inventory drift"):
                     verify_reviewed_evidence(third[3], third[4], third[0],
-                                             third[1], third[2])
+                                             third[1], third[2], third[6], third[7], third[8])
+
+    def test_reviewed_evidence_rejects_head_code_and_environment_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            parts = self.evidence_fixture(Path(tmp))
+            with patch("harness.installed_packages", return_value=parts[5]):
+                with self.assertRaisesRegex(StopGate, "HEAD differs"):
+                    verify_reviewed_evidence(parts[3], parts[4], parts[0], parts[1],
+                                             parts[2], "b" * 40, parts[7], parts[8])
+                (parts[7] / "run.py").write_text("# uncommitted drift\n", encoding="utf-8")
+                with self.assertRaisesRegex(StopGate, "code-tree drift"):
+                    verify_reviewed_evidence(parts[3], parts[4], parts[0], parts[1],
+                                             parts[2], parts[6], parts[7], parts[8])
+            parts = self.evidence_fixture(Path(tmp) / "environment")
+            with patch("harness.installed_packages", return_value=parts[5]):
+                with self.assertRaisesRegex(StopGate, "environment-name set"):
+                    verify_reviewed_evidence(parts[3], parts[4], parts[0], parts[1],
+                                             parts[2], parts[6], parts[7],
+                                             parts[8] + ["UNREVIEWED_NAME"])
 
 
 if __name__ == "__main__":

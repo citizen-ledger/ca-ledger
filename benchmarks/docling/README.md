@@ -53,7 +53,8 @@ packet. Do not use `run.py` merely because the scripts exist.
 5. Disable network egress at the OS/container boundary, invoke the harness with
    an explicit minimal environment (`env -i`), remove credential mounts, then
    run `preflight.py`. It emits one `CANONICAL_EVIDENCE.json` binding the config,
-   installed package versions, artifacts, models, corpus, truth, and git state.
+   installed package versions, artifacts, models, corpus, truth, exact repository
+   HEAD, complete harness code-tree hashes, and environment-name set.
 6. Security creates a separate approval JSON with schema `1`, status `approved`,
    reviewer identity/timestamp, and the exact SHA-256 of that canonical manifest.
    `run.py` verifies both records and every bound artifact before importing

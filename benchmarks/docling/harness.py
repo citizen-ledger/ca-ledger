@@ -128,6 +128,17 @@ def hash_tree(root: Path, excluded: Iterable[str] = ()) -> list[dict[str, object
     return out
 
 
+def hash_code_tree(root: Path) -> list[dict[str, object]]:
+    out = []
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        relative = path.relative_to(root)
+        if "__pycache__" in relative.parts or path.suffix in {".pyc", ".pyo"}:
+            continue
+        out.append({"path": relative.as_posix(), "sha256": sha256_file(path),
+                    "bytes": path.stat().st_size})
+    return out
+
+
 def assert_offline_environment(environ: dict[str, str] | None = None,
                                home: Path | None = None) -> None:
     environment = dict(os.environ if environ is None else environ)
@@ -170,7 +181,9 @@ def artifact_identity(relative_path: str) -> str:
 
 def verify_reviewed_evidence(manifest_path: Path, approval_path: Path,
                              artifacts_path: Path, config_path: Path,
-                             model_manifest_path: Path) -> dict[str, object]:
+                             model_manifest_path: Path, current_git_head: str,
+                             code_root: Path,
+                             environment_names: list[str]) -> dict[str, object]:
     if not manifest_path.is_file() or not approval_path.is_file():
         raise StopGate("canonical evidence manifest and security approval are required")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -191,6 +204,12 @@ def verify_reviewed_evidence(manifest_path: Path, approval_path: Path,
         raise StopGate("reviewed benchmark identity drift")
     if approval.get("benchmark_id") != config.get("benchmark_id"):
         raise StopGate("security approval does not name the reviewed benchmark")
+    if manifest.get("git_head") != current_git_head:
+        raise StopGate("current repository HEAD differs from reviewed evidence")
+    if manifest.get("code_tree_manifest") != hash_code_tree(code_root):
+        raise StopGate("benchmark harness code-tree drift")
+    if manifest.get("environment_names") != sorted(environment_names):
+        raise StopGate("runtime environment-name set differs from reviewed evidence")
     if manifest.get("model_manifest_sha256") != sha256_file(model_manifest_path):
         raise StopGate("reviewed model manifest hash drift")
     if manifest.get("artifact_manifest") != hash_tree(artifacts_path):

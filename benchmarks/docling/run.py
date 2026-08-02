@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import signal
 import subprocess
@@ -48,10 +49,13 @@ def main() -> None:
         raise StopGate("benchmark requires the reviewed Python 3.11 environment")
     config_path = Path(__file__).with_name("config.json")
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    repo = Path(__file__).parents[2]
+    current_git_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                                      text=True, capture_output=True, check=True).stdout.strip()
     reviewed_evidence = verify_reviewed_evidence(
         args.evidence_manifest.resolve(), args.security_approval.resolve(),
-        args.artifacts.resolve(), config_path, args.model_manifest.resolve())
-    repo = Path(__file__).parents[2]
+        args.artifacts.resolve(), config_path, args.model_manifest.resolve(),
+        current_git_head, Path(__file__).parent, sorted(os.environ))
     status_before = subprocess.run(["git", "status", "--porcelain"], cwd=repo,
                                    text=True, capture_output=True, check=True).stdout
     if protected_status_lines(status_before):
@@ -115,8 +119,7 @@ def main() -> None:
         "security_approval_sha256": sha256_file(args.security_approval),
         "model_manifest_sha256": sha256_file(args.model_manifest),
         "results": results,
-        "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,
-                                   text=True, capture_output=True, check=True).stdout.strip(),
+        "git_head": current_git_head,
     }
     status_after = subprocess.run(["git", "status", "--porcelain"], cwd=repo,
                                   text=True, capture_output=True, check=True).stdout
