@@ -1,0 +1,5 @@
+# Resolved only by prepare.py on the approved Python 3.11 / macOS arm64 target.
+# Do not hand-edit a transitive lock or reuse one from another platform.
+docling==2.117.0
+cyclonedx-bom==7.2.1
+pip-audit==2.9.0

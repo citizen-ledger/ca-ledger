@@ -1,0 +1,18 @@
+{
+  "benchmark_id": "citizen-ledger-docling-five-document-v1",
+  "docling_version": "2.117.0",
+  "python": "3.11",
+  "pipeline": "standard",
+  "input_format": "pdf",
+  "table_structure": true,
+  "table_mode": "accurate",
+  "do_cell_matching": true,
+  "ocr_engine": "auto",
+  "enable_remote_services": false,
+  "max_file_size_bytes": 52428800,
+  "max_num_pages": 500,
+  "timeout_seconds_per_document": 1800,
+  "max_output_bytes_per_document": 104857600,
+  "max_documents": 5,
+  "normalized_output_schema": 1
+}
