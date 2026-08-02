@@ -12,8 +12,9 @@ import time
 from pathlib import Path
 
 from harness import (StopGate, assert_offline_environment, canonical_json,
-                     hash_tree, protected_status_lines, resolve_beneath,
-                     sha256_file, verify_manifest)
+                     artifact_identity, hash_tree, protected_status_lines,
+                     resolve_beneath, sha256_file, verify_manifest,
+                     verify_reviewed_evidence, verify_reviewed_inputs)
 
 
 def timeout_handler(_signum, _frame):
@@ -36,6 +37,9 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--models", type=Path, required=True)
     parser.add_argument("--model-manifest", type=Path, required=True)
+    parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--evidence-manifest", type=Path, required=True)
+    parser.add_argument("--security-approval", type=Path, required=True)
     parser.add_argument("--quarantine", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
@@ -44,12 +48,16 @@ def main() -> None:
         raise StopGate("benchmark requires the reviewed Python 3.11 environment")
     config_path = Path(__file__).with_name("config.json")
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    reviewed_evidence = verify_reviewed_evidence(
+        args.evidence_manifest.resolve(), args.security_approval.resolve(),
+        args.artifacts.resolve(), config_path, args.model_manifest.resolve())
     repo = Path(__file__).parents[2]
     status_before = subprocess.run(["git", "status", "--porcelain"], cwd=repo,
                                    text=True, capture_output=True, check=True).stdout
     if protected_status_lines(status_before):
         raise StopGate("protected repository changes exist before execution")
     inputs = verify_manifest(args.input.resolve(), args.manifest.resolve(), config["max_documents"])
+    verify_reviewed_inputs(reviewed_evidence, args.manifest.resolve(), inputs)
     recorded_models = json.loads(args.model_manifest.read_text(encoding="utf-8"))
     if hash_tree(args.models.resolve()) != recorded_models.get("files"):
         raise StopGate("model artifact hash drift")
@@ -89,18 +97,22 @@ def main() -> None:
         elapsed = time.monotonic() - started
         raw = converted.document.export_to_dict()
         normalized = normalize(raw)
-        stem = source.stem
-        raw_path, normalized_path = raw_dir / f"{stem}.json", normalized_dir / f"{stem}.json"
+        artifact_id = artifact_identity(item["path"])
+        raw_path = raw_dir / f"{artifact_id}.json"
+        normalized_path = normalized_dir / f"{artifact_id}.json"
         raw_path.write_text(canonical_json(raw), encoding="utf-8")
         normalized_path.write_text(canonical_json(normalized), encoding="utf-8")
         if raw_path.stat().st_size + normalized_path.stat().st_size > config["max_output_bytes_per_document"]:
             raise StopGate(f"output exceeds byte limit: {item['path']}")
-        results.append({"input": item, "elapsed_seconds": elapsed,
+        results.append({"input": item, "artifact_id": artifact_id,
+                        "elapsed_seconds": elapsed,
                         "raw_sha256": sha256_file(raw_path),
                         "normalized_sha256": sha256_file(normalized_path)})
     manifest = {
         "status": "quarantined-draft-output",
         "run_id": args.run_id, "config_sha256": sha256_file(config_path),
+        "canonical_evidence_sha256": sha256_file(args.evidence_manifest),
+        "security_approval_sha256": sha256_file(args.security_approval),
         "model_manifest_sha256": sha256_file(args.model_manifest),
         "results": results,
         "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,

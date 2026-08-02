@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,18 @@ PROTECTED_NAMES = {
     "data.js", "city-data.js", "county-data.js", "district-data.js",
     "school-data.js", "csu-data.js", "ccc-data.js", "uc-data.js",
     "compensation-data.js", "deflator-data.js", "search-index.js",
+}
+ALLOWED_OFFLINE_ENVIRONMENT = {
+    "DOCLING_BENCHMARK_OFFLINE", "LANG", "LC_ALL", "PATH", "PYTHONHASHSEED",
+    "TMPDIR",
+}
+KNOWN_CREDENTIAL_FILES = {
+    ".aws/credentials": "aws-credentials",
+    ".config/gcloud/application_default_credentials.json": "gcloud-application-default",
+    ".docker/config.json": "docker-config",
+    ".kube/config": "kube-config",
+    ".netrc": "netrc",
+    ".ssh": "ssh-directory",
 }
 
 
@@ -32,6 +45,19 @@ def sha256_file(path: Path) -> str:
 def canonical_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True,
                       separators=(",", ":")) + "\n"
+
+
+def installed_packages() -> list[dict[str, str]]:
+    packages = {
+        (distribution.metadata.get("Name") or "").lower().replace("_", "-"): distribution.version
+        for distribution in importlib.metadata.distributions()
+    }
+    return [{"name": name, "version": packages[name]} for name in sorted(packages) if name]
+
+
+def package_version(packages: list[dict[str, str]], name: str) -> str | None:
+    normalized = name.lower().replace("_", "-")
+    return next((item["version"] for item in packages if item["name"] == normalized), None)
 
 
 def resolve_beneath(root: Path, child: str | Path) -> Path:
@@ -102,22 +128,84 @@ def hash_tree(root: Path, excluded: Iterable[str] = ()) -> list[dict[str, object
     return out
 
 
-def assert_offline_environment() -> None:
-    if os.environ.get("DOCLING_BENCHMARK_OFFLINE") != "1":
+def assert_offline_environment(environ: dict[str, str] | None = None,
+                               home: Path | None = None) -> None:
+    environment = dict(os.environ if environ is None else environ)
+    if environment.get("DOCLING_BENCHMARK_OFFLINE") != "1":
         raise StopGate("DOCLING_BENCHMARK_OFFLINE=1 is required")
-    forbidden = [name for name in os.environ
-                 if name.upper().endswith(("_TOKEN", "_API_KEY", "_SECRET"))]
-    forbidden += [name for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-                                    "SSH_AUTH_SOCK") if os.environ.get(name)]
-    if forbidden:
-        raise StopGate("credential/proxy variables present: " + ", ".join(sorted(set(forbidden))))
+    unexpected = sorted(set(environment) - ALLOWED_OFFLINE_ENVIRONMENT)
+    if unexpected:
+        raise StopGate("environment names outside allowlist: " + ", ".join(unexpected))
+    credential_home = Path.home() if home is None else home
+    mounted = [label for relative, label in KNOWN_CREDENTIAL_FILES.items()
+               if (credential_home / relative).exists()]
+    if mounted:
+        raise StopGate("credential file mounts present: " + ", ".join(sorted(mounted)))
 
 
 def protected_status_lines(status: str) -> list[str]:
     protected = []
     for line in status.splitlines():
-        path_text = line[3:].split(" -> ")[-1]
-        path = Path(path_text)
-        if path_text == "pipeline" or path_text.startswith("pipeline/") or path.name in PROTECTED_NAMES:
+        path_texts = line[3:].split(" -> ")
+        if any(is_protected_repo_path(path_text) for path_text in path_texts):
             protected.append(line)
     return protected
+
+
+def is_protected_repo_path(path_text: str) -> bool:
+    path_text = path_text.strip('"')
+    path = Path(path_text)
+    return (path_text == "pipeline" or path_text.startswith("pipeline/")
+            or path.name in PROTECTED_NAMES or path.name.endswith("-data.js"))
+
+
+def artifact_identity(relative_path: str) -> str:
+    normalized = Path(relative_path).as_posix()
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    basename = Path(normalized).stem
+    safe_basename = "".join(character if character.isalnum() or character in "-_"
+                            else "_" for character in basename)[:80]
+    return f"{digest}-{safe_basename or 'document'}"
+
+
+def verify_reviewed_evidence(manifest_path: Path, approval_path: Path,
+                             artifacts_path: Path, config_path: Path,
+                             model_manifest_path: Path) -> dict[str, object]:
+    if not manifest_path.is_file() or not approval_path.is_file():
+        raise StopGate("canonical evidence manifest and security approval are required")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    approval = json.loads(approval_path.read_text(encoding="utf-8"))
+    if manifest.get("schema") != 1 or manifest.get("status") != "prepared-for-security-review":
+        raise StopGate("canonical evidence manifest is incomplete")
+    if approval.get("schema") != 1 or approval.get("status") != "approved":
+        raise StopGate("security approval is missing or unapproved")
+    manifest_hash = sha256_file(manifest_path)
+    if approval.get("canonical_evidence_sha256") != manifest_hash:
+        raise StopGate("security approval does not bind the canonical evidence manifest")
+    if not approval.get("approved_by") or not approval.get("approved_at"):
+        raise StopGate("security approval lacks reviewer identity or timestamp")
+    if manifest.get("config_sha256") != sha256_file(config_path):
+        raise StopGate("reviewed configuration hash drift")
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if manifest.get("benchmark_id") != config.get("benchmark_id"):
+        raise StopGate("reviewed benchmark identity drift")
+    if approval.get("benchmark_id") != config.get("benchmark_id"):
+        raise StopGate("security approval does not name the reviewed benchmark")
+    if manifest.get("model_manifest_sha256") != sha256_file(model_manifest_path):
+        raise StopGate("reviewed model manifest hash drift")
+    if manifest.get("artifact_manifest") != hash_tree(artifacts_path):
+        raise StopGate("reviewed preparation artifact drift")
+    if manifest.get("installed_packages") != installed_packages():
+        raise StopGate("installed package/version inventory drift")
+    if package_version(manifest["installed_packages"], "docling") != config.get("docling_version"):
+        raise StopGate("installed Docling version does not match reviewed configuration")
+    return manifest
+
+
+def verify_reviewed_inputs(reviewed_evidence: dict[str, object],
+                           input_manifest_path: Path,
+                           verified_inputs: list[dict[str, object]]) -> None:
+    if reviewed_evidence.get("corpus_manifest_sha256") != sha256_file(input_manifest_path):
+        raise StopGate("reviewed corpus manifest hash drift")
+    if reviewed_evidence.get("inputs") != verified_inputs:
+        raise StopGate("verified corpus inputs differ from reviewed evidence")

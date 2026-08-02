@@ -50,9 +50,14 @@ packet. Do not use `run.py` merely because the scripts exist.
 4. Review `evidence/DEPENDENCY_LOCK.txt`, `evidence/WHEEL_SHA256SUMS`,
    `evidence/SBOM.json`, `evidence/LICENSES.json`, `evidence/MODEL_MANIFEST.json`,
    and the advisory report. Make the wheelhouse/model cache read-only.
-5. Disable network egress at the OS/container boundary, remove all credentials,
-   then run `preflight.py`. Edward must approve the resulting packet before any
-   corpus execution.
+5. Disable network egress at the OS/container boundary, invoke the harness with
+   an explicit minimal environment (`env -i`), remove credential mounts, then
+   run `preflight.py`. It emits one `CANONICAL_EVIDENCE.json` binding the config,
+   installed package versions, artifacts, models, corpus, truth, and git state.
+6. Security creates a separate approval JSON with schema `1`, status `approved`,
+   reviewer identity/timestamp, and the exact SHA-256 of that canonical manifest.
+   `run.py` verifies both records and every bound artifact before importing
+   Docling. Missing, incomplete, unapproved, or drifted evidence fails closed.
 
 The scripts do not claim that environment variables alone disable the network;
 the operator must supply and evidence an OS/container egress control.
